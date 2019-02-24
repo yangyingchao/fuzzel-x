@@ -753,7 +753,7 @@ update_matches(struct context *c)
         size_t i = 0;
         tll_foreach(c->applications, it) {
             c->matches[i++] = (struct match){
-                .application = &it->item, .start = 0};
+                .application = &it->item, .start_title = -1, .start_comment = -1};
         }
 
         assert(c->selected < c->match_count);
@@ -762,14 +762,28 @@ update_matches(struct context *c)
 
     tll(struct match) _matches = tll_init();
     tll_foreach(c->applications, it) {
+        size_t start_title = -1;
+        size_t start_comment = -1;
+
         const char *m = strcasestr(it->item.title, c->prompt.text);
-        if (m == NULL)
+        if (m != NULL)
+            start_title = m - it->item.title;
+
+        if (it->item.comment != NULL) {
+            m = strcasestr(it->item.comment, c->prompt.text);
+            if (m != NULL)
+                start_comment = m - it->item.comment;
+        }
+
+        if (start_title == -1 && start_comment == -1)
             continue;
 
-        const size_t start = m - it->item.title;
         tll_push_back(
             _matches,
-            ((struct match){.application = &it->item, .start = start}));
+            ((struct match){
+                .application = &it->item,
+                .start_title = start_title,
+                .start_comment = start_comment}));
     }
 
     size_t i = 0;
