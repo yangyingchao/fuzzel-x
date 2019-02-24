@@ -10,9 +10,6 @@
 
 struct render {
     cairo_scaled_font_t *regular_font;
-    cairo_scaled_font_t *bold_font;
-    cairo_scaled_font_t *italic_font;
-    cairo_scaled_font_t *italic_bold_font;
     double font_size;
 };
 
@@ -98,7 +95,7 @@ render_prompt(const struct render *render, struct buffer *buf,
 
 static void
 render_text(struct buffer *buf, int *x, int y, double y_advance,
-            const char *text, size_t len, cairo_scaled_font_t *font)
+            const char *text, size_t len, cairo_scaled_font_t *font, uint32_t color)
 {
     cairo_glyph_t *glyphs = NULL;
     cairo_text_cluster_t *clusters = NULL;
@@ -123,8 +120,14 @@ render_text(struct buffer *buf, int *x, int y, double y_advance,
         glyphs[j].y += y + (y_advance - extents.height) / 2 - extents.y_bearing;
     }
 
+    double red, green, blue, alpha;
+    red = (double)((color >> 24) & 0xff) / 255.0;
+    green = (double)((color >> 16) & 0xff) / 255.0;
+    blue = (double)((color >> 8) & 0xff) / 255.0;
+    alpha = (double)((color >> 0) & 0xff) / 255.0;
+
     cairo_set_scaled_font(buf->cairo, font);
-    cairo_set_source_rgba(buf->cairo, 1.0, 1.0, 1.0, 1.0);
+    cairo_set_source_rgba(buf->cairo, red, green, blue, alpha);
     cairo_set_operator(buf->cairo, CAIRO_OPERATOR_OVER);
     cairo_show_text_glyphs(
         buf->cairo, text, len, glyphs, num_glyphs,
@@ -139,16 +142,16 @@ render_text(struct buffer *buf, int *x, int y, double y_advance,
 static void
 render_match_text(struct buffer *buf, int *x, int y, double y_advance,
                   const char *text, ssize_t start, size_t length,
-                  cairo_scaled_font_t *regular_font,
-                  cairo_scaled_font_t *match_font)
+                  cairo_scaled_font_t *font,
+                  uint32_t regular_color, uint32_t match_color)
 {
     if (start >= 0) {
-        render_text(buf, x, y, y_advance, &text[0], start, regular_font);
-        render_text(buf, x, y, y_advance, &text[start], length, match_font);
+        render_text(buf, x, y, y_advance, &text[0], start, font, regular_color);
+        render_text(buf, x, y, y_advance, &text[start], length, font, match_color);
         render_text(buf, x, y, y_advance, &text[start + length],
-                    strlen(text) - (start + length), regular_font);
+                    strlen(text) - (start + length), font, regular_color);
     } else
-        render_text(buf, x, y, y_advance, text, strlen(text), regular_font);
+        render_text(buf, x, y, y_advance, text, strlen(text), font, regular_color);
 }
 
 void
@@ -188,8 +191,8 @@ render_match_list(const struct render *render, struct buffer *buf,
         int cur_x = x;
         render_match_text(
             buf, &cur_x, y, y_advance,
-            match->application->title, match->start_title,
-            match_length, render->regular_font, render->bold_font);
+            match->application->title, match->start_title, match_length,
+            render->regular_font, 0xffffffff, 0xffff00ff);
 
 #if 0
         /* Comment, if available */
@@ -200,7 +203,7 @@ render_match_list(const struct render *render, struct buffer *buf,
             render_match_text(
                 buf, &cur_x, y, y_advance,
                 comment, match->start_comment + 2,
-                match_length, render->italic_font, render->italic_bold_font);
+                match_length, render->regular_font, 0xffffffff, 0xffff00ff);
         }
 #endif
         y += y_advance;
@@ -212,20 +215,6 @@ render_init(const char *font_name)
 {
     struct render *render = calloc(1, sizeof(*render));
     render->regular_font = font_from_name(font_name, &render->font_size);
-
-    double foo;
-
-    char bold[strlen(font_name) + strlen(":weight=bold") + 1];
-    sprintf(bold, "%s:weight=bold", font_name);
-    render->bold_font = font_from_name(bold, &foo);
-
-    char italic[strlen(font_name) + strlen(":slant=italic") + 1];
-    sprintf(italic, "%s:slant=italic", font_name);
-    render->italic_font = font_from_name(italic, &foo);
-
-    char italic_bold[strlen(font_name) + strlen(":slant=italic:weight=bold") + 1];
-    sprintf(italic_bold, "%s:slant=italic:weight=bold", font_name);
-    render->italic_bold_font = font_from_name(italic_bold, &foo);
     return render;
 }
 
@@ -236,8 +225,5 @@ render_destroy(struct render *render)
         return;
 
     cairo_scaled_font_destroy(render->regular_font);
-    cairo_scaled_font_destroy(render->bold_font);
-    cairo_scaled_font_destroy(render->italic_font);
-    cairo_scaled_font_destroy(render->italic_bold_font);
     free(render);
 }
