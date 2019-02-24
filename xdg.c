@@ -151,24 +151,27 @@ xdg_find_programs(application_list_t *applications)
 {
     const char *xdg_data_home = getenv("XDG_DATA_HOME");
     if (xdg_data_home != NULL) {
-        int fd = open(xdg_data_home, O_RDONLY);
-        if (fd == -1)
+        int fd_base = open(xdg_data_home, O_RDONLY);
+        int fd = fd_base != -1 ? openat(fd_base, "applications", O_RDONLY) : -1;
+
+        if (fd_base == -1 || fd == -1)
             LOG_WARN("%s: failed to open", xdg_data_home);
-        else {
+        else
             scan_dir(fd, applications);
-            close(fd);
-        }
+
+        close(fd);
+        close(fd_base);
     } else {
         const char *home = getenv("HOME");
-        char buf[strlen(home) + 1 + strlen(".local/share") + 1];
-        sprintf(buf, "%s/%s", home, ".local/share");
+        char buf[strlen(home) + 1 + strlen(".local/share/applications") + 1];
+        sprintf(buf, "%s/%s", home, ".local/share/applications");
+
         int fd = open(buf, O_RDONLY);
         if (fd == -1)
             LOG_WARN("%s: failed to open", buf);
-        else {
+        else
             scan_dir(fd, applications);
-            close(fd);
-        }
+        close(fd);
     }
 
     const char *_xdg_data_dirs = getenv("XDG_DATA_DIRS");
@@ -178,30 +181,31 @@ xdg_find_programs(application_list_t *applications)
              data_dir != NULL;
              data_dir = strtok(NULL, ":"))
         {
-            int fd = open(data_dir, O_RDONLY);
-            if (fd == -1)
+            int fd_base = open(data_dir, O_RDONLY);
+            int fd = fd_base != -1 ? openat(fd_base, "applications", O_RDONLY) : -1;
+            if (fd_base == -1 || fd == -1)
                 LOG_WARN("%s: failed to open", data_dir);
-            else {
+            else
                 scan_dir(fd, applications);
-                close(fd);
-            }
+
+            close(fd);
+            close(fd_base);
         }
 
         free(xdg_data_dirs);
     } else {
         static const char *const default_paths[] = {
-            "/usr/local/share",
-            "/usr/share",
+            "/usr/local/share/applications",
+            "/usr/share/applications",
         };
 
         for (size_t i = 0; i < sizeof(default_paths) / sizeof(default_paths[0]); i++) {
             int fd = open(default_paths[i], O_RDONLY);
             if (fd == -1)
                 LOG_WARN("%s: failed to open", default_paths[i]);
-            else {
+            else
                 scan_dir(fd, applications);
-                close(fd);
-            }
+            close(fd);
         }
     }
 }
