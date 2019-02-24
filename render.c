@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define LOG_MODULE "render"
+#include "log.h"
 #include "font.h"
 
 struct render {
@@ -49,13 +51,27 @@ render_prompt(const struct render *render, struct buffer *buf,
         buf->cairo, text, -1, glyphs, num_glyphs,
         clusters, num_clusters, cluster_flags);
 
+    /* prompt->cursor is the *byte* position, but we need the
+     * *character| position */
+    int cursor_at_glyph = 0;
+    size_t i = 0;
+    while (i < prompt->cursor) {
+        if ((unsigned char)prompt->text[i] >> 7) {
+            i++;
+            while (((unsigned char)prompt->text[i] & 0xc0) == 0x80)
+                i++;
+        } else
+            i++;
+        cursor_at_glyph++;
+    }
+
     int cursor_x;
-    if (prompt->cursor == 0)
+    if (cursor_at_glyph == 0)
         cursor_x = x;
-    else if (prompt->cursor >= (size_t)num_glyphs)
+    else if (cursor_at_glyph >= num_glyphs)
         cursor_x = x + extents.x_advance;
     else
-        cursor_x = glyphs[prompt->cursor].x;
+        cursor_x = glyphs[cursor_at_glyph].x;
 
     cairo_set_line_width(buf->cairo, 1);
     cairo_move_to(buf->cairo, cursor_x - 0.5, y_base + 2);
