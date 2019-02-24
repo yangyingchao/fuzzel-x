@@ -980,8 +980,9 @@ out:
 
     free(c.prompt.text);
     tll_foreach(c.applications, it) {
-        free(it->item.title);
         free(it->item.path);
+        free(it->item.title);
+        free(it->item.comment);
         tll_remove(c.applications, it);
     }
 

@@ -25,6 +25,7 @@ parse_desktop_file(int fd, application_list_t *applications)
     bool is_desktop_entry = false;
     char *name = NULL;
     char *exec = NULL;
+    char *generic_name = NULL;
 
     while (true) {
         char *line = NULL;
@@ -73,16 +74,21 @@ parse_desktop_file(int fd, application_list_t *applications)
             exec = strdup(first);
         }
 
+        else if (strcasecmp(key, "genericname") == 0)
+            generic_name = strdup(value);
+
         free(line);
     }
 
     if (is_desktop_entry && name != NULL && exec != NULL) {
         tll_push_back(
             *applications,
-            ((struct application){.title = name, .path = exec}));
+            ((struct application){
+                .path = exec, .title = name, .comment = generic_name}));
     } else {
         free(name);
         free(exec);
+        free(generic_name);
     }
 
     fclose(f);
