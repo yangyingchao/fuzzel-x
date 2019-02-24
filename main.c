@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <unistd.h>
+#include <errno.h>
 
 #include <locale.h>
 #include <threads.h>
@@ -11,6 +12,7 @@
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <sys/wait.h>
+#include <sys/eventfd.h>
 #include <dirent.h>
 
 #include <cairo.h>
@@ -88,11 +90,13 @@ struct context {
     struct {
         mtx_t mutex;
         cnd_t cond;
+        int trigger;
         enum {REPEAT_STOP, REPEAT_START, REPEAT_EXIT} cmd;
 
+        bool dont_re_repeat;
         int32_t delay;
         int32_t rate;
-        char *characters;
+        uint32_t key;
     } repeat;
 };
 
@@ -128,6 +132,9 @@ keyboard_repeater(void *arg)
             return 0;
         }
 
+    restart:
+
+        LOG_DBG("repeater: started");
         assert(c->repeat.cmd == REPEAT_START);
 
         const long rate_delay = 1000000000 / c->repeat.rate;
@@ -148,18 +155,23 @@ keyboard_repeater(void *arg)
                 timeout.tv_nsec %= 1000000000;
             }
 
-            cnd_timedwait(&c->repeat.cond, &c->repeat.mutex, &timeout);
-
-            if (c->repeat.cmd == REPEAT_STOP) {
-                mtx_unlock(&c->repeat.mutex);
-                break;
-            } else if (c->repeat.cmd == REPEAT_EXIT) {
-                mtx_unlock(&c->repeat.mutex);
-                return 0;
+            int ret = cnd_timedwait(&c->repeat.cond, &c->repeat.mutex, &timeout);
+            if (ret == thrd_success) {
+                if (c->repeat.cmd == REPEAT_START)
+                    goto restart;
+                else if (c->repeat.cmd == REPEAT_STOP) {
+                    mtx_unlock(&c->repeat.mutex);
+                    break;
+                } else if (c->repeat.cmd == REPEAT_EXIT) {
+                    mtx_unlock(&c->repeat.mutex);
+                    return 0;
+                }
             }
 
+            assert(ret == thrd_timedout);
             assert(c->repeat.cmd == REPEAT_START);
-            LOG_DBG("repeater: repeat: %s", c->repeat.characters);
+            LOG_DBG("repeater: repeat: %u", c->repeat.key);
+            write(c->repeat.trigger, &(uint64_t){1}, sizeof(uint64_t));
 
             delay = rate_delay;
             mtx_unlock(&c->repeat.mutex);
@@ -453,13 +465,6 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
         if (count == 0)
             return;
 
-        mtx_lock(&c->repeat.mutex);
-        c->repeat.cmd = REPEAT_START;
-        free(c->repeat.characters);
-        c->repeat.characters = strdup(buf);
-        cnd_signal(&c->repeat.cond);
-        mtx_unlock(&c->repeat.mutex);
-
         const size_t new_len = strlen(c->prompt.text) + count + 1;
         char *new_text = realloc(c->prompt.text, new_len);
         if (new_text == NULL)
@@ -479,6 +484,15 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
         update_matches(c);
         refresh(c);
     }
+
+    mtx_lock(&c->repeat.mutex);
+    if (!c->repeat.dont_re_repeat) {
+        c->repeat.cmd = REPEAT_START;
+        c->repeat.key = key - 8;
+        cnd_signal(&c->repeat.cond);
+    }
+    mtx_unlock(&c->repeat.mutex);
+
 }
 
 static void
@@ -810,6 +824,7 @@ main(int argc, const char *const *argv)
             .cursor = 0
         },
         .repeat = {
+            .trigger = eventfd(0, EFD_CLOEXEC),
             .cmd = REPEAT_STOP,
         },
     };
@@ -927,16 +942,28 @@ main(int argc, const char *const *argv)
     while (c.keep_running) {
         struct pollfd fds[] = {
             {.fd = wl_display_get_fd(c.wl.display), .events = POLLIN},
+            {.fd = c.repeat.trigger, .events = POLLIN},
         };
 
         wl_display_flush(c.wl.display);
+        poll(fds, 2, -1);
 
         if (fds[0].revents & POLLHUP) {
             LOG_WARN("disconnected from wayland");
             break;
         }
 
-        wl_display_dispatch(c.wl.display);
+        if (fds[1].revents & POLLIN) {
+            uint64_t v;
+            read(c.repeat.trigger, &v, sizeof(v));
+
+            c.repeat.dont_re_repeat = true;
+            keyboard_key(&c, NULL, 0, 0, c.repeat.key, XKB_KEY_DOWN);
+            c.repeat.dont_re_repeat = false;
+        }
+
+        if (fds[0].revents & POLLIN)
+            wl_display_dispatch(c.wl.display);
     }
 
     ret = EXIT_SUCCESS;
@@ -1000,7 +1027,7 @@ out:
     thrd_join(keyboard_repeater_id, NULL);
     cnd_destroy(&c.repeat.cond);
     mtx_destroy(&c.repeat.mutex);
-    free(c.repeat.characters);
+    close(c.repeat.trigger);
 
     return ret;
 }
