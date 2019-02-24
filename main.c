@@ -450,8 +450,30 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
 
         if (pid == 0) {
             /* Child */
-            execlp(c->matches[c->selected].application->path,
-                   c->matches[c->selected].application->path, NULL);
+
+            char *copy = strdup(c->matches[c->selected].application->path);
+            char *argv[100];
+
+            size_t cnt = 0;
+            for (char *arg = strtok(copy, " ");
+                 arg != NULL;
+                 arg = strtok(NULL, " "))
+            {
+                /* TODO: implement %-expansion */
+                if (arg[0] == '%')
+                    continue;
+
+                argv[cnt++] = arg;
+            }
+
+            close(STDIN_FILENO);
+            close(STDOUT_FILENO);
+            close(STDERR_FILENO);
+
+            argv[cnt] = NULL;
+            execvp(argv[0], argv);
+
+            exit(1);
         } else {
             /* Parent */
             c->keep_running = false;
