@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <unistd.h>
 
+#include <locale.h>
 #include <threads.h>
 #include <poll.h>
 
@@ -212,17 +213,13 @@ keyboard_leave(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
 static size_t
 prompt_next_char(const struct prompt *prompt)
 {
-    const char *c = &prompt->text[prompt->cursor];
-    const char *end = prompt->text + strlen(prompt->text) + 1;
-
-    if (prompt->cursor >= strlen(prompt->text))
+    int clen = mblen(&prompt->text[prompt->cursor], MB_CUR_MAX);
+    if (clen < 0) {
+        LOG_ERRNO("prompt: %s", prompt->text);
         return prompt->cursor;
+    }
 
-    do {
-        c++;
-    } while (c < end && ((unsigned char)*c >> 6) == 2);
-
-    return c - prompt->text;
+    return prompt->cursor + clen;
 }
 
 static size_t
@@ -231,15 +228,14 @@ prompt_prev_char(const struct prompt *prompt)
     if (prompt->cursor == 0)
         return 0;
 
-    const char *c = &prompt->text[prompt->cursor];
+    size_t cursor = prompt->cursor;
+    while (cursor > 0) {
+        int clen = mblen(&prompt->text[--cursor], MB_CUR_MAX);
+        if (clen >= 0)
+            break;
+    }
 
-    do {
-        c--;
-    } while (c > prompt->text && !((unsigned char)*c >> 7 == 0 ||
-                                   (unsigned char)*c >> 6 == 3));
-
-    assert(c >= prompt->text);
-    return c - prompt->text;
+    return cursor;
 }
 
 static size_t
@@ -803,6 +799,8 @@ int
 main(int argc, const char *const *argv)
 {
     int ret = EXIT_FAILURE;
+
+    setlocale(LC_ALL, "");
 
     struct context c = {
         .keep_running = true,

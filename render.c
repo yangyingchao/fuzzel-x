@@ -53,15 +53,17 @@ render_prompt(const struct render *render, struct buffer *buf,
 
     /* prompt->cursor is the *byte* position, but we need the
      * *character| position */
-    int cursor_at_glyph = 0;
-    size_t i = 0;
-    while (i < prompt->cursor) {
-        if ((unsigned char)prompt->text[i] >> 7) {
-            i++;
-            while (((unsigned char)prompt->text[i] & 0xc0) == 0x80)
-                i++;
-        } else
-            i++;
+    size_t cursor = 0;
+    size_t cursor_at_glyph = 0;
+
+    while (cursor < prompt->cursor) {
+        int clen = mblen(&prompt->text[cursor], MB_CUR_MAX);
+        if (clen < 0) {
+            LOG_ERRNO("prompt: %s", prompt->text);
+            break;
+        }
+
+        cursor += clen;
         cursor_at_glyph++;
     }
 
