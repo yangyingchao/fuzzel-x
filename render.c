@@ -3,14 +3,20 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "font.h"
+
+struct render {
+    cairo_scaled_font_t *scaled_font;
+    double font_size;
+};
+
 void
-render_prompt(struct buffer *buf,
-              cairo_scaled_font_t *scaled_font, double font_size,
+render_prompt(const struct render *render, struct buffer *buf,
               const struct prompt *prompt)
 {
     const size_t x = 20;
     const size_t y_base = 0;
-    const size_t y_advance = font_size + 10; /* TODO: how much "extra" is "right"? */
+    const size_t y_advance = render->font_size + 10; /* TODO: how much "extra" is "right"? */
     size_t y = y_base;
 
     const char *const text = prompt->text;
@@ -22,13 +28,13 @@ render_prompt(struct buffer *buf,
     int num_clusters = 0;
 
     cairo_status_t cr_status = cairo_scaled_font_text_to_glyphs(
-        scaled_font, 0, 0, text, -1, &glyphs, &num_glyphs,
+        render->scaled_font, 0, 0, text, -1, &glyphs, &num_glyphs,
         &clusters, &num_clusters, &cluster_flags);
     assert(cr_status == CAIRO_STATUS_SUCCESS);
 
     cairo_text_extents_t extents;
     cairo_scaled_font_glyph_extents(
-        scaled_font, glyphs, num_glyphs, &extents);
+        render->scaled_font, glyphs, num_glyphs, &extents);
 
     for (int i = 0; i < num_glyphs; i++) {
         glyphs[i].x += x;
@@ -36,7 +42,7 @@ render_prompt(struct buffer *buf,
             ((double)y_advance - extents.height) / 2 - extents.y_bearing;
     }
 
-    cairo_set_scaled_font(buf->cairo, scaled_font);
+    cairo_set_scaled_font(buf->cairo, render->scaled_font);
     cairo_set_source_rgba(buf->cairo, 1.0, 1.0, 1.0, 1.0);
     cairo_set_operator(buf->cairo, CAIRO_OPERATOR_OVER);
     cairo_show_text_glyphs(
@@ -66,15 +72,14 @@ render_prompt(struct buffer *buf,
 }
 
 void
-render_match_list(struct buffer *buf,
-                  cairo_scaled_font_t *scaled_font, double font_size,
+render_match_list(const struct render *render, struct buffer *buf,
                   const struct match matches[], size_t match_count,
                   size_t selected)
 {
     assert(match_count == 0 || selected < match_count);
 
     const size_t x = 20;
-    const size_t y_advance = font_size + 10; /* TODO: how much "extra" is "right"? */
+    const size_t y_advance = render->font_size + 10; /* TODO: how much "extra" is "right"? */
     const size_t y_base = 2 + y_advance;
     size_t y = y_base;
 
@@ -89,13 +94,13 @@ render_match_list(struct buffer *buf,
         int num_clusters = 0;
 
         cairo_status_t cr_status = cairo_scaled_font_text_to_glyphs(
-            scaled_font, 0, 0, text, -1, &glyphs, &num_glyphs,
+            render->scaled_font, 0, 0, text, -1, &glyphs, &num_glyphs,
             &clusters, &num_clusters, &cluster_flags);
         assert(cr_status == CAIRO_STATUS_SUCCESS);
 
         cairo_text_extents_t extents;
         cairo_scaled_font_glyph_extents(
-            scaled_font, glyphs, num_glyphs, &extents);
+            render->scaled_font, glyphs, num_glyphs, &extents);
 
         for (int j = 0; j < num_glyphs; j++) {
             glyphs[j].x += x;
@@ -117,7 +122,7 @@ render_match_list(struct buffer *buf,
             cairo_fill(buf->cairo);
         }
 
-        cairo_set_scaled_font(buf->cairo, scaled_font);
+        cairo_set_scaled_font(buf->cairo, render->scaled_font);
         cairo_set_source_rgba(buf->cairo, 1.0, 1.0, 1.0, 1.0);
         cairo_set_operator(buf->cairo, CAIRO_OPERATOR_OVER);
         cairo_show_text_glyphs(
@@ -129,4 +134,22 @@ render_match_list(struct buffer *buf,
 
         y += y_advance;
     }
+}
+
+struct render *
+render_init(const char *font_name)
+{
+    struct render *render = calloc(1, sizeof(*render));
+    render->scaled_font = font_from_name(font_name, &render->font_size);
+    return render;
+}
+
+void
+render_destroy(struct render *render)
+{
+    if (render == NULL)
+        return;
+
+    cairo_scaled_font_destroy(render->scaled_font);
+    free(render);
 }

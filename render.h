@@ -11,11 +11,14 @@ struct prompt {
     size_t cursor;
 };
 
-void render_prompt(struct buffer *buf,
-                   cairo_scaled_font_t *scaled_font, double font_size,
-                   const struct prompt *prompt);
+struct render;
+struct render *render_init(const char *font_name);
+void render_destroy(struct render *render);
 
-void render_match_list(struct buffer *buf,
-                       cairo_scaled_font_t *scaled_font, double font_size,
+void render_prompt(
+    const struct render *render, struct buffer *buf,
+    const struct prompt *prompt);
+
+void render_match_list(const struct render *render, struct buffer *buf,
                        const struct match matches[], size_t match_count,
                        size_t selected);

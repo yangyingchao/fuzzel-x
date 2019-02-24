@@ -75,9 +75,9 @@ struct wayland {
 struct context {
     bool keep_running;
     struct wayland wl;
+    struct render *render;
 
     struct prompt prompt;
-
     application_list_t applications;
 
     struct match *matches;
@@ -87,9 +87,6 @@ struct context {
 
 static const int width = 500;
 static const int height = 300;
-
-static double font_size;
-static cairo_scaled_font_t *scaled_font;
 
 static void refresh(const struct context *c);
 static void update_matches(struct context *c);
@@ -681,9 +678,8 @@ refresh(const struct context *c)
     cairo_rectangle(buf->cairo, 0, 0, width, height);
     cairo_stroke(buf->cairo);
 
-    render_prompt(buf, scaled_font, font_size, &c->prompt);
-    render_match_list(buf, scaled_font, font_size,
-                      c->matches, c->match_count, c->selected);
+    render_prompt(c->render, buf, &c->prompt);
+    render_match_list(c->render, buf, c->matches, c->match_count, c->selected);
 
     cairo_surface_flush(buf->cairo_surface);
     wl_surface_attach(c->wl.surface, buf->wl_buf, 0, 0);
@@ -797,8 +793,9 @@ main(int argc, const char *const *argv)
     wl_surface_commit(c.wl.surface);
     wl_display_roundtrip(c.wl.display);
 
-    const char *font_name = "Dina:pixelsize=9";
-    scaled_font = font_from_name(font_name, &font_size);
+    const char *const font_name = "Dina:pixelsize=9";
+    c.render = render_init(font_name);
+
     refresh(&c);
 
     wl_display_dispatch_pending(c.wl.display);
@@ -820,6 +817,7 @@ main(int argc, const char *const *argv)
     }
 
 out:
+    render_destroy(c.render);
     shm_fini();
 
     free(c.prompt.text);
