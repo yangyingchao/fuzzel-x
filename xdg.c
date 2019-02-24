@@ -69,10 +69,8 @@ parse_desktop_file(int fd, application_list_t *applications)
         if (strcasecmp(key, "name") == 0)
             name = strdup(value);
 
-        else if (strcasecmp(key, "exec") == 0) {
-            const char *first = strtok(value, " ");
-            exec = strdup(first);
-        }
+        else if (strcasecmp(key, "exec") == 0)
+            exec = strdup(value);
 
         else if (strcasecmp(key, "genericname") == 0)
             generic_name = strdup(value);
