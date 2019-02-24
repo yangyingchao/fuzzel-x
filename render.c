@@ -184,6 +184,7 @@ render_match_list(const struct render *render, struct buffer *buf,
             match->application->title, match->start_title,
             match_length, render->regular_font, render->bold_font);
 
+#if 0
         /* Comment, if available */
         if (match->application->comment != NULL) {
             char comment[2 + strlen(match->application->comment) + 1 + 1];
@@ -194,7 +195,7 @@ render_match_list(const struct render *render, struct buffer *buf,
                 comment, match->start_comment + 2,
                 match_length, render->italic_font, render->italic_bold_font);
         }
-
+#endif
         y += y_advance;
     }
 }
