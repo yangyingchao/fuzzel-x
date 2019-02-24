@@ -690,6 +690,8 @@ refresh(const struct context *c)
 int
 main(int argc, const char *const *argv)
 {
+    int ret = EXIT_FAILURE;
+
     struct context c = {
         .keep_running = true,
         .wl = {0},
@@ -816,6 +818,8 @@ main(int argc, const char *const *argv)
         wl_display_dispatch(c.wl.display);
     }
 
+    ret = EXIT_SUCCESS;
+
 out:
     render_destroy(c.render);
     shm_fini();
@@ -866,5 +870,5 @@ out:
     if (c.wl.xkb != NULL)
         xkb_context_unref(c.wl.xkb);
 
-    return 0;
+    return ret;
 }
