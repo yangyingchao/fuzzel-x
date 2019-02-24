@@ -82,7 +82,7 @@ parse_desktop_file(int fd, application_list_t *applications)
         tll_push_back(
             *applications,
             ((struct application){
-                .path = exec, .title = name, .comment = generic_name}));
+                .exec = exec, .title = name, .comment = generic_name}));
     } else {
         free(name);
         free(exec);

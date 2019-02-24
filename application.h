@@ -1,7 +1,7 @@
 #pragma once
 
 struct application {
-    char *path;
+    char *exec;
     char *title;
     char *comment;
 };

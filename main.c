@@ -442,7 +442,7 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
             return;
 
         assert(c->selected < c->match_count);
-        LOG_DBG("exec(%s)", c->matches[c->selected].application->path);
+        LOG_DBG("exec(%s)", c->matches[c->selected].application->exec);
 
         pid_t pid = fork();
         if (pid == -1)
@@ -451,7 +451,7 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
         if (pid == 0) {
             /* Child */
 
-            char *copy = strdup(c->matches[c->selected].application->path);
+            char *copy = strdup(c->matches[c->selected].application->exec);
             char *argv[100];
 
             size_t cnt = 0;
@@ -1017,7 +1017,7 @@ out:
 
     free(c.prompt.text);
     tll_foreach(c.applications, it) {
-        free(it->item.path);
+        free(it->item.exec);
         free(it->item.title);
         free(it->item.comment);
         tll_remove(c.applications, it);
