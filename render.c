@@ -36,7 +36,10 @@ render_prompt(const struct render *render, struct buffer *buf,
     cairo_status_t cr_status = cairo_scaled_font_text_to_glyphs(
         render->regular_font, 0, 0, text, -1, &glyphs, &num_glyphs,
         &clusters, &num_clusters, &cluster_flags);
-    assert(cr_status == CAIRO_STATUS_SUCCESS);
+    if (cr_status != CAIRO_STATUS_SUCCESS) {
+        LOG_ERR("cairo failure: TODO: error message");
+        return;
+    }
 
     cairo_text_extents_t extents;
     cairo_scaled_font_glyph_extents(
@@ -106,7 +109,11 @@ render_text(struct buffer *buf, int *x, int y, double y_advance,
     cairo_status_t cr_status = cairo_scaled_font_text_to_glyphs(
         font, 0, 0, text, len, &glyphs, &num_glyphs,
         &clusters, &num_clusters, &cluster_flags);
-    assert(cr_status == CAIRO_STATUS_SUCCESS);
+
+    if (cr_status != CAIRO_STATUS_SUCCESS) {
+        LOG_ERR("cairo failure: TODO: error message");
+        return;
+    }
 
     cairo_text_extents_t extents;
     cairo_scaled_font_glyph_extents(font, glyphs, num_glyphs, &extents);
