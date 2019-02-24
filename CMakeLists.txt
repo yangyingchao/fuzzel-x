@@ -12,6 +12,7 @@ set_property(DIRECTORY . APPEND PROPERTY COMPILE_DEFINITIONS
 
 set(CMAKE_C_FLAGS "-Wall -Werror ${CMAKE_C_FLAGS}")
 
+find_package(Threads REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(fontconfig REQUIRED IMPORTED_TARGET fontconfig)
 pkg_check_modules(cairo REQUIRED IMPORTED_TARGET cairo cairo-ft)
@@ -78,6 +79,7 @@ add_executable(f00sel
   )
 target_link_libraries(f00sel
   wayland-protocols
+  ${CMAKE_THREAD_LIBS_INIT}
   PkgConfig::wayland
   PkgConfig::cairo
   PkgConfig::fontconfig

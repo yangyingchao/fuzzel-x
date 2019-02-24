@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <unistd.h>
 
+#include <threads.h>
 #include <poll.h>
 
 #include <sys/types.h>
@@ -82,6 +83,16 @@ struct context {
     struct match *matches;
     size_t match_count;
     size_t selected;
+
+    struct {
+        mtx_t mutex;
+        cnd_t cond;
+        enum {REPEAT_STOP, REPEAT_START, REPEAT_EXIT} cmd;
+
+        int32_t delay;
+        int32_t rate;
+        char character;
+    } repeat;
 };
 
 static const int width = 500;
@@ -98,6 +109,65 @@ shm_format(void *data, struct wl_shm *wl_shm, uint32_t format)
 static const struct wl_shm_listener shm_listener = {
     .format = &shm_format,
 };
+
+static int
+keyboard_repeater(void *arg)
+{
+    struct context *c = arg;
+
+    while (true) {
+        LOG_DBG("repeater: waiting for start");
+
+        mtx_lock(&c->repeat.mutex);
+        while (c->repeat.cmd == REPEAT_STOP)
+            cnd_wait(&c->repeat.cond, &c->repeat.mutex);
+
+        if (c->repeat.cmd == REPEAT_EXIT) {
+            mtx_unlock(&c->repeat.mutex);
+            return 0;
+        }
+
+        assert(c->repeat.cmd == REPEAT_START);
+
+        const long rate_delay = 1000000000 / c->repeat.rate;
+        long delay = c->repeat.delay * 1000000;
+
+        mtx_unlock(&c->repeat.mutex);
+
+        while (true) {
+            mtx_lock(&c->repeat.mutex);
+            assert(c->repeat.rate > 0);
+
+            struct timespec timeout;
+            clock_gettime(CLOCK_REALTIME, &timeout);
+
+            timeout.tv_nsec += delay;
+            if (timeout.tv_nsec >= 1000000000) {
+                timeout.tv_sec += 1;
+                timeout.tv_nsec -= 1000000000;
+            }
+
+            cnd_timedwait(&c->repeat.cond, &c->repeat.mutex, &timeout);
+
+            if (c->repeat.cmd == REPEAT_STOP) {
+                mtx_unlock(&c->repeat.mutex);
+                break;
+            } else if (c->repeat.cmd == REPEAT_EXIT) {
+                mtx_unlock(&c->repeat.mutex);
+                return 0;
+            }
+
+            assert(c->repeat.cmd == REPEAT_START);
+            LOG_DBG("repeater: repeat: %c", c->repeat.character);
+
+            delay = rate_delay;
+            mtx_unlock(&c->repeat.mutex);
+        }
+
+    }
+
+    return 0;
+}
 
 static void
 keyboard_keymap(void *data, struct wl_keyboard *wl_keyboard,
@@ -182,8 +252,13 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
         //shift = 1 << xkb_keymap_mod_get_index(c->wl.xkb_keymap, "Shift");
     }
 
-    if (state == XKB_KEY_UP)
+    if (state == XKB_KEY_UP) {
+        mtx_lock(&c->repeat.mutex);
+        c->repeat.cmd = REPEAT_STOP;
+        cnd_signal(&c->repeat.cond);
+        mtx_unlock(&c->repeat.mutex);
         return;
+    }
 
     key += 8;
     xkb_keysym_t sym = xkb_state_key_get_one_sym(c->wl.xkb_state, key);
@@ -344,6 +419,12 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
         if (count == 0)
             return;
 
+        mtx_lock(&c->repeat.mutex);
+        c->repeat.cmd = REPEAT_START;
+        c->repeat.character = buf[0];
+        cnd_signal(&c->repeat.cond);
+        mtx_unlock(&c->repeat.mutex);
+
         const size_t new_len = strlen(c->prompt.text) + count + 1;
         char *new_text = malloc(new_len);
 
@@ -388,6 +469,10 @@ static void
 keyboard_repeat_info(void *data, struct wl_keyboard *wl_keyboard,
                      int32_t rate, int32_t delay)
 {
+    struct context *c = data;
+    LOG_ERR("keyboard repeat: rate=%d, delay=%d", rate, delay);
+    c->repeat.rate = rate;
+    c->repeat.delay = delay;
 }
 
 static const struct wl_keyboard_listener keyboard_listener = {
@@ -410,6 +495,7 @@ seat_handle_capabilities(void *data, struct wl_seat *wl_seat,
 
     if (c->wl.keyboard != NULL)
         wl_keyboard_release(c->wl.keyboard);
+
     c->wl.keyboard = wl_seat_get_keyboard(wl_seat);
     wl_keyboard_add_listener(c->wl.keyboard, &keyboard_listener, c);
 }
@@ -552,7 +638,7 @@ handle_global(void *data, struct wl_registry *registry,
     }
 
     else if (strcmp(interface, wl_seat_interface.name) == 0) {
-        c->wl.seat = wl_registry_bind(c->wl.registry, name, &wl_seat_interface, 3);
+        c->wl.seat = wl_registry_bind(c->wl.registry, name, &wl_seat_interface, 4);
         wl_seat_add_listener(c->wl.seat, &seat_listener, c);
         wl_display_roundtrip(c->wl.display);
     }
@@ -687,9 +773,20 @@ main(int argc, const char *const *argv)
     struct context c = {
         .keep_running = true,
         .wl = {0},
-        .prompt = {.text = calloc(1, 1), .cursor = 0},
-        .applications = {0},
+        .prompt = {
+            .text = calloc(1, 1),
+            .cursor = 0
+        },
+        .repeat = {
+            .cmd = REPEAT_STOP,
+        },
     };
+
+    mtx_init(&c.repeat.mutex, mtx_plain);
+    cnd_init(&c.repeat.cond);
+
+    thrd_t keyboard_repeater_id;
+    thrd_create(&keyboard_repeater_id, &keyboard_repeater, &c);
 
     //find_programs();
     xdg_find_programs(&c.applications);
@@ -813,6 +910,12 @@ main(int argc, const char *const *argv)
     ret = EXIT_SUCCESS;
 
 out:
+    /* SIgnal stop to repeater thread */
+    mtx_lock(&c.repeat.mutex);
+    c.repeat.cmd = REPEAT_EXIT;
+    cnd_signal(&c.repeat.cond);
+    mtx_unlock(&c.repeat.mutex);
+
     render_destroy(c.render);
     shm_fini();
 
@@ -861,6 +964,10 @@ out:
         xkb_keymap_unref(c.wl.xkb_keymap);
     if (c.wl.xkb != NULL)
         xkb_context_unref(c.wl.xkb);
+
+    thrd_join(keyboard_repeater_id, NULL);
+    cnd_destroy(&c.repeat.cond);
+    mtx_destroy(&c.repeat.mutex);
 
     return ret;
 }
