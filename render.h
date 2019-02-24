@@ -21,4 +21,4 @@ void render_prompt(
 
 void render_match_list(const struct render *render, struct buffer *buf,
                        const struct match matches[], size_t match_count,
-                       size_t selected);
+                       size_t match_length, size_t selected);

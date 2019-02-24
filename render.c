@@ -1,6 +1,7 @@
 #include "render.h"
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 #define LOG_MODULE "render"
@@ -8,7 +9,10 @@
 #include "font.h"
 
 struct render {
-    cairo_scaled_font_t *scaled_font;
+    cairo_scaled_font_t *regular_font;
+    cairo_scaled_font_t *bold_font;
+    cairo_scaled_font_t *italic_font;
+    cairo_scaled_font_t *italic_bold_font;
     double font_size;
 };
 
@@ -30,13 +34,13 @@ render_prompt(const struct render *render, struct buffer *buf,
     int num_clusters = 0;
 
     cairo_status_t cr_status = cairo_scaled_font_text_to_glyphs(
-        render->scaled_font, 0, 0, text, -1, &glyphs, &num_glyphs,
+        render->regular_font, 0, 0, text, -1, &glyphs, &num_glyphs,
         &clusters, &num_clusters, &cluster_flags);
     assert(cr_status == CAIRO_STATUS_SUCCESS);
 
     cairo_text_extents_t extents;
     cairo_scaled_font_glyph_extents(
-        render->scaled_font, glyphs, num_glyphs, &extents);
+        render->regular_font, glyphs, num_glyphs, &extents);
 
     for (int i = 0; i < num_glyphs; i++) {
         glyphs[i].x += x;
@@ -44,7 +48,7 @@ render_prompt(const struct render *render, struct buffer *buf,
             ((double)y_advance - extents.height) / 2 - extents.y_bearing;
     }
 
-    cairo_set_scaled_font(buf->cairo, render->scaled_font);
+    cairo_set_scaled_font(buf->cairo, render->regular_font);
     cairo_set_source_rgba(buf->cairo, 1.0, 1.0, 1.0, 1.0);
     cairo_set_operator(buf->cairo, CAIRO_OPERATOR_OVER);
     cairo_show_text_glyphs(
@@ -89,10 +93,61 @@ render_prompt(const struct render *render, struct buffer *buf,
     cairo_stroke(buf->cairo);
 }
 
+static void
+render_text(struct buffer *buf, int *x, int y, double y_advance,
+            const char *text, size_t len, cairo_scaled_font_t *font)
+{
+    cairo_glyph_t *glyphs = NULL;
+    cairo_text_cluster_t *clusters = NULL;
+    cairo_text_cluster_flags_t cluster_flags;
+    int num_glyphs = 0;
+    int num_clusters = 0;
+
+    cairo_status_t cr_status = cairo_scaled_font_text_to_glyphs(
+        font, 0, 0, text, len, &glyphs, &num_glyphs,
+        &clusters, &num_clusters, &cluster_flags);
+    assert(cr_status == CAIRO_STATUS_SUCCESS);
+
+    cairo_text_extents_t extents;
+    cairo_scaled_font_glyph_extents(font, glyphs, num_glyphs, &extents);
+
+    for (int j = 0; j < num_glyphs; j++) {
+        glyphs[j].x += *x;
+        glyphs[j].y += y + (y_advance - extents.height) / 2 - extents.y_bearing;
+    }
+
+    cairo_set_scaled_font(buf->cairo, font);
+    cairo_set_source_rgba(buf->cairo, 1.0, 1.0, 1.0, 1.0);
+    cairo_set_operator(buf->cairo, CAIRO_OPERATOR_OVER);
+    cairo_show_text_glyphs(
+        buf->cairo, text, len, glyphs, num_glyphs,
+        clusters, num_clusters, cluster_flags);
+
+    cairo_glyph_free(glyphs);
+    cairo_text_cluster_free(clusters);
+
+    *x += extents.width;
+}
+
+static void
+render_match_text(struct buffer *buf, int *x, int y, double y_advance,
+                  const char *text, ssize_t start, size_t length,
+                  cairo_scaled_font_t *regular_font,
+                  cairo_scaled_font_t *match_font)
+{
+    if (start >= 0) {
+        render_text(buf, x, y, y_advance, &text[0], start, regular_font);
+        render_text(buf, x, y, y_advance, &text[start], length, match_font);
+        render_text(buf, x, y, y_advance, &text[start + length],
+                    strlen(text) - (start + length), regular_font);
+    } else
+        render_text(buf, x, y, y_advance, text, strlen(text), regular_font);
+}
+
 void
 render_match_list(const struct render *render, struct buffer *buf,
                   const struct match matches[], size_t match_count,
-                  size_t selected)
+                  size_t match_length, size_t selected)
 {
     assert(match_count == 0 || selected < match_count);
 
@@ -103,36 +158,18 @@ render_match_list(const struct render *render, struct buffer *buf,
 
     for (size_t i = 0; i < match_count; i++) {
         const struct match *match = &matches[i];
-        const char *const text = match->application->title;
 
-        cairo_glyph_t *glyphs = NULL;
-        cairo_text_cluster_t *clusters = NULL;
-        cairo_text_cluster_flags_t cluster_flags;
-        int num_glyphs = 0;
-        int num_clusters = 0;
-
-        cairo_status_t cr_status = cairo_scaled_font_text_to_glyphs(
-            render->scaled_font, 0, 0, text, -1, &glyphs, &num_glyphs,
-            &clusters, &num_clusters, &cluster_flags);
-        assert(cr_status == CAIRO_STATUS_SUCCESS);
-
-        cairo_text_extents_t extents;
-        cairo_scaled_font_glyph_extents(
-            render->scaled_font, glyphs, num_glyphs, &extents);
-
-        for (int j = 0; j < num_glyphs; j++) {
-            glyphs[j].x += x;
-            glyphs[j].y += y +
-                ((double)y_advance - extents.height) / 2 - extents.y_bearing;
-        }
-
+        /* Hightlight selected entry */
         if (i == selected) {
             double f = 0.5;
             cairo_set_source_rgba(buf->cairo, 0.067+f, 0.067+f, 0.067+f, 0.9);
             cairo_set_operator(buf->cairo, CAIRO_OPERATOR_SOURCE);
             cairo_rectangle(buf->cairo, x - 2, y + 2, buf->width - 2 * (x - 2), y_advance - 4);
             cairo_fill(buf->cairo);
-        } else if ((y - y_base) % (2 * y_advance) == 0) {
+        }
+
+        /* Slightly different background on every other item */
+        else if ((y - y_base) % (2 * y_advance) == 0) {
             double f = 0.1;
             cairo_set_source_rgba(buf->cairo, 0.067+f, 0.067+f, 0.067+f, 0.9);
             cairo_set_operator(buf->cairo, CAIRO_OPERATOR_SOURCE);
@@ -140,15 +177,23 @@ render_match_list(const struct render *render, struct buffer *buf,
             cairo_fill(buf->cairo);
         }
 
-        cairo_set_scaled_font(buf->cairo, render->scaled_font);
-        cairo_set_source_rgba(buf->cairo, 1.0, 1.0, 1.0, 1.0);
-        cairo_set_operator(buf->cairo, CAIRO_OPERATOR_OVER);
-        cairo_show_text_glyphs(
-            buf->cairo, text, -1, glyphs, num_glyphs,
-            clusters, num_clusters, cluster_flags);
+        /* Application title */
+        int cur_x = x;
+        render_match_text(
+            buf, &cur_x, y, y_advance,
+            match->application->title, match->start_title,
+            match_length, render->regular_font, render->bold_font);
 
-        cairo_glyph_free(glyphs);
-        cairo_text_cluster_free(clusters);
+        /* Comment, if available */
+        if (match->application->comment != NULL) {
+            char comment[2 + strlen(match->application->comment) + 1 + 1];
+            sprintf(comment, " (%s)", match->application->comment);
+
+            render_match_text(
+                buf, &cur_x, y, y_advance,
+                comment, match->start_comment + 2,
+                match_length, render->italic_font, render->italic_bold_font);
+        }
 
         y += y_advance;
     }
@@ -158,7 +203,21 @@ struct render *
 render_init(const char *font_name)
 {
     struct render *render = calloc(1, sizeof(*render));
-    render->scaled_font = font_from_name(font_name, &render->font_size);
+    render->regular_font = font_from_name(font_name, &render->font_size);
+
+    double foo;
+
+    char bold[strlen(font_name) + strlen(":weight=bold") + 1];
+    sprintf(bold, "%s:weight=bold", font_name);
+    render->bold_font = font_from_name(bold, &foo);
+
+    char italic[strlen(font_name) + strlen(":slant=italic") + 1];
+    sprintf(italic, "%s:slant=italic", font_name);
+    render->italic_font = font_from_name(italic, &foo);
+
+    char italic_bold[strlen(font_name) + strlen(":slant=italic:weight=bold") + 1];
+    sprintf(italic_bold, "%s:slant=italic:weight=bold", font_name);
+    render->italic_bold_font = font_from_name(italic_bold, &foo);
     return render;
 }
 
@@ -168,6 +227,9 @@ render_destroy(struct render *render)
     if (render == NULL)
         return;
 
-    cairo_scaled_font_destroy(render->scaled_font);
+    cairo_scaled_font_destroy(render->regular_font);
+    cairo_scaled_font_destroy(render->bold_font);
+    cairo_scaled_font_destroy(render->italic_font);
+    cairo_scaled_font_destroy(render->italic_bold_font);
     free(render);
 }

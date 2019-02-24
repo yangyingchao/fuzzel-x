@@ -815,7 +815,8 @@ refresh(const struct context *c)
     cairo_stroke(buf->cairo);
 
     render_prompt(c->render, buf, &c->prompt);
-    render_match_list(c->render, buf, c->matches, c->match_count, c->selected);
+    render_match_list(c->render, buf, c->matches, c->match_count,
+                      strlen(c->prompt.text), c->selected);
 
     cairo_surface_flush(buf->cairo_surface);
     wl_surface_attach(c->wl.surface, buf->wl_buf, 0, 0);
