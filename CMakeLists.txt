@@ -84,3 +84,5 @@ target_link_libraries(f00sel
   PkgConfig::cairo
   PkgConfig::fontconfig
   PkgConfig::xkb)
+
+install(TARGETS f00sel DESTINATION bin)
