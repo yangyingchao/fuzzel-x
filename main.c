@@ -91,7 +91,7 @@ struct context {
 
         int32_t delay;
         int32_t rate;
-        char character;
+        char *characters;
     } repeat;
 };
 
@@ -158,7 +158,7 @@ keyboard_repeater(void *arg)
             }
 
             assert(c->repeat.cmd == REPEAT_START);
-            LOG_DBG("repeater: repeat: %c", c->repeat.character);
+            LOG_DBG("repeater: repeat: %s", c->repeat.characters);
 
             delay = rate_delay;
             mtx_unlock(&c->repeat.mutex);
@@ -421,7 +421,8 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
 
         mtx_lock(&c->repeat.mutex);
         c->repeat.cmd = REPEAT_START;
-        c->repeat.character = buf[0];
+        free(c->repeat.characters);
+        c->repeat.characters = strdup(buf);
         cnd_signal(&c->repeat.cond);
         mtx_unlock(&c->repeat.mutex);
 
@@ -968,6 +969,7 @@ out:
     thrd_join(keyboard_repeater_id, NULL);
     cnd_destroy(&c.repeat.cond);
     mtx_destroy(&c.repeat.mutex);
+    free(c.repeat.characters);
 
     return ret;
 }
