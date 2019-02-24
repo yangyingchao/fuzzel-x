@@ -143,8 +143,8 @@ keyboard_repeater(void *arg)
 
             timeout.tv_nsec += delay;
             if (timeout.tv_nsec >= 1000000000) {
-                timeout.tv_sec += 1;
-                timeout.tv_nsec -= 1000000000;
+                timeout.tv_sec += timeout.tv_nsec / 1000000000;
+                timeout.tv_nsec %= 1000000000;
             }
 
             cnd_timedwait(&c->repeat.cond, &c->repeat.mutex, &timeout);
