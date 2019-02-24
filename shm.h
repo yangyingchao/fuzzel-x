@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#include <cairo/cairo.h>
+#include <cairo.h>
 #include <wayland-client.h>
 
 struct buffer {

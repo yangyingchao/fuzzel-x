@@ -1,6 +1,6 @@
 #pragma once
 
-#include <cairo/cairo.h>
+#include <cairo.h>
 
 #include "shm.h"
 #include "match.h"

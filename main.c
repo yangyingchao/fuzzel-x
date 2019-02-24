@@ -20,7 +20,6 @@
 #include <xkbcommon/xkbcommon.h>
 #include <xkbcommon/xkbcommon-keysyms.h>
 
-
 #include <xdg-output-unstable-v1.h>
 #include <wlr-layer-shell-unstable-v1.h>
 
