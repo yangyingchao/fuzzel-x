@@ -427,20 +427,15 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
         mtx_unlock(&c->repeat.mutex);
 
         const size_t new_len = strlen(c->prompt.text) + count + 1;
-        char *new_text = malloc(new_len);
+        char *new_text = realloc(c->prompt.text, new_len);
+        if (new_text == NULL)
+            return;
 
-        /* Everything from old prompt, up to the cursor */
-        memcpy(new_text, c->prompt.text, c->prompt.cursor);
-        new_text[c->prompt.cursor] = '\0';
+        memmove(&new_text[c->prompt.cursor + count],
+                &new_text[c->prompt.cursor],
+                strlen(c->prompt.text) - c->prompt.cursor + 1);
+        memcpy(&new_text[c->prompt.cursor], buf, count);
 
-        /* New text just entered */
-        strcat(new_text, buf);
-
-        /* Everything from old prompt, after cursor */
-        strcat(new_text, &c->prompt.text[c->prompt.cursor]);
-        new_text[new_len - 1] = '\0';
-
-        free(c->prompt.text);
         c->prompt.text = new_text;
         c->prompt.cursor += count;
 
