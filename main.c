@@ -32,7 +32,6 @@
 #include "log.h"
 #include "tllist.h"
 #include "shm.h"
-#include "font.h"
 #include "render.h"
 #include "application.h"
 #include "match.h"
@@ -968,7 +967,7 @@ main(int argc, const char *const *argv)
     wl_surface_commit(c.wl.surface);
     wl_display_roundtrip(c.wl.display);
 
-    const char *const font_name = "Dina:pixelsize=9";
+    const char *const font_name = "Dina:pixelsize=13";
     c.render = render_init(font_name);
 
     refresh(&c);
