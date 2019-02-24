@@ -152,6 +152,17 @@ xdg_find_programs(application_list_t *applications)
             scan_dir(fd, applications);
             close(fd);
         }
+    } else {
+        const char *home = getenv("HOME");
+        char buf[strlen(home) + 1 + strlen(".local/share") + 1];
+        sprintf(buf, "%s/%s", home, ".local/share");
+        int fd = open(buf, O_RDONLY);
+        if (fd == -1)
+            LOG_WARN("%s: failed to open", buf);
+        else {
+            scan_dir(fd, applications);
+            close(fd);
+        }
     }
 
     const char *_xdg_data_dirs = getenv("XDG_DATA_DIRS");
