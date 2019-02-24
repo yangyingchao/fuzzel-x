@@ -210,9 +210,43 @@ keyboard_leave(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
 }
 
 static size_t
+prompt_next_char(const struct prompt *prompt)
+{
+    const char *c = &prompt->text[prompt->cursor];
+    const char *end = prompt->text + strlen(prompt->text) + 1;
+
+    if (prompt->cursor >= strlen(prompt->text))
+        return prompt->cursor;
+
+    do {
+        c++;
+    } while (c < end && ((unsigned char)*c >> 6) == 2);
+
+    return c - prompt->text;
+}
+
+static size_t
+prompt_prev_char(const struct prompt *prompt)
+{
+    if (prompt->cursor == 0)
+        return 0;
+
+    const char *c = &prompt->text[prompt->cursor];
+
+    do {
+        c--;
+    } while (c > prompt->text && !((unsigned char)*c >> 7 == 0 ||
+                                   (unsigned char)*c >> 6 == 3));
+
+    assert(c >= prompt->text);
+    return c - prompt->text;
+}
+
+static size_t
 prompt_prev_word(const struct prompt *prompt)
 {
-    const char *space = &prompt->text[prompt->cursor - 1];
+    size_t prev_char = prompt_prev_char(prompt);
+    const char *space = &prompt->text[prev_char];
 
     /* Ignore initial spaces */
     while (space >= prompt->text && *space == ' ')
@@ -335,16 +369,18 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
 
     else if ((sym == XKB_KEY_b && effective_mods == ctrl) ||
              (sym == XKB_KEY_Left && effective_mods == 0)) {
-        if (c->prompt.cursor > 0) {
-            c->prompt.cursor--;
+        size_t new_cursor = prompt_prev_char(&c->prompt);
+        if (new_cursor != c->prompt.cursor) {
+            c->prompt.cursor = new_cursor;
             refresh(c);
         }
     }
 
     else if ((sym == XKB_KEY_f && effective_mods == ctrl) ||
              (sym == XKB_KEY_Right && effective_mods == 0)) {
-        if (c->prompt.cursor + 1 <= strlen(c->prompt.text)) {
-            c->prompt.cursor++;
+        size_t new_cursor = prompt_next_char(&c->prompt);
+        if (new_cursor != c->prompt.cursor) {
+            c->prompt.cursor = new_cursor;
             refresh(c);
         }
     }
@@ -352,9 +388,10 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
     else if ((sym == XKB_KEY_d && effective_mods == ctrl) ||
              (sym == XKB_KEY_Delete && effective_mods == 0)) {
         if (c->prompt.cursor < strlen(c->prompt.text)) {
+            size_t next_char = prompt_next_char(&c->prompt);
             memmove(&c->prompt.text[c->prompt.cursor],
-                    &c->prompt.text[c->prompt.cursor + 1],
-                    strlen(c->prompt.text) - c->prompt.cursor);
+                    &c->prompt.text[next_char],
+                    strlen(c->prompt.text) - next_char + 1);
             update_matches(c);
             refresh(c);
         }
@@ -362,8 +399,9 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
 
     else if (sym == XKB_KEY_BackSpace && effective_mods == 0) {
         if (c->prompt.cursor > 0) {
-            c->prompt.text[strlen(c->prompt.text) - 1] = '\0';
-            c->prompt.cursor--;
+            size_t prev_char = prompt_prev_char(&c->prompt);
+            c->prompt.text[prev_char] = '\0';
+            c->prompt.cursor = prev_char;
 
             update_matches(c);
             refresh(c);
@@ -433,7 +471,7 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
 
         memmove(&new_text[c->prompt.cursor + count],
                 &new_text[c->prompt.cursor],
-                strlen(c->prompt.text) - c->prompt.cursor + 1);
+                strlen(new_text) - c->prompt.cursor + 1);
         memcpy(&new_text[c->prompt.cursor], buf, count);
 
         c->prompt.text = new_text;
