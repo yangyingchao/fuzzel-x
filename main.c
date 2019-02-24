@@ -330,17 +330,10 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
 
         if (pid == 0) {
             /* Child */
-            pid = fork();
-            if (pid == 0)
-                execlp(c->matches[c->selected].application->path,
-                       c->matches[c->selected].application->path, NULL);
-            c->keep_running = false;
+            execlp(c->matches[c->selected].application->path,
+                   c->matches[c->selected].application->path, NULL);
         } else {
             /* Parent */
-            int status;
-            if (waitpid(pid, &status, 0) == -1)
-                LOG_ERRNO("failed to wait for pid %u", pid);
-
             c->keep_running = false;
         }
     }
