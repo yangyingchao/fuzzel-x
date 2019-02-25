@@ -28,7 +28,7 @@
 #include <wlr-layer-shell-unstable-v1.h>
 
 #define LOG_MODULE "f00sel"
-#define LOG_ENABLE_DBG 1
+#define LOG_ENABLE_DBG 0
 #include "log.h"
 #include "tllist.h"
 #include "shm.h"
