@@ -344,8 +344,10 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
         refresh(c);
     }
 
-    else if (sym == XKB_KEY_Escape && effective_mods == 0)
+    else if ((sym == XKB_KEY_Escape && effective_mods == 0) ||
+             (sym == XKB_KEY_g && effective_mods == ctrl)) {
         c->keep_running = false;
+    }
 
     else if ((sym == XKB_KEY_p && effective_mods == ctrl) ||
              (sym == XKB_KEY_Up && effective_mods == 0)) {
