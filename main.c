@@ -861,19 +861,25 @@ main(int argc, char *const *argv)
 {
     static const struct option longopts[] = {
         {"output", required_argument, 0, 'o'},
+        {"font",   required_argument, 0, 'f'},
         {NULL,     no_argument,       0, 0},
     };
 
     const char *output_name = NULL;
+    const char *font_name = "Dina:pixelsize=13";
 
     while (true) {
-        int c = getopt_long(argc, argv, ":o:", longopts, NULL);
+        int c = getopt_long(argc, argv, ":o:f:", longopts, NULL);
         if (c == -1)
             break;
 
         switch (c) {
         case 'o':
             output_name = optarg;
+            break;
+
+        case 'f':
+            font_name = optarg;
             break;
 
         case ':':
@@ -1011,7 +1017,6 @@ main(int argc, char *const *argv)
     wl_surface_commit(c.wl.surface);
     wl_display_roundtrip(c.wl.display);
 
-    const char *const font_name = "Dina:pixelsize=13";
     c.render = render_init(font_name);
 
     refresh(&c);
