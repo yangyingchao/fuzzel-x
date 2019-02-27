@@ -537,7 +537,7 @@ keyboard_repeat_info(void *data, struct wl_keyboard *wl_keyboard,
                      int32_t rate, int32_t delay)
 {
     struct context *c = data;
-    LOG_ERR("keyboard repeat: rate=%d, delay=%d", rate, delay);
+    LOG_DBG("keyboard repeat: rate=%d, delay=%d", rate, delay);
     c->repeat.rate = rate;
     c->repeat.delay = delay;
 }
