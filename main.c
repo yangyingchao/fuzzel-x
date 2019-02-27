@@ -296,8 +296,10 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
 
     if (state == XKB_KEY_UP) {
         mtx_lock(&c->repeat.mutex);
-        c->repeat.cmd = REPEAT_STOP;
-        cnd_signal(&c->repeat.cond);
+        if (c->repeat.key == key) {
+            c->repeat.cmd = REPEAT_STOP;
+            cnd_signal(&c->repeat.cond);
+        }
         mtx_unlock(&c->repeat.mutex);
         return;
     }
