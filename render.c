@@ -177,17 +177,6 @@ render_match_list(const struct render *render, struct buffer *buf,
             cairo_fill(buf->cairo);
         }
 
-#if 0
-        /* Slightly different background on every other item */
-        else if ((y - y_base) % (2 * y_advance) == 0) {
-            double f = 0.1;
-            cairo_set_source_rgba(buf->cairo, 0.067+f, 0.067+f, 0.067+f, 0.9);
-            cairo_set_operator(buf->cairo, CAIRO_OPERATOR_SOURCE);
-            cairo_rectangle(buf->cairo, x - 2, y + 2, buf->width - 2 * (x - 2), y_advance - 4);
-            cairo_fill(buf->cairo);
-        }
-#endif
-
         /* Application title */
         int cur_x = x;
         render_match_text(
@@ -195,18 +184,6 @@ render_match_list(const struct render *render, struct buffer *buf,
             match->application->title, match->start_title, match_length,
             render->regular_font, 0xffffffff, 0xcc9393ff);
 
-#if 0
-        /* Comment, if available */
-        if (match->application->comment != NULL) {
-            char comment[2 + strlen(match->application->comment) + 1 + 1];
-            sprintf(comment, " (%s)", match->application->comment);
-
-            render_match_text(
-                buf, &cur_x, y, y_advance,
-                comment, match->start_comment + 2,
-                match_length, render->regular_font, 0xffffffff, 0xffff00ff);
-        }
-#endif
         y += y_advance;
     }
 }
