@@ -441,6 +441,12 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
         refresh(c);
     }
 
+    else if (sym == XKB_KEY_k && effective_mods == ctrl) {
+        c->prompt.text[c->prompt.cursor] = '\0';
+        update_matches(c);
+        refresh(c);
+    }
+
     else if (sym == XKB_KEY_Return && effective_mods == 0) {
         if (c->match_count == 0)
             return;
