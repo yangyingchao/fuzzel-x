@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <errno.h>
+#include <getopt.h>
 
 #include <locale.h>
 #include <threads.h>
@@ -848,8 +849,35 @@ refresh(const struct context *c)
 }
 
 int
-main(int argc, const char *const *argv)
+main(int argc, char *const *argv)
 {
+    static const struct option longopts[] = {
+        {"output", required_argument, 0, 'o'},
+        {NULL,     no_argument,       0, 0},
+    };
+
+    const char *output_name = NULL;
+
+    while (true) {
+        int c = getopt_long(argc, argv, ":o:", longopts, NULL);
+        if (c == -1)
+            break;
+
+        switch (c) {
+        case 'o':
+            output_name = optarg;
+            break;
+
+        case ':':
+            fprintf(stderr, "error: -%c: missing required argument\n", optopt);
+            return EXIT_FAILURE;
+
+        case '?':
+            fprintf(stderr, "error: -%c: invalid option\n", optopt);
+            return EXIT_FAILURE;
+        }
+    }
+
     int ret = EXIT_FAILURE;
 
     setlocale(LC_ALL, "");
@@ -917,18 +945,24 @@ main(int argc, const char *const *argv)
                  mon->name, mon->width_px, mon->height_px,
                  mon->x, mon->y, mon->width_mm, mon->height_mm);
 
-#if 0
-        /* TODO: detect primary output when user hasn't specified a monitor */
-        if (bar->monitor == NULL)
-            monitor = mon;
-        else if (strcmp(bar->monitor, mon->name) == 0)
-            monitor = mon;
-#endif
-        c.wl.monitor = mon;
-        break;
+        if (output_name != NULL && strcmp(output_name, mon->name) == 0) {
+            c.wl.monitor = mon;
+            break;
+        } else if (output_name == NULL) {
+            /* Use last monitor found */
+            c.wl.monitor = mon;
+        }
     }
 
-    assert(c.wl.monitor != NULL);
+    if (c.wl.monitor == NULL && output_name != NULL) {
+        LOG_ERR("%s: no output with that name found", output_name);
+        goto out;
+    }
+
+    if (c.wl.monitor == NULL) {
+        LOG_ERR("no outputs found");
+        goto out;
+    }
 
     c.wl.surface = wl_compositor_create_surface(c.wl.compositor);
     if (c.wl.surface == NULL) {
