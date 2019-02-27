@@ -78,18 +78,29 @@ parse_desktop_file(int fd, application_list_t *applications)
         free(line);
     }
 
+    fclose(f);
+
     if (is_desktop_entry && name != NULL && exec != NULL) {
-        tll_push_back(
-            *applications,
-            ((struct application){
-                .exec = exec, .title = name, .comment = generic_name}));
-    } else {
-        free(name);
-        free(exec);
-        free(generic_name);
+        bool already_added = false;
+        tll_foreach(*applications, it) {
+            if (strcmp(it->item.title, name) == 0) {
+                already_added = true;
+                break;
+            }
+        }
+
+        if (!already_added) {
+            tll_push_back(
+                *applications,
+                ((struct application){
+                    .exec = exec, .title = name, .comment = generic_name}));
+            return;
+        }
     }
 
-    fclose(f);
+    free(name);
+    free(exec);
+    free(generic_name);
 }
 
 static void
