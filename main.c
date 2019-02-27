@@ -826,7 +826,7 @@ refresh(const struct context *c)
     struct buffer *buf = shm_get_buffer(c->wl.shm, width, height);
 
     /* Background */
-    cairo_set_source_rgba(buf->cairo, 0.067, 0.067, 0.067, 0.9);
+    cairo_set_source_rgba(buf->cairo, 0.247, 0.247, 0.247, 0.9);
     cairo_set_operator(buf->cairo, CAIRO_OPERATOR_SOURCE);
     cairo_paint(buf->cairo);
 

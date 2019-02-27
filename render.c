@@ -80,8 +80,8 @@ render_prompt(const struct render *render, struct buffer *buf,
         cursor_x = glyphs[cursor_at_glyph].x;
 
     cairo_set_line_width(buf->cairo, 1);
-    cairo_move_to(buf->cairo, cursor_x - 0.5, y_base + 2);
-    cairo_line_to(buf->cairo, cursor_x - 0.5, y_base + y_advance - 2);
+    cairo_move_to(buf->cairo, cursor_x - 0.5, y_base + 4);
+    cairo_line_to(buf->cairo, cursor_x - 0.5, y_base + y_advance - 4);
     cairo_stroke(buf->cairo);
 
     cairo_glyph_free(glyphs);
@@ -171,13 +171,13 @@ render_match_list(const struct render *render, struct buffer *buf,
 
         /* Hightlight selected entry */
         if (i == selected) {
-            double f = 0.5;
-            cairo_set_source_rgba(buf->cairo, 0.067+f, 0.067+f, 0.067+f, 0.9);
+            cairo_set_source_rgba(buf->cairo, 0.157, 0.157, 0.157, 0.9);
             cairo_set_operator(buf->cairo, CAIRO_OPERATOR_SOURCE);
             cairo_rectangle(buf->cairo, x - 2, y + 2, buf->width - 2 * (x - 2), y_advance - 4);
             cairo_fill(buf->cairo);
         }
 
+#if 0
         /* Slightly different background on every other item */
         else if ((y - y_base) % (2 * y_advance) == 0) {
             double f = 0.1;
@@ -186,13 +186,14 @@ render_match_list(const struct render *render, struct buffer *buf,
             cairo_rectangle(buf->cairo, x - 2, y + 2, buf->width - 2 * (x - 2), y_advance - 4);
             cairo_fill(buf->cairo);
         }
+#endif
 
         /* Application title */
         int cur_x = x;
         render_match_text(
             buf, &cur_x, y, y_advance,
             match->application->title, match->start_title, match_length,
-            render->regular_font, 0xffffffff, 0xffff00ff);
+            render->regular_font, 0xffffffff, 0xcc9393ff);
 
 #if 0
         /* Comment, if available */
