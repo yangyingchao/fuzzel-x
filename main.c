@@ -841,7 +841,7 @@ refresh(const struct context *c)
 
     /* Border */
     cairo_set_source_rgba(buf->cairo, 1.0, 1.0, 1.0, 1.0);
-    cairo_set_line_width(buf->cairo, 2);
+    cairo_set_line_width(buf->cairo, 2 * 1);
     cairo_set_operator(buf->cairo, CAIRO_OPERATOR_OVER);
     cairo_rectangle(buf->cairo, 0, 0, width, height);
     cairo_stroke(buf->cairo);
