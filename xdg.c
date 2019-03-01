@@ -14,9 +14,67 @@
 #define LOG_MODULE "xdg"
 #define LOG_ENABLE_DBG 0
 #include "log.h"
+#include "icon.h"
+
+static struct cairo_icon
+load_icon(const char *name, const struct icon_theme *theme)
+{
+    LOG_INFO("looking for %s in %s", name, theme->path);
+    if (name == NULL || theme == NULL)
+        return (struct cairo_icon){0};
+
+    int min_diff = 10000;
+
+    /* Assume sorted */
+    for (size_t i = 0; i < 3; i++) {
+        tll_rforeach(theme->dirs, it) {
+            if (it->item.scale != 1)
+                continue;
+
+            const int diff = abs(it->item.size - 16);
+            if (i == 0 && diff != 0){
+                /* Looking for *exactly* our wanted size */
+                if (diff < min_diff)
+                    min_diff = diff;
+                continue;
+            } else if (i == 1 && diff != min_diff) {
+                /* Try the one which matches most closely */
+                continue;
+            } else {
+                /* Use anyone available */
+            }
+            
+            const size_t len = strlen(theme->path) + 1 +
+                strlen(it->item.path) + 1 +
+                strlen(name) + strlen(".png") + 1;
+
+            char *full_path = malloc(len);
+            sprintf(full_path, "%s/%s/%s.png", theme->path, it->item.path, name);
+
+            cairo_surface_t *surf = cairo_image_surface_create_from_png(full_path);
+
+            if (cairo_surface_status(surf) == CAIRO_STATUS_SUCCESS) {
+                LOG_INFO("%s", full_path);
+                free(full_path);
+                return (struct cairo_icon){.size = it->item.size, .surface = surf};
+            }
+
+            free(full_path);
+            cairo_surface_destroy(surf);
+        }
+    }
+
+    tll_foreach(theme->inherits, it) {
+        struct cairo_icon icon = load_icon(name, it->item);
+        if (icon.size > 0)
+            return icon;
+    }
+
+    return (struct cairo_icon){0};
+}
 
 static void
-parse_desktop_file(int fd, application_list_t *applications)
+parse_desktop_file(int fd, const struct icon_theme *theme, application_list_t *applications)
 {
     FILE *f = fdopen(fd, "r");
     if (f == NULL)
@@ -26,6 +84,7 @@ parse_desktop_file(int fd, application_list_t *applications)
     char *name = NULL;
     char *exec = NULL;
     char *generic_name = NULL;
+    char *icon = NULL;
 
     while (true) {
         char *line = NULL;
@@ -75,6 +134,9 @@ parse_desktop_file(int fd, application_list_t *applications)
         else if (strcasecmp(key, "genericname") == 0)
             generic_name = strdup(value);
 
+        else if (strcasecmp(key, "icon") == 0)
+            icon = strdup(value);
+
         free(line);
     }
 
@@ -93,7 +155,8 @@ parse_desktop_file(int fd, application_list_t *applications)
             tll_push_back(
                 *applications,
                 ((struct application){
-                    .exec = exec, .title = name, .comment = generic_name}));
+                    .exec = exec, .title = name, .comment = generic_name,
+                    .icon = load_icon(icon, theme)}));
             return;
         }
     }
@@ -101,10 +164,11 @@ parse_desktop_file(int fd, application_list_t *applications)
     free(name);
     free(exec);
     free(generic_name);
+    free(icon);
 }
 
 static void
-scan_dir(int base_fd, application_list_t *applications)
+scan_dir(int base_fd, const struct icon_theme *theme, application_list_t *applications)
 {
     DIR *d = fdopendir(base_fd);
     if (d == NULL) {
@@ -129,7 +193,7 @@ scan_dir(int base_fd, application_list_t *applications)
                 continue;
             }
 
-            scan_dir(dir_fd, applications);
+            scan_dir(dir_fd, theme, applications);
             close(dir_fd);
         } else if (S_ISREG(st.st_mode)) {
             /* Skip files not ending with ".desktop" */
@@ -146,10 +210,11 @@ scan_dir(int base_fd, application_list_t *applications)
             if (fd == -1)
                 LOG_WARN("%s: failed to open", e->d_name);
             else {
-                parse_desktop_file(fd, applications);
+                parse_desktop_file(fd, theme, applications);
                 close(fd);
             }
         }
+
     }
 
     closedir(d);
@@ -158,6 +223,10 @@ scan_dir(int base_fd, application_list_t *applications)
 void
 xdg_find_programs(application_list_t *applications)
 {
+    struct icon_theme *theme = icon_load_theme("Arc");
+    if (theme == NULL)
+        LOG_WARN("icon theme not found");
+  
     const char *xdg_data_home = getenv("XDG_DATA_HOME");
     if (xdg_data_home != NULL) {
         int fd_base = open(xdg_data_home, O_RDONLY);
@@ -166,7 +235,7 @@ xdg_find_programs(application_list_t *applications)
         if (fd_base == -1 || fd == -1)
             LOG_WARN("%s: failed to open", xdg_data_home);
         else
-            scan_dir(fd, applications);
+            scan_dir(fd, theme, applications);
 
         close(fd);
         close(fd_base);
@@ -179,7 +248,7 @@ xdg_find_programs(application_list_t *applications)
         if (fd == -1)
             LOG_WARN("%s: failed to open", buf);
         else
-            scan_dir(fd, applications);
+            scan_dir(fd, theme, applications);
         close(fd);
     }
 
@@ -195,7 +264,7 @@ xdg_find_programs(application_list_t *applications)
             if (fd_base == -1 || fd == -1)
                 LOG_WARN("%s: failed to open", data_dir);
             else
-                scan_dir(fd, applications);
+                scan_dir(fd, theme, applications);
 
             close(fd);
             close(fd_base);
@@ -213,7 +282,7 @@ xdg_find_programs(application_list_t *applications)
             if (fd == -1)
                 LOG_WARN("%s: failed to open", default_paths[i]);
             else
-                scan_dir(fd, applications);
+                scan_dir(fd, theme, applications);
             close(fd);
         }
     }
