@@ -199,7 +199,7 @@ keyboard_keymap(void *data, struct wl_keyboard *wl_keyboard,
     c->wl.xkb_state = xkb_state_new(c->wl.xkb_keymap);
 
     munmap(map_str, size);
-    /* TODO: should we close(fd)? */
+    close(fd);
 }
 
 static void
