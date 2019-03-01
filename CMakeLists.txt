@@ -71,6 +71,7 @@ target_include_directories(wayland-protocols PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 add_executable(f00sel
   main.c
   font.c font.h
+  icon.c icon.h
   render.c render.h
   shm.c shm.h
   log.c log.h
