@@ -157,6 +157,7 @@ parse_desktop_file(int fd, const struct icon_theme *theme, application_list_t *a
                 ((struct application){
                     .exec = exec, .title = name, .comment = generic_name,
                     .icon = load_icon(icon, theme)}));
+            free(icon);
             return;
         }
     }
@@ -286,4 +287,6 @@ xdg_find_programs(application_list_t *applications)
             close(fd);
         }
     }
+
+    icon_theme_destroy(theme);
 }

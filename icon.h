@@ -15,3 +15,4 @@ struct icon_theme {
 };
 
 struct icon_theme *icon_load_theme(const char *name);
+void icon_theme_destroy(struct icon_theme *theme);

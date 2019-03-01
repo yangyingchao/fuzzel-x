@@ -57,11 +57,11 @@ parse_theme(FILE *index, struct icon_theme *theme)
                 //LOG_INFO("%s: size=%d, scale=%d, context=%s, type=%s", section, size, scale, context, type);
                 struct icon_dir dir = {.path = section, .size = size, .scale = scale};
                 tll_push_back(theme->dirs, dir);
-            } else {
+            } else
                 free(section);
-                free(context);
-                free(type);
-            }
+
+            free(context);
+            free(type);
 
             size = -1;
             scale = 1;
@@ -72,6 +72,7 @@ parse_theme(FILE *index, struct icon_theme *theme)
             section = malloc(len - 2 + 1);
             memcpy(section, &line[1], len - 2);
             section[len - 2] = '\0';
+            free(line);
             continue;
         }
 
@@ -106,6 +107,8 @@ parse_theme(FILE *index, struct icon_theme *theme)
 
         else if (strcasecmp(key, "type") == 0)
             type = strdup(value);
+
+        free(line);
     }
 
     if (section != NULL && context != NULL && type != NULL &&
@@ -115,11 +118,11 @@ parse_theme(FILE *index, struct icon_theme *theme)
         //LOG_INFO("%s: size=%d, scale=%d, context=%s, type=%s", section, size, scale, context, type);
         struct icon_dir dir = {.path = section, .size = size, .scale = scale};
         tll_push_back(theme->dirs, dir);
-    } else { 
+    } else
         free(section);
-        free(context);
-        free(type);
-    }
+
+    free(context);
+    free(type);
 }
 
 struct icon_theme *
@@ -171,4 +174,22 @@ icon_load_theme(const char *name)
     if (data_dir_fd != -1)
         close(data_dir_fd);
     return theme;
+}
+
+void
+icon_theme_destroy(struct icon_theme *theme)
+{
+    free(theme->path);
+
+    tll_foreach(theme->dirs, it) {
+        free(it->item.path);
+        tll_remove(theme->dirs, it);
+    }
+
+    tll_foreach(theme->inherits, it) {
+        icon_theme_destroy(it->item);
+        tll_remove(theme->inherits, it);
+    }
+
+    free(theme);
 }

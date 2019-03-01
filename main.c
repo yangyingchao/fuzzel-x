@@ -1068,6 +1068,7 @@ out:
         free(it->item.exec);
         free(it->item.title);
         free(it->item.comment);
+        cairo_surface_destroy(it->item.icon.surface);
         tll_remove(c.applications, it);
     }
 
