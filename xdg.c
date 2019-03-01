@@ -19,9 +19,10 @@
 static struct cairo_icon
 load_icon(const char *name, const struct icon_theme *theme)
 {
-    LOG_INFO("looking for %s in %s", name, theme->path);
     if (name == NULL || theme == NULL)
         return (struct cairo_icon){0};
+
+    LOG_INFO("looking for %s in %s", name, theme->path);
 
     int min_diff = 10000;
 
