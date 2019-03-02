@@ -10,7 +10,6 @@
 
 struct render {
     cairo_scaled_font_t *regular_font;
-    double font_size;
 };
 
 static const double x_margin = 20;
@@ -178,7 +177,8 @@ render_match_text(struct buffer *buf, double *x, double y,
 
         render_glyphs(buf, regular_color, &glyphs[0], glyph_start);
         render_glyphs(buf, match_color, &glyphs[start], glyph_match_count);
-        render_glyphs(buf, regular_color, &glyphs[start + length], num_glyphs - glyph_start - glyph_match_count);
+        render_glyphs(buf, regular_color, &glyphs[start + length],
+                      num_glyphs - glyph_start - glyph_match_count);
     } else
         render_glyphs(buf, regular_color, glyphs, num_glyphs);
 
@@ -202,10 +202,14 @@ render_match_list(const struct render *render, struct buffer *buf,
     cairo_font_extents(buf->cairo, &fextents);
 
     const double row_height = 2 * y_margin + fextents.height;
-    const double first_row = 2 * border_size + 2 * y_margin + fextents.height;
+    const double first_row = 2 * border_size + row_height;
     const double sel_margin = x_margin / 3;
 
-    double y = first_row + y_margin + fextents.height - fextents.descent;
+    /*
+     * LOG_DBG("height=%f, ascent=%f, descent=%f", fextents.height, fextents.ascent,
+     *         fextents.descent);
+     */
+    double y = first_row + (row_height + fextents.height) / 2 - fextents.descent;
 
     for (size_t i = 0; i < match_count; i++) {
         const struct match *match = &matches[i];
@@ -218,26 +222,57 @@ render_match_list(const struct render *render, struct buffer *buf,
                             x_margin - sel_margin,
                             first_row + i * row_height,
                             buf->width - 2 * (x_margin - sel_margin),
-                            fextents.height + 2 * y_margin);
+                            row_height);
             cairo_fill(buf->cairo);
         }
 
-        /* Application title */
         double cur_x = border_size + x_margin;
+
+        if (match->application->icon.surface != NULL) {
+            cairo_surface_t *surf = match->application->icon.surface;
+            double size = match->application->icon.size;
+            double scale = 1.0;
+
+            if (size > row_height) {
+                scale = (row_height - 2 * y_margin) / size;
+                LOG_DBG("%s: scaling: %f (row-height: %f, size=%f",
+                        match->application->title, scale, row_height, size);
+
+                size *= scale;
+            }
+
+            cairo_save(buf->cairo);
+            cairo_set_operator(buf->cairo, CAIRO_OPERATOR_OVER);
+
+            /* Translate/scale - order matters! */
+            cairo_translate(
+                buf->cairo, cur_x,
+                first_row + i * row_height + (row_height - size) / 2);
+            cairo_scale(buf->cairo, scale, scale);
+
+            cairo_set_source_surface(buf->cairo, surf, 0, 0);
+            cairo_paint(buf->cairo);
+            cairo_restore(buf->cairo);
+        }
+
+        /* TODO: use theme */
+        cur_x += row_height;
+
+        /* Application title */
         render_match_text(
             buf, &cur_x, y,
             match->application->title, match->start_title, match_length,
             render->regular_font, 0xffffffff, 0xcc9393ff);
 
-        y += 2 * y_margin + fextents.height;
+        y += row_height;
     }
 }
 
 struct render *
-render_init(const char *font_name)
+render_init(cairo_scaled_font_t *font)
 {
     struct render *render = calloc(1, sizeof(*render));
-    render->regular_font = font_from_name(font_name, &render->font_size);
+    render->regular_font = font;
     return render;
 }
 

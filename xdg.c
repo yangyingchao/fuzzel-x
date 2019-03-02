@@ -10,13 +10,74 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <fcntl.h>
+#include <pwd.h>
 
 #define LOG_MODULE "xdg"
 #define LOG_ENABLE_DBG 0
 #include "log.h"
+#include "icon.h"
+
+static struct cairo_icon
+load_icon(const char *name, int icon_size, const struct icon_theme *theme)
+{
+    if (name == NULL || theme == NULL)
+        return (struct cairo_icon){0};
+
+    LOG_DBG("looking for %s in %s", name, theme->path);
+
+    int min_diff = 10000;
+
+    /* Assume sorted */
+    for (size_t i = 0; i < 3; i++) {
+        tll_foreach(theme->dirs, it) {
+            if (it->item.scale != 1)
+                continue;
+
+            const int diff = abs(it->item.size - icon_size);
+            if (i == 0 && diff != 0){
+                /* Looking for *exactly* our wanted size */
+                if (diff < min_diff)
+                    min_diff = diff;
+                continue;
+            } else if (i == 1 && diff != min_diff) {
+                /* Try the one which matches most closely */
+                continue;
+            } else {
+                /* Use anyone available */
+            }
+
+            const size_t len = strlen(theme->path) + 1 +
+                strlen(it->item.path) + 1 +
+                strlen(name) + strlen(".png") + 1;
+
+            char *full_path = malloc(len);
+            sprintf(full_path, "%s/%s/%s.png", theme->path, it->item.path, name);
+
+            cairo_surface_t *surf = cairo_image_surface_create_from_png(full_path);
+
+            if (cairo_surface_status(surf) == CAIRO_STATUS_SUCCESS) {
+                LOG_DBG("%s: %s", name, full_path);
+                free(full_path);
+                return (struct cairo_icon){.size = it->item.size, .surface = surf};
+            }
+
+            free(full_path);
+            cairo_surface_destroy(surf);
+        }
+    }
+
+    tll_foreach(theme->inherits, it) {
+        struct cairo_icon icon = load_icon(name, icon_size, it->item);
+        if (icon.size > 0)
+            return icon;
+    }
+
+    return (struct cairo_icon){0};
+}
 
 static void
-parse_desktop_file(int fd, application_list_t *applications)
+parse_desktop_file(int fd, const struct icon_theme *theme, int icon_size,
+                   application_list_t *applications)
 {
     FILE *f = fdopen(fd, "r");
     if (f == NULL)
@@ -26,6 +87,7 @@ parse_desktop_file(int fd, application_list_t *applications)
     char *name = NULL;
     char *exec = NULL;
     char *generic_name = NULL;
+    char *icon = NULL;
 
     while (true) {
         char *line = NULL;
@@ -75,6 +137,9 @@ parse_desktop_file(int fd, application_list_t *applications)
         else if (strcasecmp(key, "genericname") == 0)
             generic_name = strdup(value);
 
+        else if (strcasecmp(key, "icon") == 0)
+            icon = strdup(value);
+
         free(line);
     }
 
@@ -93,7 +158,9 @@ parse_desktop_file(int fd, application_list_t *applications)
             tll_push_back(
                 *applications,
                 ((struct application){
-                    .exec = exec, .title = name, .comment = generic_name}));
+                    .exec = exec, .title = name, .comment = generic_name,
+                    .icon = load_icon(icon, icon_size, theme)}));
+            free(icon);
             return;
         }
     }
@@ -101,10 +168,12 @@ parse_desktop_file(int fd, application_list_t *applications)
     free(name);
     free(exec);
     free(generic_name);
+    free(icon);
 }
 
 static void
-scan_dir(int base_fd, application_list_t *applications)
+scan_dir(int base_fd, const struct icon_theme *theme, int icon_size,
+         application_list_t *applications)
 {
     DIR *d = fdopendir(base_fd);
     if (d == NULL) {
@@ -129,7 +198,7 @@ scan_dir(int base_fd, application_list_t *applications)
                 continue;
             }
 
-            scan_dir(dir_fd, applications);
+            scan_dir(dir_fd, theme, icon_size, applications);
             close(dir_fd);
         } else if (S_ISREG(st.st_mode)) {
             /* Skip files not ending with ".desktop" */
@@ -146,75 +215,86 @@ scan_dir(int base_fd, application_list_t *applications)
             if (fd == -1)
                 LOG_WARN("%s: failed to open", e->d_name);
             else {
-                parse_desktop_file(fd, applications);
+                parse_desktop_file(fd, theme, icon_size, applications);
                 close(fd);
             }
         }
+
     }
 
     closedir(d);
 }
 
 void
-xdg_find_programs(application_list_t *applications)
+xdg_find_programs(int icon_size, application_list_t *applications)
 {
+    struct icon_theme *theme = icon_load_theme("Arc");
+    if (theme == NULL)
+        LOG_WARN("icon theme not found");
+    else
+        LOG_INFO("theme: %s", theme->path);
+
+    xdg_data_dirs_t dirs = xdg_data_dirs();
+    tll_foreach(dirs, it) {
+        char path[strlen(it->item) + 1 + strlen("applications") + 1];
+        sprintf(path, "%s/applications", it->item);
+
+        int fd = open(path, O_RDONLY);
+        if (fd != -1) {
+            scan_dir(fd, theme, icon_size, applications);
+            close(fd);
+        }
+    }
+
+    xdg_data_dirs_destroy(dirs);
+    icon_theme_destroy(theme);
+}
+
+xdg_data_dirs_t
+xdg_data_dirs(void)
+{
+    xdg_data_dirs_t ret = tll_init();
+
     const char *xdg_data_home = getenv("XDG_DATA_HOME");
-    if (xdg_data_home != NULL) {
-        int fd_base = open(xdg_data_home, O_RDONLY);
-        int fd = fd_base != -1 ? openat(fd_base, "applications", O_RDONLY) : -1;
+    if (xdg_data_home != NULL)
+        tll_push_back(ret, strdup(xdg_data_home));
+    else {
+        static const char *const local = ".local/share";
+        const struct passwd *pw = getpwuid(getuid());
 
-        if (fd_base == -1 || fd == -1)
-            LOG_WARN("%s: failed to open", xdg_data_home);
-        else
-            scan_dir(fd, applications);
-
-        close(fd);
-        close(fd_base);
-    } else {
-        const char *home = getenv("HOME");
-        char buf[strlen(home) + 1 + strlen(".local/share/applications") + 1];
-        sprintf(buf, "%s/%s", home, ".local/share/applications");
-
-        int fd = open(buf, O_RDONLY);
-        if (fd == -1)
-            LOG_WARN("%s: failed to open", buf);
-        else
-            scan_dir(fd, applications);
-        close(fd);
+        char *path = malloc(strlen(pw->pw_dir) + 1 + strlen(local) + 1);
+        sprintf(path, "%s/%s", pw->pw_dir, local);
+        tll_push_back(ret, path);
     }
 
     const char *_xdg_data_dirs = getenv("XDG_DATA_DIRS");
+
     if (_xdg_data_dirs != NULL) {
-        char *xdg_data_dirs = strdup(_xdg_data_dirs);
-        for (const char *data_dir = strtok(xdg_data_dirs, ":");
-             data_dir != NULL;
-             data_dir = strtok(NULL, ":"))
+
+        char *ctx = NULL;
+        char *copy = strdup(_xdg_data_dirs);
+
+        for (const char *tok = strtok_r(copy, ":", &ctx);
+             tok != NULL;
+             tok = strtok_r(NULL, ":", &ctx))
         {
-            int fd_base = open(data_dir, O_RDONLY);
-            int fd = fd_base != -1 ? openat(fd_base, "applications", O_RDONLY) : -1;
-            if (fd_base == -1 || fd == -1)
-                LOG_WARN("%s: failed to open", data_dir);
-            else
-                scan_dir(fd, applications);
-
-            close(fd);
-            close(fd_base);
+            tll_push_back(ret, strdup(tok));
         }
 
-        free(xdg_data_dirs);
+        free(copy);
     } else {
-        static const char *const default_paths[] = {
-            "/usr/local/share/applications",
-            "/usr/share/applications",
-        };
+        tll_push_back(ret, strdup("/usr/local/share"));
+        tll_push_back(ret, strdup("/usr/share"));
+    }
 
-        for (size_t i = 0; i < sizeof(default_paths) / sizeof(default_paths[0]); i++) {
-            int fd = open(default_paths[i], O_RDONLY);
-            if (fd == -1)
-                LOG_WARN("%s: failed to open", default_paths[i]);
-            else
-                scan_dir(fd, applications);
-            close(fd);
-        }
+    return ret;
+}
+
+void
+xdg_data_dirs_destroy(xdg_data_dirs_t dirs)
+{
+    tll_foreach(dirs, it) {
+        free(it->item);
+        tll_remove(dirs, it);
     }
 }

@@ -37,6 +37,7 @@
 #include "application.h"
 #include "match.h"
 #include "xdg.h"
+#include "font.h"
 
 struct monitor {
     struct wl_output *output;
@@ -199,7 +200,7 @@ keyboard_keymap(void *data, struct wl_keyboard *wl_keyboard,
     c->wl.xkb_state = xkb_state_new(c->wl.xkb_keymap);
 
     munmap(map_str, size);
-    /* TODO: should we close(fd)? */
+    close(fd);
 }
 
 static void
@@ -915,8 +916,20 @@ main(int argc, char *const *argv)
     thrd_t keyboard_repeater_id;
     thrd_create(&keyboard_repeater_id, &keyboard_repeater, &c);
 
+    cairo_scaled_font_t *font = font_from_name(font_name);
+    cairo_surface_t *surf = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1, 1);
+    cairo_t *cr = cairo_create(surf);
+    cairo_font_extents_t fextents;
+    cairo_set_scaled_font(cr, font);
+    cairo_font_extents(cr, &fextents);
+    cairo_destroy(cr);
+    cairo_surface_destroy(surf);
+
+    LOG_DBG("height: %f, ascent: %f, descent: %f",
+            fextents.height, fextents.ascent, fextents.descent);
+
     //find_programs();
-    xdg_find_programs(&c.applications);
+    xdg_find_programs(fextents.height, &c.applications);
     c.matches = malloc(tll_length(c.applications) * sizeof(c.matches[0]));
     update_matches(&c);
 
@@ -1017,7 +1030,7 @@ main(int argc, char *const *argv)
     wl_surface_commit(c.wl.surface);
     wl_display_roundtrip(c.wl.display);
 
-    c.render = render_init(font_name);
+    c.render = render_init(font);
 
     refresh(&c);
 
@@ -1068,6 +1081,7 @@ out:
         free(it->item.exec);
         free(it->item.title);
         free(it->item.comment);
+        cairo_surface_destroy(it->item.icon.surface);
         tll_remove(c.applications, it);
     }
 
@@ -1114,6 +1128,7 @@ out:
     cnd_destroy(&c.repeat.cond);
     mtx_destroy(&c.repeat.mutex);
     close(c.repeat.trigger);
+    cairo_debug_reset_static_data();
 
     return ret;
 }
