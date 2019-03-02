@@ -12,7 +12,7 @@ struct prompt {
 };
 
 struct render;
-struct render *render_init(const char *font_name);
+struct render *render_init(cairo_scaled_font_t *font);
 void render_destroy(struct render *render);
 
 void render_prompt(

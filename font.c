@@ -21,7 +21,7 @@ fini(void)
     FcFini();
 }
 cairo_scaled_font_t *
-font_from_name(const char *name, double *size)
+font_from_name(const char *name)
 {
     FcPattern *pattern = FcNameParse((const unsigned char *)name);
     if (pattern == NULL) {
@@ -46,7 +46,8 @@ font_from_name(const char *name, double *size)
         return NULL;
     }
 
-    if (FcPatternGetDouble(final_pattern, FC_PIXEL_SIZE, 0, size)) {
+    double size;
+    if (FcPatternGetDouble(final_pattern, FC_PIXEL_SIZE, 0, &size)) {
         LOG_ERR("%s: failed to get size", name);
         FcPatternDestroy(final_pattern);
         return NULL;
@@ -65,7 +66,7 @@ font_from_name(const char *name, double *size)
 
     cairo_matrix_t matrix, ctm;
     cairo_matrix_init_identity(&ctm);
-    cairo_matrix_init_scale(&matrix, *size, *size);
+    cairo_matrix_init_scale(&matrix, size, size);
 
     cairo_font_options_t *options = cairo_font_options_create();
     cairo_scaled_font_t *scaled_font = cairo_scaled_font_create(

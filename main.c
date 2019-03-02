@@ -37,6 +37,7 @@
 #include "application.h"
 #include "match.h"
 #include "xdg.h"
+#include "font.h"
 
 struct monitor {
     struct wl_output *output;
@@ -915,6 +916,8 @@ main(int argc, char *const *argv)
     thrd_t keyboard_repeater_id;
     thrd_create(&keyboard_repeater_id, &keyboard_repeater, &c);
 
+    cairo_scaled_font_t *font = font_from_name(font_name);
+
     //find_programs();
     xdg_find_programs(&c.applications);
     c.matches = malloc(tll_length(c.applications) * sizeof(c.matches[0]));
@@ -1017,7 +1020,7 @@ main(int argc, char *const *argv)
     wl_surface_commit(c.wl.surface);
     wl_display_roundtrip(c.wl.display);
 
-    c.render = render_init(font_name);
+    c.render = render_init(font);
 
     refresh(&c);
 

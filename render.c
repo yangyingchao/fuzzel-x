@@ -10,7 +10,6 @@
 
 struct render {
     cairo_scaled_font_t *regular_font;
-    double font_size;
 };
 
 static const double x_margin = 20;
@@ -259,10 +258,10 @@ render_match_list(const struct render *render, struct buffer *buf,
 }
 
 struct render *
-render_init(const char *font_name)
+render_init(cairo_scaled_font_t *font)
 {
     struct render *render = calloc(1, sizeof(*render));
-    render->regular_font = font_from_name(font_name, &render->font_size);
+    render->regular_font = font;
     return render;
 }
 
