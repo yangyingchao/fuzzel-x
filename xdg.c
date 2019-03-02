@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <fcntl.h>
+#include <pwd.h>
 
 #define LOG_MODULE "xdg"
 #define LOG_ENABLE_DBG 0
@@ -231,65 +232,67 @@ xdg_find_programs(application_list_t *applications)
     else
         LOG_INFO("theme: %s", theme->path);
 
+    xdg_data_dirs_t dirs = xdg_data_dirs();
+    tll_foreach(dirs, it) {
+        char path[strlen(it->item) + 1 + strlen("applications") + 1];
+        sprintf(path, "%s/applications", it->item);
+
+        int fd = open(path, O_RDONLY);
+        if (fd != -1) {
+            scan_dir(fd, theme, applications);
+            close(fd);
+        }
+    }
+
+    xdg_data_dirs_destroy(dirs);
+    icon_theme_destroy(theme);
+}
+
+xdg_data_dirs_t
+xdg_data_dirs(void)
+{
+    xdg_data_dirs_t ret = tll_init();
+
     const char *xdg_data_home = getenv("XDG_DATA_HOME");
-    if (xdg_data_home != NULL) {
-        int fd_base = open(xdg_data_home, O_RDONLY);
-        int fd = fd_base != -1 ? openat(fd_base, "applications", O_RDONLY) : -1;
+    if (xdg_data_home != NULL)
+        tll_push_back(ret, strdup(xdg_data_home));
+    else {
+        static const char *const local = ".local/share";
+        const struct passwd *pw = getpwuid(getuid());
 
-        if (fd_base == -1 || fd == -1)
-            LOG_WARN("%s: failed to open", xdg_data_home);
-        else
-            scan_dir(fd, theme, applications);
-
-        close(fd);
-        close(fd_base);
-    } else {
-        const char *home = getenv("HOME");
-        char buf[strlen(home) + 1 + strlen(".local/share/applications") + 1];
-        sprintf(buf, "%s/%s", home, ".local/share/applications");
-
-        int fd = open(buf, O_RDONLY);
-        if (fd == -1)
-            LOG_WARN("%s: failed to open", buf);
-        else
-            scan_dir(fd, theme, applications);
-        close(fd);
+        char *path = malloc(strlen(pw->pw_dir) + 1 + strlen(local) + 1);
+        sprintf(path, "%s/%s", pw->pw_dir, local);
+        tll_push_back(ret, path);
     }
 
     const char *_xdg_data_dirs = getenv("XDG_DATA_DIRS");
+
     if (_xdg_data_dirs != NULL) {
-        char *xdg_data_dirs = strdup(_xdg_data_dirs);
-        for (const char *data_dir = strtok(xdg_data_dirs, ":");
-             data_dir != NULL;
-             data_dir = strtok(NULL, ":"))
+
+        char *ctx = NULL;
+        char *copy = strdup(_xdg_data_dirs);
+
+        for (const char *tok = strtok_r(copy, ":", &ctx);
+             tok != NULL;
+             tok = strtok_r(NULL, ":", &ctx))
         {
-            int fd_base = open(data_dir, O_RDONLY);
-            int fd = fd_base != -1 ? openat(fd_base, "applications", O_RDONLY) : -1;
-            if (fd_base == -1 || fd == -1)
-                LOG_WARN("%s: failed to open", data_dir);
-            else
-                scan_dir(fd, theme, applications);
-
-            close(fd);
-            close(fd_base);
+            tll_push_back(ret, strdup(tok));
         }
 
-        free(xdg_data_dirs);
+        free(copy);
     } else {
-        static const char *const default_paths[] = {
-            "/usr/local/share/applications",
-            "/usr/share/applications",
-        };
-
-        for (size_t i = 0; i < sizeof(default_paths) / sizeof(default_paths[0]); i++) {
-            int fd = open(default_paths[i], O_RDONLY);
-            if (fd == -1)
-                LOG_WARN("%s: failed to open", default_paths[i]);
-            else
-                scan_dir(fd, theme, applications);
-            close(fd);
-        }
+        tll_push_back(ret, strdup("/usr/local/share"));
+        tll_push_back(ret, strdup("/usr/share"));
     }
 
-    icon_theme_destroy(theme);
+    return ret;
+}
+
+void
+xdg_data_dirs_destroy(xdg_data_dirs_t dirs)
+{
+    tll_foreach(dirs, it) {
+        free(it->item);
+        tll_remove(dirs, it);
+    }
 }
