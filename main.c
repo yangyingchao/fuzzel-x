@@ -917,9 +917,19 @@ main(int argc, char *const *argv)
     thrd_create(&keyboard_repeater_id, &keyboard_repeater, &c);
 
     cairo_scaled_font_t *font = font_from_name(font_name);
+    cairo_surface_t *surf = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1, 1);
+    cairo_t *cr = cairo_create(surf);
+    cairo_font_extents_t fextents;
+    cairo_set_scaled_font(cr, font);
+    cairo_font_extents(cr, &fextents);
+    cairo_destroy(cr);
+    cairo_surface_destroy(surf);
+
+    LOG_DBG("height: %f, ascent: %f, descent: %f",
+            fextents.height, fextents.ascent, fextents.descent);
 
     //find_programs();
-    xdg_find_programs(16, &c.applications);
+    xdg_find_programs(fextents.height, &c.applications);
     c.matches = malloc(tll_length(c.applications) * sizeof(c.matches[0]));
     update_matches(&c);
 
