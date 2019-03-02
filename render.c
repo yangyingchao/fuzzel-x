@@ -225,15 +225,24 @@ render_match_list(const struct render *render, struct buffer *buf,
         double cur_x = border_size + x_margin;
 
         if (match->application->icon.surface != NULL) {
-            cairo_surface_t *surf = match->application->icon.surface;
-            const int size = match->application->icon.size;
+            if (match->application->icon.size <= 16) {
+                cairo_surface_t *surf = match->application->icon.surface;
+                const int size = match->application->icon.size;
 
-            cairo_set_operator(buf->cairo, CAIRO_OPERATOR_OVER);
-            cairo_set_source_surface(buf->cairo, surf, cur_x,
-                                     first_row + i * row_height + row_height / 2 - size / 2);
-            cairo_rectangle(buf->cairo, cur_x, first_row + i * row_height + row_height / 2 - size / 2,
-                            size, size);
-            cairo_fill(buf->cairo);
+                cairo_set_operator(buf->cairo, CAIRO_OPERATOR_OVER);
+                cairo_set_source_surface(
+                    buf->cairo, surf, cur_x,
+                    first_row + i * row_height + row_height / 2 - size / 2);
+
+                cairo_rectangle(
+                    buf->cairo, cur_x,
+                    first_row + i * row_height + row_height / 2 - size / 2,
+                    size, size);
+                cairo_fill(buf->cairo);
+            } else
+                LOG_WARN("unimplemented: icon scaling (%s, %dpx)",
+                         match->application->title,
+                         match->application->icon.size);
         }
 
         /* TODO: use theme */
