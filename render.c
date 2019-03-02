@@ -205,7 +205,11 @@ render_match_list(const struct render *render, struct buffer *buf,
     const double first_row = 2 * border_size + row_height;
     const double sel_margin = x_margin / 3;
 
-    double y = first_row + y_margin + fextents.height - fextents.descent;
+    /*
+     * LOG_DBG("height=%f, ascent=%f, descent=%f", fextents.height, fextents.ascent,
+     *         fextents.descent);
+     */
+    double y = first_row + (row_height + fextents.height) / 2 - fextents.descent;
 
     for (size_t i = 0; i < match_count; i++) {
         const struct match *match = &matches[i];
