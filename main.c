@@ -1118,6 +1118,7 @@ out:
     cnd_destroy(&c.repeat.cond);
     mtx_destroy(&c.repeat.mutex);
     close(c.repeat.trigger);
+    cairo_debug_reset_static_data();
 
     return ret;
 }
