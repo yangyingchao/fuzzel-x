@@ -177,7 +177,8 @@ render_match_text(struct buffer *buf, double *x, double y,
 
         render_glyphs(buf, regular_color, &glyphs[0], glyph_start);
         render_glyphs(buf, match_color, &glyphs[start], glyph_match_count);
-        render_glyphs(buf, regular_color, &glyphs[start + length], num_glyphs - glyph_start - glyph_match_count);
+        render_glyphs(buf, regular_color, &glyphs[start + length],
+                      num_glyphs - glyph_start - glyph_match_count);
     } else
         render_glyphs(buf, regular_color, glyphs, num_glyphs);
 
