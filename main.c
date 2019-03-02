@@ -919,7 +919,7 @@ main(int argc, char *const *argv)
     cairo_scaled_font_t *font = font_from_name(font_name);
 
     //find_programs();
-    xdg_find_programs(&c.applications);
+    xdg_find_programs(16, &c.applications);
     c.matches = malloc(tll_length(c.applications) * sizeof(c.matches[0]));
     update_matches(&c);
 

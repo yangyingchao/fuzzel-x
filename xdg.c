@@ -18,7 +18,7 @@
 #include "icon.h"
 
 static struct cairo_icon
-load_icon(const char *name, const struct icon_theme *theme)
+load_icon(const char *name, int icon_size, const struct icon_theme *theme)
 {
     if (name == NULL || theme == NULL)
         return (struct cairo_icon){0};
@@ -29,11 +29,11 @@ load_icon(const char *name, const struct icon_theme *theme)
 
     /* Assume sorted */
     for (size_t i = 0; i < 3; i++) {
-        tll_rforeach(theme->dirs, it) {
+        tll_foreach(theme->dirs, it) {
             if (it->item.scale != 1)
                 continue;
 
-            const int diff = abs(it->item.size - 16);
+            const int diff = abs(it->item.size - icon_size);
             if (i == 0 && diff != 0){
                 /* Looking for *exactly* our wanted size */
                 if (diff < min_diff)
@@ -67,7 +67,7 @@ load_icon(const char *name, const struct icon_theme *theme)
     }
 
     tll_foreach(theme->inherits, it) {
-        struct cairo_icon icon = load_icon(name, it->item);
+        struct cairo_icon icon = load_icon(name, icon_size, it->item);
         if (icon.size > 0)
             return icon;
     }
@@ -76,7 +76,7 @@ load_icon(const char *name, const struct icon_theme *theme)
 }
 
 static void
-parse_desktop_file(int fd, const struct icon_theme *theme,
+parse_desktop_file(int fd, const struct icon_theme *theme, int icon_size,
                    application_list_t *applications)
 {
     FILE *f = fdopen(fd, "r");
@@ -159,7 +159,7 @@ parse_desktop_file(int fd, const struct icon_theme *theme,
                 *applications,
                 ((struct application){
                     .exec = exec, .title = name, .comment = generic_name,
-                    .icon = load_icon(icon, theme)}));
+                    .icon = load_icon(icon, icon_size, theme)}));
             free(icon);
             return;
         }
@@ -172,7 +172,8 @@ parse_desktop_file(int fd, const struct icon_theme *theme,
 }
 
 static void
-scan_dir(int base_fd, const struct icon_theme *theme, application_list_t *applications)
+scan_dir(int base_fd, const struct icon_theme *theme, int icon_size,
+         application_list_t *applications)
 {
     DIR *d = fdopendir(base_fd);
     if (d == NULL) {
@@ -197,7 +198,7 @@ scan_dir(int base_fd, const struct icon_theme *theme, application_list_t *applic
                 continue;
             }
 
-            scan_dir(dir_fd, theme, applications);
+            scan_dir(dir_fd, theme, icon_size, applications);
             close(dir_fd);
         } else if (S_ISREG(st.st_mode)) {
             /* Skip files not ending with ".desktop" */
@@ -214,7 +215,7 @@ scan_dir(int base_fd, const struct icon_theme *theme, application_list_t *applic
             if (fd == -1)
                 LOG_WARN("%s: failed to open", e->d_name);
             else {
-                parse_desktop_file(fd, theme, applications);
+                parse_desktop_file(fd, theme, icon_size, applications);
                 close(fd);
             }
         }
@@ -225,7 +226,7 @@ scan_dir(int base_fd, const struct icon_theme *theme, application_list_t *applic
 }
 
 void
-xdg_find_programs(application_list_t *applications)
+xdg_find_programs(int icon_size, application_list_t *applications)
 {
     struct icon_theme *theme = icon_load_theme("Arc");
     if (theme == NULL)
@@ -240,7 +241,7 @@ xdg_find_programs(application_list_t *applications)
 
         int fd = open(path, O_RDONLY);
         if (fd != -1) {
-            scan_dir(fd, theme, applications);
+            scan_dir(fd, theme, icon_size, applications);
             close(fd);
         }
     }
