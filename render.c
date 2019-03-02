@@ -202,7 +202,7 @@ render_match_list(const struct render *render, struct buffer *buf,
     cairo_font_extents(buf->cairo, &fextents);
 
     const double row_height = 2 * y_margin + fextents.height;
-    const double first_row = 2 * border_size + 2 * y_margin + fextents.height;
+    const double first_row = 2 * border_size + row_height;
     const double sel_margin = x_margin / 3;
 
     double y = first_row + y_margin + fextents.height - fextents.descent;
@@ -218,14 +218,14 @@ render_match_list(const struct render *render, struct buffer *buf,
                             x_margin - sel_margin,
                             first_row + i * row_height,
                             buf->width - 2 * (x_margin - sel_margin),
-                            fextents.height + 2 * y_margin);
+                            row_height);
             cairo_fill(buf->cairo);
         }
 
         double cur_x = border_size + x_margin;
 
         if (match->application->icon.surface != NULL) {
-            if (match->application->icon.size <= 2 * y_margin + fextents.height) {
+            if (match->application->icon.size <= row_height) {
                 cairo_surface_t *surf = match->application->icon.surface;
                 const int size = match->application->icon.size;
 
@@ -247,7 +247,7 @@ render_match_list(const struct render *render, struct buffer *buf,
         }
 
         /* TODO: use theme */
-        cur_x += 16;
+        cur_x += row_height;
 
         /* Application title */
         render_match_text(
@@ -255,7 +255,7 @@ render_match_list(const struct render *render, struct buffer *buf,
             match->application->title, match->start_title, match_length,
             render->regular_font, 0xffffffff, 0xcc9393ff);
 
-        y += 2 * y_margin + fextents.height;
+        y += row_height;
     }
 }
 
