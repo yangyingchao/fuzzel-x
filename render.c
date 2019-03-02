@@ -232,11 +232,11 @@ render_match_list(const struct render *render, struct buffer *buf,
                 cairo_set_operator(buf->cairo, CAIRO_OPERATOR_OVER);
                 cairo_set_source_surface(
                     buf->cairo, surf, cur_x,
-                    first_row + i * row_height + row_height / 2 - size / 2);
+                    first_row + i * row_height + (row_height - size) / 2);
 
                 cairo_rectangle(
                     buf->cairo, cur_x,
-                    first_row + i * row_height + row_height / 2 - size / 2,
+                    first_row + i * row_height + (row_height - size) / 2,
                     size, size);
                 cairo_fill(buf->cairo);
             } else
