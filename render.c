@@ -229,25 +229,30 @@ render_match_list(const struct render *render, struct buffer *buf,
         double cur_x = border_size + x_margin;
 
         if (match->application->icon.surface != NULL) {
-            if (match->application->icon.size <= row_height) {
-                cairo_surface_t *surf = match->application->icon.surface;
-                const int size = match->application->icon.size;
+            cairo_surface_t *surf = match->application->icon.surface;
+            double size = match->application->icon.size;
+            double scale = 1.0;
 
-                cairo_set_operator(buf->cairo, CAIRO_OPERATOR_OVER);
-                cairo_set_source_surface(
-                    buf->cairo, surf, cur_x,
-                    first_row + i * row_height + (row_height - size) / 2);
+            if (size > row_height) {
+                scale = row_height / size;
+                LOG_INFO("%s: scaling: %f (row-height: %f, size=%f",
+                         match->application->title, scale, row_height, size);
 
-                cairo_rectangle(
-                    buf->cairo, cur_x,
-                    first_row + i * row_height + (row_height - size) / 2,
-                    size, size);
-                cairo_fill(buf->cairo);
-            } else
-                LOG_WARN("unimplemented: icon scaling (%s, %dpx, %fpx)",
-                         match->application->title,
-                         match->application->icon.size,
-                         fextents.height);
+                size *= scale;
+            }
+
+            cairo_save(buf->cairo);
+            cairo_set_operator(buf->cairo, CAIRO_OPERATOR_OVER);
+
+            /* Translate/scale - order matters! */
+            cairo_translate(
+                buf->cairo, cur_x,
+                first_row + i * row_height + (row_height - size) / 2);
+            cairo_scale(buf->cairo, scale, scale);
+
+            cairo_set_source_surface(buf->cairo, surf, 0, 0);
+            cairo_paint(buf->cairo);
+            cairo_restore(buf->cairo);
         }
 
         /* TODO: use theme */
