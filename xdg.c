@@ -228,7 +228,9 @@ xdg_find_programs(application_list_t *applications)
     struct icon_theme *theme = icon_load_theme("Arc");
     if (theme == NULL)
         LOG_WARN("icon theme not found");
-  
+    else
+        LOG_INFO("theme: %s", theme->path);
+
     const char *xdg_data_home = getenv("XDG_DATA_HOME");
     if (xdg_data_home != NULL) {
         int fd_base = open(xdg_data_home, O_RDONLY);
