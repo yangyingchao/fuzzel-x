@@ -255,7 +255,6 @@ render_match_list(const struct render *render, struct buffer *buf,
             cairo_restore(buf->cairo);
         }
 
-        /* TODO: use theme */
         cur_x += row_height;
 
         /* Application title */

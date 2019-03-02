@@ -101,8 +101,16 @@ struct context {
     } repeat;
 };
 
+/* Window size */
 static const int width = 500;
 static const int height = 300;
+
+/* From render */
+//static const double x_margin = 20;
+static const double y_margin = 4;
+static const double border_size = 1;
+
+static int max_matches;
 
 static void refresh(const struct context *c);
 static void update_matches(struct context *c);
@@ -781,15 +789,19 @@ update_matches(struct context *c)
 {
     /* Nothing entered; all programs found matches */
     if (strlen(c->prompt.text) == 0) {
-        c->match_count = tll_length(c->applications);
 
         size_t i = 0;
         tll_foreach(c->applications, it) {
             c->matches[i++] = (struct match){
                 .application = &it->item, .start_title = -1, .start_comment = -1};
+            if (i >= max_matches)
+                break;
         }
 
-        assert(c->selected < c->match_count);
+        c->match_count = i;
+
+        if (c->selected >= c->match_count && c->selected > 0)
+            c->selected = c->match_count - 1;
         return;
     }
 
@@ -820,9 +832,12 @@ update_matches(struct context *c)
     }
 
     size_t i = 0;
-    c->match_count = tll_length(_matches);
-    tll_foreach(_matches, it)
+    tll_foreach(_matches, it) {
         c->matches[i++] = it->item;
+        if (i >= max_matches)
+            break;
+    }
+    c->match_count = i;
 
     tll_free(_matches);
 
@@ -927,6 +942,10 @@ main(int argc, char *const *argv)
 
     LOG_DBG("height: %f, ascent: %f, descent: %f",
             fextents.height, fextents.ascent, fextents.descent);
+
+    const double line_height = 2 * y_margin + fextents.height;
+    max_matches = (height - 2 * border_size - line_height) / line_height;
+    LOG_DBG("max matches: %d", max_matches);
 
     //find_programs();
     xdg_find_programs(fextents.height, &c.applications);
