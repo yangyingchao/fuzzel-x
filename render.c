@@ -235,8 +235,8 @@ render_match_list(const struct render *render, struct buffer *buf,
 
             if (size > row_height) {
                 scale = row_height / size;
-                LOG_INFO("%s: scaling: %f (row-height: %f, size=%f",
-                         match->application->title, scale, row_height, size);
+                LOG_DBG("%s: scaling: %f (row-height: %f, size=%f",
+                        match->application->title, scale, row_height, size);
 
                 size *= scale;
             }
