@@ -15,6 +15,15 @@
 #include "tllist.h"
 #include "xdg.h"
 
+static bool
+dir_is_usable(const char *path, const char *context, const char *type)
+{
+    return (path != NULL &&
+            context != NULL && strcasecmp(context, "applications") == 0 &&
+            type != NULL && strcasecmp(type, "scalable") != 0
+        );
+}
+
 static void
 parse_theme(FILE *index, struct icon_theme *theme)
 {
@@ -51,11 +60,7 @@ parse_theme(FILE *index, struct icon_theme *theme)
 
         if (line[0] == '[' && line[len - 1] == ']') {
 
-            if (section != NULL && context != NULL && type != NULL &&
-                strcasecmp(context, "applications") == 0 &&
-                strcasecmp(type, "scalable") != 0)
-            {
-                //LOG_INFO("%s: size=%d, scale=%d, context=%s, type=%s", section, size, scale, context, type);
+            if (dir_is_usable(section, context, type)) {
                 struct icon_dir dir = {.path = section, .size = size, .scale = scale};
                 tll_push_back(theme->dirs, dir);
             } else
@@ -78,20 +83,18 @@ parse_theme(FILE *index, struct icon_theme *theme)
         }
 
         char *tok_ctx = NULL;
+
         const char *key = strtok_r(line, "=", &tok_ctx);
         char *value = strtok_r(NULL, "=", &tok_ctx);
 
         if (strcasecmp(key, "inherits") == 0) {
-            LOG_INFO("inherits: %s", value);
-
             char *ctx = NULL;
             for (const char *theme_name = strtok_r(value, ",", &ctx);
                  theme_name != NULL; theme_name = strtok_r(NULL, ",", &ctx))
             {
-                LOG_INFO("trying to load: %s", theme_name);
                 struct icon_theme *sub_theme = icon_load_theme(theme_name);
                 if (sub_theme != NULL) {
-                    LOG_INFO("%s inherits %s", theme->path, sub_theme->path);
+                    LOG_DBG("%s inherits %s", theme->path, sub_theme->path);
                     tll_push_back(theme->inherits, sub_theme);
                 }
             }
@@ -112,11 +115,7 @@ parse_theme(FILE *index, struct icon_theme *theme)
         free(line);
     }
 
-    if (section != NULL && context != NULL && type != NULL &&
-        strcasecmp(context, "applications") == 0 &&
-        strcasecmp(type, "scalable") != 0)
-    {
-        //LOG_INFO("%s: size=%d, scale=%d, context=%s, type=%s", section, size, scale, context, type);
+    if (dir_is_usable(section, context, type)) {
         struct icon_dir dir = {.path = section, .size = size, .scale = scale};
         tll_push_back(theme->dirs, dir);
     } else

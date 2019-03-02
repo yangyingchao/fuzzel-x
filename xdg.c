@@ -23,7 +23,7 @@ load_icon(const char *name, const struct icon_theme *theme)
     if (name == NULL || theme == NULL)
         return (struct cairo_icon){0};
 
-    LOG_INFO("looking for %s in %s", name, theme->path);
+    LOG_DBG("looking for %s in %s", name, theme->path);
 
     int min_diff = 10000;
 
@@ -45,7 +45,7 @@ load_icon(const char *name, const struct icon_theme *theme)
             } else {
                 /* Use anyone available */
             }
-            
+
             const size_t len = strlen(theme->path) + 1 +
                 strlen(it->item.path) + 1 +
                 strlen(name) + strlen(".png") + 1;
@@ -56,7 +56,7 @@ load_icon(const char *name, const struct icon_theme *theme)
             cairo_surface_t *surf = cairo_image_surface_create_from_png(full_path);
 
             if (cairo_surface_status(surf) == CAIRO_STATUS_SUCCESS) {
-                LOG_INFO("%s", full_path);
+                LOG_DBG("%s: %s", name, full_path);
                 free(full_path);
                 return (struct cairo_icon){.size = it->item.size, .surface = surf};
             }
@@ -76,7 +76,8 @@ load_icon(const char *name, const struct icon_theme *theme)
 }
 
 static void
-parse_desktop_file(int fd, const struct icon_theme *theme, application_list_t *applications)
+parse_desktop_file(int fd, const struct icon_theme *theme,
+                   application_list_t *applications)
 {
     FILE *f = fdopen(fd, "r");
     if (f == NULL)
