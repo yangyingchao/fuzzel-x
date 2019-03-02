@@ -224,7 +224,7 @@ render_match_list(const struct render *render, struct buffer *buf,
         double cur_x = border_size + x_margin;
 
         if (match->application->icon.surface != NULL) {
-            if (match->application->icon.size <= 16) {
+            if (match->application->icon.size <= 2 * y_margin + fextents.height) {
                 cairo_surface_t *surf = match->application->icon.surface;
                 const int size = match->application->icon.size;
 
@@ -239,9 +239,10 @@ render_match_list(const struct render *render, struct buffer *buf,
                     size, size);
                 cairo_fill(buf->cairo);
             } else
-                LOG_WARN("unimplemented: icon scaling (%s, %dpx)",
+                LOG_WARN("unimplemented: icon scaling (%s, %dpx, %fpx)",
                          match->application->title,
-                         match->application->icon.size);
+                         match->application->icon.size,
+                         fextents.height);
         }
 
         /* TODO: use theme */
