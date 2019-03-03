@@ -29,6 +29,8 @@ parse_theme(FILE *index, struct icon_theme *theme)
 {
     char *section = NULL;
     int size = -1;
+    int min_size = -1;
+    int max_size = -1;
     int scale = 1;
     char *context = NULL;
     char *type = NULL;
@@ -61,7 +63,13 @@ parse_theme(FILE *index, struct icon_theme *theme)
         if (line[0] == '[' && line[len - 1] == ']') {
 
             if (dir_is_usable(section, context, type)) {
-                struct icon_dir dir = {.path = section, .size = size, .scale = scale};
+                struct icon_dir dir = {
+                    .path = section,
+                    .size = size,
+                    .min_size = min_size >= 0 ? min_size : size,
+                    .max_size = max_size >= 0 ? max_size : size,
+                    .scale = scale
+                };
                 tll_push_back(theme->dirs, dir);
             } else
                 free(section);
@@ -69,7 +77,7 @@ parse_theme(FILE *index, struct icon_theme *theme)
             free(context);
             free(type);
 
-            size = -1;
+            size = min_size = max_size = -1;
             scale = 1;
             section = NULL;
             context = NULL;
@@ -103,6 +111,12 @@ parse_theme(FILE *index, struct icon_theme *theme)
         if (strcasecmp(key, "size") == 0)
             sscanf(value, "%d", &size);
 
+        else if (strcasecmp(key, "minsize") == 0)
+            sscanf(value, "%d", &min_size);
+
+        else if (strcasecmp(key, "maxsize") == 0)
+            sscanf(value, "%d", &max_size);
+
         else if (strcasecmp(key, "scale") == 0)
             sscanf(value, "%d", &scale);
 
@@ -116,7 +130,13 @@ parse_theme(FILE *index, struct icon_theme *theme)
     }
 
     if (dir_is_usable(section, context, type)) {
-        struct icon_dir dir = {.path = section, .size = size, .scale = scale};
+        struct icon_dir dir = {
+            .path = section,
+            .size = size,
+            .min_size = min_size >= 0 ? min_size : size,
+            .max_size = max_size >= 0 ? max_size : size,
+            .scale = scale
+        };
         tll_push_back(theme->dirs, dir);
     } else
         free(section);
