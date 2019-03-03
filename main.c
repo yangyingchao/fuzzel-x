@@ -100,6 +100,9 @@ struct context {
         int32_t rate;
         uint32_t key;
     } repeat;
+
+    bool frame_is_scheduled;
+    struct buffer *pending;
 };
 
 /* Window size */
@@ -113,7 +116,7 @@ static const double border_size = 1;
 
 static int max_matches;
 
-static void refresh(const struct context *c);
+static void refresh(struct context *c);
 static void update_matches(struct context *c);
 
 static void
@@ -879,8 +882,44 @@ update_matches(struct context *c)
         c->selected = c->match_count - 1;
 }
 
+static void frame_callback(
+    void *data, struct wl_callback *wl_callback, uint32_t callback_data);
+
+static const struct wl_callback_listener frame_listener = {
+    .done = &frame_callback,
+};
+
 static void
-refresh(const struct context *c)
+commit_buffer(struct context *c, struct buffer *buf)
+{
+    assert(buf->busy);
+
+    wl_surface_attach(c->wl.surface, buf->wl_buf, 0, 0);
+    wl_surface_damage(c->wl.surface, 0, 0, buf->width, buf->height);
+
+    struct wl_callback *cb = wl_surface_frame(c->wl.surface);
+    wl_callback_add_listener(cb, &frame_listener, c);
+
+    c->frame_is_scheduled = true;
+    wl_surface_commit(c->wl.surface);
+}
+
+static void
+frame_callback(void *data, struct wl_callback *wl_callback, uint32_t callback_data)
+{
+    struct context *c = data;
+
+    c->frame_is_scheduled = false;
+    wl_callback_destroy(wl_callback);
+
+    if (c->pending != NULL) {
+        commit_buffer(c, c->pending);
+        c->pending = NULL;
+    }
+}
+
+static void
+refresh(struct context *c)
 {
     struct buffer *buf = shm_get_buffer(c->wl.shm, width, height);
 
@@ -901,9 +940,20 @@ refresh(const struct context *c)
                       strlen(c->prompt.text), c->selected);
 
     cairo_surface_flush(buf->cairo_surface);
-    wl_surface_attach(c->wl.surface, buf->wl_buf, 0, 0);
-    wl_surface_damage(c->wl.surface, 0, 0, buf->width, buf->height);
-    wl_surface_commit(c->wl.surface);
+
+    if (c->frame_is_scheduled) {
+        /* There's already a frame being drawn - delay current frame
+         * (overwriting any previous pending frame) */
+
+        if (c->pending != NULL)
+            c->pending->busy = false;
+
+        c->pending = buf;
+    } else {
+        /* No pending frames - render immediately */
+        assert(c->pending == NULL);
+        commit_buffer(c, buf);
+    }
 }
 
 int
