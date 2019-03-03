@@ -74,9 +74,9 @@ render_prompt(const struct render *render, struct buffer *buf,
 
     int cursor_x;
     if (cursor_at_glyph == 0)
-        cursor_x = x_margin;
+        cursor_x = border_size + x_margin;
     else if (cursor_at_glyph >= num_glyphs)
-        cursor_x = x_margin + extents.x_advance;
+        cursor_x = border_size + x_margin + extents.x_advance;
     else
         cursor_x = glyphs[cursor_at_glyph].x;
 
