@@ -11,10 +11,12 @@ struct icon_dir {
 };
 
 struct icon_theme {
+    char *name;
     char *path;
     tll(struct icon_dir) dirs;
-    tll(struct icon_theme *) inherits;
 };
 
-struct icon_theme *icon_load_theme(const char *name);
-void icon_theme_destroy(struct icon_theme *theme);
+typedef tll(struct icon_theme) icon_theme_list_t;
+
+icon_theme_list_t icon_load_theme(const char *name);
+void icon_themes_destroy(icon_theme_list_t themes);

@@ -18,80 +18,77 @@
 #include "icon.h"
 
 static struct cairo_icon
-load_icon(const char *name, int icon_size, const struct icon_theme *theme)
+load_icon(const char *name, int icon_size, icon_theme_list_t themes)
 {
-    if (name == NULL || theme == NULL)
+    if (name == NULL)
         return (struct cairo_icon){0};
 
-    LOG_DBG("looking for %s in %s", name, theme->path);
+    tll_foreach(themes, theme_it) {
+        const struct icon_theme *theme = &theme_it->item;
+        LOG_DBG("looking for %s in %s", name, theme->path);
 
-    int min_diff = 10000;
+        int min_diff = 10000;
 
-    /* Assume sorted */
-    for (size_t i = 0; i < 4; i++) {
-        tll_foreach(theme->dirs, it) {
-            if (it->item.scale != 1)
-                continue;
+        /* Assume sorted */
+        for (size_t i = 0; i < 4; i++) {
+            tll_foreach(theme->dirs, it) {
+                if (it->item.scale != 1)
+                    continue;
 
-            const int diff = abs(it->item.size - icon_size);
-            if (i == 0 && diff != 0){
-                /* Looking for *exactly* our wanted size */
-                if (diff < min_diff)
-                    min_diff = diff;
-                continue;
-            } else if (i == 1 && (icon_size < it->item.min_size ||
-                                  icon_size > it->item.max_size))
-            {
-                /* Find one whose scalable range we're in */
-                continue;
-            } else if (i == 2 && diff != min_diff) {
-                /* Try the one which matches most closely */
-                continue;
-            } else {
-                /* Use anyone available */
-            }
+                const int diff = abs(it->item.size - icon_size);
+                if (i == 0 && diff != 0){
+                    /* Looking for *exactly* our wanted size */
+                    if (diff < min_diff)
+                        min_diff = diff;
+                    continue;
+                } else if (i == 1 && (icon_size < it->item.min_size ||
+                                      icon_size > it->item.max_size))
+                {
+                    /* Find one whose scalable range we're in */
+                    continue;
+                } else if (i == 2 && diff != min_diff) {
+                    /* Try the one which matches most closely */
+                    continue;
+                } else {
+                    /* Use anyone available */
+                }
 
-            const size_t len = strlen(theme->path) + 1 +
-                strlen(it->item.path) + 1 +
-                strlen(name) + strlen(".png") + 1;
+                const size_t len = strlen(theme->path) + 1 +
+                    strlen(it->item.path) + 1 +
+                    strlen(name) + strlen(".png") + 1;
 
-            char *full_path = malloc(len);
-            sprintf(full_path, "%s/%s/%s.png", theme->path, it->item.path, name);
+                char *full_path = malloc(len);
+                sprintf(full_path, "%s/%s/%s.png", theme->path, it->item.path, name);
 
-            cairo_surface_t *surf = cairo_image_surface_create_from_png(full_path);
+                cairo_surface_t *surf = cairo_image_surface_create_from_png(full_path);
 
-            if (cairo_surface_status(surf) == CAIRO_STATUS_SUCCESS) {
-                if (i == 0)
-                    LOG_DBG("%s: %s: exact match", name, full_path);
-                else if (i == 1)
-                    LOG_DBG("%s: %s: range %d-%d",
-                            name, full_path,
-                            it->item.min_size, it->item.max_size);
-                else if (i == 2)
-                    LOG_DBG("%s: %s: diff = %d", name, full_path, diff);
-                else
-                    LOG_DBG("%s: %s: nothing else matched", name, full_path);
+                if (cairo_surface_status(surf) == CAIRO_STATUS_SUCCESS) {
+                    if (i == 0)
+                        LOG_DBG("%s: %s: exact match", name, full_path);
+                    else if (i == 1)
+                        LOG_DBG("%s: %s: range %d-%d",
+                                name, full_path,
+                                it->item.min_size, it->item.max_size);
+                    else if (i == 2)
+                        LOG_DBG("%s: %s: diff = %d", name, full_path, diff);
+                    else
+                        LOG_DBG("%s: %s: nothing else matched", name, full_path);
+
+                    free(full_path);
+                    return (struct cairo_icon){.size = it->item.size, .surface = surf};
+                }
 
                 free(full_path);
-                return (struct cairo_icon){.size = it->item.size, .surface = surf};
+                cairo_surface_destroy(surf);
             }
-
-            free(full_path);
-            cairo_surface_destroy(surf);
         }
-    }
-
-    tll_foreach(theme->inherits, it) {
-        struct cairo_icon icon = load_icon(name, icon_size, it->item);
-        if (icon.size > 0)
-            return icon;
     }
 
     return (struct cairo_icon){0};
 }
 
 static void
-parse_desktop_file(int fd, const struct icon_theme *theme, int icon_size,
+parse_desktop_file(int fd, icon_theme_list_t themes, int icon_size,
                    application_list_t *applications)
 {
     FILE *f = fdopen(fd, "r");
@@ -174,7 +171,7 @@ parse_desktop_file(int fd, const struct icon_theme *theme, int icon_size,
                 *applications,
                 ((struct application){
                     .exec = exec, .title = name, .comment = generic_name,
-                    .icon = load_icon(icon, icon_size, theme)}));
+                    .icon = load_icon(icon, icon_size, themes)}));
             free(icon);
             return;
         }
@@ -187,7 +184,7 @@ parse_desktop_file(int fd, const struct icon_theme *theme, int icon_size,
 }
 
 static void
-scan_dir(int base_fd, const struct icon_theme *theme, int icon_size,
+scan_dir(int base_fd, icon_theme_list_t themes, int icon_size,
          application_list_t *applications)
 {
     DIR *d = fdopendir(base_fd);
@@ -213,7 +210,7 @@ scan_dir(int base_fd, const struct icon_theme *theme, int icon_size,
                 continue;
             }
 
-            scan_dir(dir_fd, theme, icon_size, applications);
+            scan_dir(dir_fd, themes, icon_size, applications);
             close(dir_fd);
         } else if (S_ISREG(st.st_mode)) {
             /* Skip files not ending with ".desktop" */
@@ -230,7 +227,7 @@ scan_dir(int base_fd, const struct icon_theme *theme, int icon_size,
             if (fd == -1)
                 LOG_WARN("%s: failed to open", e->d_name);
             else {
-                parse_desktop_file(fd, theme, icon_size, applications);
+                parse_desktop_file(fd, themes, icon_size, applications);
                 close(fd);
             }
         }
@@ -243,11 +240,11 @@ scan_dir(int base_fd, const struct icon_theme *theme, int icon_size,
 void
 xdg_find_programs(int icon_size, application_list_t *applications)
 {
-    struct icon_theme *theme = icon_load_theme("Arc");
-    if (theme == NULL)
-        LOG_WARN("icon theme not found");
+    icon_theme_list_t themes = icon_load_theme("Arc");
+    if (tll_length(themes) > 0)
+        LOG_INFO("theme: %s", tll_front(themes).path);
     else
-        LOG_INFO("theme: %s", theme->path);
+        LOG_WARN("%s: icon theme not found", "Arc");
 
     xdg_data_dirs_t dirs = xdg_data_dirs();
     tll_foreach(dirs, it) {
@@ -256,13 +253,13 @@ xdg_find_programs(int icon_size, application_list_t *applications)
 
         int fd = open(path, O_RDONLY);
         if (fd != -1) {
-            scan_dir(fd, theme, icon_size, applications);
+            scan_dir(fd, themes, icon_size, applications);
             close(fd);
         }
     }
 
     xdg_data_dirs_destroy(dirs);
-    icon_theme_destroy(theme);
+    icon_themes_destroy(themes);
 }
 
 xdg_data_dirs_t

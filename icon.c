@@ -15,6 +15,8 @@
 #include "tllist.h"
 #include "xdg.h"
 
+typedef tll(char *) theme_names_t;
+
 static bool
 dir_is_usable(const char *path, const char *context, const char *type)
 {
@@ -25,7 +27,7 @@ dir_is_usable(const char *path, const char *context, const char *type)
 }
 
 static void
-parse_theme(FILE *index, struct icon_theme *theme)
+parse_theme(FILE *index, struct icon_theme *theme, theme_names_t *themes_to_load)
 {
     char *section = NULL;
     int size = -1;
@@ -100,11 +102,7 @@ parse_theme(FILE *index, struct icon_theme *theme)
             for (const char *theme_name = strtok_r(value, ",", &ctx);
                  theme_name != NULL; theme_name = strtok_r(NULL, ",", &ctx))
             {
-                struct icon_theme *sub_theme = icon_load_theme(theme_name);
-                if (sub_theme != NULL) {
-                    LOG_DBG("%s inherits %s", theme->path, sub_theme->path);
-                    tll_push_back(theme->inherits, sub_theme);
-                }
+                tll_push_back(*themes_to_load, strdup(theme_name));
             }
         }
 
@@ -145,13 +143,14 @@ parse_theme(FILE *index, struct icon_theme *theme)
     free(type);
 }
 
-static struct icon_theme *
-load_theme_in(const char *dir)
+static bool
+load_theme_in(const char *dir, struct icon_theme *theme,
+              theme_names_t *themes_to_load)
 {
     int theme_dir_fd = -1;
     int index_fd = -1;
     FILE *index = NULL;
-    struct icon_theme *theme = NULL;
+    bool ret = false;
 
     theme_dir_fd = open(dir, O_RDONLY);
     if (theme_dir_fd == -1) {
@@ -168,9 +167,10 @@ load_theme_in(const char *dir)
     index = fdopen(index_fd, "r");
     assert(index != NULL);
 
-    theme = calloc(1, sizeof(*theme));
     theme->path = strdup(dir);
-    parse_theme(index, theme);
+    parse_theme(index, theme, themes_to_load);
+
+    ret = true;
 
  out:
     if (index != NULL)
@@ -179,45 +179,83 @@ load_theme_in(const char *dir)
         close(index_fd);
     if (theme_dir_fd != -1)
         close(theme_dir_fd);
-    return theme;
+    return ret;
 }
 
-struct icon_theme *
+icon_theme_list_t
 icon_load_theme(const char *name)
 {
-    struct icon_theme *theme = NULL;
+    /* List of themes; first item is the primary theme, subsequent
+     * items are inherited items (i.e. fallback themes) */
+    icon_theme_list_t themes = tll_init();
+
+    /* List of themes to try to load. This list will be appended to as
+     * we go, and find 'Inherits' values in the theme index files. */
+    theme_names_t themes_to_load = tll_init();
+    tll_push_back(themes_to_load, strdup(name));
 
     xdg_data_dirs_t dirs = xdg_data_dirs();
-    tll_foreach(dirs, it) {
-        char path[strlen(it->item) + 1 + strlen("icons") + 1 + strlen(name) + 1];
-        sprintf(path, "%s/icons/%s", it->item, name);
 
-        theme = load_theme_in(path);
-        if (theme != NULL)
-            break;
+    while (tll_length(themes_to_load) > 0) {
+        char *theme_name = tll_pop_front(themes_to_load);
+
+        /*
+         * Check if we've already loaded this theme. Example:
+         * "Arc" inherits "Moka,Faba,elementary,Adwaita,ghome,hicolor
+         * "Moka" inherits "Faba"
+         * "Faba" inherits "elementary,gnome,hicolor"
+         */
+        bool theme_already_loaded = false;
+        tll_foreach(themes, it) {
+            if (strcasecmp(it->item.name, theme_name) == 0) {
+                theme_already_loaded = true;
+                break;
+            }
+        }
+
+        if (theme_already_loaded) {
+            free(theme_name);
+            continue;
+        }
+
+        tll_foreach(dirs, dir_it) {
+            char path[strlen(dir_it->item) + 1 +
+                      strlen("icons") + 1 +
+                      strlen(theme_name) + 1];
+            sprintf(path, "%s/icons/%s", dir_it->item, theme_name);
+
+            struct icon_theme theme = {0};
+            if (load_theme_in(path, &theme, &themes_to_load)) {
+                theme.name = strdup(theme_name);
+                tll_push_back(themes, theme);
+                break;
+            }
+        }
+
+        free(theme_name);
     }
 
     xdg_data_dirs_destroy(dirs);
-    return theme;
+    return themes;
+}
+
+static void
+theme_destroy(struct icon_theme theme)
+{
+    free(theme.name);
+    free(theme.path);
+
+    tll_foreach(theme.dirs, it) {
+        free(it->item.path);
+        tll_remove(theme.dirs, it);
+    }
 }
 
 void
-icon_theme_destroy(struct icon_theme *theme)
+icon_themes_destroy(icon_theme_list_t themes)
 {
-    if (theme == NULL)
-        return;
-
-    free(theme->path);
-
-    tll_foreach(theme->dirs, it) {
-        free(it->item.path);
-        tll_remove(theme->dirs, it);
+    tll_foreach(themes, it) {
+        theme_destroy(it->item);
+        tll_remove(themes, it);
     }
-
-    tll_foreach(theme->inherits, it) {
-        icon_theme_destroy(it->item);
-        tll_remove(theme->inherits, it);
-    }
-
-    free(theme);
 }
