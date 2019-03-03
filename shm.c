@@ -66,7 +66,7 @@ shm_get_buffer(struct wl_shm *shm, int width, int height)
     }
 
     /* Total size */
-    uint32_t stride = width * 4;
+    const uint32_t stride = cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, width);
     size = stride * height;
     ftruncate(pool_fd, size);
 
