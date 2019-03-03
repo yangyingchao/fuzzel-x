@@ -15,6 +15,7 @@
 #include <sys/wait.h>
 #include <sys/eventfd.h>
 #include <dirent.h>
+#include <fcntl.h>
 
 #include <cairo.h>
 
@@ -457,20 +458,36 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
     }
 
     else if (sym == XKB_KEY_Return && effective_mods == 0) {
-        if (c->match_count == 0)
-            return;
+        c->keep_running = false;
 
-        assert(c->selected < c->match_count);
-        LOG_DBG("exec(%s)", c->matches[c->selected].application->exec);
+        const char *execute = c->match_count > 0
+            ? c->matches[c->selected].application->exec
+            : c->prompt.text;
+
+        LOG_DBG("exec(%s)", execute);
+
+        int pipe_fds[2];
+        if (pipe2(pipe_fds, O_CLOEXEC) == -1) {
+            LOG_ERRNO("failed to create pipe");
+            return;
+        }
 
         pid_t pid = fork();
-        if (pid == -1)
+        if (pid == -1) {
+            close(pipe_fds[0]);
+            close(pipe_fds[1]);
+
             LOG_ERRNO("failed to fork");
+            return;
+        }
 
         if (pid == 0) {
             /* Child */
 
-            char *copy = strdup(c->matches[c->selected].application->exec);
+            /* Close read end */
+            close(pipe_fds[0]);
+
+            char *copy = strdup(execute);
             char *argv[100];
 
             size_t cnt = 0;
@@ -492,10 +509,27 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
             argv[cnt] = NULL;
             execvp(argv[0], argv);
 
-            exit(1);
+            /* Signal error back to parent process */
+            write(pipe_fds[1], &errno, sizeof(errno));
+            close(pipe_fds[1]);
         } else {
             /* Parent */
-            c->keep_running = false;
+
+            /* Close write end */
+            close(pipe_fds[1]);
+
+            int _errno;
+            static_assert(sizeof(_errno) == sizeof(errno), "errno size mismatch");
+
+            ssize_t ret = read(pipe_fds[0], &_errno, sizeof(_errno));
+            if (ret == -1)
+                LOG_ERRNO("failed to read from pipe");
+            else if (ret == sizeof(_errno))
+                LOG_ERRNO_P("%s: failed to execute", _errno, execute);
+            else
+                LOG_DBG("%s: fork+exec succeeded", execute);
+
+            close(pipe_fds[0]);
         }
     }
 
