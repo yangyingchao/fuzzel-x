@@ -155,10 +155,7 @@ keyboard_repeater(void *arg)
         const long rate_delay = 1000000000 / c->repeat.rate;
         long delay = c->repeat.delay * 1000000;
 
-        mtx_unlock(&c->repeat.mutex);
-
         while (true) {
-            mtx_lock(&c->repeat.mutex);
             assert(c->repeat.rate > 0);
 
             struct timespec timeout;
@@ -189,12 +186,12 @@ keyboard_repeater(void *arg)
             write(c->repeat.pipe_write_fd, &c->repeat.key, sizeof(c->repeat.key));
 
             delay = rate_delay;
-            mtx_unlock(&c->repeat.mutex);
         }
 
     }
 
-    return 0;
+    assert(false);
+    return 1;
 }
 
 static void
@@ -1180,7 +1177,7 @@ main(int argc, char *const *argv)
     ret = EXIT_SUCCESS;
 
 out:
-    /* SIgnal stop to repeater thread */
+    /* Signal stop to repeater thread */
     mtx_lock(&c.repeat.mutex);
     c.repeat.cmd = REPEAT_EXIT;
     cnd_signal(&c.repeat.cond);
