@@ -513,9 +513,18 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
             argv[cnt] = NULL;
             execvp(argv[0], argv);
 
+            free(copy);
+
             /* Signal error back to parent process */
             write(pipe_fds[1], &errno, sizeof(errno));
             close(pipe_fds[1]);
+
+            /*
+             * It would be nice to do a clean exit, but that means
+             * e.g. destroying mutexes and condition variables that
+             * aren't inter-process.
+             */
+            exit(1);
         } else {
             /* Parent */
 
