@@ -78,7 +78,7 @@ struct wayland {
 };
 
 struct context {
-    bool keep_running;
+    volatile bool keep_running;
     struct wayland wl;
     struct render *render;
 
