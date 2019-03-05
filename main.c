@@ -1009,7 +1009,10 @@ main(int argc, char *const *argv)
     setlocale(LC_ALL, "");
 
     int repeat_pipe_fds[2] = {-1, -1};
-    pipe2(repeat_pipe_fds, O_CLOEXEC);
+    if (pipe2(repeat_pipe_fds, O_CLOEXEC) == -1) {
+        LOG_ERRNO("failed to create pipe for repeater thread");
+        return ret;
+    }
 
     struct context c = {
         .keep_running = true,
