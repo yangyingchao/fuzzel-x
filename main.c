@@ -93,6 +93,8 @@ struct context {
         mtx_t mutex;
         cnd_t cond;
         int trigger;
+        int pipe_read_fd;
+        int pipe_write_fd;
         enum {REPEAT_STOP, REPEAT_START, REPEAT_EXIT} cmd;
 
         bool dont_re_repeat;
@@ -184,7 +186,7 @@ keyboard_repeater(void *arg)
             assert(ret == thrd_timedout);
             assert(c->repeat.cmd == REPEAT_START);
             LOG_DBG("repeater: repeat: %u", c->repeat.key);
-            write(c->repeat.trigger, &(uint64_t){1}, sizeof(uint64_t));
+            write(c->repeat.pipe_write_fd, &c->repeat.key, sizeof(c->repeat.key));
 
             delay = rate_delay;
             mtx_unlock(&c->repeat.mutex);
@@ -1000,6 +1002,9 @@ main(int argc, char *const *argv)
 
     setlocale(LC_ALL, "");
 
+    int repeat_pipe_fds[2] = {-1, -1};
+    pipe2(repeat_pipe_fds, O_CLOEXEC);
+
     struct context c = {
         .keep_running = true,
         .wl = {0},
@@ -1008,7 +1013,8 @@ main(int argc, char *const *argv)
             .cursor = 0
         },
         .repeat = {
-            .trigger = eventfd(0, EFD_CLOEXEC),
+            .pipe_read_fd = repeat_pipe_fds[0],
+            .pipe_write_fd = repeat_pipe_fds[1],
             .cmd = REPEAT_STOP,
         },
     };
@@ -1147,7 +1153,7 @@ main(int argc, char *const *argv)
     while (c.keep_running) {
         struct pollfd fds[] = {
             {.fd = wl_display_get_fd(c.wl.display), .events = POLLIN},
-            {.fd = c.repeat.trigger, .events = POLLIN},
+            {.fd = c.repeat.pipe_read_fd, .events = POLLIN},
         };
 
         wl_display_flush(c.wl.display);
@@ -1159,11 +1165,11 @@ main(int argc, char *const *argv)
         }
 
         if (fds[1].revents & POLLIN) {
-            uint64_t v;
-            read(c.repeat.trigger, &v, sizeof(v));
+            uint32_t key;
+            read(c.repeat.pipe_read_fd, &key, sizeof(key));
 
             c.repeat.dont_re_repeat = true;
-            keyboard_key(&c, NULL, 0, 0, c.repeat.key, XKB_KEY_DOWN);
+            keyboard_key(&c, NULL, 0, 0, key, XKB_KEY_DOWN);
             c.repeat.dont_re_repeat = false;
         }
 
@@ -1234,7 +1240,8 @@ out:
     thrd_join(keyboard_repeater_id, NULL);
     cnd_destroy(&c.repeat.cond);
     mtx_destroy(&c.repeat.mutex);
-    close(c.repeat.trigger);
+    close(c.repeat.pipe_read_fd);
+    close(c.repeat.pipe_write_fd);
     cairo_debug_reset_static_data();
 
     return ret;
