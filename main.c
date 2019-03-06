@@ -470,6 +470,16 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
 
         LOG_DBG("exec(%s)", execute);
 
+        if (strchr(execute, '\'') != NULL || strchr(execute, '"') != NULL) {
+            LOG_ERR("unimplemented: quoted exec arguments: %s", execute);
+            return;
+        }
+
+        if (strchr(execute, '\\') != NULL) {
+            LOG_ERR("unimplemented: escaped exec arguments: %s", execute);
+            return;
+        }
+
         int pipe_fds[2];
         if (pipe2(pipe_fds, O_CLOEXEC) == -1) {
             LOG_ERRNO("failed to create pipe");
