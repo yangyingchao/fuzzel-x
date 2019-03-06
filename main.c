@@ -506,10 +506,6 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
                 argv[cnt++] = arg;
             }
 
-            close(STDIN_FILENO);
-            close(STDOUT_FILENO);
-            close(STDERR_FILENO);
-
             argv[cnt] = NULL;
             execvp(argv[0], argv);
 
