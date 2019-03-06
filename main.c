@@ -491,19 +491,6 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
             /* Close read end */
             close(pipe_fds[0]);
 
-            int devnull_r = open("/dev/null", O_RDONLY | O_CLOEXEC);
-            int devnull_w = open("/dev/null", O_WRONLY | O_CLOEXEC);
-
-            if (devnull_r == -1 || devnull_w == -1)
-                goto child_err;
-
-            if (dup2(devnull_r, STDIN_FILENO) == -1)
-                goto child_err;
-            if (dup2(devnull_w, STDOUT_FILENO) == -1)
-                goto child_err;
-            if (dup2(devnull_w, STDERR_FILENO) == -1)
-                goto child_err;
-
             char *copy = strdup(execute);
             char *argv[100];
 
@@ -518,12 +505,25 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
 
                 argv[cnt++] = arg;
             }
-
             argv[cnt] = NULL;
+
+            /* Redirect stdin/stdout/stderr -> /dev/null */
+            int devnull_r = open("/dev/null", O_RDONLY | O_CLOEXEC);
+            int devnull_w = open("/dev/null", O_WRONLY | O_CLOEXEC);
+
+            if (devnull_r == -1 || devnull_w == -1)
+                goto child_err;
+
+            if (dup2(devnull_r, STDIN_FILENO) == -1 ||
+                dup2(devnull_w, STDOUT_FILENO) == -1 ||
+                dup2(devnull_w, STDERR_FILENO) == -1)
+            {
+                goto child_err;
+            }
+
             execvp(argv[0], argv);
 
         child_err:
-
             /* Signal error back to parent process */
             write(pipe_fds[1], &errno, sizeof(errno));
             _exit(1);
