@@ -866,7 +866,7 @@ update_matches(struct context *c)
         return;
     }
 
-    tll(struct match) _matches = tll_init();
+    size_t i = 0;
     tll_foreach(c->applications, it) {
         size_t start_title = -1;
         size_t start_comment = -1;
@@ -884,23 +884,15 @@ update_matches(struct context *c)
         if (start_title == -1 && start_comment == -1)
             continue;
 
-        tll_push_back(
-            _matches,
-            ((struct match){
-                .application = &it->item,
-                .start_title = start_title,
-                .start_comment = start_comment}));
-    }
+        c->matches[i++] = (struct match){
+            .application = &it->item,
+            .start_title = start_title,
+            .start_comment = start_comment};
 
-    size_t i = 0;
-    tll_foreach(_matches, it) {
-        c->matches[i++] = it->item;
         if (i >= max_matches)
             break;
     }
     c->match_count = i;
-
-    tll_free(_matches);
 
     if (c->selected >= c->match_count && c->selected > 0)
         c->selected = c->match_count - 1;
