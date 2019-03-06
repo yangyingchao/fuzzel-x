@@ -496,7 +496,7 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
 
             size_t cnt = 0;
             for (char *arg = strtok(copy, " ");
-                 arg != NULL;
+                 arg != NULL && cnt < (sizeof(argv) / sizeof(argv[0]) - 1);
                  arg = strtok(NULL, " "))
             {
                 /* TODO: implement %-expansion */
