@@ -357,11 +357,8 @@ tokenize_cmdline(char *cmdline, char ***argv)
             delim = ' ';
     }
 
-    if (!push_argv(argv, &argv_size, p, &idx) ||
-        !push_argv(argv, &argv_size, NULL, &idx))
-    {
+    if (!push_argv(argv, &argv_size, NULL, &idx))
         goto err;
-    }
 
     return true;
 
