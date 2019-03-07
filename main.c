@@ -288,6 +288,89 @@ prompt_next_word(const struct prompt *prompt)
         return space - prompt->text + 1;
 }
 
+static bool
+push_argv(char ***argv, size_t *size, char *arg, size_t *argc)
+{
+    if (arg != NULL && arg[0] == '%')
+        return true;
+
+    if (*argc >= *size) {
+        size_t new_size = *size > 0 ? 2 * *size : 10;
+        char **new_argv = realloc(*argv, new_size * sizeof(new_argv[0]));
+
+        if (new_argv == NULL)
+            return false;
+
+        *argv = new_argv;
+        *size = new_size;
+    }
+
+    (*argv)[(*argc)++] = arg;
+    return true;
+}
+
+static bool
+tokenize_cmdline(char *cmdline, char ***argv)
+{
+    *argv = NULL;
+    size_t argv_size = 0;
+
+    bool first_token_is_quoted = cmdline[0] == '"' || cmdline[0] == '\'';
+    char delim = first_token_is_quoted ? cmdline[0] : ' ';
+
+    char *p = first_token_is_quoted ? &cmdline[1] : &cmdline[0];
+
+    size_t idx = 0;
+    while (*p != '\0') {
+        char *end = strchr(p, delim);
+        if (end == NULL) {
+            if (delim != ' ') {
+                fprintf(stderr, "error: unterminated %s quote\n",
+                        delim == '"' ? "double" : "single");
+                free(*argv);
+                return false;
+            }
+
+            if (!push_argv(argv, &argv_size, p, &idx) ||
+                !push_argv(argv, &argv_size, NULL, &idx))
+            {
+                goto err;
+            } else
+                return true;
+        }
+
+        *end = '\0';
+
+        if (!push_argv(argv, &argv_size, p, &idx))
+            goto err;
+
+        p = end + 1;
+        while (*p == delim)
+            p++;
+
+        while (*p == ' ')
+            p++;
+
+        if (*p == '"' || *p == '\'') {
+            delim = *p;
+            p++;
+        } else
+            delim = ' ';
+    }
+
+    if (!push_argv(argv, &argv_size, p, &idx) ||
+        !push_argv(argv, &argv_size, NULL, &idx))
+    {
+        goto err;
+    }
+
+    return true;
+
+err:
+    free(*argv);
+    return false;
+}
+
 static void
 keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
              uint32_t time, uint32_t key, uint32_t state)
@@ -470,15 +553,22 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
 
         LOG_DBG("exec(%s)", execute);
 
-        if (strchr(execute, '\'') != NULL || strchr(execute, '"') != NULL) {
-            LOG_ERR("unimplemented: quoted exec arguments: %s", execute);
-            return;
-        }
-
         if (strchr(execute, '\\') != NULL) {
             LOG_ERR("unimplemented: escaped exec arguments: %s", execute);
             return;
         }
+
+        /* Tokenize the command */
+        char *copy = strdup(execute);
+        char **argv;
+        if (!tokenize_cmdline(copy, &argv)) {
+            free(copy);
+            return;
+        }
+
+        LOG_DBG("argv:");
+        for (size_t i = 0; argv[i] != NULL; i++)
+            LOG_DBG("  %zu: \"%s\"", i, argv[i]);
 
         int pipe_fds[2];
         if (pipe2(pipe_fds, O_CLOEXEC) == -1) {
@@ -500,22 +590,6 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
 
             /* Close read end */
             close(pipe_fds[0]);
-
-            char *copy = strdup(execute);
-            char *argv[100];
-
-            size_t cnt = 0;
-            for (char *arg = strtok(copy, " ");
-                 arg != NULL && cnt < (sizeof(argv) / sizeof(argv[0]) - 1);
-                 arg = strtok(NULL, " "))
-            {
-                /* TODO: implement %-expansion */
-                if (arg[0] == '%')
-                    continue;
-
-                argv[cnt++] = arg;
-            }
-            argv[cnt] = NULL;
 
             /* Redirect stdin/stdout/stderr -> /dev/null */
             int devnull_r = open("/dev/null", O_RDONLY | O_CLOEXEC);
@@ -539,6 +613,9 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
             _exit(1);
         } else {
             /* Parent */
+
+            free(copy);
+            free(argv);
 
             /* Close write end */
             close(pipe_fds[1]);
