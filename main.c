@@ -108,8 +108,8 @@ struct context {
 };
 
 /* Window size */
-static const int width = 500;
-static const int height = 300;
+static int width = 500;
+static int height = 300;
 
 static const double x_margin = 20;
 static const double y_margin = 4;
@@ -1058,6 +1058,8 @@ main(int argc, char *const *argv)
     static const struct option longopts[] = {
         {"output", required_argument, 0, 'o'},
         {"font",   required_argument, 0, 'f'},
+        {"width" , required_argument, 0, 'W'},
+        {"height", required_argument, 0, 'H'},
         {NULL,     no_argument,       0, 0},
     };
 
@@ -1065,7 +1067,7 @@ main(int argc, char *const *argv)
     const char *font_name = "monospace";
 
     while (true) {
-        int c = getopt_long(argc, argv, ":o:f:", longopts, NULL);
+        int c = getopt_long(argc, argv, ":o:f:W:H:", longopts, NULL);
         if (c == -1)
             break;
 
@@ -1076,6 +1078,20 @@ main(int argc, char *const *argv)
 
         case 'f':
             font_name = optarg;
+            break;
+
+        case 'W':
+            if (sscanf(optarg, "%d", &width) != 1) {
+                LOG_ERR("%s: invalid width (must be an integer)", optarg);
+                return EXIT_FAILURE;
+            }
+            break;
+
+        case 'H':
+            if (sscanf(optarg, "%d", &height) != 1) {
+                LOG_ERR("%s: invalid height (must be an integer)", optarg);
+                return EXIT_FAILURE;
+            }
             break;
 
         case ':':
