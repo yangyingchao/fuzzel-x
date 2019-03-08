@@ -100,6 +100,7 @@ parse_desktop_file(int fd, icon_theme_list_t themes, int icon_size,
     char *exec = NULL;
     char *generic_name = NULL;
     char *icon = NULL;
+    bool visible = true;
 
     while (true) {
         char *line = NULL;
@@ -152,12 +153,19 @@ parse_desktop_file(int fd, icon_theme_list_t themes, int icon_size,
         else if (strcasecmp(key, "icon") == 0)
             icon = strdup(value);
 
+        else if (strcasecmp(key, "hidden") == 0 ||
+                 strcasecmp(key, "nodisplay") == 0)
+        {
+            if (strcasecmp(value, "true") == 0)
+                visible = false;
+        }
+
         free(line);
     }
 
     fclose(f);
 
-    if (is_desktop_entry && name != NULL && exec != NULL) {
+    if (is_desktop_entry && visible && name != NULL && exec != NULL) {
         bool already_added = false;
         tll_foreach(*applications, it) {
             if (strcmp(it->item.title, name) == 0) {
