@@ -1237,7 +1237,7 @@ main(int argc, char *const *argv)
     wl_surface_commit(c.wl.surface);
     wl_display_roundtrip(c.wl.display);
 
-    c.render = render_init(font);
+    c.render = render_init(font, width, height);
 
     refresh(&c);
 

@@ -9,6 +9,8 @@
 #include "font.h"
 
 struct render {
+    int width;
+    int height;
     cairo_scaled_font_t *regular_font;
 };
 
@@ -270,9 +272,11 @@ render_match_list(const struct render *render, struct buffer *buf,
 }
 
 struct render *
-render_init(cairo_scaled_font_t *font)
+render_init(cairo_scaled_font_t *font, int width, int height)
 {
     struct render *render = calloc(1, sizeof(*render));
+    render->width = width;
+    render->height = height;
     render->regular_font = font;
     return render;
 }
