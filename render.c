@@ -228,17 +228,19 @@ render_match_list(const struct render *render, struct buffer *buf,
 
         double cur_x = border_size + x_margin;
 
-        if (match->application->icon.surface != NULL) {
-            cairo_surface_t *surf = match->application->icon.surface;
-            double size = match->application->icon.size;
+        if (match->application->icon != NULL) {
+            cairo_surface_t *surf = match->application->icon;
+            double width = cairo_image_surface_get_width(surf);
+            double height = cairo_image_surface_get_height(surf);
             double scale = 1.0;
 
-            if (size > row_height) {
-                scale = (row_height - 2 * y_margin) / size;
-                LOG_DBG("%s: scaling: %f (row-height: %f, size=%f",
-                        match->application->title, scale, row_height, size);
+            if (height > row_height) {
+                scale = (row_height - 2 * y_margin) / height;
+                LOG_DBG("%s: scaling: %f (row-height: %f, size=%fx%f)",
+                        match->application->title, scale, row_height, width, height);
 
-                size *= scale;
+                width *= scale;
+                height *= scale;
             }
 
             cairo_save(buf->cairo);
@@ -247,7 +249,7 @@ render_match_list(const struct render *render, struct buffer *buf,
             /* Translate/scale - order matters! */
             cairo_translate(
                 buf->cairo, cur_x,
-                first_row + i * row_height + (row_height - size) / 2);
+                first_row + i * row_height + (row_height - height) / 2);
             cairo_scale(buf->cairo, scale, scale);
 
             cairo_set_source_surface(buf->cairo, surf, 0, 0);

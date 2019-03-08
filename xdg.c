@@ -17,11 +17,11 @@
 #include "log.h"
 #include "icon.h"
 
-static struct cairo_icon
+static cairo_surface_t *
 load_icon(const char *name, int icon_size, icon_theme_list_t themes)
 {
     if (name == NULL)
-        return (struct cairo_icon){0};
+        return NULL;
 
     tll_foreach(themes, theme_it) {
         const struct icon_theme *theme = &theme_it->item;
@@ -75,7 +75,7 @@ load_icon(const char *name, int icon_size, icon_theme_list_t themes)
                         LOG_DBG("%s: %s: nothing else matched", name, full_path);
 
                     free(full_path);
-                    return (struct cairo_icon){.size = it->item.size, .surface = surf};
+                    return surf;
                 }
 
                 free(full_path);
@@ -84,7 +84,7 @@ load_icon(const char *name, int icon_size, icon_theme_list_t themes)
         }
     }
 
-    return (struct cairo_icon){0};
+    return NULL;
 }
 
 static void
