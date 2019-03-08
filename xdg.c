@@ -23,6 +23,12 @@ load_icon(const char *name, int icon_size, icon_theme_list_t themes)
     if (name == NULL)
         return NULL;
 
+    if (name[0] == '/') {
+        cairo_surface_t *surf = cairo_image_surface_create_from_png(name);
+        if (cairo_surface_status(surf) == CAIRO_STATUS_SUCCESS)
+            return surf;
+    }
+
     tll_foreach(themes, theme_it) {
         const struct icon_theme *theme = &theme_it->item;
         LOG_DBG("looking for %s in %s", name, theme->path);
