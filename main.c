@@ -111,8 +111,7 @@ struct context {
 static const int width = 500;
 static const int height = 300;
 
-/* From render */
-//static const double x_margin = 20;
+static const double x_margin = 20;
 static const double y_margin = 4;
 static const double border_size = 1;
 
@@ -1237,7 +1236,7 @@ main(int argc, char *const *argv)
     wl_surface_commit(c.wl.surface);
     wl_display_roundtrip(c.wl.display);
 
-    c.render = render_init(font, width, height);
+    c.render = render_init(font, width, height, x_margin, y_margin, border_size);
 
     refresh(&c);
 

@@ -11,17 +11,20 @@
 struct render {
     int width;
     int height;
+    int x_margin;
+    int y_margin;
+    int border_size;
     cairo_scaled_font_t *regular_font;
 };
-
-static const double x_margin = 20;
-static const double y_margin = 4;
-static const double border_size = 1;
 
 void
 render_prompt(const struct render *render, struct buffer *buf,
               const struct prompt *prompt)
 {
+    const double x_margin = render->x_margin;
+    const double y_margin = render->y_margin;
+    const double border_size = render->border_size;
+
     cairo_set_scaled_font(buf->cairo, render->regular_font);
 
     cairo_font_extents_t fextents;
@@ -195,8 +198,11 @@ render_match_list(const struct render *render, struct buffer *buf,
                   const struct match matches[], size_t match_count,
                   size_t match_length, size_t selected)
 {
-    assert(match_count == 0 || selected < match_count);
+    const double x_margin = render->x_margin;
+    const double y_margin = render->y_margin;
+    const double border_size = render->border_size;
 
+    assert(match_count == 0 || selected < match_count);
 
     cairo_set_scaled_font(buf->cairo, render->regular_font);
 
@@ -272,11 +278,15 @@ render_match_list(const struct render *render, struct buffer *buf,
 }
 
 struct render *
-render_init(cairo_scaled_font_t *font, int width, int height)
+render_init(cairo_scaled_font_t *font, int width, int height,
+            int x_margin, int y_margin, int border_size)
 {
     struct render *render = calloc(1, sizeof(*render));
     render->width = width;
     render->height = height;
+    render->x_margin = x_margin;
+    render->y_margin = y_margin;
+    render->border_size = border_size;
     render->regular_font = font;
     return render;
 }

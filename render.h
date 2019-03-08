@@ -12,7 +12,8 @@ struct prompt {
 };
 
 struct render;
-struct render *render_init(cairo_scaled_font_t *font, int width, int height);
+struct render *render_init(cairo_scaled_font_t *font, int width, int height,
+                           int x_margin, int y_margin, int border_size);
 void render_destroy(struct render *render);
 
 void render_prompt(
