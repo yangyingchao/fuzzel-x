@@ -3,6 +3,7 @@
 #include <cairo.h>
 
 struct application {
+    char *path;
     char *exec;
     char *title;
     char *comment;

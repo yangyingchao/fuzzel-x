@@ -546,6 +546,9 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
         const char *execute = c->match_count > 0
             ? c->matches[c->selected].application->exec
             : c->prompt.text;
+        const char *path = c->match_count > 0
+            ? c->matches[c->selected].application->path
+            : NULL;
 
         LOG_DBG("exec(%s)", execute);
 
@@ -586,6 +589,11 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
 
             /* Close read end */
             close(pipe_fds[0]);
+
+            if (path != NULL) {
+                if (chdir(path) == -1)
+                    LOG_ERRNO("failed to chdir to %s", path);
+            }
 
             /* Redirect stdin/stdout/stderr -> /dev/null */
             int devnull_r = open("/dev/null", O_RDONLY | O_CLOEXEC);
@@ -1277,6 +1285,7 @@ out:
 
     free(c.prompt.text);
     tll_foreach(c.applications, it) {
+        free(it->item.path);
         free(it->item.exec);
         free(it->item.title);
         free(it->item.comment);

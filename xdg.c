@@ -104,6 +104,7 @@ parse_desktop_file(int fd, icon_theme_list_t themes, int icon_size,
     bool is_desktop_entry = false;
     char *name = NULL;
     char *exec = NULL;
+    char *path = NULL;
     char *generic_name = NULL;
     char *icon = NULL;
     bool visible = true;
@@ -153,6 +154,9 @@ parse_desktop_file(int fd, icon_theme_list_t themes, int icon_size,
         else if (strcmp(key, "Exec") == 0)
             exec = strdup(value);
 
+        else if (strcmp(key, "Path") == 0)
+            path = strdup(value);
+
         else if (strcmp(key, "GenericName") == 0)
             generic_name = strdup(value);
 
@@ -184,13 +188,15 @@ parse_desktop_file(int fd, icon_theme_list_t themes, int icon_size,
             tll_push_back(
                 *applications,
                 ((struct application){
-                    .exec = exec, .title = name, .comment = generic_name,
+                    .path = path, .exec = exec, .title = name,
+                    .comment = generic_name,
                     .icon = load_icon(icon, icon_size, themes)}));
             free(icon);
             return;
         }
     }
 
+    free(path);
     free(name);
     free(exec);
     free(generic_name);
