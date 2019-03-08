@@ -41,13 +41,13 @@ load_icon(const char *name, int icon_size, icon_theme_list_t themes)
                     if (diff < min_diff)
                         min_diff = diff;
                     continue;
-                } else if (i == 1 && (icon_size < it->item.min_size ||
+                } else if (i == 1 && diff != min_diff) {
+                    /* Try the one which matches most closely */
+                    continue;
+                } else if (i == 2 && (icon_size < it->item.min_size ||
                                       icon_size > it->item.max_size))
                 {
                     /* Find one whose scalable range we're in */
-                    continue;
-                } else if (i == 2 && diff != min_diff) {
-                    /* Try the one which matches most closely */
                     continue;
                 } else {
                     /* Use anyone available */
@@ -66,11 +66,11 @@ load_icon(const char *name, int icon_size, icon_theme_list_t themes)
                     if (i == 0)
                         LOG_DBG("%s: %s: exact match", name, full_path);
                     else if (i == 1)
+                        LOG_DBG("%s: %s: diff = %d", name, full_path, diff);
+                    else if (i == 2)
                         LOG_DBG("%s: %s: range %d-%d",
                                 name, full_path,
                                 it->item.min_size, it->item.max_size);
-                    else if (i == 2)
-                        LOG_DBG("%s: %s: diff = %d", name, full_path, diff);
                     else
                         LOG_DBG("%s: %s: nothing else matched", name, full_path);
 
