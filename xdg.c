@@ -148,26 +148,28 @@ parse_desktop_file(int fd, icon_theme_list_t themes, int icon_size,
         const char *key = strtok(line, "=");
         char *value = strtok(NULL, "=");
 
-        if (strcmp(key, "Name") == 0)
-            name = strdup(value);
+        if (key != NULL && value != NULL) {
+            if (strcmp(key, "Name") == 0)
+                name = strdup(value);
 
-        else if (strcmp(key, "Exec") == 0)
-            exec = strdup(value);
+            else if (strcmp(key, "Exec") == 0)
+                exec = strdup(value);
 
-        else if (strcmp(key, "Path") == 0)
-            path = strdup(value);
+            else if (strcmp(key, "Path") == 0)
+                path = strdup(value);
 
-        else if (strcmp(key, "GenericName") == 0)
-            generic_name = strdup(value);
+            else if (strcmp(key, "GenericName") == 0)
+                generic_name = strdup(value);
 
-        else if (strcmp(key, "Icon") == 0)
-            icon = strdup(value);
+            else if (strcmp(key, "Icon") == 0)
+                icon = strdup(value);
 
-        else if (strcmp(key, "Hidden") == 0 ||
-                 strcmp(key, "NoDisplay") == 0)
-        {
-            if (strcmp(value, "true") == 0)
-                visible = false;
+            else if (strcmp(key, "Hidden") == 0 ||
+                     strcmp(key, "NoDisplay") == 0)
+            {
+                if (strcmp(value, "true") == 0)
+                    visible = false;
+            }
         }
 
         free(line);
