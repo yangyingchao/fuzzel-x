@@ -743,8 +743,6 @@ output_geometry(void *data, struct wl_output *wl_output, int32_t x, int32_t y,
                 int32_t transform)
 {
     struct monitor *mon = data;
-    mon->x = x;
-    mon->y = y;
     mon->width_mm = physical_width;
     mon->height_mm = physical_height;
 }
@@ -753,9 +751,6 @@ static void
 output_mode(void *data, struct wl_output *wl_output, uint32_t flags,
             int32_t width, int32_t height, int32_t refresh)
 {
-    struct monitor *mon = data;
-    mon->width_px = width;
-    mon->height_px = height;
 }
 
 static void
@@ -770,7 +765,6 @@ output_scale(void *data, struct wl_output *wl_output, int32_t factor)
     mon->scale = factor;
 }
 
-
 static const struct wl_output_listener output_listener = {
     .geometry = &output_geometry,
     .mode = &output_mode,
@@ -779,16 +773,21 @@ static const struct wl_output_listener output_listener = {
 };
 
 static void
-xdg_output_handle_logical_position(void *data,
-                                   struct zxdg_output_v1 *xdg_output,
-                                   int32_t x, int32_t y)
+xdg_output_handle_logical_position(
+    void *data, struct zxdg_output_v1 *xdg_output, int32_t x, int32_t y)
 {
+    struct monitor *mon = data;
+    mon->x = x;
+    mon->y = y;
 }
 
 static void
 xdg_output_handle_logical_size(void *data, struct zxdg_output_v1 *xdg_output,
                                int32_t width, int32_t height)
 {
+    struct monitor *mon = data;
+    mon->width_px = width;
+    mon->height_px = height;
 }
 
 static void
