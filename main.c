@@ -896,34 +896,6 @@ static const struct zwlr_layer_surface_v1_listener layer_surface_listener = {
     .configure = layer_surface_configure,
 };
 
-#if 0
-static void
-find_programs(void)
-{
-    DIR *d = opendir("/usr/bin");
-    if (d == NULL)
-        return;
-
-    for (struct dirent *e = readdir(d); e != NULL; e = readdir(d)) {
-        if (strcmp(e->d_name, ".") == 0 || strcmp(e->d_name, "..") == 0)
-            continue;
-
-        int len = snprintf(NULL, 0, "/usr/bin/%s", e->d_name);
-        char *path = malloc(len + 1);
-        snprintf(path, len + 1, "/usr/bin/%s", e->d_name);
-
-        struct application app = {
-            .title = strdup(e->d_name),
-            .path = path,
-        };
-
-        tll_push_back(applications, app);
-    }
-
-    closedir(d);
-}
-#endif
-
 static void
 update_matches(struct context *c)
 {
@@ -1155,7 +1127,6 @@ main(int argc, char *const *argv)
     max_matches = (height - 2 * border_size - line_height) / line_height;
     LOG_DBG("max matches: %d", max_matches);
 
-    //find_programs();
     xdg_find_programs(fextents.height, &c.applications);
     c.matches = malloc(tll_length(c.applications) * sizeof(c.matches[0]));
     update_matches(&c);
