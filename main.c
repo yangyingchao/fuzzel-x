@@ -1055,18 +1055,17 @@ int
 main(int argc, char *const *argv)
 {
     static const struct option longopts[] = {
-        {"output", required_argument, 0, 'o'},
-        {"font",   required_argument, 0, 'f'},
-        {"width" , required_argument, 0, 'W'},
-        {"height", required_argument, 0, 'H'},
-        {NULL,     no_argument,       0, 0},
+        {"output"  , required_argument, 0, 'o'},
+        {"font",     required_argument, 0, 'f'},
+        {"geometry", required_argument, 0, 'g'},
+        {NULL,       no_argument,       0, 0},
     };
 
     const char *output_name = NULL;
     const char *font_name = "monospace";
 
     while (true) {
-        int c = getopt_long(argc, argv, ":o:f:W:H:", longopts, NULL);
+        int c = getopt_long(argc, argv, ":o:f:g:", longopts, NULL);
         if (c == -1)
             break;
 
@@ -1077,6 +1076,13 @@ main(int argc, char *const *argv)
 
         case 'f':
             font_name = optarg;
+            break;
+
+        case 'g':
+            if (sscanf(optarg, "%dx%d", &width, &height) != 2) {
+                LOG_ERR("%s: invalid geometry (must be <width>x<height>)", optarg);
+                return EXIT_FAILURE;
+            }
             break;
 
         case 'W':
