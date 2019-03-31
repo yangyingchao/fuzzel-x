@@ -1029,12 +1029,13 @@ int
 main(int argc, char *const *argv)
 {
     static const struct option longopts[] = {
-        {"output"  ,    required_argument, 0, 'o'},
-        {"font",        required_argument, 0, 'f'},
-        {"geometry",    required_argument, 0, 'g'},
-        {"text-color",  required_argument, 0, 't'},
-        {"match-color", required_argument, 0, 'm'},
-        {NULL,          no_argument,       0, 0},
+        {"output"  ,         required_argument, 0, 'o'},
+        {"font",             required_argument, 0, 'f'},
+        {"geometry",         required_argument, 0, 'g'},
+        {"background-color", required_argument, 0, 'b'},
+        {"text-color",       required_argument, 0, 't'},
+        {"match-color",      required_argument, 0, 'm'},
+        {NULL,               no_argument,       0, 0},
     };
 
     const char *output_name = NULL;
@@ -1044,9 +1045,10 @@ main(int argc, char *const *argv)
     int height = 300;
     uint32_t text_color = 0xffffffff;
     uint32_t match_color = 0xcc9393ff;
+    uint32_t background = 0x000000ff;
 
     while (true) {
-        int c = getopt_long(argc, argv, ":o:f:g:t:m:", longopts, NULL);
+        int c = getopt_long(argc, argv, ":o:f:g:b:t:m:", longopts, NULL);
         if (c == -1)
             break;
 
@@ -1066,8 +1068,15 @@ main(int argc, char *const *argv)
             }
             break;
 
+        case 'b':
+            if (sscanf(optarg, "%08x", &background) != 1) {
+                LOG_ERR("%s: invalid color", optarg);
+                return EXIT_FAILURE;
+            }
+            break;
+
         case 't':
-            if (sscanf(optarg, "%x", &text_color) != 1) {
+            if (sscanf(optarg, "%08x", &text_color) != 1) {
                 LOG_ERR("%s: invalid color", optarg);
                 return EXIT_FAILURE;
             }
@@ -1117,7 +1126,12 @@ main(int argc, char *const *argv)
         .x_margin = 20,
         .y_margin = 4,
         .border_size = 1,
-        .background = {0.247, 0.247, 0.247, 0.9},
+        .background = {
+            (double)((background >> 24) & 0xff) / 255.0,
+            (double)((background >> 16) & 0xff) / 255.0,
+            (double)((background >>  8) & 0xff) / 255.0,
+            (double)((background >>  0) & 0xff) / 255.0,
+        },
     };
 
     mtx_init(&c.repeat.mutex, mtx_plain);
