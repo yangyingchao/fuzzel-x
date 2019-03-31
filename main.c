@@ -1039,6 +1039,7 @@ main(int argc, char *const *argv)
         {"background-color", required_argument, 0, 'b'},
         {"text-color",       required_argument, 0, 't'},
         {"match-color",      required_argument, 0, 'm'},
+        {"selection-color",  required_argument, 0, 's'},
         {"border-width",     required_argument, 0, 'B'},
         {"border-color",     required_argument, 0, 'C'},
         {NULL,               no_argument,       0, 0},
@@ -1053,10 +1054,11 @@ main(int argc, char *const *argv)
     uint32_t text_color = 0xffffffff;
     uint32_t match_color = 0xcc9393ff;
     uint32_t background = 0x000000ff;
+    uint32_t selection_color = 0x333333ff;
     uint32_t border_color = 0xffffffff;
 
     while (true) {
-        int c = getopt_long(argc, argv, ":o:f:g:b:t:m:B:C:", longopts, NULL);
+        int c = getopt_long(argc, argv, ":o:f:g:b:t:m:s:B:C:", longopts, NULL);
         if (c == -1)
             break;
 
@@ -1092,6 +1094,13 @@ main(int argc, char *const *argv)
 
         case 'm':
             if (sscanf(optarg, "%x", &match_color) != 1) {
+                LOG_ERR("%s: invalid color", optarg);
+                return EXIT_FAILURE;
+            }
+            break;
+
+        case 's':
+            if (sscanf(optarg, "%x", &selection_color) != 1) {
                 LOG_ERR("%s: invalid color", optarg);
                 return EXIT_FAILURE;
             }
@@ -1294,6 +1303,7 @@ main(int argc, char *const *argv)
         .border_size = c.border_size,
         .text_color = text_color,
         .match_color = match_color,
+        .selection_color = selection_color,
         .border_color = border_color,
     };
     c.render = render_init(font, options);

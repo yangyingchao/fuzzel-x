@@ -232,7 +232,12 @@ render_match_list(const struct render *render, struct buffer *buf,
 
         /* Hightlight selected entry */
         if (i == selected) {
-            cairo_set_source_rgba(buf->cairo, 0.157, 0.157, 0.157, 0.9);
+            const uint32_t clr = render->options.selection_color;
+            const double r = (double)((clr >> 24) & 0xff) / 255.0;
+            const double g = (double)((clr >> 16) & 0xff) / 255.0;
+            const double b = (double)((clr >>  8) & 0xff) / 255.0;
+            const double a = (double)((clr >>  0) & 0xff) / 255.0;
+            cairo_set_source_rgba(buf->cairo, r, g, b, a);
             cairo_set_operator(buf->cairo, CAIRO_OPERATOR_SOURCE);
             cairo_rectangle(buf->cairo,
                             x_margin - sel_margin,
