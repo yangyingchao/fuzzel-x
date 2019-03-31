@@ -107,7 +107,8 @@ render_prompt(const struct render *render, struct buffer *buf,
 }
 
 static void
-render_glyphs(struct buffer *buf, uint32_t color, const cairo_glyph_t *glyphs, int num_glyphs)
+render_glyphs(struct buffer *buf, uint32_t color,
+              const cairo_glyph_t *glyphs, int num_glyphs)
 {
     double red, green, blue, alpha;
     red = (double)((color >> 24) & 0xff) / 255.0;
