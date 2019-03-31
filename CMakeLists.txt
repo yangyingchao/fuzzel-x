@@ -87,3 +87,5 @@ target_link_libraries(f00sel
   PkgConfig::xkb)
 
 install(TARGETS f00sel DESTINATION bin)
+
+add_subdirectory(doc)
