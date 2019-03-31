@@ -15,6 +15,7 @@ struct options {
 
     uint32_t text_color;
     uint32_t match_color;
+    uint32_t border_color;
 };
 
 struct prompt {

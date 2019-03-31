@@ -112,6 +112,7 @@ struct context {
     const double x_margin;
     const double y_margin;
     const double border_size;
+    struct { double r, g, b, a; } border_color;
     struct { double r, g, b, a; } background;
 };
 
@@ -998,8 +999,11 @@ refresh(struct context *c)
     cairo_paint(buf->cairo);
 
     /* Border */
-    cairo_set_source_rgba(buf->cairo, 1.0, 1.0, 1.0, 1.0);
-    cairo_set_line_width(buf->cairo, 2 * 1);
+    cairo_set_source_rgba(
+        buf->cairo,
+        c->border_color.r, c->border_color.g, c->border_color.b,
+        c->border_color.a);
+    cairo_set_line_width(buf->cairo, 2 * c->border_size);
     cairo_set_operator(buf->cairo, CAIRO_OPERATOR_OVER);
     cairo_rectangle(buf->cairo, 0, 0, c->width, c->height);
     cairo_stroke(buf->cairo);
@@ -1035,6 +1039,8 @@ main(int argc, char *const *argv)
         {"background-color", required_argument, 0, 'b'},
         {"text-color",       required_argument, 0, 't'},
         {"match-color",      required_argument, 0, 'm'},
+        {"border-width",     required_argument, 0, 'B'},
+        {"border-color",     required_argument, 0, 'C'},
         {NULL,               no_argument,       0, 0},
     };
 
@@ -1043,12 +1049,14 @@ main(int argc, char *const *argv)
 
     int width = 500;
     int height = 300;
+    int border_width = 1;
     uint32_t text_color = 0xffffffff;
     uint32_t match_color = 0xcc9393ff;
     uint32_t background = 0x000000ff;
+    uint32_t border_color = 0xffffffff;
 
     while (true) {
-        int c = getopt_long(argc, argv, ":o:f:g:b:t:m:", longopts, NULL);
+        int c = getopt_long(argc, argv, ":o:f:g:b:t:m:B:C:", longopts, NULL);
         if (c == -1)
             break;
 
@@ -1084,6 +1092,21 @@ main(int argc, char *const *argv)
 
         case 'm':
             if (sscanf(optarg, "%x", &match_color) != 1) {
+                LOG_ERR("%s: invalid color", optarg);
+                return EXIT_FAILURE;
+            }
+            break;
+
+        case 'B':
+            if (sscanf(optarg, "%d", &border_width) != 1) {
+                LOG_ERR(
+                    "%s: invalid border width (must be an integer)", optarg);
+                return EXIT_FAILURE;
+            }
+            break;
+
+        case 'C':
+            if (sscanf(optarg, "%x", &border_color) != 1) {
                 LOG_ERR("%s: invalid color", optarg);
                 return EXIT_FAILURE;
             }
@@ -1125,12 +1148,18 @@ main(int argc, char *const *argv)
         .height = height,
         .x_margin = 20,
         .y_margin = 4,
-        .border_size = 1,
+        .border_size = border_width,
         .background = {
             (double)((background >> 24) & 0xff) / 255.0,
             (double)((background >> 16) & 0xff) / 255.0,
             (double)((background >>  8) & 0xff) / 255.0,
             (double)((background >>  0) & 0xff) / 255.0,
+        },
+        .border_color = {
+            (double)((border_color >> 24) & 0xff) / 255.0,
+            (double)((border_color >> 16) & 0xff) / 255.0,
+            (double)((border_color >>  8) & 0xff) / 255.0,
+            (double)((border_color >>  0) & 0xff) / 255.0,
         },
     };
 
@@ -1265,6 +1294,7 @@ main(int argc, char *const *argv)
         .border_size = c.border_size,
         .text_color = text_color,
         .match_color = match_color,
+        .border_color = border_color,
     };
     c.render = render_init(font, options);
 
