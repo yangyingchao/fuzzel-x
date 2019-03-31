@@ -105,15 +105,15 @@ struct context {
 
     bool frame_is_scheduled;
     struct buffer *pending;
+
+    /* Window configuration */
+    int width;
+    int height;
+    const double x_margin;
+    const double y_margin;
+    const double border_size;
+    struct { double r, g, b, a; } background;
 };
-
-/* Window size */
-static int width = 500;
-static int height = 300;
-
-static const double x_margin = 20;
-static const double y_margin = 4;
-static const double border_size = 1;
 
 static int max_matches;
 
@@ -988,10 +988,12 @@ frame_callback(void *data, struct wl_callback *wl_callback, uint32_t callback_da
 static void
 refresh(struct context *c)
 {
-    struct buffer *buf = shm_get_buffer(c->wl.shm, width, height);
+    struct buffer *buf = shm_get_buffer(c->wl.shm, c->width, c->height);
 
     /* Background */
-    cairo_set_source_rgba(buf->cairo, 0.247, 0.247, 0.247, 0.9);
+    cairo_set_source_rgba(
+        buf->cairo,
+        c->background.r, c->background.g, c->background.b, c->background.a);
     cairo_set_operator(buf->cairo, CAIRO_OPERATOR_SOURCE);
     cairo_paint(buf->cairo);
 
@@ -999,7 +1001,7 @@ refresh(struct context *c)
     cairo_set_source_rgba(buf->cairo, 1.0, 1.0, 1.0, 1.0);
     cairo_set_line_width(buf->cairo, 2 * 1);
     cairo_set_operator(buf->cairo, CAIRO_OPERATOR_OVER);
-    cairo_rectangle(buf->cairo, 0, 0, width, height);
+    cairo_rectangle(buf->cairo, 0, 0, c->width, c->height);
     cairo_stroke(buf->cairo);
 
     render_prompt(c->render, buf, &c->prompt);
@@ -1037,6 +1039,9 @@ main(int argc, char *const *argv)
 
     const char *output_name = NULL;
     const char *font_name = "monospace";
+
+    int width = 500;
+    int height = 300;
     uint32_t text_color = 0xffffffff;
     uint32_t match_color = 0xcc9393ff;
 
@@ -1107,6 +1112,12 @@ main(int argc, char *const *argv)
             .pipe_write_fd = repeat_pipe_fds[1],
             .cmd = REPEAT_STOP,
         },
+        .width = width,
+        .height = height,
+        .x_margin = 20,
+        .y_margin = 4,
+        .border_size = 1,
+        .background = {0.247, 0.247, 0.247, 0.9},
     };
 
     mtx_init(&c.repeat.mutex, mtx_plain);
@@ -1127,8 +1138,8 @@ main(int argc, char *const *argv)
     LOG_DBG("height: %f, ascent: %f, descent: %f",
             fextents.height, fextents.ascent, fextents.descent);
 
-    const double line_height = 2 * y_margin + fextents.height;
-    max_matches = (height - 2 * border_size - line_height) / line_height;
+    const double line_height = 2 * c.y_margin + fextents.height;
+    max_matches = (height - 2 * c.border_size - line_height) / line_height;
     LOG_DBG("max matches: %d", max_matches);
 
     xdg_find_programs(fextents.height, &c.applications);
@@ -1233,11 +1244,11 @@ main(int argc, char *const *argv)
     wl_display_roundtrip(c.wl.display);
 
     struct options options = {
-        .width = width,
-        .height = height,
-        .x_margin = x_margin,
-        .y_margin = y_margin,
-        .border_size = border_size,
+        .width = c.width,
+        .height = c.height,
+        .x_margin = c.x_margin,
+        .y_margin = c.y_margin,
+        .border_size = c.border_size,
         .text_color = text_color,
         .match_color = match_color,
     };
