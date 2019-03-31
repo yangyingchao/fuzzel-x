@@ -5,7 +5,7 @@ find_program(GZIP_EXECUTABLE gzip)
 
 add_custom_command(
   OUTPUT f00sel.1.gz
-  COMMENT "Generating man page"
+  COMMENT "Generating man page f00sel.1.gz"
   COMMAND ${SCDOC_EXECUTABLE} < ${CMAKE_CURRENT_SOURCE_DIR}/f00sel.scdoc |
           ${GZIP_EXECUTABLE} > f00sel.1.gz
   VERBATIM
