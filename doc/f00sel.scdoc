@@ -15,7 +15,8 @@ The window size, font and colors can be configured with command line
 options:
 
 *-o*,*--output*=_OUTPUT_
-	Specifies the monitor to display the window on.
+	Specifies the monitor to display the window on. In _Sway_, you can
+	list the available outputs with *swaymsg -t get_outputs*.
 
 *-f*,*--font*=_FONT_
 	Font to use, in fontconfig format. See *FONT FORMAT*.
