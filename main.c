@@ -1029,6 +1029,25 @@ refresh(struct context *c)
     }
 }
 
+static void
+print_usage(const char *prog_name)
+{
+    printf("Usage: %s [OPTION]...\n", prog_name);
+    printf("\n");
+    printf("Options:\n");
+    printf("  -o,--output=OUTPUT         output (monitor) to display on\n"
+           "  -f,--font=FONT             font name (fontconfig format)\n"
+           "  -g,--geometry=WxH          window WIDTHxHEIGHT (in pixels)\n"
+           "  -b,--background-color=HEX  background color\n"
+           "  -t,--text-color=HEX        text color\n"
+           "  -m,--match-color=HEX       color of matched substring\n"
+           "  -s,--selection-color=HEX   background color of selected item\n"
+           "  -B,--border-width=INT      width of border (in pixels)\n"
+           "  -C,--border-color=HEX      border color\n");
+    printf("\n");
+    printf("Colors must be specified as a 32-bit hexadecimal RGBA quadruple.\n");
+}
+
 int
 main(int argc, char *const *argv)
 {
@@ -1042,6 +1061,7 @@ main(int argc, char *const *argv)
         {"selection-color",  required_argument, 0, 's'},
         {"border-width",     required_argument, 0, 'B'},
         {"border-color",     required_argument, 0, 'C'},
+        {"help",             no_argument,       0, 'h'},
         {NULL,               no_argument,       0, 0},
     };
 
@@ -1058,7 +1078,7 @@ main(int argc, char *const *argv)
     uint32_t border_color = 0xffffffff;
 
     while (true) {
-        int c = getopt_long(argc, argv, ":o:f:g:b:t:m:s:B:C:", longopts, NULL);
+        int c = getopt_long(argc, argv, ":o:f:g:b:t:m:s:B:C:h", longopts, NULL);
         if (c == -1)
             break;
 
@@ -1120,6 +1140,10 @@ main(int argc, char *const *argv)
                 return EXIT_FAILURE;
             }
             break;
+
+        case 'h':
+            print_usage(argv[0]);
+            return EXIT_SUCCESS;
 
         case ':':
             fprintf(stderr, "error: -%c: missing required argument\n", optopt);
