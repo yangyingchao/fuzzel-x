@@ -6,14 +6,24 @@
 #include "match.h"
 #include "tllist.h"
 
+struct options {
+    int width;
+    int height;
+    int x_margin;
+    int y_margin;
+    int border_size;
+
+    uint32_t text_color;
+    uint32_t match_color;
+};
+
 struct prompt {
     char *text;
     size_t cursor;
 };
 
 struct render;
-struct render *render_init(cairo_scaled_font_t *font, int width, int height,
-                           int x_margin, int y_margin, int border_size);
+struct render *render_init(cairo_scaled_font_t *font, struct options options);
 void render_destroy(struct render *render);
 
 void render_prompt(

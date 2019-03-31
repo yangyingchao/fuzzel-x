@@ -1027,17 +1027,21 @@ int
 main(int argc, char *const *argv)
 {
     static const struct option longopts[] = {
-        {"output"  , required_argument, 0, 'o'},
-        {"font",     required_argument, 0, 'f'},
-        {"geometry", required_argument, 0, 'g'},
-        {NULL,       no_argument,       0, 0},
+        {"output"  ,    required_argument, 0, 'o'},
+        {"font",        required_argument, 0, 'f'},
+        {"geometry",    required_argument, 0, 'g'},
+        {"text-color",  required_argument, 0, 't'},
+        {"match-color", required_argument, 0, 'm'},
+        {NULL,          no_argument,       0, 0},
     };
 
     const char *output_name = NULL;
     const char *font_name = "monospace";
+    uint32_t text_color = 0xffffffff;
+    uint32_t match_color = 0xcc9393ff;
 
     while (true) {
-        int c = getopt_long(argc, argv, ":o:f:g:", longopts, NULL);
+        int c = getopt_long(argc, argv, ":o:f:g:t:m:", longopts, NULL);
         if (c == -1)
             break;
 
@@ -1057,16 +1061,16 @@ main(int argc, char *const *argv)
             }
             break;
 
-        case 'W':
-            if (sscanf(optarg, "%d", &width) != 1) {
-                LOG_ERR("%s: invalid width (must be an integer)", optarg);
+        case 't':
+            if (sscanf(optarg, "%x", &text_color) != 1) {
+                LOG_ERR("%s: invalid color", optarg);
                 return EXIT_FAILURE;
             }
             break;
 
-        case 'H':
-            if (sscanf(optarg, "%d", &height) != 1) {
-                LOG_ERR("%s: invalid height (must be an integer)", optarg);
+        case 'm':
+            if (sscanf(optarg, "%x", &match_color) != 1) {
+                LOG_ERR("%s: invalid color", optarg);
                 return EXIT_FAILURE;
             }
             break;
@@ -1228,7 +1232,16 @@ main(int argc, char *const *argv)
     wl_surface_commit(c.wl.surface);
     wl_display_roundtrip(c.wl.display);
 
-    c.render = render_init(font, width, height, x_margin, y_margin, border_size);
+    struct options options = {
+        .width = width,
+        .height = height,
+        .x_margin = x_margin,
+        .y_margin = y_margin,
+        .border_size = border_size,
+        .text_color = text_color,
+        .match_color = match_color,
+    };
+    c.render = render_init(font, options);
 
     refresh(&c);
 
