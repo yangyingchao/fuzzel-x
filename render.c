@@ -51,7 +51,12 @@ render_prompt(const struct render *render, struct buffer *buf,
         glyphs[i].y += border_size + y_margin + fextents.height - fextents.descent;
     }
 
-    cairo_set_source_rgba(buf->cairo, 1.0, 1.0, 1.0, 1.0);
+    double r = (double)((render->options.text_color >> 24) & 0xff) / 255.0;
+    double g = (double)((render->options.text_color >> 16) & 0xff) / 255.0;
+    double b = (double)((render->options.text_color >>  8) & 0xff) / 255.0;
+    double a = (double)((render->options.text_color >>  0) & 0xff) / 255.0;
+
+    cairo_set_source_rgba(buf->cairo, r, g, b, a);
     cairo_set_operator(buf->cairo, CAIRO_OPERATOR_OVER);
     cairo_show_text_glyphs(
         buf->cairo, text, -1, glyphs, num_glyphs,
