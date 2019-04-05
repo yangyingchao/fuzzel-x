@@ -27,6 +27,8 @@ load_icon(const char *name, int icon_size, icon_theme_list_t themes)
         cairo_surface_t *surf = cairo_image_surface_create_from_png(name);
         if (cairo_surface_status(surf) == CAIRO_STATUS_SUCCESS)
             return surf;
+
+        return NULL;
     }
 
     tll_foreach(themes, theme_it) {
