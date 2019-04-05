@@ -92,6 +92,21 @@ load_icon(const char *name, int icon_size, icon_theme_list_t themes)
         }
     }
 
+    xdg_data_dirs_t dirs = xdg_data_dirs();
+    tll_foreach(dirs, it) {
+        char path[strlen(it->item) + 1 +
+                  strlen("pixmaps") + 1 +
+                  strlen(name) + strlen(".png") + 1];
+        sprintf(path, "%s/pixmaps/%s.png", it->item, name);
+
+        cairo_surface_t *surf = cairo_image_surface_create_from_png(path);
+        if (cairo_surface_status(surf) == CAIRO_STATUS_SUCCESS) {
+            xdg_data_dirs_destroy(dirs);
+            return surf;
+        }
+    }
+    xdg_data_dirs_destroy(dirs);
+
     return NULL;
 }
 
