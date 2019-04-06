@@ -9,7 +9,7 @@ makedepends=('scdoc')
 depends=(
   'libxkbcommon'
   'wayland' 'wlroots'
-  'freetype2' 'fontconfig' 'cairo')
+  'freetype2' 'fontconfig' 'cairo' 'librsvg')
 source=()
 
 pkgver() {
