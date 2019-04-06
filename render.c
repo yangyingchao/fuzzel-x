@@ -249,13 +249,28 @@ render_match_list(const struct render *render, struct buffer *buf,
 
         double cur_x = border_size + x_margin;
 
-        if (match->application->icon != NULL) {
-            cairo_surface_t *surf = match->application->icon;
-            double width = cairo_image_surface_get_width(surf);
-            double height = cairo_image_surface_get_height(surf);
-            double scale = 1.0;
+        if (match->application->icon.surface != NULL ||
+            match->application->icon.svg != NULL)
+        {
+            cairo_surface_t *surf = match->application->icon.surface;
+            RsvgHandle *svg = match->application->icon.svg;
 
-            if (height > row_height) {
+            /* Get SVG size */
+            RsvgDimensionData dim = {0};
+            if (svg != NULL)
+                rsvg_handle_get_dimensions(svg, &dim);
+
+            /* For SVGs, *we* set the final size and then scale
+             * it. For PNGs, we use the icon's size, and only scale it
+             * if necessary */
+            double width = svg != NULL
+                ? row_height - 4 : cairo_image_surface_get_width(surf);
+            double height = svg != NULL
+                ? row_height - 4 : cairo_image_surface_get_height(surf);
+            double scale = svg != NULL ? height / dim.height : 1.0;
+
+            /* Do we need to scale the PNG? */
+            if (svg == NULL && height > row_height) {
                 scale = (row_height - 2 * y_margin) / height;
                 LOG_DBG("%s: scaling: %f (row-height: %f, size=%fx%f)",
                         match->application->title, scale, row_height, width, height);
@@ -267,14 +282,19 @@ render_match_list(const struct render *render, struct buffer *buf,
             cairo_save(buf->cairo);
             cairo_set_operator(buf->cairo, CAIRO_OPERATOR_OVER);
 
-            /* Translate/scale - order matters! */
+            /* Translate + scale. Note: order matters! */
             cairo_translate(
                 buf->cairo, cur_x,
                 first_row + i * row_height + (row_height - height) / 2);
             cairo_scale(buf->cairo, scale, scale);
 
-            cairo_set_source_surface(buf->cairo, surf, 0, 0);
-            cairo_paint(buf->cairo);
+            if (svg != NULL)
+                rsvg_handle_render_cairo(svg, buf->cairo);
+            else {
+                cairo_set_source_surface(buf->cairo, surf, 0, 0);
+                cairo_paint(buf->cairo);
+            }
+
             cairo_restore(buf->cairo);
         }
 

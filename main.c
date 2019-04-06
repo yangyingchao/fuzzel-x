@@ -1382,7 +1382,10 @@ out:
         free(it->item.exec);
         free(it->item.title);
         free(it->item.comment);
-        cairo_surface_destroy(it->item.icon);
+        if (it->item.icon.surface != NULL)
+            cairo_surface_destroy(it->item.icon.surface);
+        if (it->item.icon.svg != NULL)
+            g_object_unref(it->item.icon.svg);
         tll_remove(c.applications, it);
     }
 

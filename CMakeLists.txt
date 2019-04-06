@@ -16,6 +16,7 @@ find_package(Threads REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(fontconfig REQUIRED IMPORTED_TARGET fontconfig)
 pkg_check_modules(cairo REQUIRED IMPORTED_TARGET cairo cairo-ft)
+pkg_check_modules(rsvg REQUIRED IMPORTED_TARGET librsvg-2.0)
 pkg_check_modules(wayland REQUIRED IMPORTED_TARGET
   wayland-client wayland-cursor wlroots)
 pkg_check_modules(xkb REQUIRED IMPORTED_TARGET xkbcommon)
@@ -83,6 +84,7 @@ target_link_libraries(f00sel
   ${CMAKE_THREAD_LIBS_INIT}
   PkgConfig::wayland
   PkgConfig::cairo
+  PkgConfig::rsvg
   PkgConfig::fontconfig
   PkgConfig::xkb)
 
