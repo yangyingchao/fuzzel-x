@@ -20,17 +20,35 @@
 #include "icon.h"
 
 static struct icon
+icon_null(void)
+{
+    return (struct icon){.type = ICON_NONE};
+}
+
+static struct icon
+icon_from_surface(cairo_surface_t *surf)
+{
+    return (struct icon){.type = ICON_SURFACE, .surface = surf};
+}
+
+static struct icon
+icon_from_svg(RsvgHandle *svg)
+{
+    return (struct icon){.type = ICON_SVG, .svg = svg};
+}
+
+static struct icon
 load_icon(const char *name, int icon_size, icon_theme_list_t themes)
 {
     if (name == NULL)
-        return (struct icon){NULL, NULL};
+        return icon_null();
 
     if (name[0] == '/') {
         cairo_surface_t *surf = cairo_image_surface_create_from_png(name);
         if (cairo_surface_status(surf) == CAIRO_STATUS_SUCCESS)
-            return (struct icon){surf, NULL};
+            return icon_from_surface(surf);
 
-        return (struct icon){NULL, NULL};
+        return icon_null();
     }
 
     tll_foreach(themes, theme_it) {
@@ -85,7 +103,7 @@ load_icon(const char *name, int icon_size, icon_theme_list_t themes)
                         LOG_DBG("%s: %s: nothing else matched", name, full_path);
 
                     free(full_path);
-                    return (struct icon){surf, NULL};
+                    return icon_from_surface(surf);
                 }
 
                 free(full_path);
@@ -105,7 +123,7 @@ load_icon(const char *name, int icon_size, icon_theme_list_t themes)
         RsvgHandle *svg = rsvg_handle_new_from_file(path, NULL);
         if (svg != NULL) {
             xdg_data_dirs_destroy(dirs);
-            return (struct icon){NULL, svg};
+            return icon_from_svg(svg);
         }
 
         /* No SVG, look for PNG instead */
@@ -113,13 +131,13 @@ load_icon(const char *name, int icon_size, icon_theme_list_t themes)
         cairo_surface_t *surf = cairo_image_surface_create_from_png(path);
         if (cairo_surface_status(surf) == CAIRO_STATUS_SUCCESS) {
             xdg_data_dirs_destroy(dirs);
-            return (struct icon){surf, NULL};
+            return icon_from_surface(surf);
         }
         cairo_surface_destroy(surf);
     }
     xdg_data_dirs_destroy(dirs);
 
-    return (struct icon){NULL, NULL};
+    return icon_null();
 }
 
 static void

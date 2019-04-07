@@ -3,9 +3,14 @@
 #include <cairo.h>
 #include <librsvg/rsvg.h>
 
+enum icon_type { ICON_NONE, ICON_SURFACE, ICON_SVG };
+
 struct icon {
-    cairo_surface_t *surface;
-    RsvgHandle *svg;
+    enum icon_type type;
+    union {
+        cairo_surface_t *surface;
+        RsvgHandle *svg;
+    };
 };
 
 struct application {
@@ -13,6 +18,5 @@ struct application {
     char *exec;
     char *title;
     char *comment;
-    //cairo_surface_t *icon;
     struct icon icon;
 };
