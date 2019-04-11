@@ -991,21 +991,34 @@ refresh(struct context *c)
 {
     struct buffer *buf = shm_get_buffer(c->wl.shm, c->width, c->height);
 
+    const double from_degree = M_PI / 180;
+    const double radius = 10;
+
+    cairo_set_operator(buf->cairo, CAIRO_OPERATOR_SOURCE);
+
+    /* Path describing an arc:ed rectangle */
+    cairo_arc(buf->cairo, c->width - radius, c->height - radius, radius,
+              0.0 * from_degree, 90.0 * from_degree);
+    cairo_arc(buf->cairo, radius, c->height - radius, radius,
+              90.0 * from_degree, 180.0 * from_degree);
+    cairo_arc(buf->cairo, radius, radius, radius,
+              180.0 * from_degree, 270.0 * from_degree);
+    cairo_arc(buf->cairo, c->width - radius, radius, radius,
+              270.0 * from_degree, 360.0 * from_degree);
+    cairo_close_path(buf->cairo);
+
     /* Background */
     cairo_set_source_rgba(
         buf->cairo,
         c->background.r, c->background.g, c->background.b, c->background.a);
-    cairo_set_operator(buf->cairo, CAIRO_OPERATOR_SOURCE);
-    cairo_paint(buf->cairo);
+    cairo_fill_preserve(buf->cairo);
 
     /* Border */
+    cairo_set_line_width(buf->cairo, 2 * c->border_size);
     cairo_set_source_rgba(
         buf->cairo,
         c->border_color.r, c->border_color.g, c->border_color.b,
         c->border_color.a);
-    cairo_set_line_width(buf->cairo, 2 * c->border_size);
-    cairo_set_operator(buf->cairo, CAIRO_OPERATOR_OVER);
-    cairo_rectangle(buf->cairo, 0, 0, c->width, c->height);
     cairo_stroke(buf->cairo);
 
     render_prompt(c->render, buf, &c->prompt);
