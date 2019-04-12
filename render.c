@@ -99,11 +99,13 @@ render_prompt(const struct render *render, struct buffer *buf,
     b = (double)((render->options.border_color >>  8) & 0xff) / 255.0;
     a = (double)((render->options.border_color >>  0) & 0xff) / 255.0;
 
+#if 0
     cairo_set_source_rgba(buf->cairo, r, g, b, a);
     cairo_set_line_width(buf->cairo, border_size);
     cairo_move_to(buf->cairo, 0, border_size + 2 * y_margin + fextents.height + border_size / 2);
     cairo_line_to(buf->cairo, buf->width, border_size + 2 * y_margin + fextents.height + border_size / 2);
     cairo_stroke(buf->cairo);
+#endif
 }
 
 static void
@@ -218,7 +220,7 @@ render_match_list(const struct render *render, struct buffer *buf,
     cairo_font_extents(buf->cairo, &fextents);
 
     const double row_height = 2 * y_margin + fextents.height;
-    const double first_row = 2 * border_size + row_height;
+    const double first_row = 1 * border_size + row_height;
     const double sel_margin = x_margin / 3;
 
     /*
