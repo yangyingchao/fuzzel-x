@@ -3,6 +3,9 @@
 F00sel is a Wayland-native application launcher, similar to rofi's
 _drun_ mode.
 
+
+## Screenshot
+
 ![Screenshot](doc/screenshot.png)
 
 
