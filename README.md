@@ -5,9 +5,6 @@ _drun_ mode.
 
 ![Screenshot](doc/screenshot.png)
 
-_(note: background in screenshot is semi-transparent - the arch logo
-is from the wallpaper)_
-
 
 ## Features:
 
