@@ -14,6 +14,55 @@ struct render {
 };
 
 void
+render_background(const struct render *render, struct buffer *buf)
+{
+    const double from_degree = M_PI / 180;
+    const double radius = 10;
+
+    /*
+     * Lines in cairo are *between* pixels.
+     *
+     * To get a sharp 1px line, we need to draw it with
+     * line-width=2.
+     *
+     * Thus, we need to draw the path offset:ed with half that
+     * (=actual border width).
+     */
+    const double b = render->options.border_size;
+    const double w = render->options.width - 2 * b;
+    const double h = render->options.height - 2 * b;
+
+    /* Path describing an arc:ed rectangle */
+    cairo_arc(buf->cairo, b + w - radius, b + h - radius, radius,
+              0.0 * from_degree, 90.0 * from_degree);
+    cairo_arc(buf->cairo, b + radius, b + h - radius, radius,
+              90.0 * from_degree, 180.0 * from_degree);
+    cairo_arc(buf->cairo, b + radius, b + radius, radius,
+              180.0 * from_degree, 270.0 * from_degree);
+    cairo_arc(buf->cairo, b + w - radius, b + radius, radius,
+              270.0 * from_degree, 360.0 * from_degree);
+    cairo_close_path(buf->cairo);
+
+    {
+        const struct rgba *bc = &render->options.border_color;
+
+        /* Border */
+        cairo_set_operator(buf->cairo, CAIRO_OPERATOR_SOURCE);
+        cairo_set_line_width(buf->cairo, 2 * b);
+        cairo_set_source_rgba(buf->cairo, bc->r, bc->g, bc->b, bc->a);
+        cairo_stroke_preserve(buf->cairo);
+    }
+
+    {
+        const struct rgba *bg = &render->options.background_color;
+
+        /* Background */
+        cairo_set_source_rgba(buf->cairo, bg->r, bg->g, bg->b, bg->a);
+        cairo_fill(buf->cairo);
+    }
+}
+
+void
 render_prompt(const struct render *render, struct buffer *buf,
               const struct prompt *prompt)
 {
@@ -51,12 +100,9 @@ render_prompt(const struct render *render, struct buffer *buf,
         glyphs[i].y += border_size + y_margin + fextents.height - fextents.descent;
     }
 
-    double r = (double)((render->options.text_color >> 24) & 0xff) / 255.0;
-    double g = (double)((render->options.text_color >> 16) & 0xff) / 255.0;
-    double b = (double)((render->options.text_color >>  8) & 0xff) / 255.0;
-    double a = (double)((render->options.text_color >>  0) & 0xff) / 255.0;
+    const struct rgba *tc = &render->options.text_color;
 
-    cairo_set_source_rgba(buf->cairo, r, g, b, a);
+    cairo_set_source_rgba(buf->cairo, tc->r, tc->g, tc->b, tc->a);
     cairo_set_operator(buf->cairo, CAIRO_OPERATOR_OVER);
     cairo_show_text_glyphs(
         buf->cairo, text, -1, glyphs, num_glyphs,
@@ -94,13 +140,10 @@ render_prompt(const struct render *render, struct buffer *buf,
     cairo_glyph_free(glyphs);
     cairo_text_cluster_free(clusters);
 
-    r = (double)((render->options.border_color >> 24) & 0xff) / 255.0;
-    g = (double)((render->options.border_color >> 16) & 0xff) / 255.0;
-    b = (double)((render->options.border_color >>  8) & 0xff) / 255.0;
-    a = (double)((render->options.border_color >>  0) & 0xff) / 255.0;
-
 #if 0
-    cairo_set_source_rgba(buf->cairo, r, g, b, a);
+    const struct rgba *bc = &render->options.border_color;
+
+    cairo_set_source_rgba(buf->cairo, bc->r, bc->g, bc->b, bc->a);
     cairo_set_line_width(buf->cairo, border_size);
     cairo_move_to(buf->cairo, 0, border_size + 2 * y_margin + fextents.height + border_size / 2);
     cairo_line_to(buf->cairo, buf->width, border_size + 2 * y_margin + fextents.height + border_size / 2);
@@ -109,16 +152,10 @@ render_prompt(const struct render *render, struct buffer *buf,
 }
 
 static void
-render_glyphs(struct buffer *buf, uint32_t color,
+render_glyphs(struct buffer *buf, struct rgba color,
               const cairo_glyph_t *glyphs, int num_glyphs)
 {
-    double red, green, blue, alpha;
-    red = (double)((color >> 24) & 0xff) / 255.0;
-    green = (double)((color >> 16) & 0xff) / 255.0;
-    blue = (double)((color >> 8) & 0xff) / 255.0;
-    alpha = (double)((color >> 0) & 0xff) / 255.0;
-
-    cairo_set_source_rgba(buf->cairo, red, green, blue, alpha);
+    cairo_set_source_rgba(buf->cairo, color.r, color.g, color.b, color.a);
     cairo_set_operator(buf->cairo, CAIRO_OPERATOR_OVER);
     cairo_show_glyphs(buf->cairo, glyphs, num_glyphs);
 }
@@ -126,8 +163,8 @@ render_glyphs(struct buffer *buf, uint32_t color,
 static void
 render_match_text(struct buffer *buf, double *x, double y,
                   const char *text, ssize_t start, size_t length,
-                  cairo_scaled_font_t *font,
-                  uint32_t regular_color, uint32_t match_color)
+                  cairo_scaled_font_t *font, struct rgba regular_color,
+                  struct rgba match_color)
 {
     cairo_set_scaled_font(buf->cairo, font);
 
@@ -234,12 +271,8 @@ render_match_list(const struct render *render, struct buffer *buf,
 
         /* Hightlight selected entry */
         if (i == selected) {
-            const uint32_t clr = render->options.selection_color;
-            const double r = (double)((clr >> 24) & 0xff) / 255.0;
-            const double g = (double)((clr >> 16) & 0xff) / 255.0;
-            const double b = (double)((clr >>  8) & 0xff) / 255.0;
-            const double a = (double)((clr >>  0) & 0xff) / 255.0;
-            cairo_set_source_rgba(buf->cairo, r, g, b, a);
+            const struct rgba *sc = &render->options.selection_color;
+            cairo_set_source_rgba(buf->cairo, sc->r, sc->g, sc->b, sc->a);
             cairo_set_operator(buf->cairo, CAIRO_OPERATOR_SOURCE);
             cairo_rectangle(buf->cairo,
                             x_margin - sel_margin,

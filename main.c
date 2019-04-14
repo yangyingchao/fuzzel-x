@@ -997,47 +997,8 @@ refresh(struct context *c)
     struct buffer *buf = shm_get_buffer(
         c->wl.shm, scale * c->width, scale * c->height);
 
-    const double from_degree = M_PI / 180;
-    const double radius = scale * 10;
-
-    /*
-     * Lines in cairo are *between* pixels.
-     *
-     * To get a sharp 1px line, we need to draw it with
-     * line-width=2.
-     *
-     * Thus, we need to draw the path offset:ed with half that
-     * (=actual border width).
-     */
-    const double b = scale * c->border_size;
-    const double w = scale * c->width - 2 * b;
-    const double h = scale * c->height - 2 * b;
-
-    /* Path describing an arc:ed rectangle */
-    cairo_arc(buf->cairo, b + w - radius, b + h - radius, radius,
-              0.0 * from_degree, 90.0 * from_degree);
-    cairo_arc(buf->cairo, b + radius, b + h - radius, radius,
-              90.0 * from_degree, 180.0 * from_degree);
-    cairo_arc(buf->cairo, b + radius, b + radius, radius,
-              180.0 * from_degree, 270.0 * from_degree);
-    cairo_arc(buf->cairo, b + w - radius, b + radius, radius,
-              270.0 * from_degree, 360.0 * from_degree);
-    cairo_close_path(buf->cairo);
-
-    /* Border */
-    cairo_set_operator(buf->cairo, CAIRO_OPERATOR_SOURCE);
-    cairo_set_line_width(buf->cairo, 2 * b);
-    cairo_set_source_rgba(
-        buf->cairo,
-        c->border_color.r, c->border_color.g, c->border_color.b,
-        c->border_color.a);
-    cairo_stroke_preserve(buf->cairo);
-
-    /* Background */
-    cairo_set_source_rgba(
-        buf->cairo,
-        c->background.r, c->background.g, c->background.b, c->background.a);
-    cairo_fill(buf->cairo);
+    /* Background + border */
+    render_background(c->render, buf);
 
     /* Window content */
     render_prompt(c->render, buf, &c->prompt);
@@ -1059,6 +1020,17 @@ refresh(struct context *c)
         assert(c->pending == NULL);
         commit_buffer(c, buf);
     }
+}
+
+static struct rgba
+hex_to_rgba(uint32_t color)
+{
+    return (struct rgba){
+        .r = (double)((color >> 24) & 0xff) / 255.0,
+        .g = (double)((color >> 16) & 0xff) / 255.0,
+        .b = (double)((color >>  8) & 0xff) / 255.0,
+        .a = (double)((color >>  0) & 0xff) / 255.0,
+    };
 }
 
 static void
@@ -1358,10 +1330,11 @@ main(int argc, char *const *argv)
         .x_margin = scale * c.x_margin,
         .y_margin = scale * c.y_margin,
         .border_size = scale * c.border_size,
-        .text_color = text_color,
-        .match_color = match_color,
-        .selection_color = selection_color,
-        .border_color = border_color,
+        .background_color = hex_to_rgba(background),
+        .border_color = hex_to_rgba(border_color),
+        .text_color = hex_to_rgba(text_color),
+        .match_color = hex_to_rgba(match_color),
+        .selection_color = hex_to_rgba(selection_color),
     };
     c.render = render_init(font, options);
 
