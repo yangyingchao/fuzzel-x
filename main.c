@@ -109,11 +109,6 @@ struct context {
     /* Window configuration */
     int width;
     int height;
-    const double x_margin;
-    const double y_margin;
-    const double border_size;
-    struct { double r, g, b, a; } border_color;
-    struct { double r, g, b, a; } background;
 };
 
 static int max_matches;
@@ -1074,6 +1069,8 @@ main(int argc, char *const *argv)
 
     int width = 500;
     int height = 300;
+    const int x_margin = 20;
+    const int y_margin = 4;
     int border_width = 1;
     uint32_t text_color = 0xffffffff;
     uint32_t match_color = 0xcc9393ff;
@@ -1183,21 +1180,6 @@ main(int argc, char *const *argv)
         },
         .width = width,
         .height = height,
-        .x_margin = 20,
-        .y_margin = 4,
-        .border_size = border_width,
-        .background = {
-            (double)((background >> 24) & 0xff) / 255.0,
-            (double)((background >> 16) & 0xff) / 255.0,
-            (double)((background >>  8) & 0xff) / 255.0,
-            (double)((background >>  0) & 0xff) / 255.0,
-        },
-        .border_color = {
-            (double)((border_color >> 24) & 0xff) / 255.0,
-            (double)((border_color >> 16) & 0xff) / 255.0,
-            (double)((border_color >>  8) & 0xff) / 255.0,
-            (double)((border_color >>  0) & 0xff) / 255.0,
-        },
     };
 
     mtx_init(&c.repeat.mutex, mtx_plain);
@@ -1319,17 +1301,17 @@ main(int argc, char *const *argv)
     wl_display_roundtrip(c.wl.display);
 
     const int scale = c.wl.monitor->scale;
-    const double line_height = scale * 2 * c.y_margin + fextents.height;
-    max_matches = (scale * height - scale * 2 * c.border_size - line_height) /
+    const double line_height = scale * 2 * y_margin + fextents.height;
+    max_matches = (scale * height - scale * 2 * border_width - line_height) /
         line_height;
     LOG_DBG("max matches: %d", max_matches);
 
     struct options options = {
         .width = scale * c.width,
         .height = scale * c.height,
-        .x_margin = scale * c.x_margin,
-        .y_margin = scale * c.y_margin,
-        .border_size = scale * c.border_size,
+        .x_margin = scale * x_margin,
+        .y_margin = scale * y_margin,
+        .border_size = scale * border_width,
         .background_color = hex_to_rgba(background),
         .border_color = hex_to_rgba(border_color),
         .text_color = hex_to_rgba(text_color),
