@@ -962,8 +962,10 @@ commit_buffer(struct context *c, struct buffer *buf)
 {
     assert(buf->busy);
 
+    const int scale = c->wl.monitor->scale;
+    wl_surface_set_buffer_scale(c->wl.surface, scale);
     wl_surface_attach(c->wl.surface, buf->wl_buf, 0, 0);
-    wl_surface_damage(c->wl.surface, 0, 0, buf->width, buf->height);
+    wl_surface_damage(c->wl.surface, 0, 0, scale * buf->width, scale * buf->height);
 
     struct wl_callback *cb = wl_surface_frame(c->wl.surface);
     wl_callback_add_listener(cb, &frame_listener, c);
@@ -989,10 +991,14 @@ frame_callback(void *data, struct wl_callback *wl_callback, uint32_t callback_da
 static void
 refresh(struct context *c)
 {
-    struct buffer *buf = shm_get_buffer(c->wl.shm, c->width, c->height);
+    LOG_DBG("refresh");
+    const int scale = c->wl.monitor->scale;
+
+    struct buffer *buf = shm_get_buffer(
+        c->wl.shm, scale * c->width, scale * c->height);
 
     const double from_degree = M_PI / 180;
-    const double radius = 10;
+    const double radius = scale * 10;
 
     /*
      * Lines in cairo are *between* pixels.
@@ -1003,9 +1009,9 @@ refresh(struct context *c)
      * Thus, we need to draw the path offset:ed with half that
      * (=actual border width).
      */
-    const double b = c->border_size;
-    const double w = c->width - 2 * b;
-    const double h = c->height - 2 * b;
+    const double b = scale * c->border_size;
+    const double w = scale * c->width - 2 * b;
+    const double h = scale * c->height - 2 * b;
 
     /* Path describing an arc:ed rectangle */
     cairo_arc(buf->cairo, b + w - radius, b + h - radius, radius,
@@ -1020,7 +1026,7 @@ refresh(struct context *c)
 
     /* Border */
     cairo_set_operator(buf->cairo, CAIRO_OPERATOR_SOURCE);
-    cairo_set_line_width(buf->cairo, 2 * c->border_size);
+    cairo_set_line_width(buf->cairo, 2 * b);
     cairo_set_source_rgba(
         buf->cairo,
         c->border_color.r, c->border_color.g, c->border_color.b,
@@ -1240,13 +1246,8 @@ main(int argc, char *const *argv)
     LOG_DBG("height: %f, ascent: %f, descent: %f",
             fextents.height, fextents.ascent, fextents.descent);
 
-    const double line_height = 2 * c.y_margin + fextents.height;
-    max_matches = (height - 2 * c.border_size - line_height) / line_height;
-    LOG_DBG("max matches: %d", max_matches);
-
     xdg_find_programs(fextents.height, &c.applications);
     c.matches = malloc(tll_length(c.applications) * sizeof(c.matches[0]));
-    update_matches(&c);
 
     c.wl.display = wl_display_connect(NULL);
     if (c.wl.display == NULL) {
@@ -1345,12 +1346,18 @@ main(int argc, char *const *argv)
     wl_surface_commit(c.wl.surface);
     wl_display_roundtrip(c.wl.display);
 
+    const int scale = c.wl.monitor->scale;
+    const double line_height = scale * 2 * c.y_margin + fextents.height;
+    max_matches = (scale * height - scale * 2 * c.border_size - line_height) /
+        line_height;
+    LOG_DBG("max matches: %d", max_matches);
+
     struct options options = {
-        .width = c.width,
-        .height = c.height,
-        .x_margin = c.x_margin,
-        .y_margin = c.y_margin,
-        .border_size = c.border_size,
+        .width = scale * c.width,
+        .height = scale * c.height,
+        .x_margin = scale * c.x_margin,
+        .y_margin = scale * c.y_margin,
+        .border_size = scale * c.border_size,
         .text_color = text_color,
         .match_color = match_color,
         .selection_color = selection_color,
@@ -1358,6 +1365,7 @@ main(int argc, char *const *argv)
     };
     c.render = render_init(font, options);
 
+    update_matches(&c);
     refresh(&c);
 
     wl_display_dispatch_pending(c.wl.display);
