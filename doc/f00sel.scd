@@ -42,6 +42,10 @@ options:
 *-B*,*--border-width*=_INT_
 	The width of the surrounding border.
 
+*-r*,*--border-radius*=_INT_
+	The corner curvature. Larger means more rounded corners.
+	0 disables rounded corners.
+
 *-C*,*--border-color*=_HEX_
 	The color of the border. See *COLORS*.
 
