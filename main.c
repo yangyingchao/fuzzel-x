@@ -1039,6 +1039,7 @@ print_usage(const char *prog_name)
            "  -m,--match-color=HEX       color of matched substring\n"
            "  -s,--selection-color=HEX   background color of selected item\n"
            "  -B,--border-width=INT      width of border (in pixels)\n"
+           "  -r,--border-radius=INT     amount of corner \"roundness\"\n"
            "  -C,--border-color=HEX      border color\n");
     printf("\n");
     printf("Colors must be specified as a 32-bit hexadecimal RGBA quadruple.\n");
