@@ -239,7 +239,8 @@ parse_desktop_file(int fd, icon_theme_list_t themes, int icon_size,
                 ((struct application){
                     .path = path, .exec = exec, .title = name,
                     .comment = generic_name,
-                    .icon = load_icon(icon, icon_size, themes)}));
+                    .icon = load_icon(icon, icon_size, themes),
+                    .count = 0}));
             free(icon);
             return;
         }
@@ -378,4 +379,17 @@ xdg_data_dirs_destroy(xdg_data_dirs_t dirs)
         free(it->item);
         tll_remove(dirs, it);
     }
+}
+
+const char *
+xdg_cache_dir(void)
+{
+    const char *xdg_cache_home = getenv("XDG_CACHE_HOME");
+    if (xdg_cache_home != NULL)
+        return xdg_cache_home;
+
+    static char path[PATH_MAX];
+    const struct passwd *pw = getpwuid(getuid());
+    snprintf(path, sizeof(path), "%s/.cache", pw->pw_dir);
+    return path;
 }

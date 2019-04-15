@@ -19,4 +19,5 @@ struct application {
     char *title;
     char *comment;
     struct icon icon;
+    unsigned count;
 };

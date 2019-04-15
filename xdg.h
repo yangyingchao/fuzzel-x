@@ -9,4 +9,6 @@ typedef tll(struct application) application_list_t;
 xdg_data_dirs_t xdg_data_dirs(void);
 void xdg_data_dirs_destroy(xdg_data_dirs_t dirs);
 
+const char *xdg_cache_dir(void);
+
 void xdg_find_programs(int icon_size, application_list_t *applications);

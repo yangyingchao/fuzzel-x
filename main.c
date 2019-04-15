@@ -14,6 +14,7 @@
 #include <sys/mman.h>
 #include <sys/wait.h>
 #include <sys/eventfd.h>
+#include <sys/stat.h>
 #include <dirent.h>
 #include <fcntl.h>
 
@@ -78,7 +79,7 @@ struct wayland {
 };
 
 struct context {
-    volatile bool keep_running;
+    volatile enum { KEEP_RUNNING, EXIT_UPDATE_CACHE, EXIT} status;
     struct wayland wl;
     struct render *render;
 
@@ -226,7 +227,7 @@ keyboard_leave(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
                struct wl_surface *surface)
 {
     struct context *c = data;
-    c->keep_running = false;
+    c->status = EXIT;
 }
 
 static size_t
@@ -437,7 +438,7 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
 
     else if ((sym == XKB_KEY_Escape && effective_mods == 0) ||
              (sym == XKB_KEY_g && effective_mods == ctrl)) {
-        c->keep_running = false;
+        c->status = EXIT;
     }
 
     else if ((sym == XKB_KEY_p && effective_mods == ctrl) ||
@@ -536,14 +537,13 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
     }
 
     else if (sym == XKB_KEY_Return && effective_mods == 0) {
-        c->keep_running = false;
+        c->status = EXIT;
 
-        const char *execute = c->match_count > 0
-            ? c->matches[c->selected].application->exec
-            : c->prompt.text;
-        const char *path = c->match_count > 0
-            ? c->matches[c->selected].application->path
+        struct application *match = c->match_count > 0
+            ? c->matches[c->selected].application
             : NULL;
+        const char *execute = match != NULL ? match->exec : c->prompt.text;
+        const char *path = match != NULL ? match->path : NULL;
 
         LOG_DBG("exec(%s)", execute);
 
@@ -627,8 +627,13 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
                 LOG_ERRNO("failed to read from pipe");
             else if (ret == sizeof(_errno))
                 LOG_ERRNO_P("%s: failed to execute", _errno, execute);
-            else
+            else {
                 LOG_DBG("%s: fork+exec succeeded", execute);
+                if (match != NULL) {
+                    c->status = EXIT_UPDATE_CACHE;
+                    match->count++;
+                }
+            }
 
             close(pipe_fds[0]);
         }
@@ -892,6 +897,14 @@ static const struct zwlr_layer_surface_v1_listener layer_surface_listener = {
     .configure = layer_surface_configure,
 };
 
+static int
+sort_by_count(const void *_a, const void *_b)
+{
+    const struct match *a = _a;
+    const struct match *b = _b;
+    return b->application->count - a->application->count;
+}
+
 static void
 update_matches(struct context *c)
 {
@@ -902,11 +915,15 @@ update_matches(struct context *c)
         tll_foreach(c->applications, it) {
             c->matches[i++] = (struct match){
                 .application = &it->item, .start_title = -1, .start_comment = -1};
-            if (i >= max_matches)
-                break;
         }
 
+        /* Sort */
         c->match_count = i;
+        qsort(c->matches, c->match_count, sizeof(c->matches[0]), &sort_by_count);
+
+        /* Limit count (don't render outside window) */
+        if (i > max_matches)
+            c->match_count = max_matches;
 
         if (c->selected >= c->match_count && c->selected > 0)
             c->selected = c->match_count - 1;
@@ -935,11 +952,15 @@ update_matches(struct context *c)
             .application = &it->item,
             .start_title = start_title,
             .start_comment = start_comment};
-
-        if (i >= max_matches)
-            break;
     }
+
+    /* Sort */
     c->match_count = i;
+    qsort(c->matches, c->match_count, sizeof(c->matches[0]), &sort_by_count);
+
+    /* Limit count (don't render outside window) */
+    if (i > max_matches)
+        c->match_count = max_matches;
 
     if (c->selected >= c->match_count && c->selected > 0)
         c->selected = c->match_count - 1;
@@ -1023,6 +1044,109 @@ hex_to_rgba(uint32_t color)
         .b = (double)((color >>  8) & 0xff) / 255.0,
         .a = (double)((color >>  0) & 0xff) / 255.0,
     };
+}
+
+static void
+read_cache(application_list_t *apps)
+{
+    const char *path = xdg_cache_dir();
+    if (path == NULL) {
+        LOG_WARN("failed to get cache directory: not saving popularity cache");
+        return;
+    }
+
+    int cache_dir_fd = open(path, O_DIRECTORY);
+    if (cache_dir_fd == -1) {
+        LOG_ERRNO("%s: failed to open", path);
+        return;
+    }
+
+    int fd = openat(cache_dir_fd, "f00sel", O_RDONLY);
+    close(cache_dir_fd);
+
+    if (fd == -1) {
+        LOG_ERRNO("%s/f00sel: failed to open", path);
+        return;
+    }
+
+    FILE *s = fdopen(fd, "r");
+    //close(fd);
+    assert(s != NULL);
+
+    errno = 0;
+    while (true) {
+        char *line = NULL;
+        size_t len = 0;
+        ssize_t res = getline(&line, &len, s);
+        if (res == -1) {
+            free(line);
+            if (errno != 0)
+                LOG_ERRNO("%s/f00sel: failed to read", path);
+            break;
+        }
+
+        LOG_INFO("%s", line);
+
+        char *title = NULL;
+        int count;
+        if (sscanf(line, "%m[^|]|%u", &title, &count) != 2) {
+            free(title);
+            free(line);
+            continue;
+        }
+
+        /* TODO: this is slow */
+        tll_foreach(*apps, it) {
+            if (strcmp(it->item.title, title) == 0) {
+                it->item.count = count;
+                break;
+            }
+        }
+
+        free(title);
+        free(line);
+    }
+
+    fclose(s);
+}
+
+static void
+write_cache(const application_list_t *apps)
+{
+    const char *path = xdg_cache_dir();
+    if (path == NULL) {
+        LOG_WARN("failed to get cache directory: not saving popularity cache");
+        return;
+    }
+
+    int cache_dir_fd = open(path, O_DIRECTORY);
+    if (cache_dir_fd == -1) {
+        LOG_ERRNO("%s: failed to open", path);
+        return;
+    }
+
+    int fd = openat(cache_dir_fd, "f00sel", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    close(cache_dir_fd);
+
+    if (fd == -1) {
+        LOG_ERRNO("%s/f00sel: failed to open", path);
+        return;
+    }
+
+    tll_foreach(*apps, it) {
+        if (it->item.count == 0)
+            continue;
+
+        char count_as_str[11];
+        sprintf(count_as_str, "%u", it->item.count);
+
+        write(fd, it->item.title, strlen(it->item.title));
+        write(fd, "|", 1);
+        write(fd, count_as_str, strlen(count_as_str));
+        write(fd, "\n", 1);
+    }
+
+    close(fd);
 }
 
 static void
@@ -1174,7 +1298,7 @@ main(int argc, char *const *argv)
     }
 
     struct context c = {
-        .keep_running = true,
+        .status = KEEP_RUNNING,
         .wl = {0},
         .prompt = {
             .text = calloc(1, 1),
@@ -1207,6 +1331,7 @@ main(int argc, char *const *argv)
 
     xdg_find_programs(fextents.height, &c.applications);
     c.matches = malloc(tll_length(c.applications) * sizeof(c.matches[0]));
+    read_cache(&c.applications);
 
     c.wl.display = wl_display_connect(NULL);
     if (c.wl.display == NULL) {
@@ -1338,7 +1463,7 @@ main(int argc, char *const *argv)
     wl_display_dispatch_pending(c.wl.display);
     wl_display_flush(c.wl.display);
 
-    while (c.keep_running) {
+    while (c.status == KEEP_RUNNING) {
         struct pollfd fds[] = {
             {.fd = wl_display_get_fd(c.wl.display), .events = POLLIN},
             {.fd = c.repeat.pipe_read_fd, .events = POLLIN},
@@ -1364,6 +1489,8 @@ main(int argc, char *const *argv)
         if (fds[0].revents & POLLIN)
             wl_display_dispatch(c.wl.display);
     }
+
+    write_cache(&c.applications);
 
     ret = EXIT_SUCCESS;
 
