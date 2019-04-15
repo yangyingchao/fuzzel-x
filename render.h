@@ -14,6 +14,7 @@ struct options {
     int x_margin;
     int y_margin;
     int border_size;
+    int border_radius;
 
     struct rgba background_color;
     struct rgba border_color;

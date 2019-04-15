@@ -16,9 +16,6 @@ struct render {
 void
 render_background(const struct render *render, struct buffer *buf)
 {
-    const double from_degree = M_PI / 180;
-    const double radius = 10;
-
     /*
      * Lines in cairo are *between* pixels.
      *
@@ -32,34 +29,36 @@ render_background(const struct render *render, struct buffer *buf)
     const double w = render->options.width - 2 * b;
     const double h = render->options.height - 2 * b;
 
-    /* Path describing an arc:ed rectangle */
-    cairo_arc(buf->cairo, b + w - radius, b + h - radius, radius,
-              0.0 * from_degree, 90.0 * from_degree);
-    cairo_arc(buf->cairo, b + radius, b + h - radius, radius,
-              90.0 * from_degree, 180.0 * from_degree);
-    cairo_arc(buf->cairo, b + radius, b + radius, radius,
-              180.0 * from_degree, 270.0 * from_degree);
-    cairo_arc(buf->cairo, b + w - radius, b + radius, radius,
-              270.0 * from_degree, 360.0 * from_degree);
-    cairo_close_path(buf->cairo);
+    if (render->options.border_radius == 0) {
+        cairo_rectangle(buf->cairo, b, b, w, h);
+    } else {
+        const double from_degree = M_PI / 180;
+        const double radius = render->options.border_radius;
 
-    {
-        const struct rgba *bc = &render->options.border_color;
 
-        /* Border */
-        cairo_set_operator(buf->cairo, CAIRO_OPERATOR_SOURCE);
-        cairo_set_line_width(buf->cairo, 2 * b);
-        cairo_set_source_rgba(buf->cairo, bc->r, bc->g, bc->b, bc->a);
-        cairo_stroke_preserve(buf->cairo);
+        /* Path describing an arc:ed rectangle */
+        cairo_arc(buf->cairo, b + w - radius, b + h - radius, radius,
+                  0.0 * from_degree, 90.0 * from_degree);
+        cairo_arc(buf->cairo, b + radius, b + h - radius, radius,
+                  90.0 * from_degree, 180.0 * from_degree);
+        cairo_arc(buf->cairo, b + radius, b + radius, radius,
+                  180.0 * from_degree, 270.0 * from_degree);
+        cairo_arc(buf->cairo, b + w - radius, b + radius, radius,
+                  270.0 * from_degree, 360.0 * from_degree);
+        cairo_close_path(buf->cairo);
     }
 
-    {
-        const struct rgba *bg = &render->options.background_color;
+    /* Border */
+    const struct rgba *bc = &render->options.border_color;
+    cairo_set_operator(buf->cairo, CAIRO_OPERATOR_SOURCE);
+    cairo_set_line_width(buf->cairo, 2 * b);
+    cairo_set_source_rgba(buf->cairo, bc->r, bc->g, bc->b, bc->a);
+    cairo_stroke_preserve(buf->cairo);
 
-        /* Background */
-        cairo_set_source_rgba(buf->cairo, bg->r, bg->g, bg->b, bg->a);
-        cairo_fill(buf->cairo);
-    }
+    /* Background */
+    const struct rgba *bg = &render->options.background_color;
+    cairo_set_source_rgba(buf->cairo, bg->r, bg->g, bg->b, bg->a);
+    cairo_fill(buf->cairo);
 }
 
 void

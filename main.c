@@ -1056,6 +1056,7 @@ main(int argc, char *const *argv)
         {"match-color",      required_argument, 0, 'm'},
         {"selection-color",  required_argument, 0, 's'},
         {"border-width",     required_argument, 0, 'B'},
+        {"border-radius",    required_argument, 0, 'r'},
         {"border-color",     required_argument, 0, 'C'},
         {"help",             no_argument,       0, 'h'},
         {NULL,               no_argument,       0, 0},
@@ -1069,6 +1070,7 @@ main(int argc, char *const *argv)
     const int x_margin = 20;
     const int y_margin = 4;
     int border_width = 1;
+    int border_radius = 10;
     uint32_t text_color = 0xffffffff;
     uint32_t match_color = 0xcc9393ff;
     uint32_t background = 0x000000ff;
@@ -1076,7 +1078,7 @@ main(int argc, char *const *argv)
     uint32_t border_color = 0xffffffff;
 
     while (true) {
-        int c = getopt_long(argc, argv, ":o:f:g:b:t:m:s:B:C:h", longopts, NULL);
+        int c = getopt_long(argc, argv, ":o:f:g:b:t:m:s:B:r:C:h", longopts, NULL);
         if (c == -1)
             break;
 
@@ -1128,6 +1130,13 @@ main(int argc, char *const *argv)
             if (sscanf(optarg, "%d", &border_width) != 1) {
                 LOG_ERR(
                     "%s: invalid border width (must be an integer)", optarg);
+                return EXIT_FAILURE;
+            }
+            break;
+
+        case 'r':
+            if (sscanf(optarg, "%d", &border_radius) != 1) {
+                LOG_ERR("%s: invalid border radius (must be an integer)", optarg);
                 return EXIT_FAILURE;
             }
             break;
@@ -1313,6 +1322,7 @@ main(int argc, char *const *argv)
         .x_margin = x_margin,
         .y_margin = y_margin,
         .border_size = border_width,
+        .border_radius = border_radius,
         .background_color = hex_to_rgba(background),
         .border_color = hex_to_rgba(border_color),
         .text_color = hex_to_rgba(text_color),
