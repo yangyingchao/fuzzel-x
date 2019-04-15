@@ -957,10 +957,9 @@ commit_buffer(struct context *c, struct buffer *buf)
 {
     assert(buf->busy);
 
-    const int scale = c->wl.monitor->scale;
-    wl_surface_set_buffer_scale(c->wl.surface, scale);
+    wl_surface_set_buffer_scale(c->wl.surface, c->wl.monitor->scale);
     wl_surface_attach(c->wl.surface, buf->wl_buf, 0, 0);
-    wl_surface_damage(c->wl.surface, 0, 0, scale * buf->width, scale * buf->height);
+    wl_surface_damage(c->wl.surface, 0, 0, buf->width, buf->height);
 
     struct wl_callback *cb = wl_surface_frame(c->wl.surface);
     wl_callback_add_listener(cb, &frame_listener, c);
@@ -987,10 +986,8 @@ static void
 refresh(struct context *c)
 {
     LOG_DBG("refresh");
-    const int scale = c->wl.monitor->scale;
 
-    struct buffer *buf = shm_get_buffer(
-        c->wl.shm, scale * c->width, scale * c->height);
+    struct buffer *buf = shm_get_buffer(c->wl.shm, c->width, c->height);
 
     /* Background + border */
     render_background(c->render, buf);
@@ -1178,8 +1175,6 @@ main(int argc, char *const *argv)
             .pipe_write_fd = repeat_pipe_fds[1],
             .cmd = REPEAT_STOP,
         },
-        .width = width,
-        .height = height,
     };
 
     mtx_init(&c.repeat.mutex, mtx_plain);
@@ -1290,7 +1285,15 @@ main(int argc, char *const *argv)
         goto out;
     }
 
-    zwlr_layer_surface_v1_set_size(c.wl.layer_surface, width, height);
+    const int scale = c.wl.monitor->scale;
+
+    width /= scale; width *= scale;
+    height /= scale; height *= scale;
+
+    c.width = width;
+    c.height = height;
+
+    zwlr_layer_surface_v1_set_size(c.wl.layer_surface, width / scale, height / scale);
     zwlr_layer_surface_v1_set_keyboard_interactivity(c.wl.layer_surface, 1);
 
     zwlr_layer_surface_v1_add_listener(
@@ -1300,18 +1303,16 @@ main(int argc, char *const *argv)
     wl_surface_commit(c.wl.surface);
     wl_display_roundtrip(c.wl.display);
 
-    const int scale = c.wl.monitor->scale;
-    const double line_height = scale * 2 * y_margin + fextents.height;
-    max_matches = (scale * height - scale * 2 * border_width - line_height) /
-        line_height;
+    const double line_height = 2 * y_margin + fextents.height;
+    max_matches = (height - 2 * border_width - line_height) / line_height;
     LOG_DBG("max matches: %d", max_matches);
 
     struct options options = {
-        .width = scale * c.width,
-        .height = scale * c.height,
-        .x_margin = scale * x_margin,
-        .y_margin = scale * y_margin,
-        .border_size = scale * border_width,
+        .width = c.width,
+        .height = c.height,
+        .x_margin = x_margin,
+        .y_margin = y_margin,
+        .border_size = border_width,
         .background_color = hex_to_rgba(background),
         .border_color = hex_to_rgba(border_color),
         .text_color = hex_to_rgba(text_color),
