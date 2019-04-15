@@ -1031,16 +1031,16 @@ print_usage(const char *prog_name)
     printf("Usage: %s [OPTION]...\n", prog_name);
     printf("\n");
     printf("Options:\n");
-    printf("  -o,--output=OUTPUT         output (monitor) to display on\n"
-           "  -f,--font=FONT             font name (fontconfig format)\n"
-           "  -g,--geometry=WxH          window WIDTHxHEIGHT (in pixels)\n"
-           "  -b,--background-color=HEX  background color\n"
-           "  -t,--text-color=HEX        text color\n"
-           "  -m,--match-color=HEX       color of matched substring\n"
-           "  -s,--selection-color=HEX   background color of selected item\n"
-           "  -B,--border-width=INT      width of border (in pixels)\n"
-           "  -r,--border-radius=INT     amount of corner \"roundness\"\n"
-           "  -C,--border-color=HEX      border color\n");
+    printf("  -o,--output=OUTPUT         output (monitor) to display on (none)\n"
+           "  -f,--font=FONT             font name and style in fontconfig format (monospace)\n"
+           "  -g,--geometry=WxH          window WIDTHxHEIGHT, in pixels (500x300)\n"
+           "  -b,--background-color=HEX  background color (000000ff)\n"
+           "  -t,--text-color=HEX        text color (ffffffff)\n"
+           "  -m,--match-color=HEX       color of matched substring (cc9393ff)\n"
+           "  -s,--selection-color=HEX   background color of selected item (333333ff)\n"
+           "  -B,--border-width=INT      width of border, in pixels (1)\n"
+           "  -r,--border-radius=INT     amount of corner \"roundness\" (10)\n"
+           "  -C,--border-color=HEX      border color (ffffffff)\n");
     printf("\n");
     printf("Colors must be specified as a 32-bit hexadecimal RGBA quadruple.\n");
 }
