@@ -19,6 +19,8 @@
 #include "log.h"
 #include "icon.h"
 
+typedef tll(struct application) application_llist_t;
+
 static struct icon
 icon_null(void)
 {
@@ -142,7 +144,7 @@ load_icon(const char *name, int icon_size, icon_theme_list_t themes)
 
 static void
 parse_desktop_file(int fd, icon_theme_list_t themes, int icon_size,
-                   application_list_t *applications)
+                   application_llist_t *applications)
 {
     FILE *f = fdopen(fd, "r");
     if (f == NULL)
@@ -255,7 +257,7 @@ parse_desktop_file(int fd, icon_theme_list_t themes, int icon_size,
 
 static void
 scan_dir(int base_fd, icon_theme_list_t themes, int icon_size,
-         application_list_t *applications)
+         application_llist_t *applications)
 {
     DIR *d = fdopendir(base_fd);
     if (d == NULL) {
@@ -308,13 +310,15 @@ scan_dir(int base_fd, icon_theme_list_t themes, int icon_size,
 }
 
 void
-xdg_find_programs(int icon_size, application_list_t *applications)
+xdg_find_programs(int icon_size, struct application_list *applications)
 {
     icon_theme_list_t themes = icon_load_theme("Arc");
     if (tll_length(themes) > 0)
         LOG_INFO("theme: %s", tll_front(themes).path);
     else
         LOG_WARN("%s: icon theme not found", "Arc");
+
+    application_llist_t apps = tll_init();
 
     xdg_data_dirs_t dirs = xdg_data_dirs();
     tll_foreach(dirs, it) {
@@ -323,10 +327,20 @@ xdg_find_programs(int icon_size, application_list_t *applications)
 
         int fd = open(path, O_RDONLY);
         if (fd != -1) {
-            scan_dir(fd, themes, icon_size, applications);
+            scan_dir(fd, themes, icon_size, &apps);
             close(fd);
         }
     }
+
+    applications->count = tll_length(apps);
+    applications->v = malloc(tll_length(apps) * sizeof(applications->v[0]));
+
+    size_t i = 0;
+    tll_foreach(apps, it) {
+        applications->v[i++] = it->item;
+        tll_remove(apps, it);
+    }
+    tll_free(apps);
 
     xdg_data_dirs_destroy(dirs);
     icon_themes_destroy(themes);

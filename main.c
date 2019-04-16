@@ -84,7 +84,7 @@ struct context {
     struct render *render;
 
     struct prompt prompt;
-    application_list_t applications;
+    struct application_list applications;
 
     struct match *matches;
     size_t match_count;
@@ -911,18 +911,19 @@ update_matches(struct context *c)
     /* Nothing entered; all programs found matches */
     if (strlen(c->prompt.text) == 0) {
 
-        size_t i = 0;
-        tll_foreach(c->applications, it) {
-            c->matches[i++] = (struct match){
-                .application = &it->item, .start_title = -1, .start_comment = -1};
+        for (size_t i = 0; i < c->applications.count; i++) {
+            c->matches[i] = (struct match){
+                .application = &c->applications.v[i],
+                .start_title = -1,
+                .start_comment = -1};
         }
 
         /* Sort */
-        c->match_count = i;
+        c->match_count = c->applications.count;
         qsort(c->matches, c->match_count, sizeof(c->matches[0]), &sort_by_count);
 
         /* Limit count (don't render outside window) */
-        if (i > max_matches)
+        if (c->match_count > max_matches)
             c->match_count = max_matches;
 
         if (c->selected >= c->match_count && c->selected > 0)
@@ -930,36 +931,36 @@ update_matches(struct context *c)
         return;
     }
 
-    size_t i = 0;
-    tll_foreach(c->applications, it) {
+    c->match_count = 0;
+    for (size_t i = 0; i < c->applications.count; i++) {
+        struct application *app = &c->applications.v[i];
         size_t start_title = -1;
         size_t start_comment = -1;
 
-        const char *m = strcasestr(it->item.title, c->prompt.text);
+        const char *m = strcasestr(app->title, c->prompt.text);
         if (m != NULL)
-            start_title = m - it->item.title;
+            start_title = m - app->title;
 
-        if (it->item.comment != NULL) {
-            m = strcasestr(it->item.comment, c->prompt.text);
+        if (app->comment != NULL) {
+            m = strcasestr(app->comment, c->prompt.text);
             if (m != NULL)
-                start_comment = m - it->item.comment;
+                start_comment = m - app->comment;
         }
 
         if (start_title == -1 && start_comment == -1)
             continue;
 
-        c->matches[i++] = (struct match){
-            .application = &it->item,
+        c->matches[c->match_count++] = (struct match){
+            .application = app,
             .start_title = start_title,
             .start_comment = start_comment};
     }
 
     /* Sort */
-    c->match_count = i;
     qsort(c->matches, c->match_count, sizeof(c->matches[0]), &sort_by_count);
 
     /* Limit count (don't render outside window) */
-    if (i > max_matches)
+    if (c->match_count > max_matches)
         c->match_count = max_matches;
 
     if (c->selected >= c->match_count && c->selected > 0)
@@ -1047,7 +1048,7 @@ hex_to_rgba(uint32_t color)
 }
 
 static void
-read_cache(application_list_t *apps)
+read_cache(struct application_list *apps)
 {
     const char *path = xdg_cache_dir();
     if (path == NULL) {
@@ -1096,9 +1097,9 @@ read_cache(application_list_t *apps)
         }
 
         /* TODO: this is slow */
-        tll_foreach(*apps, it) {
-            if (strcmp(it->item.title, title) == 0) {
-                it->item.count = count;
+        for (size_t i = 0; i < apps->count; i++) {
+            if (strcmp(apps->v[i].title, title) == 0) {
+                apps->v[i].count = count;
                 break;
             }
         }
@@ -1111,7 +1112,7 @@ read_cache(application_list_t *apps)
 }
 
 static void
-write_cache(const application_list_t *apps)
+write_cache(const struct application_list *apps)
 {
     const char *path = xdg_cache_dir();
     if (path == NULL) {
@@ -1133,14 +1134,14 @@ write_cache(const application_list_t *apps)
         return;
     }
 
-    tll_foreach(*apps, it) {
-        if (it->item.count == 0)
+    for (size_t i = 0; i < apps->count; i++) {
+        if (apps->v[i].count == 0)
             continue;
 
         char count_as_str[11];
-        sprintf(count_as_str, "%u", it->item.count);
+        sprintf(count_as_str, "%u", apps->v[i].count);
 
-        write(fd, it->item.title, strlen(it->item.title));
+        write(fd, apps->v[i].title, strlen(apps->v[i].title));
         write(fd, "|", 1);
         write(fd, count_as_str, strlen(count_as_str));
         write(fd, "\n", 1);
@@ -1330,7 +1331,7 @@ main(int argc, char *const *argv)
             fextents.height, fextents.ascent, fextents.descent);
 
     xdg_find_programs(fextents.height, &c.applications);
-    c.matches = malloc(tll_length(c.applications) * sizeof(c.matches[0]));
+    c.matches = malloc(c.applications.count * sizeof(c.matches[0]));
     read_cache(&c.applications);
 
     c.wl.display = wl_display_connect(NULL);
@@ -1505,18 +1506,19 @@ out:
     shm_fini();
 
     free(c.prompt.text);
-    tll_foreach(c.applications, it) {
-        free(it->item.path);
-        free(it->item.exec);
-        free(it->item.title);
-        free(it->item.comment);
-        if (it->item.icon.type == ICON_SURFACE)
-            cairo_surface_destroy(it->item.icon.surface);
-        else if (it->item.icon.type == ICON_SVG)
-            g_object_unref(it->item.icon.svg);
-        tll_remove(c.applications, it);
-    }
+    for (size_t i = 0; i < c.applications.count; i++) {
+        struct application *app = &c.applications.v[i];
 
+        free(app->path);
+        free(app->exec);
+        free(app->title);
+        free(app->comment);
+        if (app->icon.type == ICON_SURFACE)
+            cairo_surface_destroy(app->icon.surface);
+        else if (app->icon.type == ICON_SVG)
+            g_object_unref(app->icon.svg);
+    }
+    free(c.applications.v);
     free(c.matches);
 
     tll_foreach(c.wl.monitors, it) {

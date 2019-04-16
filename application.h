@@ -21,3 +21,8 @@ struct application {
     struct icon icon;
     unsigned count;
 };
+
+struct application_list {
+    struct application *v;
+    size_t count;
+};
