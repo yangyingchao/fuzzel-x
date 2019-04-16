@@ -1127,16 +1127,8 @@ read_cache(struct application_list *apps)
     munmap(text, st.st_size);
 }
 
-static int
-sort_application_by_title(const void *_a, const void *_b)
-{
-    const struct application *a = _a;
-    const struct application *b = _b;
-    return strcmp(a->title, b->title);
-}
-
 static void
-write_cache(struct application_list *apps)
+write_cache(const struct application_list *apps)
 {
     const char *path = xdg_cache_dir();
     if (path == NULL) {
@@ -1157,8 +1149,6 @@ write_cache(struct application_list *apps)
         LOG_ERRNO("%s/f00sel: failed to open", path);
         return;
     }
-
-    qsort(apps->v, apps->count, sizeof(apps->v[0]), &sort_application_by_title);
 
     for (size_t i = 0; i < apps->count; i++) {
         if (apps->v[i].count == 0)
