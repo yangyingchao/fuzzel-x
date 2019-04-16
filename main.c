@@ -1491,7 +1491,8 @@ main(int argc, char *const *argv)
             wl_display_dispatch(c.wl.display);
     }
 
-    write_cache(&c.applications);
+    if (c.status == EXIT_UPDATE_CACHE)
+        write_cache(&c.applications);
 
     ret = EXIT_SUCCESS;
 
