@@ -898,7 +898,7 @@ static const struct zwlr_layer_surface_v1_listener layer_surface_listener = {
 };
 
 static int
-sort_by_count(const void *_a, const void *_b)
+sort_match_by_count(const void *_a, const void *_b)
 {
     const struct match *a = _a;
     const struct match *b = _b;
@@ -920,7 +920,7 @@ update_matches(struct context *c)
 
         /* Sort */
         c->match_count = c->applications.count;
-        qsort(c->matches, c->match_count, sizeof(c->matches[0]), &sort_by_count);
+        qsort(c->matches, c->match_count, sizeof(c->matches[0]), &sort_match_by_count);
 
         /* Limit count (don't render outside window) */
         if (c->match_count > max_matches)
@@ -957,7 +957,7 @@ update_matches(struct context *c)
     }
 
     /* Sort */
-    qsort(c->matches, c->match_count, sizeof(c->matches[0]), &sort_by_count);
+    qsort(c->matches, c->match_count, sizeof(c->matches[0]), &sort_match_by_count);
 
     /* Limit count (don't render outside window) */
     if (c->match_count > max_matches)
