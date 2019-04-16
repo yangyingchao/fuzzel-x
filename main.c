@@ -1062,57 +1062,81 @@ read_cache(struct application_list *apps)
         return;
     }
 
-    int fd = openat(cache_dir_fd, "f00sel", O_RDONLY);
-    close(cache_dir_fd);
+    struct stat st;
+    int fd = -1;
 
-    if (fd == -1) {
+    if (fstatat(cache_dir_fd, "f00sel", &st, 0) == -1 ||
+        (fd = openat(cache_dir_fd, "f00sel", O_RDONLY)) == -1)
+    {
+        close(cache_dir_fd);
         LOG_ERRNO("%s/f00sel: failed to open", path);
         return;
     }
+    close(cache_dir_fd);
 
-    FILE *s = fdopen(fd, "r");
-    //close(fd);
-    assert(s != NULL);
+    char *text = mmap(
+        NULL, st.st_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+    close(fd);
 
-    errno = 0;
-    while (true) {
-        char *line = NULL;
-        size_t len = 0;
-        ssize_t res = getline(&line, &len, s);
-        if (res == -1) {
-            free(line);
-            if (errno != 0)
-                LOG_ERRNO("%s/f00sel: failed to read", path);
-            break;
-        }
+    if (text == MAP_FAILED) {
+        LOG_ERRNO("%s/f00sel: failed to mmap", path);
+        return;
+    }
 
-        LOG_INFO("%s", line);
+    struct cache_data {
+        const char *title;
+        unsigned count;
+    };
+    tll(struct cache_data) cache_data = tll_init();
 
-        char *title = NULL;
+    /* Loop lines */
+    char *lineptr = NULL;
+    for (char *line = strtok_r(text, "\n", &lineptr);
+         line != NULL;
+         line = strtok_r(NULL, "\n", &lineptr))
+    {
+        /* Parse each line ("<title>|<count>") */
+        char *ptr = NULL;
+        const char *title = strtok_r(line, "|", &ptr);
+        const char *count_str = strtok_r(NULL, "|", &ptr);
+
         int count;
-        if (sscanf(line, "%m[^|]|%u", &title, &count) != 2) {
-            free(title);
-            free(line);
-            continue;
-        }
+        sscanf(count_str, "%u", &count);
 
-        /* TODO: this is slow */
-        for (size_t i = 0; i < apps->count; i++) {
-            if (strcmp(apps->v[i].title, title) == 0) {
-                apps->v[i].count = count;
+        tll_push_back(
+            cache_data, ((struct cache_data){.title = title, .count = count}));
+    }
+
+    /* Set 'count' in our application list */
+    for (size_t i = 0; i < apps->count; i++) {
+        struct application *app = &apps->v[i];
+
+        /* Note: assumed to be sorted */
+        tll_foreach(cache_data, it) {
+            int cmp = strcmp(it->item.title, app->title);
+            if (cmp > 0)
+                break;
+            else if (cmp == 0) {
+                app->count = it->item.count;
                 break;
             }
         }
-
-        free(title);
-        free(line);
     }
 
-    fclose(s);
+    tll_free(cache_data);
+    munmap(text, st.st_size);
+}
+
+static int
+sort_application_by_title(const void *_a, const void *_b)
+{
+    const struct application *a = _a;
+    const struct application *b = _b;
+    return strcmp(a->title, b->title);
 }
 
 static void
-write_cache(const struct application_list *apps)
+write_cache(struct application_list *apps)
 {
     const char *path = xdg_cache_dir();
     if (path == NULL) {
