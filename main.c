@@ -1134,6 +1134,8 @@ write_cache(const struct application_list *apps)
         return;
     }
 
+    qsort(apps->v, apps->count, sizeof(apps->v[0]), &sort_application_by_title);
+
     for (size_t i = 0; i < apps->count; i++) {
         if (apps->v[i].count == 0)
             continue;
