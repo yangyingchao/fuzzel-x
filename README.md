@@ -15,6 +15,7 @@ _drun_ mode.
 - Rofi drun-like mode of operation
 - Emacs key bindings
 - Icons!
+- Remembers frequently launched applications
 
 
 ## Limitations:
