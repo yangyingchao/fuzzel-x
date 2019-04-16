@@ -309,6 +309,14 @@ scan_dir(int base_fd, icon_theme_list_t themes, int icon_size,
     closedir(d);
 }
 
+static int
+sort_application_by_title(const void *_a, const void *_b)
+{
+    const struct application *a = _a;
+    const struct application *b = _b;
+    return strcmp(a->title, b->title);
+}
+
 void
 xdg_find_programs(int icon_size, struct application_list *applications)
 {
@@ -341,6 +349,9 @@ xdg_find_programs(int icon_size, struct application_list *applications)
         tll_remove(apps, it);
     }
     tll_free(apps);
+
+    qsort(applications->v, applications->count, sizeof(applications->v[0]),
+          &sort_application_by_title);
 
     xdg_data_dirs_destroy(dirs);
     icon_themes_destroy(themes);
