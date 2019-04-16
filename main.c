@@ -1083,11 +1083,7 @@ read_cache(struct application_list *apps)
         return;
     }
 
-    struct cache_data {
-        const char *title;
-        unsigned count;
-    };
-    tll(struct cache_data) cache_data = tll_init();
+    size_t app_idx = 0;
 
     /* Loop lines */
     char *lineptr = NULL;
@@ -1103,27 +1099,18 @@ read_cache(struct application_list *apps)
         int count;
         sscanf(count_str, "%u", &count);
 
-        tll_push_back(
-            cache_data, ((struct cache_data){.title = title, .count = count}));
-    }
+        for (; app_idx < apps->count; app_idx++) {
+            int cmp = strcmp(apps->v[app_idx].title, title);
 
-    /* Set 'count' in our application list */
-    for (size_t i = 0; i < apps->count; i++) {
-        struct application *app = &apps->v[i];
-
-        /* Note: assumed to be sorted */
-        tll_foreach(cache_data, it) {
-            int cmp = strcmp(it->item.title, app->title);
-            if (cmp > 0)
+            if (cmp == 0) {
+                apps->v[app_idx].count = count;
+                app_idx++;
                 break;
-            else if (cmp == 0) {
-                app->count = it->item.count;
+            } else if (cmp > 0)
                 break;
-            }
         }
     }
 
-    tll_free(cache_data);
     munmap(text, st.st_size);
 }
 
