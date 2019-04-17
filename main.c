@@ -1305,6 +1305,7 @@ main(int argc, char *const *argv)
         .status = KEEP_RUNNING,
         .wl = {0},
         .prompt = {
+            .prompt = strdup("> "),
             .text = calloc(1, 1),
             .cursor = 0
         },
@@ -1509,6 +1510,7 @@ out:
     render_destroy(c.render);
     shm_fini();
 
+    free(c.prompt.prompt);
     free(c.prompt.text);
     for (size_t i = 0; i < c.applications.count; i++) {
         struct application *app = &c.applications.v[i];

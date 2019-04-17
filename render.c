@@ -74,7 +74,10 @@ render_prompt(const struct render *render, struct buffer *buf,
     cairo_font_extents_t fextents;
     cairo_font_extents(buf->cairo, &fextents);
 
-    const char *const text = prompt->text;
+    /* Text to render is the prompt followed by the entered text */
+    char text[strlen(prompt->prompt) + strlen(prompt->text) + 1];
+    strcpy(text, prompt->prompt);
+    strcat(text, prompt->text);
 
     cairo_glyph_t *glyphs = NULL;
     cairo_text_cluster_t *clusters = NULL;
@@ -112,7 +115,23 @@ render_prompt(const struct render *render, struct buffer *buf,
     size_t cursor = 0;
     size_t cursor_at_glyph = 0;
 
-    while (cursor < prompt->cursor) {
+    const size_t prompt_len = strlen(prompt->prompt);
+    const size_t text_len = strlen(prompt->text);
+
+    /* Count glyphs that make up the prompt */
+    for (size_t i = 0; i < prompt_len;) {
+        int clen = mblen(&prompt->prompt[i], MB_CUR_MAX);
+        if (clen < 0) {
+            LOG_ERRNO("prompt: %s", prompt->prompt);
+            break;
+        }
+
+        i += clen;
+        cursor_at_glyph++;
+    }
+
+    /* Count glyphs *before* the cursor */
+    while (cursor < prompt->cursor && cursor < text_len) {
         int clen = mblen(&prompt->text[cursor], MB_CUR_MAX);
         if (clen < 0) {
             LOG_ERRNO("prompt: %s", prompt->text);
