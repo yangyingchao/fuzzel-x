@@ -57,7 +57,7 @@ The font is specified in FontConfig syntax. That is, a colon-separated
 list of font name and font options.
 
 _Examples_:
-- Dina:weight=bold,slant=italic
+- Dina:weight=bold:slant=italic
 - Arial:size=12
 
 
