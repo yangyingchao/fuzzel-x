@@ -195,7 +195,7 @@ parse_desktop_file(int fd, icon_theme_list_t themes, int icon_size,
         }
 
         const char *key = strtok(line, "=");
-        char *value = strtok(NULL, "=");
+        char *value = strtok(NULL, "\n");
 
         if (key != NULL && value != NULL) {
             if (strcmp(key, "Name") == 0)
