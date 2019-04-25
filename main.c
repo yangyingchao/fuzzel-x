@@ -410,8 +410,9 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
     }
 #endif
 
-    LOG_DBG("mod=0x%08x, consumed=0x%08x, significant=0x%08x, effective=0x%08x",
-            mods, consumed, significant, effective_mods);
+    LOG_DBG("sym=%u, mod=0x%08x, consumed=0x%08x, significant=0x%08x, "
+            "effective=0x%08x",
+            sym, mods, consumed, significant, effective_mods);
 
     if (sym == XKB_KEY_Home || (sym == XKB_KEY_a && effective_mods == ctrl)) {
         c->prompt.cursor = 0;
@@ -461,9 +462,18 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
         if (c->selected + 1 < c->match_count) {
             c->selected++;
             refresh(c);
-        } else if (sym == XKB_KEY_Tab) {
-            /* Tab cycles */
+        } else {
             c->selected = 0;
+            refresh(c);
+        }
+    }
+
+    else if (sym == XKB_KEY_ISO_Left_Tab && effective_mods == 0) {
+        if (c->selected > 0) {
+            c->selected--;
+            refresh(c);
+        } else {
+            c->selected = c->match_count - 1;
             refresh(c);
         }
     }
