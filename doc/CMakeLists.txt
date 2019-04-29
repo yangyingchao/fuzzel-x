@@ -3,6 +3,13 @@ cmake_minimum_required(VERSION 3.13)
 find_program(SCDOC_EXECUTABLE scdoc)
 find_program(GZIP_EXECUTABLE gzip)
 
+if (SCDOC_EXECUTABLE STREQUAL "SCDOC_EXECUTABLE-NOTFOUND")
+  message(FATAL_ERROR "scdoc not found; required to build man pages")
+endif ()
+if (GZIP_EXECUTABLE STREQUAL "GZIP_EXECUTABLE-NOTFOUND")
+  message(FATAL_ERROR "gzip not found; required to build man pages")
+endif ()
+
 add_custom_command(
   OUTPUT f00sel.1.gz
   COMMENT "Generating man page f00sel.1.gz"
