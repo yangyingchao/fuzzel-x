@@ -3,7 +3,8 @@ project('f00sel', 'c',
         default_options: ['c_std=c11', 'warning_level=1', 'werror=true'])
 
 add_project_arguments(
-  ['-D_GNU_SOURCE'],
+  ['-D_GNU_SOURCE',
+   '-Wno-unused-result'],
   language: 'c',
 )
 
@@ -18,6 +19,8 @@ wayland_cursor = dependency('wayland-cursor')
 wlroots = dependency('wlroots')
 xkb = dependency('xkbcommon')
 
+wayland_protocols_datadir = wayland_protocols.get_pkgconfig_variable('pkgdatadir')
+
 wscanner = dependency('wayland-scanner', native: true)
 wscanner_prog = find_program(
   wscanner.get_pkgconfig_variable('wayland_scanner'), native: true)
@@ -31,6 +34,16 @@ wayland_protocol_source = generator(
   output: '@BASENAME@.c',
   arguments: ['private-code', '@INPUT@', '@OUTPUT@'])
 
+generated_wayland_protocols = []
+foreach prot : [
+  'external/wlr-protocols/unstable/wlr-layer-shell-unstable-v1.xml',
+  wayland_protocols_datadir + '/stable/xdg-shell/xdg-shell.xml',
+  wayland_protocols_datadir + '/unstable/xdg-output/xdg-output-unstable-v1.xml']
+
+  generated_wayland_protocols += [
+    wayland_protocol_header.process(prot),
+    wayland_protocol_source.process(prot)]
+endforeach
 
 executable(
   'f00sel',
@@ -42,18 +55,7 @@ executable(
   'log.c', 'log.h',
   'xdg.c', 'xdg.h',
   'tllist.h',
-  wayland_protocol_header.process(
-    'external/wlr-protocols/unstable/wlr-layer-shell-unstable-v1.xml',
-    '@0@/stable/xdg-shell/xdg-shell.xml'.format(
-      wayland_protocols.get_pkgconfig_variable('pkgdatadir')),
-    '@0@/unstable/xdg-output/xdg-output-unstable-v1.xml'.format(
-      wayland_protocols.get_pkgconfig_variable('pkgdatadir'))),
-  wayland_protocol_source.process(
-    'external/wlr-protocols/unstable/wlr-layer-shell-unstable-v1.xml',
-    '@0@/stable/xdg-shell/xdg-shell.xml'.format(
-      wayland_protocols.get_pkgconfig_variable('pkgdatadir')),
-    '@0@/unstable/xdg-output/xdg-output-unstable-v1.xml'.format(
-      wayland_protocols.get_pkgconfig_variable('pkgdatadir'))),
+  generated_wayland_protocols,
   dependencies: [threads,
                  cairo,
                  cairo_ft,
