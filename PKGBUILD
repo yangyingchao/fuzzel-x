@@ -17,7 +17,7 @@ pkgver() {
 }
 
 build() {
-  cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr ../
+  meson --prefix=/usr --buildtype=release ..
   ninja
 }
 
