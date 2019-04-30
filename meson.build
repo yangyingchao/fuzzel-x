@@ -62,4 +62,7 @@ executable(
                  wayland_client,
                  wayland_cursor,
                  wlroots,
-                 xkb])
+                 xkb],
+  install: true)
+
+subdir('doc')
