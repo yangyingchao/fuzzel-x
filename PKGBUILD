@@ -5,7 +5,7 @@ pkgdesc="Simplistic application launcher for wayland"
 arch=('x86_64')
 url=https://gitlab.com/dnkl/f00sel
 license=(mit)
-makedepends=('scdoc')
+makedepends=('meson' 'ninja' 'scdoc' 'gzip')
 depends=(
   'libxkbcommon'
   'wayland' 'wlroots'
