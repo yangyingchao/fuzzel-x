@@ -3,8 +3,7 @@ project('f00sel', 'c',
         default_options: ['c_std=c11', 'warning_level=1', 'werror=true'])
 
 add_project_arguments(
-  ['-D_GNU_SOURCE',
-   '-Wno-unused-result'],
+  ['-D_GNU_SOURCE'],
   language: 'c',
 )
 
