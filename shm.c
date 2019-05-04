@@ -68,7 +68,10 @@ shm_get_buffer(struct wl_shm *shm, int width, int height)
     /* Total size */
     const uint32_t stride = cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, width);
     size = stride * height;
-    ftruncate(pool_fd, size);
+    if (ftruncate(pool_fd, size) == -1) {
+        LOG_ERRNO("failed to truncate SHM pool");
+        goto err;
+    }
 
     mmapped = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, pool_fd, 0);
     if (mmapped == MAP_FAILED) {
