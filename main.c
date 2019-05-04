@@ -179,7 +179,14 @@ keyboard_repeater(void *arg)
             assert(ret == thrd_timedout);
             assert(c->repeat.cmd == REPEAT_START);
             LOG_DBG("repeater: repeat: %u", c->repeat.key);
-            write(c->repeat.pipe_write_fd, &c->repeat.key, sizeof(c->repeat.key));
+
+            if (write(c->repeat.pipe_write_fd, &c->repeat.key,
+                      sizeof(c->repeat.key)) != sizeof(c->repeat.key))
+            {
+                LOG_ERRNO("faile to write repeat key to repeat pipe");
+                mtx_unlock(&c->repeat.mutex);
+                return 0;
+            }
 
             delay = rate_delay;
         }
@@ -1154,10 +1161,17 @@ write_cache(const struct application_list *apps)
         char count_as_str[11];
         sprintf(count_as_str, "%u", apps->v[i].count);
 
-        write(fd, apps->v[i].title, strlen(apps->v[i].title));
-        write(fd, "|", 1);
-        write(fd, count_as_str, strlen(count_as_str));
-        write(fd, "\n", 1);
+        const size_t title_len = strlen(apps->v[i].title);
+        const size_t count_len = strlen(count_as_str);
+
+        if (write(fd, apps->v[i].title, title_len) != title_len ||
+            write(fd, "|", 1) != 1 ||
+            write(fd, count_as_str, count_len) != count_len ||
+            write(fd, "\n", 1) != 1)
+        {
+            LOG_ERRNO("failed to write cache");
+            break;
+        }
     }
 
     close(fd);
@@ -1494,7 +1508,10 @@ main(int argc, char *const *argv)
 
         if (fds[1].revents & POLLIN) {
             uint32_t key;
-            read(c.repeat.pipe_read_fd, &key, sizeof(key));
+            if (read(c.repeat.pipe_read_fd, &key, sizeof(key)) != sizeof(key)) {
+                LOG_ERRNO("failed to read repeat key from repeat pipe");
+                break;
+            }
 
             c.repeat.dont_re_repeat = true;
             keyboard_key(&c, NULL, 0, 0, key, XKB_KEY_DOWN);
