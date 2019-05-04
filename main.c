@@ -625,7 +625,7 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
 
         child_err:
             /* Signal error back to parent process */
-            write(pipe_fds[1], &errno, sizeof(errno));
+            (void)!write(pipe_fds[1], &errno, sizeof(errno));
             _exit(1);
         } else {
             /* Parent */
