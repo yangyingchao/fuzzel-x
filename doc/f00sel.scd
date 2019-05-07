@@ -51,6 +51,9 @@ options:
 *-C*,*--border-color*=_HEX_
 	The color of the border. See *COLORS*. Default: _ffffffff_.
 
+*-v*,*--version*
+	Show the version number and quit
+
 # FONT FORMAT
 
 The font is specified in FontConfig syntax. That is, a colon-separated

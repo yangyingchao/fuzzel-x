@@ -1,10 +1,33 @@
 project('f00sel', 'c',
+        version: '1.0.1',
         license: 'MIT',
-        version: '1.0.0',
         default_options: ['c_std=c11', 'warning_level=1', 'werror=true'])
 
+version = '"@0@"'.format(meson.project_version())
+
+sh = find_program('sh', native: true)
+git = find_program('git', required: false, native: true)
+
+if git.found()
+  commit_hash = run_command(
+    [sh.path(), '-c',
+     '@0@ --git-dir=$MESON_SOURCE_ROOT/.git describe --always --tags'.format(
+       git.path())])
+
+  branch = run_command(
+    [sh.path(), '-c',
+     '@0@ --git-dir=$MESON_SOURCE_ROOT/.git rev-parse --abbrev-ref HEAD'.format(
+       git.path())])
+
+  if commit_hash.returncode() == 0 and branch.returncode() == 0
+    version = '"@0@ (" __DATE__ ", branch \'@1@\')"'.format(
+      commit_hash.stdout().strip(), branch.stdout().strip())
+  endif
+endif
+
 add_project_arguments(
-  ['-D_GNU_SOURCE'],
+  ['-D_GNU_SOURCE',
+   '-DF00SEL_VERSION=@0@'.format(version)],
   language: 'c',
 )
 
@@ -36,7 +59,7 @@ wayland_protocol_source = generator(
 
 generated_wayland_protocols = []
 foreach prot : [
-  'external/wlr-protocols/unstable/wlr-layer-shell-unstable-v1.xml',
+  'external/wlr-layer-shell-unstable-v1.xml',
   wayland_protocols_datadir + '/stable/xdg-shell/xdg-shell.xml',
   wayland_protocols_datadir + '/unstable/xdg-output/xdg-output-unstable-v1.xml']
 
