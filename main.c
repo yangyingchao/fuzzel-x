@@ -1211,6 +1211,7 @@ main(int argc, char *const *argv)
         {"border-width",     required_argument, 0, 'B'},
         {"border-radius",    required_argument, 0, 'r'},
         {"border-color",     required_argument, 0, 'C'},
+        {"version",          no_argument,       0, 'v'},
         {"help",             no_argument,       0, 'h'},
         {NULL,               no_argument,       0, 0},
     };
@@ -1231,7 +1232,7 @@ main(int argc, char *const *argv)
     uint32_t border_color = 0xffffffff;
 
     while (true) {
-        int c = getopt_long(argc, argv, ":o:f:g:b:t:m:s:B:r:C:h", longopts, NULL);
+        int c = getopt_long(argc, argv, ":o:f:g:b:t:m:s:B:r:C:vh", longopts, NULL);
         if (c == -1)
             break;
 
@@ -1300,6 +1301,10 @@ main(int argc, char *const *argv)
                 return EXIT_FAILURE;
             }
             break;
+
+        case 'v':
+            printf("f00sel version %s\n", F00SEL_VERSION);
+            return EXIT_SUCCESS;
 
         case 'h':
             print_usage(argv[0]);
