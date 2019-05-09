@@ -1192,7 +1192,8 @@ print_usage(const char *prog_name)
            "  -s,--selection-color=HEX   background color of selected item (333333ff)\n"
            "  -B,--border-width=INT      width of border, in pixels (1)\n"
            "  -r,--border-radius=INT     amount of corner \"roundness\" (10)\n"
-           "  -C,--border-color=HEX      border color (ffffffff)\n");
+           "  -C,--border-color=HEX      border color (ffffffff)\n"
+           "  -v,--version               print f00sel version and quit\n");
     printf("\n");
     printf("Colors must be specified as a 32-bit hexadecimal RGBA quadruple.\n");
 }
