@@ -1,7 +1,12 @@
 project('f00sel', 'c',
         version: '1.0.2',
         license: 'MIT',
-        default_options: ['c_std=c11', 'warning_level=1', 'werror=true'])
+        meson_version: '>=0.0.0',
+        default_options: [
+          'c_std=c11',
+          'warning_level=1',
+          'werror=true',
+          'b_ndebug=if-release'])
 
 version = '"@0@"'.format(meson.project_version())
 
