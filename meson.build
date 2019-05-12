@@ -8,6 +8,8 @@ project('f00sel', 'c',
           'werror=true',
           'b_ndebug=if-release'])
 
+is_debug_build = get_option('buildtype').startswith('debug')
+
 version = '"@0@"'.format(meson.project_version())
 
 sh = find_program('sh', native: true)
@@ -32,7 +34,8 @@ endif
 
 add_project_arguments(
   ['-D_GNU_SOURCE',
-   '-DF00SEL_VERSION=@0@'.format(version)],
+   '-DF00SEL_VERSION=@0@'.format(version)] +
+  (is_debug_build ? ['-D_DEBUG'] : []),
   language: 'c',
 )
 
