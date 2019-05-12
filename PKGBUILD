@@ -18,7 +18,7 @@ pkgver() {
 }
 
 build() {
-  meson --prefix=/usr --buildtype=release ..
+  meson --prefix=/usr --buildtype=release -Db_lto=true ..
   ninja
 }
 
