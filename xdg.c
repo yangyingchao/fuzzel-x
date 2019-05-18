@@ -55,33 +55,16 @@ load_icon(const char *name, int icon_size, icon_theme_list_t themes)
 
     tll_foreach(themes, theme_it) {
         const struct icon_theme *theme = &theme_it->item;
-        LOG_DBG("looking for %s in %s", name, theme->path);
+        LOG_DBG("looking for %s in %s (wanted size: %d)", name, theme->path, icon_size);
 
         int min_diff = 10000;
 
         /* Assume sorted */
         for (size_t i = 0; i < 4; i++) {
             tll_foreach(theme->dirs, it) {
-                if (it->item.scale != 1)
-                    continue;
-
-                const int diff = abs(it->item.size - icon_size);
-                if (i == 0 && diff != 0){
-                    /* Looking for *exactly* our wanted size */
-                    if (diff < min_diff)
-                        min_diff = diff;
-                    continue;
-                } else if (i == 1 && diff != min_diff) {
-                    /* Try the one which matches most closely */
-                    continue;
-                } else if (i == 2 && (icon_size < it->item.min_size ||
-                                      icon_size > it->item.max_size))
-                {
-                    /* Find one whose scalable range we're in */
-                    continue;
-                } else {
-                    /* Use anyone available */
-                }
+                const int size = it->item.size * it->item.scale;
+                const int min_size = it->item.min_size * it->item.scale;
+                const int max_size = it->item.max_size * it->item.scale;
 
                 const size_t len = strlen(theme->path) + 1 +
                     strlen(it->item.path) + 1 +
@@ -89,6 +72,31 @@ load_icon(const char *name, int icon_size, icon_theme_list_t themes)
 
                 char *full_path = malloc(len);
                 sprintf(full_path, "%s/%s/%s.png", theme->path, it->item.path, name);
+                if (access(full_path, O_RDONLY) == -1) {
+                    free(full_path);
+                    continue;
+                }
+
+                const int diff = abs(size - icon_size);
+                if (i == 0 && diff != 0){
+                    /* Looking for *exactly* our wanted size */
+                    if (diff < min_diff)
+                        min_diff = diff;
+                    free(full_path);
+                    continue;
+                } else if (i == 1 && diff != min_diff) {
+                    /* Try the one which matches most closely */
+                    free(full_path);
+                    continue;
+                } else if (i == 2 && (icon_size < min_size ||
+                                      icon_size > max_size))
+                {
+                    /* Find one whose scalable range we're in */
+                    free(full_path);
+                    continue;
+                } else {
+                    /* Use anyone available */
+                }
 
                 cairo_surface_t *surf = cairo_image_surface_create_from_png(full_path);
 
@@ -99,8 +107,7 @@ load_icon(const char *name, int icon_size, icon_theme_list_t themes)
                         LOG_DBG("%s: %s: diff = %d", name, full_path, diff);
                     else if (i == 2)
                         LOG_DBG("%s: %s: range %d-%d",
-                                name, full_path,
-                                it->item.min_size, it->item.max_size);
+                                name, full_path, min_size, max_size);
                     else
                         LOG_DBG("%s: %s: nothing else matched", name, full_path);
 
