@@ -98,4 +98,5 @@ executable(
                  xkb],
   install: true)
 
+subdir('completions')
 subdir('doc')
