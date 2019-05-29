@@ -5,7 +5,7 @@ _arguments \
     '(-v --version)'{-v,--version}'[show the version number and quit]' \
     '(-h --help)'{-h,--help}'[show help message and quit]' \
     '(-o --output)'{-o,--output}'[output (monitor) to display on (none)]' \
-    '(-f --font)'{-f,--font}'[font name and style in fontconfig format (monospace)]' \
+    '(-f --font)'{-f,--font}'[font name and style in fontconfig format (monospace)]:font:->fonts' \
     '(-g --geometry)'{-g,--geometry}'[window WIDTHxHEIGHT, in pixels (500x300)]' \
     '(-b --background)'{-b,--background}'[background color (000000ff)]' \
     '(-t --text-color)'{-t,--text-color}'[text color (ffffffff)]' \
@@ -13,4 +13,10 @@ _arguments \
     '(-s --selection-color)'{-s,--selection-color}'[background color of selected item (333333ff)]' \
     '(-B --border-width)'{-B,--border-width}'[width of border, in pixels (1)]' \
     '(-r --border-radius)'{-r,--border-radius}'[amount of corner "roundness" (10)]' \
-    '(-C --border-color)'{-C,--border-color}'[border color (ffffffff)]' \
+    '(-C --border-color)'{-C,--border-color}'[border color (ffffffff)]'
+
+case "${state}" in
+    fonts)
+        _values 'font families' $(fc-list : family | tr -d ' ')
+        ;;
+esac
