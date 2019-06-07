@@ -20,10 +20,9 @@ typedef tll(char *) theme_names_t;
 static bool
 dir_is_usable(const char *path, const char *context, const char *type)
 {
-    return (path != NULL &&
-            context != NULL && strcasecmp(context, "applications") == 0 &&
-            type != NULL && strcasecmp(type, "scalable") != 0
-        );
+    return path != NULL &&
+        context != NULL &&
+        strcasecmp(context, "applications") == 0;
 }
 
 static void
@@ -70,7 +69,8 @@ parse_theme(FILE *index, struct icon_theme *theme, theme_names_t *themes_to_load
                     .size = size,
                     .min_size = min_size >= 0 ? min_size : size,
                     .max_size = max_size >= 0 ? max_size : size,
-                    .scale = scale
+                    .scale = scale,
+                    .scalable = strcasecmp(type, "scalable") == 0,
                 };
                 tll_push_back(theme->dirs, dir);
             } else

@@ -53,10 +53,10 @@ load_icon(const char *name, int icon_size, icon_theme_list_t themes)
         return icon_null();
     }
 
+    LOG_DBG("looking for %s (wanted size: %d)", name, icon_size);
+
     tll_foreach(themes, theme_it) {
         const struct icon_theme *theme = &theme_it->item;
-        LOG_DBG("looking for %s in %s (wanted size: %d)", name, theme->path, icon_size);
-
         int min_diff = 10000;
 
         /* Assume sorted */
@@ -65,20 +65,28 @@ load_icon(const char *name, int icon_size, icon_theme_list_t themes)
                 const int size = it->item.size * it->item.scale;
                 const int min_size = it->item.min_size * it->item.scale;
                 const int max_size = it->item.max_size * it->item.scale;
+                const bool scalable = it->item.scalable;
 
                 const size_t len = strlen(theme->path) + 1 +
                     strlen(it->item.path) + 1 +
                     strlen(name) + strlen(".png") + 1;
 
+                /* Check if a png/svg file exists at all */
                 char *full_path = malloc(len);
                 sprintf(full_path, "%s/%s/%s.png", theme->path, it->item.path, name);
                 if (access(full_path, O_RDONLY) == -1) {
-                    free(full_path);
-                    continue;
+                    /* Also check for svg variant */
+                    full_path[len - 4] = 's';
+                    full_path[len - 3] = 'v';
+                    full_path[len - 2] = 'g';
+                    if (access(full_path, O_RDONLY) == -1) {
+                        free(full_path);
+                        continue;
+                    }
                 }
 
-                const int diff = abs(size - icon_size);
-                if (i == 0 && diff != 0){
+                const int diff = scalable ? 0 : abs(size - icon_size);
+                if (i == 0 && diff != 0) {
                     /* Looking for *exactly* our wanted size */
                     if (diff < min_diff)
                         min_diff = diff;
@@ -98,10 +106,18 @@ load_icon(const char *name, int icon_size, icon_theme_list_t themes)
                     /* Use anyone available */
                 }
 
-                cairo_surface_t *surf = cairo_image_surface_create_from_png(full_path);
+                RsvgHandle *svg = rsvg_handle_new_from_file(full_path, NULL);
+                if (svg != NULL) {
+                    LOG_DBG("%s: %s scalable", name, full_path);
+                    free(full_path);
+                    return icon_from_svg(svg);
+                }
 
+                cairo_surface_t *surf = cairo_image_surface_create_from_png(full_path);
                 if (cairo_surface_status(surf) == CAIRO_STATUS_SUCCESS) {
-                    if (i == 0)
+                    if (scalable)
+                        LOG_DBG("%s: %s: scalable", name, full_path);
+                    else if (i == 0)
                         LOG_DBG("%s: %s: exact match", name, full_path);
                     else if (i == 1)
                         LOG_DBG("%s: %s: diff = %d", name, full_path, diff);
@@ -301,7 +317,7 @@ scan_dir(int base_fd, icon_theme_list_t themes, int icon_size,
             if (strcmp(&e->d_name[name_len - desktop_len], ".desktop") != 0)
                 continue;
 
-            LOG_DBG("%s", e->d_name);
+            //LOG_DBG("%s", e->d_name);
             int fd = openat(base_fd, e->d_name, O_RDONLY);
             if (fd == -1)
                 LOG_WARN("%s: failed to open", e->d_name);
