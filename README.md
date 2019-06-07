@@ -1,5 +1,8 @@
 # F00sel
 
+[![pipeline status](https://gitlab.com/dnkl/f00sel/badges/master/pipeline.svg)](https://gitlab.com/dnkl/f00sel/commits/master)
+[![coverage report](https://gitlab.com/dnkl/f00sel/badges/master/coverage.svg)](https://gitlab.com/dnkl/f00sel/commits/master)
+
 F00sel is a Wayland-native application launcher, similar to rofi's
 _drun_ mode.
 
