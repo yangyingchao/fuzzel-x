@@ -23,6 +23,9 @@ options:
 	Font and style to use, in fontconfig format. See *FONT FORMAT*.
 	Default: _monospace_.
 
+*-i*,*--icon-theme*=_NAME_
+	Icon theme name to use. Example: _Adwaita_. Default: _hicolor_.
+
 *-g*,*--geometry*=_WIDTHxHEIGHT_
 	The window width and height, in pixels. Default: _500x300_.
 

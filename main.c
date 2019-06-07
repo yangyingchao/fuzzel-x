@@ -1185,6 +1185,7 @@ print_usage(const char *prog_name)
     printf("Options:\n");
     printf("  -o,--output=OUTPUT         output (monitor) to display on (none)\n"
            "  -f,--font=FONT             font name and style in fontconfig format (monospace)\n"
+           "  -i,--icon-theme=NAME       icon theme name (\"hicolor\")\n"
            "  -g,--geometry=WxH          window WIDTHxHEIGHT, in pixels (500x300)\n"
            "  -b,--background-color=HEX  background color (000000ff)\n"
            "  -t,--text-color=HEX        text color (ffffffff)\n"
@@ -1204,6 +1205,7 @@ main(int argc, char *const *argv)
     static const struct option longopts[] = {
         {"output"  ,         required_argument, 0, 'o'},
         {"font",             required_argument, 0, 'f'},
+        {"icon-theme",       required_argument, 0, 'i'},
         {"geometry",         required_argument, 0, 'g'},
         {"background-color", required_argument, 0, 'b'},
         {"text-color",       required_argument, 0, 't'},
@@ -1219,6 +1221,7 @@ main(int argc, char *const *argv)
 
     const char *output_name = NULL;
     const char *font_name = "monospace";
+    const char *icon_theme = "hicolor";
 
     int width = 500;
     int height = 300;
@@ -1233,7 +1236,7 @@ main(int argc, char *const *argv)
     uint32_t border_color = 0xffffffff;
 
     while (true) {
-        int c = getopt_long(argc, argv, ":o:f:g:b:t:m:s:B:r:C:vh", longopts, NULL);
+        int c = getopt_long(argc, argv, ":o:f:i:g:b:t:m:s:B:r:C:vh", longopts, NULL);
         if (c == -1)
             break;
 
@@ -1244,6 +1247,10 @@ main(int argc, char *const *argv)
 
         case 'f':
             font_name = optarg;
+            break;
+
+        case 'i':
+            icon_theme = optarg;
             break;
 
         case 'g':
@@ -1364,7 +1371,7 @@ main(int argc, char *const *argv)
     LOG_DBG("height: %f, ascent: %f, descent: %f",
             fextents.height, fextents.ascent, fextents.descent);
 
-    xdg_find_programs("Arc", fextents.height, &c.applications);
+    xdg_find_programs(icon_theme, fextents.height, &c.applications);
     c.matches = malloc(c.applications.count * sizeof(c.matches[0]));
     read_cache(&c.applications);
 

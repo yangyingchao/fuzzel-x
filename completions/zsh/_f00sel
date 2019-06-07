@@ -6,6 +6,7 @@ _arguments \
     '(-h --help)'{-h,--help}'[show help message and quit]' \
     '(-o --output)'{-o,--output}'[output (monitor) to display on (none)]' \
     '(-f --font)'{-f,--font}'[font name and style in fontconfig format (monospace)]:font:->fonts' \
+    '(-i --icon-theme)'{-i,--icon-theme}'[icon theme name (hicolor)]:theme:->icon_theme' \
     '(-g --geometry)'{-g,--geometry}'[window WIDTHxHEIGHT, in pixels (500x300)]' \
     '(-b --background)'{-b,--background}'[background color (000000ff)]' \
     '(-t --text-color)'{-t,--text-color}'[text color (ffffffff)]' \
@@ -18,5 +19,9 @@ _arguments \
 case "${state}" in
     fonts)
         _values 'font families' $(fc-list : family | tr -d ' ')
+        ;;
+
+    icon_theme)
+        _values 'icon themes' $(cd /usr/share/icons; echo *)
         ;;
 esac
