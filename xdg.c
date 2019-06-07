@@ -341,13 +341,14 @@ sort_application_by_title(const void *_a, const void *_b)
 }
 
 void
-xdg_find_programs(int icon_size, struct application_list *applications)
+xdg_find_programs(const char *icon_theme, int icon_size,
+                  struct application_list *applications)
 {
-    icon_theme_list_t themes = icon_load_theme("Arc");
+    icon_theme_list_t themes = icon_load_theme(icon_theme);
     if (tll_length(themes) > 0)
         LOG_INFO("theme: %s", tll_front(themes).path);
     else
-        LOG_WARN("%s: icon theme not found", "Arc");
+        LOG_WARN("%s: icon theme not found", icon_theme);
 
     application_llist_t apps = tll_init();
 

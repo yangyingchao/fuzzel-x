@@ -11,4 +11,5 @@ void xdg_data_dirs_destroy(xdg_data_dirs_t dirs);
 
 const char *xdg_cache_dir(void);
 
-void xdg_find_programs(int icon_size, struct application_list *applications);
+void xdg_find_programs(
+    const char *icon_theme, int icon_size, struct application_list *applications);

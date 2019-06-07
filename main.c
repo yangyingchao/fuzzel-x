@@ -1364,7 +1364,7 @@ main(int argc, char *const *argv)
     LOG_DBG("height: %f, ascent: %f, descent: %f",
             fextents.height, fextents.ascent, fextents.descent);
 
-    xdg_find_programs(fextents.height, &c.applications);
+    xdg_find_programs("Arc", fextents.height, &c.applications);
     c.matches = malloc(c.applications.count * sizeof(c.matches[0]));
     read_cache(&c.applications);
 
