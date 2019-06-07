@@ -1,5 +1,5 @@
 pkgname=f00sel
-pkgver=1.0.2
+pkgver=1.1.0
 pkgrel=1
 pkgdesc="Simplistic application launcher for wayland"
 arch=('x86_64')
