@@ -1,5 +1,6 @@
 # F00sel
 
+[![builds.sr.ht status](https://builds.sr.ht/~dnkl/f00sel.svg)](https://builds.sr.ht/~dnkl/f00sel?)
 [![pipeline status](https://gitlab.com/dnkl/f00sel/badges/master/pipeline.svg)](https://gitlab.com/dnkl/f00sel/commits/master)
 [![coverage report](https://gitlab.com/dnkl/f00sel/badges/master/coverage.svg)](https://gitlab.com/dnkl/f00sel/commits/master)
 
