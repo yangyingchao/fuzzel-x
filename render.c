@@ -313,7 +313,7 @@ render_match_list(const struct render *render, struct buffer *buf,
             double scale = 1.0;
 
             if (height > row_height) {
-                scale = (row_height - 2 * y_margin) / height;
+                scale = fextents.height / height;
                 LOG_DBG("%s: scaling: %f (row-height: %f, size=%fx%f)",
                         match->application->title, scale, row_height, width, height);
 
@@ -342,7 +342,7 @@ render_match_list(const struct render *render, struct buffer *buf,
             RsvgDimensionData dim;
             rsvg_handle_get_dimensions(svg, &dim);
 
-            double height = row_height - 4;
+            double height = fextents.height;
             double scale = height / dim.height;
 
             cairo_save(buf->cairo);
