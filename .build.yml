@@ -1,0 +1,32 @@
+image: alpine/edge
+packages:
+  - musl-dev
+  - linux-headers
+  - meson
+  - ninja
+  - gcc
+  - scdoc
+  - libxkbcommon-dev
+  - cairo-dev
+  - yaml-dev
+  - librsvg-dev
+  - wayland-dev
+  - wayland-protocols
+  - wlroots-dev
+
+sources:
+  - https://git.sr.ht/~dnkl/f00sel
+
+triggers:
+  - action: email
+    condition: failure
+    to: daniel@ekloef.se
+
+tasks:
+  - setup: |
+      mkdir -p bld/debug bld/release
+      meson --buildtype=debug f00sel bld/debug
+      meson --buildtype=release f00sel bld/release
+  - build: |
+      ninja -C bld/debug -k0
+      ninja -C bld/release -k0
