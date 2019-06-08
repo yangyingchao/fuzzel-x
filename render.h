@@ -23,12 +23,6 @@ struct options {
     struct rgba selection_color;
 };
 
-struct prompt {
-    char *prompt;
-    char *text;
-    size_t cursor;
-};
-
 struct render;
 struct render *render_init(cairo_scaled_font_t *font, struct options options);
 void render_destroy(struct render *render);
