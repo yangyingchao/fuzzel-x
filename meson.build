@@ -85,6 +85,8 @@ executable(
   'shm.c', 'shm.h',
   'log.c', 'log.h',
   'xdg.c', 'xdg.h',
+  'application.c', 'application.h',
+  'prompt.h',
   'tllist.h',
   wl_proto_src + wl_proto_headers,
   dependencies: [threads,
