@@ -54,6 +54,11 @@ options:
 *-C*,*--border-color*=_HEX_
 	The color of the border. See *COLORS*. Default: _ffffffff_.
 
+*-d*,*--dmenu*
+	dmenu compatibility mode. In this mode, the list entries are read
+	from stdin (newline separated). The selected entry is printed to
+	stdout.
+
 *-v*,*--version*
 	Show the version number and quit
 

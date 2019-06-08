@@ -40,6 +40,7 @@
 #include "match.h"
 #include "xdg.h"
 #include "font.h"
+#include "dmenu.h"
 
 struct monitor {
     struct wl_output *output;
@@ -83,6 +84,7 @@ struct context {
     struct wayland wl;
     struct render *render;
 
+    bool dmenu_mode;
     struct prompt prompt;
     struct application_list applications;
 
@@ -481,10 +483,17 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
             ? c->matches[c->selected].application
             : NULL;
 
-        bool success = application_execute(match, &c->prompt);
-        if (success && match != NULL) {
-            c->status = EXIT_UPDATE_CACHE;
-            match->count++;
+        if (c->dmenu_mode) {
+            if (match == NULL) {
+                c->status = KEEP_RUNNING;
+            } else
+                dmenu_execute(match);
+        } else {
+            bool success = application_execute(match, &c->prompt);
+            if (success && match != NULL) {
+                c->status = EXIT_UPDATE_CACHE;
+                match->count++;
+            }
         }
     }
 
@@ -1026,6 +1035,7 @@ print_usage(const char *prog_name)
            "  -B,--border-width=INT      width of border, in pixels (1)\n"
            "  -r,--border-radius=INT     amount of corner \"roundness\" (10)\n"
            "  -C,--border-color=HEX      border color (ffffffff)\n"
+           "  -d,--dmenu                 dmenu compatibility mode\n"
            "  -v,--version               show the version number and quit\n");
     printf("\n");
     printf("Colors must be specified as a 32-bit hexadecimal RGBA quadruple.\n");
@@ -1046,6 +1056,7 @@ main(int argc, char *const *argv)
         {"border-width",     required_argument, 0, 'B'},
         {"border-radius",    required_argument, 0, 'r'},
         {"border-color",     required_argument, 0, 'C'},
+        {"dmenu",            no_argument,       0, 'd'},
         {"version",          no_argument,       0, 'v'},
         {"help",             no_argument,       0, 'h'},
         {NULL,               no_argument,       0, 0},
@@ -1066,9 +1077,10 @@ main(int argc, char *const *argv)
     uint32_t background = 0x000000ff;
     uint32_t selection_color = 0x333333ff;
     uint32_t border_color = 0xffffffff;
+    bool dmenu_mode = false;
 
     while (true) {
-        int c = getopt_long(argc, argv, ":o:f:i:g:b:t:m:s:B:r:C:vh", longopts, NULL);
+        int c = getopt_long(argc, argv, ":o:f:i:g:b:t:m:s:B:r:C:dvh", longopts, NULL);
         if (c == -1)
             break;
 
@@ -1142,6 +1154,10 @@ main(int argc, char *const *argv)
             }
             break;
 
+        case 'd':
+            dmenu_mode = true;
+            break;
+
         case 'v':
             printf("f00sel version %s\n", F00SEL_VERSION);
             return EXIT_SUCCESS;
@@ -1173,6 +1189,7 @@ main(int argc, char *const *argv)
     struct context c = {
         .status = KEEP_RUNNING,
         .wl = {0},
+        .dmenu_mode = dmenu_mode,
         .prompt = {
             .prompt = strdup("> "),
             .text = calloc(1, 1),
@@ -1203,7 +1220,10 @@ main(int argc, char *const *argv)
     LOG_DBG("height: %f, ascent: %f, descent: %f",
             fextents.height, fextents.ascent, fextents.descent);
 
-    xdg_find_programs(icon_theme, fextents.height, &c.applications);
+    if (dmenu_mode)
+        dmenu_load_entries(&c.applications);
+    else
+        xdg_find_programs(icon_theme, fextents.height, &c.applications);
     c.matches = malloc(c.applications.count * sizeof(c.matches[0]));
     read_cache(&c.applications);
 

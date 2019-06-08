@@ -14,7 +14,8 @@ _arguments \
     '(-s --selection-color)'{-s,--selection-color}'[background color of selected item (333333ff)]' \
     '(-B --border-width)'{-B,--border-width}'[width of border, in pixels (1)]' \
     '(-r --border-radius)'{-r,--border-radius}'[amount of corner "roundness" (10)]' \
-    '(-C --border-color)'{-C,--border-color}'[border color (ffffffff)]'
+    '(-C --border-color)'{-C,--border-color}'[border color (ffffffff)]' \
+    '(-d --dmenu)'{-d,--dmenu}'[dmenu compatibility mode; list entries are read from stdin]'
 
 case "${state}" in
     fonts)

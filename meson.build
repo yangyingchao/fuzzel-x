@@ -85,6 +85,7 @@ executable(
   'shm.c', 'shm.h',
   'log.c', 'log.h',
   'xdg.c', 'xdg.h',
+  'dmenu.c', 'dmenu.h',
   'application.c', 'application.h',
   'prompt.h',
   'tllist.h',
