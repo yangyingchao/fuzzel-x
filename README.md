@@ -25,4 +25,3 @@ _drun_ mode.
 ## Limitations:
 
 - No themes (but you **can** configure font and colors)
-- No custom selection lists
