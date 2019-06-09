@@ -17,6 +17,7 @@ _drun_ mode.
 
 - Wayland native
 - Rofi drun-like mode of operation
+- dmenu mode where newline separated entries are read from stdin
 - Emacs key bindings
 - Icons!
 - Remembers frequently launched applications
