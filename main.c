@@ -511,7 +511,7 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
         if (new_text == NULL)
             return;
 
-        memmove(&new_text[c->prompt.cursor + count],
+        memmove(&new_text[c->prompt.cursor + wlen],
                 &new_text[c->prompt.cursor],
                 (wcslen(new_text) - c->prompt.cursor + 1) * sizeof(wchar_t));
 
