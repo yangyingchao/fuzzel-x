@@ -277,11 +277,18 @@ prompt_prev_word(const struct prompt *prompt)
 static size_t
 prompt_next_word(const struct prompt *prompt)
 {
-    const wchar_t *space = wcschr(&prompt->text[prompt->cursor], L' ');
-    if (space == NULL)
-        return wcslen(prompt->text);
-    else
-        return space - prompt->text + 1;
+    const wchar_t *end = prompt->text + wcslen(prompt->text);
+    const wchar_t *space = &prompt->text[prompt->cursor];
+
+    /* Ignore initial non-spaces */
+    while (space < end && !iswspace(*space))
+        space++;
+
+    /* Skip spaces */
+    while (space < end && iswspace(*space))
+        space++;
+
+    return space - prompt->text;
 }
 
 static void
