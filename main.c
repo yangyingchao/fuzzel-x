@@ -1208,22 +1208,14 @@ main(int argc, char *const *argv)
     thrd_t keyboard_repeater_id;
     thrd_create(&keyboard_repeater_id, &keyboard_repeater, &c);
 
-    cairo_scaled_font_t *font = font_from_name(font_name);
-    cairo_surface_t *surf = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1, 1);
-    cairo_t *cr = cairo_create(surf);
-    cairo_font_extents_t fextents;
-    cairo_set_scaled_font(cr, font);
-    cairo_font_extents(cr, &fextents);
-    cairo_destroy(cr);
-    cairo_surface_destroy(surf);
-
-    LOG_DBG("height: %f, ascent: %f, descent: %f",
-            fextents.height, fextents.ascent, fextents.descent);
+    struct font *font = font_from_name(font_name);
+    LOG_DBG("height: %d, ascent: %d, descent: %d",
+            font->fextents.height, font->fextents.ascent, font->fextents.descent);
 
     if (dmenu_mode)
         dmenu_load_entries(&c.applications);
     else
-        xdg_find_programs(icon_theme, fextents.height, &c.applications);
+        xdg_find_programs(icon_theme, font->fextents.height, &c.applications);
     c.matches = malloc(c.applications.count * sizeof(c.matches[0]));
     read_cache(&c.applications);
 
@@ -1332,7 +1324,7 @@ main(int argc, char *const *argv)
     wl_surface_commit(c.wl.surface);
     wl_display_roundtrip(c.wl.display);
 
-    const double line_height = 2 * y_margin + fextents.height;
+    const double line_height = 2 * y_margin + font->fextents.height;
     max_matches = (height - 2 * border_width - line_height) / line_height;
     LOG_DBG("max matches: %d", max_matches);
 

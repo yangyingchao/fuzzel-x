@@ -10,7 +10,7 @@
 
 struct render {
     struct options options;
-    cairo_scaled_font_t *regular_font;
+    struct font *regular_font;
 };
 
 void
@@ -61,201 +61,123 @@ render_background(const struct render *render, struct buffer *buf)
     cairo_fill(buf->cairo);
 }
 
+static pixman_color_t
+rgba2pixman(struct rgba rgba)
+{
+    uint16_t r = rgba.r * 65535.0;
+    uint16_t g = rgba.g * 65535.0;
+    uint16_t b = rgba.b * 65535.0;
+    uint16_t a = rgba.a * 65535.0;
+
+    uint16_t a_div = 0xffff / a;
+
+    return (pixman_color_t){
+        .red = r / a_div,
+        .green = g / a_div,
+        .blue = b / a_div,
+        .alpha = a,
+    };
+}
+
+static void
+render_glyph(pixman_image_t *pix, const struct glyph *glyph, int x, int y, const pixman_color_t *color)
+{
+    if (pixman_image_get_format(glyph->pix) == PIXMAN_a8r8g8b8) {
+        /* Glyph surface is a pre-rendered image (typically a color emoji...) */
+        pixman_image_composite32(
+            PIXMAN_OP_OVER, glyph->pix, NULL, pix, 0, 0, 0, 0,
+            x + glyph->x, y - glyph->y,
+            glyph->width, glyph->height);
+    } else {
+        /* Glyph surface is an alpha mask */
+        pixman_image_t *src = pixman_image_create_solid_fill(color);
+        pixman_image_composite32(
+            PIXMAN_OP_OVER, src, glyph->pix, pix, 0, 0, 0, 0,
+            x + glyph->x, y - glyph->y,
+            glyph->width, glyph->height);
+        pixman_image_unref(src);
+    }
+}
+
 void
 render_prompt(const struct render *render, struct buffer *buf,
               const struct prompt *prompt)
 {
-    const double x_margin = render->options.x_margin;
-    const double y_margin = render->options.y_margin;
-    const double border_size = render->options.border_size;
+    struct font *font = render->regular_font;
+    size_t prompt_len = mbstowcs(NULL, prompt->prompt, 0);
+    size_t text_len = mbstowcs(NULL, prompt->text, 0);
 
-    cairo_set_scaled_font(buf->cairo, render->regular_font);
+    wchar_t wtext[prompt_len + text_len + 1];
+    mbstowcs(wtext, prompt->prompt, prompt_len + 1);
+    mbstowcs(&wtext[prompt_len], prompt->text, text_len + 1);
 
-    cairo_font_extents_t fextents;
-    cairo_font_extents(buf->cairo, &fextents);
+    cairo_surface_flush(buf->cairo_surface);
 
-    /* Text to render is the prompt followed by the entered text */
-    char text[strlen(prompt->prompt) + strlen(prompt->text) + 1];
-    strcpy(text, prompt->prompt);
-    strcat(text, prompt->text);
+    pixman_color_t fg = rgba2pixman(render->options.text_color);
+    pixman_image_t *pix = pixman_image_create_bits_no_clear(
+        PIXMAN_a8r8g8b8, buf->width, buf->height, buf->mmapped, buf->stride);
+    assert(pix != NULL);
 
-    cairo_glyph_t *glyphs = NULL;
-    cairo_text_cluster_t *clusters = NULL;
-    cairo_text_cluster_flags_t cluster_flags;
-    int num_glyphs = 0;
-    int num_clusters = 0;
+    int x = render->options.border_size + render->options.x_margin;
+    int y = render->options.border_size + render->options.y_margin + font->fextents.ascent;
 
-    cairo_status_t cr_status = cairo_scaled_font_text_to_glyphs(
-        render->regular_font, 0, 0, text, -1, &glyphs, &num_glyphs,
-        &clusters, &num_clusters, &cluster_flags);
-    if (cr_status != CAIRO_STATUS_SUCCESS) {
-        LOG_ERR("cairo failure: TODO: error message");
-        return;
-    }
+    for (size_t i = 0; i < prompt_len + text_len; i++) {
+        const struct glyph *glyph = font_glyph_for_wc(font, wtext[i]);
+        if (glyph == NULL)
+            continue;
 
-    cairo_text_extents_t extents;
-    cairo_scaled_font_glyph_extents(
-        render->regular_font, glyphs, num_glyphs, &extents);
+        render_glyph(pix, glyph, x, y, &fg);
+        x += glyph->x_advance;
 
-    for (int i = 0; i < num_glyphs; i++) {
-        glyphs[i].x += border_size + x_margin;
-        glyphs[i].y += border_size + y_margin + fextents.height - fextents.descent;
-    }
-
-    const struct rgba *tc = &render->options.text_color;
-
-    cairo_set_source_rgba(buf->cairo, tc->r, tc->g, tc->b, tc->a);
-    cairo_set_operator(buf->cairo, CAIRO_OPERATOR_OVER);
-    cairo_show_text_glyphs(
-        buf->cairo, text, -1, glyphs, num_glyphs,
-        clusters, num_clusters, cluster_flags);
-
-    /* prompt->cursor is the *byte* position, but we need the
-     * *character| position */
-    size_t cursor = 0;
-    size_t cursor_at_glyph = 0;
-
-    const size_t prompt_len = strlen(prompt->prompt);
-    const size_t text_len = strlen(prompt->text);
-
-    /* Count glyphs that make up the prompt */
-    for (size_t i = 0; i < prompt_len;) {
-        int clen = mblen(&prompt->prompt[i], MB_CUR_MAX);
-        if (clen < 0) {
-            LOG_ERRNO("prompt: %s", prompt->prompt);
-            break;
+        /* Cursor */
+        if (prompt->cursor + prompt_len - 1 == i) {
+            pixman_image_fill_rectangles(
+                PIXMAN_OP_SRC, pix, &fg,
+                1, &(pixman_rectangle16_t){
+                    x, y - font->fextents.ascent,
+                    font->underline.thickness, font->fextents.ascent + font->fextents.descent});
         }
-
-        i += clen;
-        cursor_at_glyph++;
     }
 
-    /* Count glyphs *before* the cursor */
-    while (cursor < prompt->cursor && cursor < text_len) {
-        int clen = mblen(&prompt->text[cursor], MB_CUR_MAX);
-        if (clen < 0) {
-            LOG_ERRNO("prompt: %s", prompt->text);
-            break;
-        }
-
-        cursor += clen;
-        cursor_at_glyph++;
-    }
-
-    int cursor_x;
-    if (cursor_at_glyph == 0)
-        cursor_x = border_size + x_margin;
-    else if (cursor_at_glyph >= num_glyphs)
-        cursor_x = border_size + x_margin + extents.x_advance;
-    else
-        cursor_x = glyphs[cursor_at_glyph].x;
-
-    cairo_set_line_width(buf->cairo, 1);
-    cairo_move_to(buf->cairo, cursor_x - 0.5, border_size + y_margin);
-    cairo_line_to(buf->cairo, cursor_x - 0.5, border_size + y_margin + fextents.height);
-    cairo_stroke(buf->cairo);
-
-    cairo_glyph_free(glyphs);
-    cairo_text_cluster_free(clusters);
-
-#if 0
-    const struct rgba *bc = &render->options.border_color;
-
-    cairo_set_source_rgba(buf->cairo, bc->r, bc->g, bc->b, bc->a);
-    cairo_set_line_width(buf->cairo, border_size);
-    cairo_move_to(buf->cairo, 0, border_size + 2 * y_margin + fextents.height + border_size / 2);
-    cairo_line_to(buf->cairo, buf->width, border_size + 2 * y_margin + fextents.height + border_size / 2);
-    cairo_stroke(buf->cairo);
-#endif
+    pixman_image_unref(pix);
+    cairo_surface_mark_dirty(buf->cairo_surface);
 }
 
 static void
-render_glyphs(struct buffer *buf, struct rgba color,
-              const cairo_glyph_t *glyphs, int num_glyphs)
-{
-    cairo_set_source_rgba(buf->cairo, color.r, color.g, color.b, color.a);
-    cairo_set_operator(buf->cairo, CAIRO_OPERATOR_OVER);
-    cairo_show_glyphs(buf->cairo, glyphs, num_glyphs);
-}
-
-static void
-render_match_text(struct buffer *buf, double *x, double y,
+render_match_text(struct buffer *buf, double *_x, double _y,
                   const char *text, ssize_t start, size_t length,
-                  cairo_scaled_font_t *font, struct rgba regular_color,
-                  struct rgba match_color)
+                  struct font *font,
+                  struct rgba _regular_color,
+                  struct rgba _match_color)
 {
-    cairo_set_scaled_font(buf->cairo, font);
+    size_t wlen = mbstowcs(NULL, text, 0);
+    wchar_t wtext[wlen + 1];
+    mbstowcs(wtext, text, wlen + 1);
 
-    cairo_glyph_t *glyphs = NULL;
-    cairo_text_cluster_t *clusters = NULL;
-    cairo_text_cluster_flags_t cluster_flags;
-    int num_glyphs = 0;
-    int num_clusters = 0;
+    pixman_color_t regular_color = rgba2pixman(_regular_color);
+    pixman_color_t match_color = rgba2pixman(_match_color);
 
-    cairo_status_t cr_status = cairo_scaled_font_text_to_glyphs(
-        font, 0, 0, text, -1, &glyphs, &num_glyphs,
-        &clusters, &num_clusters, &cluster_flags);
+    cairo_surface_flush(buf->cairo_surface);
+    pixman_image_t *pix = pixman_image_create_bits_no_clear(
+        PIXMAN_a8r8g8b8, buf->width, buf->height, buf->mmapped, buf->stride);
+    assert(pix != NULL);
 
-    if (cr_status != CAIRO_STATUS_SUCCESS) {
-        LOG_ERR("cairo failure: TODO: error message");
-        return;
+    int x = *_x;
+    int y = _y;
+
+    for (size_t i = 0; i < wlen; i++) {
+        const struct glyph *glyph = font_glyph_for_wc(font, wtext[i]);
+        if (glyph == NULL)
+            continue;
+
+        bool is_match = start >= 0 && i >= start && i < start + length;
+        render_glyph(pix, glyph, x, y, is_match ? &match_color : &regular_color);
+        x += glyph->x_advance;
     }
 
-    cairo_text_extents_t extents;
-    cairo_scaled_font_glyph_extents(font, glyphs, num_glyphs, &extents);
-
-    for (int j = 0; j < num_glyphs; j++) {
-        glyphs[j].x += *x;
-        glyphs[j].y += y;
-    }
-
-    if (start >= 0) {
-
-        /*
-         * start/length are in bytes, but we need to know which
-         * *glyph* the match starts at, and how many *glyphs* the match
-         * is. For regular ascii, these will always be the same, but
-         * for multibyte UTF-8 characters not so.
-         */
-
-        /* Calculate at which *glyph* the matching part starts */
-        size_t idx = 0;
-        size_t glyph_start = 0;
-        while (idx < start) {
-            int clen = mblen(&text[idx], MB_CUR_MAX);
-            if (clen < 0) {
-                LOG_ERRNO("match text: %s", text);
-                break;
-            }
-
-            glyph_start++;
-            idx += clen;
-        }
-
-        /* Find out how many *glyphs* that match */
-        size_t glyph_match_count = 0;
-        while (idx < start + length) {
-            int clen = mblen(&text[idx], MB_CUR_MAX);
-            if (clen < 0) {
-                LOG_ERRNO("match text: %s", text);
-                break;
-            }
-
-            glyph_match_count++;
-            idx += clen;
-        }
-
-        render_glyphs(buf, regular_color, &glyphs[0], glyph_start);
-        render_glyphs(buf, match_color, &glyphs[start], glyph_match_count);
-        render_glyphs(buf, regular_color, &glyphs[start + length],
-                      num_glyphs - glyph_start - glyph_match_count);
-    } else
-        render_glyphs(buf, regular_color, glyphs, num_glyphs);
-
-    cairo_glyph_free(glyphs);
-    cairo_text_cluster_free(clusters);
-
-    *x += extents.width;
+    *_x = x;
+    pixman_image_unref(pix);
+    cairo_surface_mark_dirty(buf->cairo_surface);
 }
 
 void
@@ -263,18 +185,14 @@ render_match_list(const struct render *render, struct buffer *buf,
                   const struct match matches[], size_t match_count,
                   size_t match_length, size_t selected)
 {
+    struct font *font = render->regular_font;
     const double x_margin = render->options.x_margin;
     const double y_margin = render->options.y_margin;
     const double border_size = render->options.border_size;
 
     assert(match_count == 0 || selected < match_count);
 
-    cairo_set_scaled_font(buf->cairo, render->regular_font);
-
-    cairo_font_extents_t fextents;
-    cairo_font_extents(buf->cairo, &fextents);
-
-    const double row_height = 2 * y_margin + fextents.height;
+    const double row_height = 2 * y_margin + font->fextents.height;
     const double first_row = 1 * border_size + row_height;
     const double sel_margin = x_margin / 3;
 
@@ -282,7 +200,7 @@ render_match_list(const struct render *render, struct buffer *buf,
      * LOG_DBG("height=%f, ascent=%f, descent=%f", fextents.height, fextents.ascent,
      *         fextents.descent);
      */
-    double y = first_row + (row_height + fextents.height) / 2 - fextents.descent;
+    double y = first_row + (row_height + font->fextents.height) / 2 - font->fextents.descent;
 
     for (size_t i = 0; i < match_count; i++) {
         const struct match *match = &matches[i];
@@ -313,7 +231,7 @@ render_match_list(const struct render *render, struct buffer *buf,
             double scale = 1.0;
 
             if (height > row_height) {
-                scale = fextents.height / height;
+                scale = font->fextents.height / height;
                 LOG_DBG("%s: scaling: %f (row-height: %f, size=%fx%f)",
                         match->application->title, scale, row_height, width, height);
 
@@ -342,7 +260,7 @@ render_match_list(const struct render *render, struct buffer *buf,
             RsvgDimensionData dim;
             rsvg_handle_get_dimensions(svg, &dim);
 
-            double height = fextents.height;
+            double height = font->fextents.height;
             double scale = height / dim.height;
 
             cairo_save(buf->cairo);
@@ -374,7 +292,7 @@ render_match_list(const struct render *render, struct buffer *buf,
 }
 
 struct render *
-render_init(cairo_scaled_font_t *font, struct options options)
+render_init(struct font *font, struct options options)
 {
     struct render *render = calloc(1, sizeof(*render));
     render->options = options;
@@ -388,6 +306,7 @@ render_destroy(struct render *render)
     if (render == NULL)
         return;
 
-    cairo_scaled_font_destroy(render->regular_font);
+    //cairo_scaled_font_destroy(render->regular_font);
+    font_destroy(render->regular_font);
     free(render);
 }

@@ -118,6 +118,7 @@ shm_get_buffer(struct wl_shm *shm, int width, int height)
         ((struct buffer){
             .width = width,
             .height = height,
+            .stride = stride,
             .busy = true,
             .size = size,
             .mmapped = mmapped,

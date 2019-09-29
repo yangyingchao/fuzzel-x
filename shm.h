@@ -9,6 +9,7 @@
 struct buffer {
     int width;
     int height;
+    int stride;
 
     bool busy;
     size_t size;
