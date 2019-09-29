@@ -264,10 +264,11 @@ prompt_prev_word(const struct prompt *prompt)
     const wchar_t *space = &prompt->text[prev_char];
 
     /* Ignore initial spaces */
-    while (space >= prompt->text && *space == L' ')
+    while (space >= prompt->text && iswspace(*space))
         space--;
 
-    while (space >= prompt->text && *space != L' ')
+    /* Skip non-spaces */
+    while (space >= prompt->text && !iswspace(*space))
         space--;
 
     return space - prompt->text + 1;
