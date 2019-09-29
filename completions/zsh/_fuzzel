@@ -1,4 +1,4 @@
-#compdef f00sel
+#compdef fuzzel
 
 _arguments \
     -s \

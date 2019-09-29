@@ -2,7 +2,7 @@ sh = find_program('sh', native: true)
 scdoc = dependency('scdoc', native: true)
 scdoc_prog = find_program(scdoc.get_pkgconfig_variable('scdoc'), native: true)
 
-foreach man_src : ['f00sel.scd']
+foreach man_src : ['fuzzel.scd']
   base = man_src.split('.')[-2]
   out = '@0@.1.gz'.format(base)
 

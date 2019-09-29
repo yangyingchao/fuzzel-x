@@ -15,7 +15,7 @@ packages:
   - wlroots-dev
 
 sources:
-  - https://git.sr.ht/~dnkl/f00sel
+  - https://git.sr.ht/~dnkl/fuzzel
 
 triggers:
   - action: email
@@ -25,8 +25,8 @@ triggers:
 tasks:
   - setup: |
       mkdir -p bld/debug bld/release
-      meson --buildtype=debug f00sel bld/debug
-      meson --buildtype=release f00sel bld/release
+      meson --buildtype=debug fuzzel bld/debug
+      meson --buildtype=release fuzzel bld/release
   - build: |
       ninja -C bld/debug -k0
       ninja -C bld/release -k0

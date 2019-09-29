@@ -1,4 +1,4 @@
-project('f00sel', 'c',
+project('fuzzel', 'c',
         version: '1.2.0',
         license: 'MIT',
         meson_version: '>=0.0.0',
@@ -34,7 +34,7 @@ endif
 
 add_project_arguments(
   ['-D_GNU_SOURCE',
-   '-DF00SEL_VERSION=@0@'.format(version)] +
+   '-DFUZZEL_VERSION=@0@'.format(version)] +
   (is_debug_build ? ['-D_DEBUG'] : []),
   language: 'c',
 )
@@ -77,7 +77,7 @@ foreach prot : [
 endforeach
 
 executable(
-  'f00sel',
+  'fuzzel',
   'application.c', 'application.h',
   'dmenu.c', 'dmenu.h',
   'font.c', 'font.h',

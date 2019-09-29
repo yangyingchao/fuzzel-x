@@ -1,9 +1,9 @@
-pkgname=f00sel
+pkgname=fuzzel
 pkgver=1.1.0
 pkgrel=1
 pkgdesc="Simplistic application launcher for wayland"
 arch=('x86_64')
-url=https://gitlab.com/dnkl/f00sel
+url=https://gitlab.com/dnkl/fuzzel
 license=(mit)
 makedepends=('meson' 'ninja' 'scdoc')
 depends=(

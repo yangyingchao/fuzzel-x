@@ -1,6 +1,6 @@
-# F00sel
+# Fuzzel
 
-F00sel is a Wayland-native application launcher, similar to rofi's
+Fuzzel is a Wayland-native application launcher, similar to rofi's
 _drun_ mode.
 
 

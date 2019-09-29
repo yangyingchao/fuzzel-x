@@ -1,14 +1,14 @@
-f00sel(1)
+fuzzel(1)
 
 # NAME
-f00sel - display XDG applications in a searchable Wayland window
+fuzzel - display XDG applications in a searchable Wayland window
 
 # SYNOPSIS
-*f00sel* [_OPTIONS_]...
+*fuzzel* [_OPTIONS_]...
 
 # DESCRIPTION
 
-*f00sel* lists all available XDG applications in a searchable
+*fuzzel* lists all available XDG applications in a searchable
 Window. The search box supports Emacs-like key bindings.
 
 The window size, font and colors can be configured with command line

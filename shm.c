@@ -59,7 +59,7 @@ shm_get_buffer(struct wl_shm *shm, int width, int height)
     cairo_t *cairo = NULL;
 
     /* Backing memory for SHM */
-    pool_fd = memfd_create("f00sel-wayland-shm-buffer-pool", MFD_CLOEXEC);
+    pool_fd = memfd_create("fuzzel-wayland-shm-buffer-pool", MFD_CLOEXEC);
     if (pool_fd == -1) {
         LOG_ERRNO("failed to create SHM backing memory file");
         goto err;

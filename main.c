@@ -30,7 +30,7 @@
 #include <xdg-output-unstable-v1.h>
 #include <wlr-layer-shell-unstable-v1.h>
 
-#define LOG_MODULE "f00sel"
+#define LOG_MODULE "fuzzel"
 #define LOG_ENABLE_DBG 0
 #include "log.h"
 #include "tllist.h"
@@ -923,11 +923,11 @@ read_cache(struct application_list *apps)
     struct stat st;
     int fd = -1;
 
-    if (fstatat(cache_dir_fd, "f00sel", &st, 0) == -1 ||
-        (fd = openat(cache_dir_fd, "f00sel", O_RDONLY)) == -1)
+    if (fstatat(cache_dir_fd, "fuzzel", &st, 0) == -1 ||
+        (fd = openat(cache_dir_fd, "fuzzel", O_RDONLY)) == -1)
     {
         close(cache_dir_fd);
-        LOG_ERRNO("%s/f00sel: failed to open", path);
+        LOG_ERRNO("%s/fuzzel: failed to open", path);
         return;
     }
     close(cache_dir_fd);
@@ -937,7 +937,7 @@ read_cache(struct application_list *apps)
     close(fd);
 
     if (text == MAP_FAILED) {
-        LOG_ERRNO("%s/f00sel: failed to mmap", path);
+        LOG_ERRNO("%s/fuzzel: failed to mmap", path);
         return;
     }
 
@@ -987,11 +987,11 @@ write_cache(const struct application_list *apps)
         return;
     }
 
-    int fd = openat(cache_dir_fd, "f00sel", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    int fd = openat(cache_dir_fd, "fuzzel", O_WRONLY | O_CREAT | O_TRUNC, 0644);
     close(cache_dir_fd);
 
     if (fd == -1) {
-        LOG_ERRNO("%s/f00sel: failed to open", path);
+        LOG_ERRNO("%s/fuzzel: failed to open", path);
         return;
     }
 
@@ -1159,7 +1159,7 @@ main(int argc, char *const *argv)
             break;
 
         case 'v':
-            printf("f00sel version %s\n", F00SEL_VERSION);
+            printf("fuzzel version %s\n", FUZZEL_VERSION);
             return EXIT_SUCCESS;
 
         case 'h':
@@ -1307,7 +1307,7 @@ main(int argc, char *const *argv)
 
     c.wl.layer_surface = zwlr_layer_shell_v1_get_layer_surface(
         c.wl.layer_shell, c.wl.surface, c.wl.monitor->output,
-        ZWLR_LAYER_SHELL_V1_LAYER_TOP, "f00sel");
+        ZWLR_LAYER_SHELL_V1_LAYER_TOP, "fuzzel");
 
     if (c.wl.layer_surface == NULL) {
         LOG_ERR("failed to create layer shell surface");
