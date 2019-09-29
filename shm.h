@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include <pixman.h>
 #include <cairo.h>
 #include <wayland-client.h>
 
@@ -17,6 +18,7 @@ struct buffer {
 
     struct wl_buffer *wl_buf;
 
+    pixman_image_t *pix;
     cairo_surface_t *cairo_surface;
     cairo_t *cairo;
 };

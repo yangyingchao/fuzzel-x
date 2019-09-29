@@ -1,5 +1,6 @@
 #pragma once
 
+#include <pixman.h>
 #include <cairo.h>
 
 #include "font.h"
@@ -22,6 +23,13 @@ struct options {
     struct rgba text_color;
     struct rgba match_color;
     struct rgba selection_color;
+
+    /* Filled in by render, for now */
+    pixman_color_t pix_background_color;
+    pixman_color_t pix_border_color;
+    pixman_color_t pix_text_color;
+    pixman_color_t pix_match_color;
+    pixman_color_t pix_selection_color;
 };
 
 struct render;

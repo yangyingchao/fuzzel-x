@@ -55,6 +55,7 @@ shm_get_buffer(struct wl_shm *shm, int width, int height)
     struct wl_shm_pool *pool = NULL;
     struct wl_buffer *buf = NULL;
 
+    pixman_image_t *pix = NULL;
     cairo_surface_t *cairo_surface = NULL;
     cairo_t *cairo = NULL;
 
@@ -96,6 +97,13 @@ shm_get_buffer(struct wl_shm *shm, int width, int height)
     wl_shm_pool_destroy(pool); pool = NULL;
     close(pool_fd); pool_fd = -1;
 
+    pix = pixman_image_create_bits_no_clear(
+        PIXMAN_a8r8g8b8, width, height, mmapped, stride);
+    if (pix == NULL) {
+        LOG_ERR("failed to create pixman image");
+        goto err;
+    }
+
     /* Create a cairo surface around the mmapped memory */
     cairo_surface = cairo_image_surface_create_for_data(
         mmapped, CAIRO_FORMAT_ARGB32, width, height, stride);
@@ -123,6 +131,7 @@ shm_get_buffer(struct wl_shm *shm, int width, int height)
             .size = size,
             .mmapped = mmapped,
             .wl_buf = buf,
+            .pix = pix,
             .cairo_surface = cairo_surface,
             .cairo = cairo}
             )
@@ -137,6 +146,8 @@ err:
         cairo_destroy(cairo);
     if (cairo_surface != NULL)
         cairo_surface_destroy(cairo_surface);
+    if (pix != NULL)
+        pixman_image_unref(pix);
     if (buf != NULL)
         wl_buffer_destroy(buf);
     if (pool != NULL)
@@ -157,6 +168,7 @@ shm_fini(void)
 
         cairo_destroy(buf->cairo);
         cairo_surface_destroy(buf->cairo_surface);
+        pixman_image_unref(buf->pix);
         wl_buffer_destroy(buf->wl_buf);
         munmap(buf->mmapped, buf->size);
 

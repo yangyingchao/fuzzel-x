@@ -107,13 +107,6 @@ render_prompt(const struct render *render, struct buffer *buf,
     const size_t prompt_len = wcslen(prompt->prompt);
     const size_t text_len = wcslen(prompt->text);
 
-    cairo_surface_flush(buf->cairo_surface);
-
-    pixman_color_t fg = rgba2pixman(render->options.text_color);
-    pixman_image_t *pix = pixman_image_create_bits_no_clear(
-        PIXMAN_a8r8g8b8, buf->width, buf->height, buf->mmapped, buf->stride);
-    assert(pix != NULL);
-
     int x = render->options.border_size + render->options.x_margin;
     int y = render->options.border_size + render->options.y_margin + font->fextents.ascent;
 
@@ -123,38 +116,26 @@ render_prompt(const struct render *render, struct buffer *buf,
         if (glyph == NULL)
             continue;
 
-        render_glyph(pix, glyph, x, y, &fg);
+        render_glyph(buf->pix, glyph, x, y, &render->options.pix_text_color);
         x += glyph->x_advance;
 
         /* Cursor */
         if (prompt->cursor + prompt_len - 1 == i) {
             pixman_image_fill_rectangles(
-                PIXMAN_OP_SRC, pix, &fg,
+                PIXMAN_OP_SRC, buf->pix, &render->options.pix_text_color,
                 1, &(pixman_rectangle16_t){
                     x, y - font->fextents.ascent,
                     font->underline.thickness, font->fextents.ascent + font->fextents.descent});
         }
     }
-
-    pixman_image_unref(pix);
-    cairo_surface_mark_dirty(buf->cairo_surface);
 }
 
 static void
 render_match_text(struct buffer *buf, double *_x, double _y,
                   const wchar_t *text, ssize_t start, size_t length,
                   struct font *font,
-                  struct rgba _regular_color,
-                  struct rgba _match_color)
+                  pixman_color_t regular_color, pixman_color_t match_color)
 {
-    pixman_color_t regular_color = rgba2pixman(_regular_color);
-    pixman_color_t match_color = rgba2pixman(_match_color);
-
-    cairo_surface_flush(buf->cairo_surface);
-    pixman_image_t *pix = pixman_image_create_bits_no_clear(
-        PIXMAN_a8r8g8b8, buf->width, buf->height, buf->mmapped, buf->stride);
-    assert(pix != NULL);
-
     int x = *_x;
     int y = _y;
 
@@ -164,13 +145,11 @@ render_match_text(struct buffer *buf, double *_x, double _y,
             continue;
 
         bool is_match = start >= 0 && i >= start && i < start + length;
-        render_glyph(pix, glyph, x, y, is_match ? &match_color : &regular_color);
+        render_glyph(buf->pix, glyph, x, y, is_match ? &match_color : &regular_color);
         x += glyph->x_advance;
     }
 
     *_x = x;
-    pixman_image_unref(pix);
-    cairo_surface_mark_dirty(buf->cairo_surface);
 }
 
 void
@@ -278,7 +257,7 @@ render_match_list(const struct render *render, struct buffer *buf,
             buf, &cur_x, y,
             match->application->title, match->start_title, match_length,
             render->regular_font,
-            render->options.text_color, render->options.match_color);
+            render->options.pix_text_color, render->options.pix_match_color);
 
         y += row_height;
     }
@@ -290,6 +269,13 @@ render_init(struct font *font, struct options options)
     struct render *render = calloc(1, sizeof(*render));
     render->options = options;
     render->regular_font = font;
+
+    /* TODO: the one providing the options should calculate these */
+    render->options.pix_background_color = rgba2pixman(render->options.background_color);
+    render->options.pix_border_color = rgba2pixman(render->options.border_color);
+    render->options.pix_text_color = rgba2pixman(render->options.text_color);
+    render->options.pix_match_color = rgba2pixman(render->options.match_color);
+    render->options.pix_selection_color = rgba2pixman(render->options.selection_color);
     return render;
 }
 
