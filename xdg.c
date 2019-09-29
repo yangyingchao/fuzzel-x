@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <wchar.h>
 #include <unistd.h>
 
 #include <sys/types.h>
@@ -174,10 +175,12 @@ parse_desktop_file(int fd, icon_theme_list_t themes, int icon_size,
         return;
 
     bool is_desktop_entry = false;
-    char *name = NULL;
+
+    wchar_t *name = NULL;
+    wchar_t *generic_name = NULL;
+
     char *exec = NULL;
     char *path = NULL;
-    char *generic_name = NULL;
     char *icon = NULL;
     bool visible = true;
 
@@ -221,8 +224,12 @@ parse_desktop_file(int fd, icon_theme_list_t themes, int icon_size,
         char *value = strtok(NULL, "\n");
 
         if (key != NULL && value != NULL) {
-            if (strcmp(key, "Name") == 0)
-                name = strdup(value);
+            if (strcmp(key, "Name") == 0) {
+                assert(name == NULL);
+                size_t wlen = mbstowcs(NULL, value, 0);
+                name = malloc((wlen + 1) * sizeof(wchar_t));
+                mbstowcs(name, value, wlen + 1);
+            }
 
             else if (strcmp(key, "Exec") == 0)
                 exec = strdup(value);
@@ -230,8 +237,12 @@ parse_desktop_file(int fd, icon_theme_list_t themes, int icon_size,
             else if (strcmp(key, "Path") == 0)
                 path = strdup(value);
 
-            else if (strcmp(key, "GenericName") == 0)
-                generic_name = strdup(value);
+            else if (strcmp(key, "GenericName") == 0) {
+                assert(generic_name == NULL);
+                size_t wlen = mbstowcs(NULL, value, 0);
+                generic_name = malloc((wlen + 1) * sizeof(wchar_t));
+                mbstowcs(generic_name, value, wlen + 1);
+            }
 
             else if (strcmp(key, "Icon") == 0)
                 icon = strdup(value);
@@ -252,7 +263,7 @@ parse_desktop_file(int fd, icon_theme_list_t themes, int icon_size,
     if (is_desktop_entry && visible && name != NULL && exec != NULL) {
         bool already_added = false;
         tll_foreach(*applications, it) {
-            if (strcmp(it->item.title, name) == 0) {
+            if (wcscmp(it->item.title, name) == 0) {
                 already_added = true;
                 break;
             }
@@ -337,7 +348,7 @@ sort_application_by_title(const void *_a, const void *_b)
 {
     const struct application *a = _a;
     const struct application *b = _b;
-    return strcmp(a->title, b->title);
+    return wcscmp(a->title, b->title);
 }
 
 void

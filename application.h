@@ -20,8 +20,8 @@ struct icon {
 struct application {
     char *path;
     char *exec;
-    char *title;
-    char *comment;
+    wchar_t *title;
+    wchar_t *comment;
     struct icon icon;
     unsigned count;
 };

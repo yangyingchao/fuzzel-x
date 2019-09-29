@@ -104,12 +104,8 @@ render_prompt(const struct render *render, struct buffer *buf,
               const struct prompt *prompt)
 {
     struct font *font = render->regular_font;
-    size_t prompt_len = mbstowcs(NULL, prompt->prompt, 0);
-    size_t text_len = mbstowcs(NULL, prompt->text, 0);
-
-    wchar_t wtext[prompt_len + text_len + 1];
-    mbstowcs(wtext, prompt->prompt, prompt_len + 1);
-    mbstowcs(&wtext[prompt_len], prompt->text, text_len + 1);
+    const size_t prompt_len = wcslen(prompt->prompt);
+    const size_t text_len = wcslen(prompt->text);
 
     cairo_surface_flush(buf->cairo_surface);
 
@@ -122,7 +118,8 @@ render_prompt(const struct render *render, struct buffer *buf,
     int y = render->options.border_size + render->options.y_margin + font->fextents.ascent;
 
     for (size_t i = 0; i < prompt_len + text_len; i++) {
-        const struct glyph *glyph = font_glyph_for_wc(font, wtext[i]);
+        wchar_t wc = i < prompt_len ? prompt->prompt[i] : prompt->text[i - prompt_len];
+        const struct glyph *glyph = font_glyph_for_wc(font, wc);
         if (glyph == NULL)
             continue;
 
@@ -145,15 +142,11 @@ render_prompt(const struct render *render, struct buffer *buf,
 
 static void
 render_match_text(struct buffer *buf, double *_x, double _y,
-                  const char *text, ssize_t start, size_t length,
+                  const wchar_t *text, ssize_t start, size_t length,
                   struct font *font,
                   struct rgba _regular_color,
                   struct rgba _match_color)
 {
-    size_t wlen = mbstowcs(NULL, text, 0);
-    wchar_t wtext[wlen + 1];
-    mbstowcs(wtext, text, wlen + 1);
-
     pixman_color_t regular_color = rgba2pixman(_regular_color);
     pixman_color_t match_color = rgba2pixman(_match_color);
 
@@ -165,8 +158,8 @@ render_match_text(struct buffer *buf, double *_x, double _y,
     int x = *_x;
     int y = _y;
 
-    for (size_t i = 0; i < wlen; i++) {
-        const struct glyph *glyph = font_glyph_for_wc(font, wtext[i]);
+    for (size_t i = 0; i < wcslen(text); i++) {
+        const struct glyph *glyph = font_glyph_for_wc(font, text[i]);
         if (glyph == NULL)
             continue;
 

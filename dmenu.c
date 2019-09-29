@@ -11,7 +11,7 @@
 void
 dmenu_load_entries(struct application_list *applications)
 {
-    tll(char *) entries = tll_init();
+    tll(wchar_t *) entries = tll_init();
 
     errno = 0;
     while (true) {
@@ -31,7 +31,13 @@ dmenu_load_entries(struct application_list *applications)
             line[len-- - 1] = '\0';
 
         LOG_DBG("%s", line);
-        tll_push_back(entries, line);
+
+        size_t wlen = mbstowcs(NULL, line, 0);
+        wchar_t *wline = malloc(wlen + 1);
+        mbstowcs(wline, line, wlen + 1);
+        tll_push_back(entries, wline);
+
+        free(line);
     }
 
     applications->v = malloc(tll_length(entries) * sizeof(applications->v[0]));
@@ -56,6 +62,6 @@ dmenu_load_entries(struct application_list *applications)
 bool
 dmenu_execute(const struct application *app)
 {
-    printf("%s\n", app->title);
+    printf("%S\n", app->title);
     return true;
 }
