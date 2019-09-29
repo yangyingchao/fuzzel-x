@@ -2,6 +2,7 @@
 
 #include <cairo.h>
 
+#include "font.h"
 #include "shm.h"
 #include "match.h"
 #include "tllist.h"
@@ -24,7 +25,7 @@ struct options {
 };
 
 struct render;
-struct render *render_init(cairo_scaled_font_t *font, struct options options);
+struct render *render_init(struct font *font, struct options options);
 void render_destroy(struct render *render);
 
 void render_background(const struct render *render, struct buffer *buf);

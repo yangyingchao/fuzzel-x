@@ -40,6 +40,8 @@ add_project_arguments(
 )
 
 threads = dependency('threads')
+pixman = dependency('pixman-1')
+freetype = dependency('freetype2')
 fontconfig = dependency('fontconfig')
 cairo = dependency('cairo')
 cairo_ft = dependency('cairo-ft')
@@ -87,13 +89,16 @@ executable(
   'prompt.h',
   'render.c', 'render.h',
   'shm.c', 'shm.h',
+  'stride.h',
   'tllist.h',
   'xdg.c', 'xdg.h',
   wl_proto_src + wl_proto_headers,
   dependencies: [threads,
+                 pixman,
+                 freetype,
+                 fontconfig,
                  cairo,
                  cairo_ft,
-                 fontconfig,
                  librsvg,
                  wayland_client,
                  wayland_cursor,

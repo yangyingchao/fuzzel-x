@@ -1,9 +1,10 @@
 #pragma once
 
 #include <stddef.h>
+#include <wchar.h>
 
 struct prompt {
-    char *prompt;
-    char *text;
+    wchar_t *prompt;
+    wchar_t *text;
     size_t cursor;
 };

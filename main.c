@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+#include <wctype.h>
 #include <unistd.h>
 #include <errno.h>
 #include <getopt.h>
@@ -242,13 +243,9 @@ keyboard_leave(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
 static size_t
 prompt_next_char(const struct prompt *prompt)
 {
-    int clen = mblen(&prompt->text[prompt->cursor], MB_CUR_MAX);
-    if (clen < 0) {
-        LOG_ERRNO("prompt: %s", prompt->text);
+    if (prompt->text[prompt->cursor] == L'\0')
         return prompt->cursor;
-    }
-
-    return prompt->cursor + clen;
+    return prompt->cursor + 1;
 }
 
 static size_t
@@ -257,27 +254,21 @@ prompt_prev_char(const struct prompt *prompt)
     if (prompt->cursor == 0)
         return 0;
 
-    size_t cursor = prompt->cursor;
-    while (cursor > 0) {
-        int clen = mblen(&prompt->text[--cursor], MB_CUR_MAX);
-        if (clen >= 0)
-            break;
-    }
-
-    return cursor;
+    return prompt->cursor - 1;
 }
 
 static size_t
 prompt_prev_word(const struct prompt *prompt)
 {
     size_t prev_char = prompt_prev_char(prompt);
-    const char *space = &prompt->text[prev_char];
+    const wchar_t *space = &prompt->text[prev_char];
 
     /* Ignore initial spaces */
-    while (space >= prompt->text && *space == ' ')
+    while (space >= prompt->text && iswspace(*space))
         space--;
 
-    while (space >= prompt->text && *space != ' ')
+    /* Skip non-spaces */
+    while (space >= prompt->text && !iswspace(*space))
         space--;
 
     return space - prompt->text + 1;
@@ -286,11 +277,18 @@ prompt_prev_word(const struct prompt *prompt)
 static size_t
 prompt_next_word(const struct prompt *prompt)
 {
-    const char *space = strchr(&prompt->text[prompt->cursor], ' ');
-    if (space == NULL)
-        return strlen(prompt->text);
-    else
-        return space - prompt->text + 1;
+    const wchar_t *end = prompt->text + wcslen(prompt->text);
+    const wchar_t *space = &prompt->text[prompt->cursor];
+
+    /* Ignore initial non-spaces */
+    while (space < end && !iswspace(*space))
+        space++;
+
+    /* Skip spaces */
+    while (space < end && iswspace(*space))
+        space++;
+
+    return space - prompt->text;
 }
 
 static void
@@ -350,7 +348,7 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
     }
 
     else if (sym == XKB_KEY_End || (sym == XKB_KEY_e && effective_mods == ctrl)) {
-        c->prompt.cursor = strlen(c->prompt.text);
+        c->prompt.cursor = wcslen(c->prompt.text);
         refresh(c);
     }
 
@@ -428,11 +426,11 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
 
     else if ((sym == XKB_KEY_d && effective_mods == ctrl) ||
              (sym == XKB_KEY_Delete && effective_mods == 0)) {
-        if (c->prompt.cursor < strlen(c->prompt.text)) {
+        if (c->prompt.cursor < wcslen(c->prompt.text)) {
             size_t next_char = prompt_next_char(&c->prompt);
             memmove(&c->prompt.text[c->prompt.cursor],
                     &c->prompt.text[next_char],
-                    strlen(c->prompt.text) - next_char + 1);
+                    (wcslen(c->prompt.text) - next_char + 1) * sizeof(wchar_t));
             update_matches(c);
             refresh(c);
         }
@@ -441,7 +439,7 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
     else if (sym == XKB_KEY_BackSpace && effective_mods == 0) {
         if (c->prompt.cursor > 0) {
             size_t prev_char = prompt_prev_char(&c->prompt);
-            c->prompt.text[prev_char] = '\0';
+            c->prompt.text[prev_char] = L'\0';
             c->prompt.cursor = prev_char;
 
             update_matches(c);
@@ -454,7 +452,7 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
         size_t new_cursor = prompt_prev_word(&c->prompt);
         memmove(&c->prompt.text[new_cursor],
                 &c->prompt.text[c->prompt.cursor],
-                strlen(c->prompt.text) - c->prompt.cursor + 1);
+                (wcslen(c->prompt.text) - c->prompt.cursor + 1) * sizeof(wchar_t));
         c->prompt.cursor = new_cursor;
         update_matches(c);
         refresh(c);
@@ -465,13 +463,13 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
         size_t next_word = prompt_next_word(&c->prompt);
         memmove(&c->prompt.text[c->prompt.cursor],
                 &c->prompt.text[next_word],
-                strlen(c->prompt.text) - next_word + 1);
+                (wcslen(c->prompt.text) - next_word + 1) * sizeof(wchar_t));
         update_matches(c);
         refresh(c);
     }
 
     else if (sym == XKB_KEY_k && effective_mods == ctrl) {
-        c->prompt.text[c->prompt.cursor] = '\0';
+        c->prompt.text[c->prompt.cursor] = L'\0';
         update_matches(c);
         refresh(c);
     }
@@ -504,20 +502,27 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
         if (count == 0)
             return;
 
-        const size_t new_len = strlen(c->prompt.text) + count + 1;
-        char *new_text = realloc(c->prompt.text, new_len);
+        const char *b = buf;
+        mbstate_t ps = {0};
+        size_t wlen = mbsnrtowcs(NULL, &b, count, 0, &ps);
+
+        const size_t new_len = wcslen(c->prompt.text) + wlen + 1;
+        wchar_t *new_text = realloc(c->prompt.text, new_len * sizeof(wchar_t));
         if (new_text == NULL)
             return;
 
-        memmove(&new_text[c->prompt.cursor + count],
+        memmove(&new_text[c->prompt.cursor + wlen],
                 &new_text[c->prompt.cursor],
-                strlen(new_text) - c->prompt.cursor + 1);
-        memcpy(&new_text[c->prompt.cursor], buf, count);
+                (wcslen(new_text) - c->prompt.cursor + 1) * sizeof(wchar_t));
+
+        b = buf;
+        ps = (mbstate_t){0};
+        mbsnrtowcs(&new_text[c->prompt.cursor], &b, count, wlen + 1, &ps);
 
         c->prompt.text = new_text;
-        c->prompt.cursor += count;
+        c->prompt.cursor += wlen;
 
-        LOG_DBG("prompt: \"%s\" (cursor=%zu, length=%zu)",
+        LOG_DBG("prompt: \"%S\" (cursor=%zu, length=%zu)",
                 c->prompt.text, c->prompt.cursor, new_len);
 
         update_matches(c);
@@ -763,11 +768,36 @@ sort_match_by_count(const void *_a, const void *_b)
     return b->application->count - a->application->count;
 }
 
+static wchar_t *
+wcscasestr(const wchar_t *haystack, const wchar_t *needle)
+{
+    const size_t hay_len = wcslen(haystack);
+    const size_t needle_len = wcslen(needle);
+
+    if (needle_len > hay_len)
+        return NULL;
+
+    for (size_t i = 0; i < wcslen(haystack) - wcslen(needle) + 1; i++) {
+        bool matched = true;
+        for (size_t j = 0; j < wcslen(needle); j++) {
+            if (towlower(haystack[i + j]) != towlower(needle[j])) {
+                matched = false;
+                break;
+            }
+        }
+
+        if (matched)
+            return (wchar_t *)&haystack[i];
+    }
+
+    return NULL;
+}
+
 static void
 update_matches(struct context *c)
 {
     /* Nothing entered; all programs found matches */
-    if (strlen(c->prompt.text) == 0) {
+    if (wcslen(c->prompt.text) == 0) {
 
         for (size_t i = 0; i < c->applications.count; i++) {
             c->matches[i] = (struct match){
@@ -795,12 +825,12 @@ update_matches(struct context *c)
         size_t start_title = -1;
         size_t start_comment = -1;
 
-        const char *m = strcasestr(app->title, c->prompt.text);
+        const wchar_t *m = wcscasestr(app->title, c->prompt.text);
         if (m != NULL)
             start_title = m - app->title;
 
         if (app->comment != NULL) {
-            m = strcasestr(app->comment, c->prompt.text);
+            m = wcscasestr(app->comment, c->prompt.text);
             if (m != NULL)
                 start_comment = m - app->comment;
         }
@@ -875,7 +905,7 @@ refresh(struct context *c)
     /* Window content */
     render_prompt(c->render, buf, &c->prompt);
     render_match_list(c->render, buf, c->matches, c->match_count,
-                      strlen(c->prompt.text), c->selected);
+                      wcslen(c->prompt.text), c->selected);
 
     cairo_surface_flush(buf->cairo_surface);
 
@@ -957,8 +987,12 @@ read_cache(struct application_list *apps)
         int count;
         sscanf(count_str, "%u", &count);
 
+        size_t wlen = mbstowcs(NULL, title, 0);
+        wchar_t wtitle[wlen + 1];
+        mbstowcs(wtitle, title, wlen + 1);
+
         for (; app_idx < apps->count; app_idx++) {
-            int cmp = strcmp(apps->v[app_idx].title, title);
+            int cmp = wcscmp(apps->v[app_idx].title, wtitle);
 
             if (cmp == 0) {
                 apps->v[app_idx].count = count;
@@ -1001,11 +1035,14 @@ write_cache(const struct application_list *apps)
 
         char count_as_str[11];
         sprintf(count_as_str, "%u", apps->v[i].count);
-
-        const size_t title_len = strlen(apps->v[i].title);
         const size_t count_len = strlen(count_as_str);
 
-        if (write(fd, apps->v[i].title, title_len) != title_len ||
+        size_t clen = wcstombs(NULL, apps->v[i].title, 0);
+        char ctitle[clen + 1];
+        wcstombs(ctitle, apps->v[i].title, clen + 1);
+
+
+        if (write(fd, ctitle, clen) != clen ||
             write(fd, "|", 1) != 1 ||
             write(fd, count_as_str, count_len) != count_len ||
             write(fd, "\n", 1) != 1)
@@ -1191,8 +1228,8 @@ main(int argc, char *const *argv)
         .wl = {0},
         .dmenu_mode = dmenu_mode,
         .prompt = {
-            .prompt = strdup("> "),
-            .text = calloc(1, 1),
+            .prompt = wcsdup(L"> "),
+            .text = calloc(1, sizeof(wchar_t)),
             .cursor = 0
         },
         .repeat = {
@@ -1208,22 +1245,14 @@ main(int argc, char *const *argv)
     thrd_t keyboard_repeater_id;
     thrd_create(&keyboard_repeater_id, &keyboard_repeater, &c);
 
-    cairo_scaled_font_t *font = font_from_name(font_name);
-    cairo_surface_t *surf = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1, 1);
-    cairo_t *cr = cairo_create(surf);
-    cairo_font_extents_t fextents;
-    cairo_set_scaled_font(cr, font);
-    cairo_font_extents(cr, &fextents);
-    cairo_destroy(cr);
-    cairo_surface_destroy(surf);
-
-    LOG_DBG("height: %f, ascent: %f, descent: %f",
-            fextents.height, fextents.ascent, fextents.descent);
+    struct font *font = font_from_name(font_name);
+    LOG_DBG("height: %d, ascent: %d, descent: %d",
+            font->fextents.height, font->fextents.ascent, font->fextents.descent);
 
     if (dmenu_mode)
         dmenu_load_entries(&c.applications);
     else
-        xdg_find_programs(icon_theme, fextents.height, &c.applications);
+        xdg_find_programs(icon_theme, font->fextents.height, &c.applications);
     c.matches = malloc(c.applications.count * sizeof(c.matches[0]));
     read_cache(&c.applications);
 
@@ -1332,7 +1361,7 @@ main(int argc, char *const *argv)
     wl_surface_commit(c.wl.surface);
     wl_display_roundtrip(c.wl.display);
 
-    const double line_height = 2 * y_margin + fextents.height;
+    const double line_height = 2 * y_margin + font->fextents.height;
     max_matches = (height - 2 * border_width - line_height) / line_height;
     LOG_DBG("max matches: %d", max_matches);
 
