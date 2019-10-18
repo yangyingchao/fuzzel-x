@@ -82,6 +82,8 @@ struct wayland {
 
 struct context {
     volatile enum { KEEP_RUNNING, EXIT_UPDATE_CACHE, EXIT} status;
+    int exit_code;
+
     struct wayland wl;
     struct render *render;
 
@@ -484,10 +486,14 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
         if (c->dmenu_mode) {
             if (match == NULL) {
                 c->status = KEEP_RUNNING;
-            } else
+            } else {
                 dmenu_execute(match);
+                c->exit_code = EXIT_SUCCESS;
+            }
         } else {
             bool success = application_execute(match, &c->prompt);
+            c->exit_code = success ? EXIT_SUCCESS : EXIT_FAILURE;
+
             if (success && match != NULL) {
                 c->status = EXIT_UPDATE_CACHE;
                 match->count++;
@@ -1225,6 +1231,7 @@ main(int argc, char *const *argv)
 
     struct context c = {
         .status = KEEP_RUNNING,
+        .exit_code = EXIT_FAILURE,
         .wl = {0},
         .dmenu_mode = dmenu_mode,
         .prompt = {
@@ -1419,7 +1426,7 @@ main(int argc, char *const *argv)
     if (c.status == EXIT_UPDATE_CACHE)
         write_cache(&c.applications);
 
-    ret = EXIT_SUCCESS;
+    ret = c.exit_code;
 
 out:
     /* Signal stop to repeater thread */
