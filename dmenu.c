@@ -28,7 +28,7 @@ dmenu_load_entries(struct application_list *applications)
         }
 
         while (len > 0 && line[len - 1] == '\n')
-            line[len-- - 1] = '\0';
+            line[--len] = '\0';
 
         LOG_DBG("%s", line);
 
