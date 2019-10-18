@@ -33,7 +33,7 @@ dmenu_load_entries(struct application_list *applications)
         LOG_DBG("%s", line);
 
         size_t wlen = mbstowcs(NULL, line, 0);
-        wchar_t *wline = malloc(wlen + 1);
+        wchar_t *wline = malloc((wlen + 1) * sizeof(wchar_t));
         mbstowcs(wline, line, wlen + 1);
         tll_push_back(entries, wline);
 
