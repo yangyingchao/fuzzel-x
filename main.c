@@ -42,6 +42,7 @@
 #include "xdg.h"
 #include "font.h"
 #include "dmenu.h"
+#include "version.h"
 
 struct monitor {
     struct wl_output *output;

@@ -1,7 +1,7 @@
 project('fuzzel', 'c',
         version: '1.2.0',
         license: 'MIT',
-        meson_version: '>=0.0.0',
+        meson_version: '>=0.47.0',
         default_options: [
           'c_std=c11',
           'warning_level=1',
@@ -10,32 +10,8 @@ project('fuzzel', 'c',
 
 is_debug_build = get_option('buildtype').startswith('debug')
 
-version = '"@0@"'.format(meson.project_version())
-
-sh = find_program('sh', native: true)
-git = find_program('git', required: false, native: true)
-
-if git.found()
-  commit_hash = run_command(
-    [sh.path(), '-c',
-     '@0@ --git-dir="$MESON_SOURCE_ROOT/.git" describe --always --tags'.format(
-       git.path())])
-
-  branch = run_command(
-    [sh.path(), '-c',
-     '@0@ --git-dir="$MESON_SOURCE_ROOT/.git" rev-parse --abbrev-ref HEAD'.format(
-       git.path())])
-
-  if commit_hash.returncode() == 0 and branch.returncode() == 0
-    version = '"@0@ (" __DATE__ ", branch \'@1@\')"'.format(
-      commit_hash.stdout().strip(), branch.stdout().strip())
-  endif
-endif
-
 add_project_arguments(
-  ['-D_GNU_SOURCE',
-   '-DFUZZEL_VERSION=@0@'.format(version)] +
-  (is_debug_build ? ['-D_DEBUG'] : []),
+  ['-D_GNU_SOURCE'] + (is_debug_build ? ['-D_DEBUG'] : []),
   language: 'c',
 )
 
@@ -78,6 +54,13 @@ foreach prot : [
     command: [wscanner_prog, 'private-code', '@INPUT@', '@OUTPUT@'])
 endforeach
 
+generate_version_sh = files('generate-version.sh')
+version = custom_target(
+  'generate_version',
+  build_always_stale: true,
+  output: 'version.h',
+  command: [generate_version_sh, meson.project_version(), '@SOURCE_DIR@', '@OUTPUT@'])
+
 executable(
   'fuzzel',
   'application.c', 'application.h',
@@ -92,7 +75,7 @@ executable(
   'stride.h',
   'tllist.h',
   'xdg.c', 'xdg.h',
-  wl_proto_src + wl_proto_headers,
+  wl_proto_src + wl_proto_headers, version,
   dependencies: [threads,
                  pixman,
                  freetype,
