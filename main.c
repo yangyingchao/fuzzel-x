@@ -8,14 +8,14 @@
 #include <getopt.h>
 
 #include <locale.h>
-#include <poll.h>
 
 #include <sys/types.h>
-#include <sys/mman.h>
-#include <sys/wait.h>
+#include <sys/epoll.h>
 #include <sys/eventfd.h>
-#include <sys/timerfd.h>
+#include <sys/mman.h>
 #include <sys/stat.h>
+#include <sys/timerfd.h>
+#include <sys/wait.h>
 #include <dirent.h>
 #include <fcntl.h>
 
@@ -34,15 +34,16 @@
 #define LOG_MODULE "fuzzel"
 #define LOG_ENABLE_DBG 0
 #include "log.h"
-#include "tllist.h"
-#include "shm.h"
-#include "render.h"
 #include "application.h"
-#include "match.h"
-#include "xdg.h"
-#include "font.h"
 #include "dmenu.h"
+#include "fdm.h"
+#include "font.h"
+#include "match.h"
+#include "render.h"
+#include "shm.h"
+#include "tllist.h"
 #include "version.h"
+#include "xdg.h"
 
 struct monitor {
     struct wl_output *output;
@@ -1013,6 +1014,47 @@ write_cache(const struct application_list *apps)
     close(fd);
 }
 
+static bool
+fdm_wayl(struct fdm *fdm, int fd, int events, void *data)
+{
+    struct context *c = data;
+    int event_count = wl_display_dispatch(c->wl.display);
+
+    if (events & EPOLLHUP) {
+        LOG_WARN("disconnected from Wayland");
+        return false;
+    }
+
+    return event_count != -1;
+}
+
+static bool
+fdm_repeat(struct fdm *fdm, int fd, int events, void *data)
+{
+    struct context *c = data;
+
+    uint64_t expiration_count;
+    ssize_t ret = read(
+        c->repeat.fd, &expiration_count, sizeof(expiration_count));
+
+    if (ret < 0 && errno != EAGAIN) {
+        LOG_ERRNO("failed to read key repeat count from timer fd");
+        return false;
+    }
+
+    c->repeat.dont_re_repeat = true;
+    for (size_t i = 0; i < expiration_count; i++)
+        keyboard_key(c, NULL, 0, 0, c->repeat.key, XKB_KEY_DOWN);
+    c->repeat.dont_re_repeat = false;
+
+    if (events & EPOLLHUP) {
+        LOG_ERR("keyboard repeater timer FD closed unexpectedly");
+        return false;
+    }
+
+    return true;
+}
+
 static void
 print_usage(const char *prog_name)
 {
@@ -1190,6 +1232,7 @@ main(int argc, char *const *argv)
         },
     };
 
+    struct fdm *fdm = NULL;
     struct font *font = font_from_name(font_name);
     LOG_DBG("height: %d, ascent: %d, descent: %d",
             font->fextents.height, font->fextents.ascent, font->fextents.descent);
@@ -1331,37 +1374,23 @@ main(int argc, char *const *argv)
     wl_display_dispatch_pending(c.wl.display);
     wl_display_flush(c.wl.display);
 
+    if ((fdm = fdm_init()) == NULL)
+        goto out;
+
+    if (!fdm_add(fdm, wl_display_get_fd(c.wl.display), EPOLLIN, &fdm_wayl, &c)) {
+        LOG_ERR("failed to register Wayland socket with FDM");
+        goto out;
+    }
+
+    if (!fdm_add(fdm, c.repeat.fd, EPOLLIN, &fdm_repeat, &c)) {
+        LOG_ERR("failed to register keyboard repeater with FDM");
+        goto out;
+    }
+
     while (c.status == KEEP_RUNNING) {
-        struct pollfd fds[] = {
-            {.fd = wl_display_get_fd(c.wl.display), .events = POLLIN},
-            {.fd = c.repeat.fd, .events = POLLIN},
-        };
-
         wl_display_flush(c.wl.display);
-        poll(fds, 2, -1);
-
-        if (fds[0].revents & POLLHUP) {
-            LOG_WARN("disconnected from wayland");
+        if (!fdm_poll(fdm))
             break;
-        }
-
-        if (fds[1].revents & POLLIN) {
-            uint64_t expiration_count;
-            ssize_t ret = read(
-                c.repeat.fd, &expiration_count, sizeof(expiration_count));
-
-            if (ret < 0 && errno != EAGAIN)
-                LOG_ERRNO("failed to read key repeat count from timer fd");
-            else if (ret > 0) {
-                c.repeat.dont_re_repeat = true;
-                for (size_t i = 0; i < expiration_count; i++)
-                    keyboard_key(&c, NULL, 0, 0, c.repeat.key, XKB_KEY_DOWN);
-                c.repeat.dont_re_repeat = false;
-            }
-        }
-
-        if (fds[0].revents & POLLIN)
-            wl_display_dispatch(c.wl.display);
     }
 
     if (c.status == EXIT_UPDATE_CACHE)
@@ -1370,6 +1399,11 @@ main(int argc, char *const *argv)
     ret = c.exit_code;
 
 out:
+    if (fdm != NULL) {
+        fdm_del(fdm, wl_display_get_fd(c.wl.display));
+        fdm_del(fdm, c.repeat.fd);
+        fdm_destroy(fdm);
+    }
 
     render_destroy(c.render);
     shm_fini();
