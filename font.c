@@ -18,7 +18,6 @@
 #define min(x, y) ((x) < (y) ? (x) : (y))
 
 static FT_Library ft_lib;
-static mtx_t ft_lock;
 
 static tll(const struct font *) font_cache = tll_init();
 
@@ -29,7 +28,6 @@ init(void)
 {
     FcInit();
     FT_Init_FreeType(&ft_lib);
-    mtx_init(&ft_lock, mtx_plain);
 
 #if defined(LOG_ENABLE_DBG) && LOG_ENABLE_DBG
     int raw_version = FcGetVersion();
@@ -48,7 +46,6 @@ fini(void)
 {
     assert(tll_length(font_cache) == 0);
 
-    mtx_destroy(&ft_lock);
     FT_Done_FreeType(ft_lib);
     FcFini();
 }
@@ -60,11 +57,8 @@ font_destroy_no_free(struct font *font)
     if (--font->ref_counter > 0)
         return false;
 
-    if (font->face != NULL) {
-        mtx_lock(&ft_lock);
+    if (font->face != NULL)
         FT_Done_Face(font->face);
-        mtx_unlock(&ft_lock);
-    }
 
     if (font->fc_pattern != NULL)
         FcPatternDestroy(font->fc_pattern);
@@ -191,10 +185,8 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int start_idx,
 
     LOG_DBG("loading: %s", face_file);
 
-    mtx_lock(&ft_lock);
     FT_Face ft_face;
     FT_Error ft_err = FT_New_Face(ft_lib, (const char *)face_file, 0, &ft_face);
-    mtx_unlock(&ft_lock);
     if (ft_err != 0)
         LOG_ERR("%s: failed to create FreeType face", face_file);
 

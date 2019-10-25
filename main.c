@@ -8,13 +8,13 @@
 #include <getopt.h>
 
 #include <locale.h>
-#include <threads.h>
 #include <poll.h>
 
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <sys/wait.h>
 #include <sys/eventfd.h>
+#include <sys/timerfd.h>
 #include <sys/stat.h>
 #include <dirent.h>
 #include <fcntl.h>
@@ -97,13 +97,7 @@ struct context {
     size_t selected;
 
     struct {
-        mtx_t mutex;
-        cnd_t cond;
-        int trigger;
-        int pipe_read_fd;
-        int pipe_write_fd;
-        enum {REPEAT_STOP, REPEAT_START, REPEAT_EXIT} cmd;
-
+        int fd;
         bool dont_re_repeat;
         int32_t delay;
         int32_t rate;
@@ -132,75 +126,46 @@ static const struct wl_shm_listener shm_listener = {
     .format = &shm_format,
 };
 
-static int
-keyboard_repeater(void *arg)
+static bool
+start_repeater(struct context *c, uint32_t key)
 {
-    struct context *c = arg;
+    if (c->repeat.dont_re_repeat)
+        return true;
 
-    while (true) {
-        LOG_DBG("repeater: waiting for start");
+    struct itimerspec t = {
+        .it_value = {.tv_sec = 0, .tv_nsec = c->repeat.delay * 1000000},
+        .it_interval = {.tv_sec = 0, .tv_nsec = 1000000000 / c->repeat.rate},
+    };
 
-        mtx_lock(&c->repeat.mutex);
-        while (c->repeat.cmd == REPEAT_STOP)
-            cnd_wait(&c->repeat.cond, &c->repeat.mutex);
-
-        if (c->repeat.cmd == REPEAT_EXIT) {
-            mtx_unlock(&c->repeat.mutex);
-            return 0;
-        }
-
-    restart:
-
-        LOG_DBG("repeater: started");
-        assert(c->repeat.cmd == REPEAT_START);
-
-        const long rate_delay = 1000000000 / c->repeat.rate;
-        long delay = c->repeat.delay * 1000000;
-
-        while (true) {
-            assert(c->repeat.rate > 0);
-
-            struct timespec timeout;
-            clock_gettime(CLOCK_REALTIME, &timeout);
-
-            timeout.tv_nsec += delay;
-            if (timeout.tv_nsec >= 1000000000) {
-                timeout.tv_sec += timeout.tv_nsec / 1000000000;
-                timeout.tv_nsec %= 1000000000;
-            }
-
-            int ret = cnd_timedwait(&c->repeat.cond, &c->repeat.mutex, &timeout);
-            if (ret == thrd_success) {
-                if (c->repeat.cmd == REPEAT_START)
-                    goto restart;
-                else if (c->repeat.cmd == REPEAT_STOP) {
-                    mtx_unlock(&c->repeat.mutex);
-                    break;
-                } else if (c->repeat.cmd == REPEAT_EXIT) {
-                    mtx_unlock(&c->repeat.mutex);
-                    return 0;
-                }
-            }
-
-            assert(ret == thrd_timedout);
-            assert(c->repeat.cmd == REPEAT_START);
-            LOG_DBG("repeater: repeat: %u", c->repeat.key);
-
-            if (write(c->repeat.pipe_write_fd, &c->repeat.key,
-                      sizeof(c->repeat.key)) != sizeof(c->repeat.key))
-            {
-                LOG_ERRNO("faile to write repeat key to repeat pipe");
-                mtx_unlock(&c->repeat.mutex);
-                return 0;
-            }
-
-            delay = rate_delay;
-        }
-
+    if (t.it_value.tv_nsec >= 1000000000) {
+        t.it_value.tv_sec += t.it_value.tv_nsec / 1000000000;
+        t.it_value.tv_nsec %= 1000000000;
+    }
+    if (t.it_interval.tv_nsec >= 1000000000) {
+        t.it_interval.tv_sec += t.it_interval.tv_nsec / 1000000000;
+        t.it_interval.tv_nsec %= 1000000000;
+    }
+    if (timerfd_settime(c->repeat.fd, 0, &t, NULL) < 0) {
+        LOG_ERRNO("failed to arm keyboard repeat timer");
+        return false;
     }
 
-    assert(false);
-    return 1;
+    c->repeat.key = key;
+    return true;
+}
+
+static bool
+stop_repeater(struct context *c, uint32_t key)
+{
+    if (key != -1 && key != c->repeat.key)
+        return true;
+
+    if (timerfd_settime(c->repeat.fd, 0, &(struct itimerspec){{0}}, NULL) < 0) {
+        LOG_ERRNO("failed to disarm keyboard repeat timer");
+        return false;
+    }
+
+    return true;
 }
 
 static void
@@ -240,6 +205,7 @@ keyboard_leave(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
                struct wl_surface *surface)
 {
     struct context *c = data;
+    stop_repeater(c, -1);
     c->status = EXIT;
 }
 
@@ -313,14 +279,7 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
     }
 
     if (state == XKB_KEY_UP) {
-        mtx_lock(&c->repeat.mutex);
-        if (c->repeat.key == key) {
-            if (c->repeat.cmd != REPEAT_EXIT) {
-                c->repeat.cmd = REPEAT_STOP;
-                cnd_signal(&c->repeat.cond);
-            }
-        }
-        mtx_unlock(&c->repeat.mutex);
+        stop_repeater(c, key);
         return;
     }
 
@@ -536,15 +495,7 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
         refresh(c);
     }
 
-    mtx_lock(&c->repeat.mutex);
-    if (!c->repeat.dont_re_repeat) {
-        if (c->repeat.cmd != REPEAT_EXIT) {
-            c->repeat.cmd = REPEAT_START;
-            c->repeat.key = key - 8;
-            cnd_signal(&c->repeat.cond);
-        }
-    }
-    mtx_unlock(&c->repeat.mutex);
+    start_repeater(c, key - 8);
 
 }
 
@@ -1224,12 +1175,6 @@ main(int argc, char *const *argv)
 
     setlocale(LC_ALL, "");
 
-    int repeat_pipe_fds[2] = {-1, -1};
-    if (pipe2(repeat_pipe_fds, O_CLOEXEC) == -1) {
-        LOG_ERRNO("failed to create pipe for repeater thread");
-        return ret;
-    }
-
     struct context c = {
         .status = KEEP_RUNNING,
         .exit_code = EXIT_FAILURE,
@@ -1241,17 +1186,9 @@ main(int argc, char *const *argv)
             .cursor = 0
         },
         .repeat = {
-            .pipe_read_fd = repeat_pipe_fds[0],
-            .pipe_write_fd = repeat_pipe_fds[1],
-            .cmd = REPEAT_STOP,
+            .fd = timerfd_create(CLOCK_BOOTTIME, TFD_CLOEXEC | TFD_NONBLOCK),
         },
     };
-
-    mtx_init(&c.repeat.mutex, mtx_plain);
-    cnd_init(&c.repeat.cond);
-
-    thrd_t keyboard_repeater_id;
-    thrd_create(&keyboard_repeater_id, &keyboard_repeater, &c);
 
     struct font *font = font_from_name(font_name);
     LOG_DBG("height: %d, ascent: %d, descent: %d",
@@ -1397,7 +1334,7 @@ main(int argc, char *const *argv)
     while (c.status == KEEP_RUNNING) {
         struct pollfd fds[] = {
             {.fd = wl_display_get_fd(c.wl.display), .events = POLLIN},
-            {.fd = c.repeat.pipe_read_fd, .events = POLLIN},
+            {.fd = c.repeat.fd, .events = POLLIN},
         };
 
         wl_display_flush(c.wl.display);
@@ -1409,15 +1346,18 @@ main(int argc, char *const *argv)
         }
 
         if (fds[1].revents & POLLIN) {
-            uint32_t key;
-            if (read(c.repeat.pipe_read_fd, &key, sizeof(key)) != sizeof(key)) {
-                LOG_ERRNO("failed to read repeat key from repeat pipe");
-                break;
-            }
+            uint64_t expiration_count;
+            ssize_t ret = read(
+                c.repeat.fd, &expiration_count, sizeof(expiration_count));
 
-            c.repeat.dont_re_repeat = true;
-            keyboard_key(&c, NULL, 0, 0, key, XKB_KEY_DOWN);
-            c.repeat.dont_re_repeat = false;
+            if (ret < 0 && errno != EAGAIN)
+                LOG_ERRNO("failed to read key repeat count from timer fd");
+            else if (ret > 0) {
+                c.repeat.dont_re_repeat = true;
+                for (size_t i = 0; i < expiration_count; i++)
+                    keyboard_key(&c, NULL, 0, 0, c.repeat.key, XKB_KEY_DOWN);
+                c.repeat.dont_re_repeat = false;
+            }
         }
 
         if (fds[0].revents & POLLIN)
@@ -1430,11 +1370,6 @@ main(int argc, char *const *argv)
     ret = c.exit_code;
 
 out:
-    /* Signal stop to repeater thread */
-    mtx_lock(&c.repeat.mutex);
-    c.repeat.cmd = REPEAT_EXIT;
-    cnd_signal(&c.repeat.cond);
-    mtx_unlock(&c.repeat.mutex);
 
     render_destroy(c.render);
     shm_fini();
@@ -1493,11 +1428,6 @@ out:
     if (c.wl.xkb != NULL)
         xkb_context_unref(c.wl.xkb);
 
-    thrd_join(keyboard_repeater_id, NULL);
-    cnd_destroy(&c.repeat.cond);
-    mtx_destroy(&c.repeat.mutex);
-    close(c.repeat.pipe_read_fd);
-    close(c.repeat.pipe_write_fd);
     cairo_debug_reset_static_data();
 
     return ret;

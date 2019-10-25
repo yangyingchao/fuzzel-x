@@ -15,7 +15,6 @@ add_project_arguments(
   language: 'c',
 )
 
-threads = dependency('threads')
 pixman = dependency('pixman-1')
 freetype = dependency('freetype2')
 fontconfig = dependency('fontconfig')
@@ -76,8 +75,7 @@ executable(
   'tllist.h',
   'xdg.c', 'xdg.h',
   wl_proto_src + wl_proto_headers, version,
-  dependencies: [threads,
-                 pixman,
+  dependencies: [pixman,
                  freetype,
                  fontconfig,
                  cairo,
