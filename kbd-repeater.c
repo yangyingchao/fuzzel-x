@@ -88,6 +88,7 @@ repeat_destroy(struct repeat *repeat)
 
     fdm_del(repeat->fdm, repeat->fd);
     close(repeat->fd);
+    free(repeat);
 }
 
 void

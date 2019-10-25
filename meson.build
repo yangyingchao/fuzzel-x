@@ -75,6 +75,7 @@ executable(
   'shm.c', 'shm.h',
   'stride.h',
   'tllist.h',
+  'wayland.c', 'wayland.h',
   'xdg.c', 'xdg.h',
   wl_proto_src + wl_proto_headers, version,
   dependencies: [pixman,
