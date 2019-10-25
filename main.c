@@ -8,7 +8,6 @@
 #include <getopt.h>
 
 #include <locale.h>
-#include <threads.h>
 #include <poll.h>
 
 #include <sys/types.h>
