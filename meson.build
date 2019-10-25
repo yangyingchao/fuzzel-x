@@ -64,6 +64,7 @@ executable(
   'fuzzel',
   'application.c', 'application.h',
   'dmenu.c', 'dmenu.h',
+  'fdm.c', 'fdm.h',
   'font.c', 'font.h',
   'icon.c', 'icon.h',
   'log.c', 'log.h',
