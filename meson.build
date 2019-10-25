@@ -67,6 +67,7 @@ executable(
   'fdm.c', 'fdm.h',
   'font.c', 'font.h',
   'icon.c', 'icon.h',
+  'kbd-repeater.c', 'kbd-repeater.h',
   'log.c', 'log.h',
   'main.c',
   'prompt.h',

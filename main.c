@@ -14,7 +14,6 @@
 #include <sys/eventfd.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
-#include <sys/timerfd.h>
 #include <sys/wait.h>
 #include <dirent.h>
 #include <fcntl.h>
@@ -38,6 +37,7 @@
 #include "dmenu.h"
 #include "fdm.h"
 #include "font.h"
+#include "kbd-repeater.h"
 #include "match.h"
 #include "render.h"
 #include "shm.h"
@@ -97,13 +97,7 @@ struct context {
     size_t match_count;
     size_t selected;
 
-    struct {
-        int fd;
-        bool dont_re_repeat;
-        int32_t delay;
-        int32_t rate;
-        uint32_t key;
-    } repeat;
+    struct repeat *repeat;
 
     bool frame_is_scheduled;
     struct buffer *pending;
@@ -126,48 +120,6 @@ shm_format(void *data, struct wl_shm *wl_shm, uint32_t format)
 static const struct wl_shm_listener shm_listener = {
     .format = &shm_format,
 };
-
-static bool
-start_repeater(struct context *c, uint32_t key)
-{
-    if (c->repeat.dont_re_repeat)
-        return true;
-
-    struct itimerspec t = {
-        .it_value = {.tv_sec = 0, .tv_nsec = c->repeat.delay * 1000000},
-        .it_interval = {.tv_sec = 0, .tv_nsec = 1000000000 / c->repeat.rate},
-    };
-
-    if (t.it_value.tv_nsec >= 1000000000) {
-        t.it_value.tv_sec += t.it_value.tv_nsec / 1000000000;
-        t.it_value.tv_nsec %= 1000000000;
-    }
-    if (t.it_interval.tv_nsec >= 1000000000) {
-        t.it_interval.tv_sec += t.it_interval.tv_nsec / 1000000000;
-        t.it_interval.tv_nsec %= 1000000000;
-    }
-    if (timerfd_settime(c->repeat.fd, 0, &t, NULL) < 0) {
-        LOG_ERRNO("failed to arm keyboard repeat timer");
-        return false;
-    }
-
-    c->repeat.key = key;
-    return true;
-}
-
-static bool
-stop_repeater(struct context *c, uint32_t key)
-{
-    if (key != -1 && key != c->repeat.key)
-        return true;
-
-    if (timerfd_settime(c->repeat.fd, 0, &(struct itimerspec){{0}}, NULL) < 0) {
-        LOG_ERRNO("failed to disarm keyboard repeat timer");
-        return false;
-    }
-
-    return true;
-}
 
 static void
 keyboard_keymap(void *data, struct wl_keyboard *wl_keyboard,
@@ -206,7 +158,7 @@ keyboard_leave(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
                struct wl_surface *surface)
 {
     struct context *c = data;
-    stop_repeater(c, -1);
+    repeat_stop(c->repeat, -1);
     c->status = EXIT;
 }
 
@@ -280,7 +232,7 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
     }
 
     if (state == XKB_KEY_UP) {
-        stop_repeater(c, key);
+        repeat_stop(c->repeat, key);
         return;
     }
 
@@ -496,7 +448,7 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
         refresh(c);
     }
 
-    start_repeater(c, key - 8);
+    repeat_start(c->repeat, key - 8);
 
 }
 
@@ -520,8 +472,7 @@ keyboard_repeat_info(void *data, struct wl_keyboard *wl_keyboard,
 {
     struct context *c = data;
     LOG_DBG("keyboard repeat: rate=%d, delay=%d", rate, delay);
-    c->repeat.rate = rate;
-    c->repeat.delay = delay;
+    repeat_configure(c->repeat, delay, rate);
 }
 
 static const struct wl_keyboard_listener keyboard_listener = {
@@ -1028,31 +979,11 @@ fdm_wayl(struct fdm *fdm, int fd, int events, void *data)
     return event_count != -1;
 }
 
-static bool
-fdm_repeat(struct fdm *fdm, int fd, int events, void *data)
+static void
+repeat_cb(uint32_t key, void *data)
 {
     struct context *c = data;
-
-    uint64_t expiration_count;
-    ssize_t ret = read(
-        c->repeat.fd, &expiration_count, sizeof(expiration_count));
-
-    if (ret < 0 && errno != EAGAIN) {
-        LOG_ERRNO("failed to read key repeat count from timer fd");
-        return false;
-    }
-
-    c->repeat.dont_re_repeat = true;
-    for (size_t i = 0; i < expiration_count; i++)
-        keyboard_key(c, NULL, 0, 0, c->repeat.key, XKB_KEY_DOWN);
-    c->repeat.dont_re_repeat = false;
-
-    if (events & EPOLLHUP) {
-        LOG_ERR("keyboard repeater timer FD closed unexpectedly");
-        return false;
-    }
-
-    return true;
+    keyboard_key(c, NULL, 0, 0, key, XKB_KEY_DOWN);
 }
 
 static void
@@ -1227,15 +1158,22 @@ main(int argc, char *const *argv)
             .text = calloc(1, sizeof(wchar_t)),
             .cursor = 0
         },
-        .repeat = {
-            .fd = timerfd_create(CLOCK_BOOTTIME, TFD_CLOEXEC | TFD_NONBLOCK),
-        },
     };
 
     struct fdm *fdm = NULL;
+
     struct font *font = font_from_name(font_name);
+    if (font == NULL)
+        goto out;
+
     LOG_DBG("height: %d, ascent: %d, descent: %d",
             font->fextents.height, font->fextents.ascent, font->fextents.descent);
+
+    if ((fdm = fdm_init()) == NULL)
+        goto out;
+
+    if ((c.repeat = repeat_init(fdm, &repeat_cb, &c)) == NULL)
+        goto out;
 
     if (dmenu_mode)
         dmenu_load_entries(&c.applications);
@@ -1374,16 +1312,8 @@ main(int argc, char *const *argv)
     wl_display_dispatch_pending(c.wl.display);
     wl_display_flush(c.wl.display);
 
-    if ((fdm = fdm_init()) == NULL)
-        goto out;
-
     if (!fdm_add(fdm, wl_display_get_fd(c.wl.display), EPOLLIN, &fdm_wayl, &c)) {
         LOG_ERR("failed to register Wayland socket with FDM");
-        goto out;
-    }
-
-    if (!fdm_add(fdm, c.repeat.fd, EPOLLIN, &fdm_repeat, &c)) {
-        LOG_ERR("failed to register keyboard repeater with FDM");
         goto out;
     }
 
@@ -1399,11 +1329,10 @@ main(int argc, char *const *argv)
     ret = c.exit_code;
 
 out:
-    if (fdm != NULL) {
+    repeat_destroy(c.repeat);
+    if (fdm != NULL)
         fdm_del(fdm, wl_display_get_fd(c.wl.display));
-        fdm_del(fdm, c.repeat.fd);
-        fdm_destroy(fdm);
-    }
+    fdm_destroy(fdm);
 
     render_destroy(c.render);
     shm_fini();
