@@ -43,5 +43,4 @@ void render_prompt(
     const struct prompt *prompt);
 
 void render_match_list(const struct render *render, struct buffer *buf,
-                       const struct match matches[], size_t match_count,
-                       size_t match_length, size_t selected);
+                       const struct matches *matches, size_t match_length);

@@ -92,7 +92,7 @@ err:
 }
 
 bool
-application_execute(struct application *app, const struct prompt *prompt)
+application_execute(const struct application *app, const struct prompt *prompt)
 {
     const size_t clen = wcstombs(NULL, prompt->text, 0);
     char cprompt[clen + 1];

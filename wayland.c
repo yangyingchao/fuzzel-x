@@ -1,9 +1,13 @@
 #include "wayland.h"
 
 #include <stdlib.h>
+#include <wctype.h>
 #include <unistd.h>
+#include <errno.h>
 
 #include <sys/mman.h>
+#include <sys/epoll.h>
+#include <sys/timerfd.h>
 
 #include <wayland-client.h>
 #include <wayland-cursor.h>
@@ -16,10 +20,13 @@
 #include <wlr-layer-shell-unstable-v1.h>
 
 #define LOG_MODULE "wayland"
-#define LOG_ENABLE_DBG 0
+#define LOG_ENABLE_DBG 1
 #include "log.h"
-#include "kbd-repeater.h"
 #include "tllist.h"
+#include "prompt.h"
+#include "dmenu.h"
+#include "shm.h"
+#include "render.h"
 
 struct monitor {
     struct wl_output *output;
@@ -38,9 +45,32 @@ struct monitor {
     int scale;
 };
 
+struct repeat {
+    int fd;
+    int32_t delay;
+    int32_t rate;
+
+    bool dont_re_repeat;
+    uint32_t key;
+};
+
 struct wayland {
     struct fdm *fdm;
-    struct repeat *repeat;
+    struct render *render;
+    struct prompt *prompt;
+    struct matches *matches;
+
+    int width;
+    int height;
+
+    struct repeat repeat;
+
+    enum { KEEP_RUNNING, EXIT_UPDATE_CACHE, EXIT} status;
+    int exit_code;
+    bool dmenu_mode;
+
+    bool frame_is_scheduled;
+    struct buffer *pending;
 
     struct wl_display *display;
     struct wl_registry *registry;
@@ -60,6 +90,50 @@ struct wayland {
     struct xkb_keymap *xkb_keymap;
     struct xkb_state *xkb_state;
 };
+
+static void refresh(struct wayland *wayl);
+
+bool
+repeat_start(struct repeat *repeat, uint32_t key)
+{
+    if (repeat->dont_re_repeat)
+        return true;
+
+    struct itimerspec t = {
+        .it_value = {.tv_sec = 0, .tv_nsec = repeat->delay * 1000000},
+        .it_interval = {.tv_sec = 0, .tv_nsec = 1000000000 / repeat->rate},
+    };
+
+    if (t.it_value.tv_nsec >= 1000000000) {
+        t.it_value.tv_sec += t.it_value.tv_nsec / 1000000000;
+        t.it_value.tv_nsec %= 1000000000;
+    }
+    if (t.it_interval.tv_nsec >= 1000000000) {
+        t.it_interval.tv_sec += t.it_interval.tv_nsec / 1000000000;
+        t.it_interval.tv_nsec %= 1000000000;
+    }
+    if (timerfd_settime(repeat->fd, 0, &t, NULL) < 0) {
+        LOG_ERRNO("failed to arm keyboard repeat timer");
+        return false;
+    }
+
+    repeat->key = key;
+    return true;
+}
+
+bool
+repeat_stop(struct repeat *repeat, uint32_t key)
+{
+    if (key != (uint32_t)-1 && key != repeat->key)
+        return true;
+
+    if (timerfd_settime(repeat->fd, 0, &(struct itimerspec){{0}}, NULL) < 0) {
+        LOG_ERRNO("failed to disarm keyboard repeat timer");
+        return false;
+    }
+
+    return true;
+}
 
 static void
 shm_format(void *data, struct wl_shm *wl_shm, uint32_t format)
@@ -107,8 +181,8 @@ keyboard_leave(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
                struct wl_surface *surface)
 {
     struct wayland *wayl = data;
-    repeat_stop(wayl->repeat, -1);
-    c->status = EXIT;
+    repeat_stop(&wayl->repeat, -1);
+    wayl->status = EXIT;
 }
 
 static size_t
@@ -181,7 +255,7 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
     }
 
     if (state == XKB_KEY_UP) {
-        repeat_stop(c->repeat, key);
+        repeat_stop(&wayl->repeat, key);
         return;
     }
 
@@ -207,158 +281,143 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
             sym, mods, consumed, significant, effective_mods);
 
     if (sym == XKB_KEY_Home || (sym == XKB_KEY_a && effective_mods == ctrl)) {
-        c->prompt.cursor = 0;
-        refresh(c);
+        wayl->prompt->cursor = 0;
+        refresh(wayl);
     }
 
     else if (sym == XKB_KEY_End || (sym == XKB_KEY_e && effective_mods == ctrl)) {
-        c->prompt.cursor = wcslen(c->prompt.text);
-        refresh(c);
+        wayl->prompt->cursor = wcslen(wayl->prompt->text);
+        refresh(wayl);
     }
 
     else if ((sym == XKB_KEY_b && effective_mods == alt) ||
              (sym == XKB_KEY_Left && effective_mods == ctrl)) {
-        c->prompt.cursor = prompt_prev_word(&c->prompt);
-        refresh(c);
+        wayl->prompt->cursor = prompt_prev_word(wayl->prompt);
+        refresh(wayl);
     }
 
     else if ((sym == XKB_KEY_f && effective_mods == alt) ||
              (sym == XKB_KEY_Right && effective_mods == ctrl)) {
 
-        c->prompt.cursor = prompt_next_word(&c->prompt);
-        refresh(c);
+        wayl->prompt->cursor = prompt_next_word(wayl->prompt);
+        refresh(wayl);
     }
 
     else if ((sym == XKB_KEY_Escape && effective_mods == 0) ||
              (sym == XKB_KEY_g && effective_mods == ctrl)) {
-        c->status = EXIT;
+        wayl->status = EXIT;
     }
 
     else if ((sym == XKB_KEY_p && effective_mods == ctrl) ||
              (sym == XKB_KEY_Up && effective_mods == 0)) {
-        if (c->selected > 0) {
-            c->selected--;
-            refresh(c);
-        }
+        if (matches_selected_prev(wayl->matches, false))
+            refresh(wayl);
     }
 
     else if ((sym == XKB_KEY_n && effective_mods == ctrl) ||
              (sym == XKB_KEY_Down && effective_mods == 0)) {
-        if (c->selected + 1 < c->match_count) {
-            c->selected++;
-            refresh(c);
-        }
+        if (matches_selected_next(wayl->matches, false))
+            refresh(wayl);
     }
 
     else if (sym == XKB_KEY_Tab && effective_mods == 0) {
-        if (c->selected + 1 < c->match_count) {
-            c->selected++;
-            refresh(c);
-        } else {
-            c->selected = 0;
-            refresh(c);
-        }
+        if (matches_selected_next(wayl->matches, true))
+            refresh(wayl);
     }
 
     else if (sym == XKB_KEY_ISO_Left_Tab && effective_mods == 0) {
-        if (c->selected > 0) {
-            c->selected--;
-            refresh(c);
-        } else {
-            c->selected = c->match_count - 1;
-            refresh(c);
-        }
+        if (matches_selected_prev(wayl->matches, true))
+            refresh(wayl);
     }
 
     else if ((sym == XKB_KEY_b && effective_mods == ctrl) ||
              (sym == XKB_KEY_Left && effective_mods == 0)) {
-        size_t new_cursor = prompt_prev_char(&c->prompt);
-        if (new_cursor != c->prompt.cursor) {
-            c->prompt.cursor = new_cursor;
-            refresh(c);
+        size_t new_cursor = prompt_prev_char(wayl->prompt);
+        if (new_cursor != wayl->prompt->cursor) {
+            wayl->prompt->cursor = new_cursor;
+            refresh(wayl);
         }
     }
 
     else if ((sym == XKB_KEY_f && effective_mods == ctrl) ||
              (sym == XKB_KEY_Right && effective_mods == 0)) {
-        size_t new_cursor = prompt_next_char(&c->prompt);
-        if (new_cursor != c->prompt.cursor) {
-            c->prompt.cursor = new_cursor;
-            refresh(c);
+        size_t new_cursor = prompt_next_char(wayl->prompt);
+        if (new_cursor != wayl->prompt->cursor) {
+            wayl->prompt->cursor = new_cursor;
+            refresh(wayl);
         }
     }
 
     else if ((sym == XKB_KEY_d && effective_mods == ctrl) ||
              (sym == XKB_KEY_Delete && effective_mods == 0)) {
-        if (c->prompt.cursor < wcslen(c->prompt.text)) {
-            size_t next_char = prompt_next_char(&c->prompt);
-            memmove(&c->prompt.text[c->prompt.cursor],
-                    &c->prompt.text[next_char],
-                    (wcslen(c->prompt.text) - next_char + 1) * sizeof(wchar_t));
-            update_matches(c);
-            refresh(c);
+        if (wayl->prompt->cursor < wcslen(wayl->prompt->text)) {
+            size_t next_char = prompt_next_char(wayl->prompt);
+            memmove(&wayl->prompt->text[wayl->prompt->cursor],
+                    &wayl->prompt->text[next_char],
+                    (wcslen(wayl->prompt->text) - next_char + 1) * sizeof(wchar_t));
+            matches_update(wayl->matches, wayl->prompt->text);
+            refresh(wayl);
         }
     }
 
     else if (sym == XKB_KEY_BackSpace && effective_mods == 0) {
-        if (c->prompt.cursor > 0) {
-            size_t prev_char = prompt_prev_char(&c->prompt);
-            c->prompt.text[prev_char] = L'\0';
-            c->prompt.cursor = prev_char;
+        if (wayl->prompt->cursor > 0) {
+            size_t prev_char = prompt_prev_char(wayl->prompt);
+            wayl->prompt->text[prev_char] = L'\0';
+            wayl->prompt->cursor = prev_char;
 
-            update_matches(c);
-            refresh(c);
+            matches_update(wayl->matches, wayl->prompt->text);
+            refresh(wayl);
         }
     }
 
     else if (sym == XKB_KEY_BackSpace && (effective_mods == ctrl ||
                                           effective_mods == alt)) {
-        size_t new_cursor = prompt_prev_word(&c->prompt);
-        memmove(&c->prompt.text[new_cursor],
-                &c->prompt.text[c->prompt.cursor],
-                (wcslen(c->prompt.text) - c->prompt.cursor + 1) * sizeof(wchar_t));
-        c->prompt.cursor = new_cursor;
-        update_matches(c);
-        refresh(c);
+        size_t new_cursor = prompt_prev_word(wayl->prompt);
+        memmove(&wayl->prompt->text[new_cursor],
+                &wayl->prompt->text[wayl->prompt->cursor],
+                (wcslen(wayl->prompt->text) - wayl->prompt->cursor + 1) * sizeof(wchar_t));
+        wayl->prompt->cursor = new_cursor;
+        matches_update(wayl->matches, wayl->prompt->text);
+        refresh(wayl);
     }
 
     else if ((sym == XKB_KEY_d && effective_mods == alt) ||
              (sym == XKB_KEY_Delete && effective_mods == ctrl)) {
-        size_t next_word = prompt_next_word(&c->prompt);
-        memmove(&c->prompt.text[c->prompt.cursor],
-                &c->prompt.text[next_word],
-                (wcslen(c->prompt.text) - next_word + 1) * sizeof(wchar_t));
-        update_matches(c);
-        refresh(c);
+        size_t next_word = prompt_next_word(wayl->prompt);
+        memmove(&wayl->prompt->text[wayl->prompt->cursor],
+                &wayl->prompt->text[next_word],
+                (wcslen(wayl->prompt->text) - next_word + 1) * sizeof(wchar_t));
+        matches_update(wayl->matches, wayl->prompt->text);
+        refresh(wayl);
     }
 
     else if (sym == XKB_KEY_k && effective_mods == ctrl) {
-        c->prompt.text[c->prompt.cursor] = L'\0';
-        update_matches(c);
-        refresh(c);
+        wayl->prompt->text[wayl->prompt->cursor] = L'\0';
+        matches_update(wayl->matches, wayl->prompt->text);
+        refresh(wayl);
     }
 
     else if (sym == XKB_KEY_Return && effective_mods == 0) {
-        c->status = EXIT;
+        wayl->status = EXIT;
 
-        struct application *match = c->match_count > 0
-            ? c->matches[c->selected].application
-            : NULL;
+        const struct match *match = matches_get_match(wayl->matches);
+        struct application *app = match != NULL ? match->application : NULL;
 
-        if (c->dmenu_mode) {
+        if (wayl->dmenu_mode) {
             if (match == NULL) {
-                c->status = KEEP_RUNNING;
+                wayl->status = KEEP_RUNNING;
             } else {
-                dmenu_execute(match);
-                c->exit_code = EXIT_SUCCESS;
+                dmenu_execute(app);
+                wayl->exit_code = EXIT_SUCCESS;
             }
         } else {
-            bool success = application_execute(match, &c->prompt);
-            c->exit_code = success ? EXIT_SUCCESS : EXIT_FAILURE;
+            bool success = application_execute(app, wayl->prompt);
+            wayl->exit_code = success ? EXIT_SUCCESS : EXIT_FAILURE;
 
             if (success && match != NULL) {
-                c->status = EXIT_UPDATE_CACHE;
-                match->count++;
+                wayl->status = EXIT_UPDATE_CACHE;
+                app->count++;
             }
         }
     }
@@ -374,30 +433,30 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
         mbstate_t ps = {0};
         size_t wlen = mbsnrtowcs(NULL, &b, count, 0, &ps);
 
-        const size_t new_len = wcslen(c->prompt.text) + wlen + 1;
-        wchar_t *new_text = realloc(c->prompt.text, new_len * sizeof(wchar_t));
+        const size_t new_len = wcslen(wayl->prompt->text) + wlen + 1;
+        wchar_t *new_text = realloc(wayl->prompt->text, new_len * sizeof(wchar_t));
         if (new_text == NULL)
             return;
 
-        memmove(&new_text[c->prompt.cursor + wlen],
-                &new_text[c->prompt.cursor],
-                (wcslen(new_text) - c->prompt.cursor + 1) * sizeof(wchar_t));
+        memmove(&new_text[wayl->prompt->cursor + wlen],
+                &new_text[wayl->prompt->cursor],
+                (wcslen(new_text) - wayl->prompt->cursor + 1) * sizeof(wchar_t));
 
         b = buf;
         ps = (mbstate_t){0};
-        mbsnrtowcs(&new_text[c->prompt.cursor], &b, count, wlen + 1, &ps);
+        mbsnrtowcs(&new_text[wayl->prompt->cursor], &b, count, wlen + 1, &ps);
 
-        c->prompt.text = new_text;
-        c->prompt.cursor += wlen;
+        wayl->prompt->text = new_text;
+        wayl->prompt->cursor += wlen;
 
         LOG_DBG("prompt: \"%S\" (cursor=%zu, length=%zu)",
-                c->prompt.text, c->prompt.cursor, new_len);
+                wayl->prompt->text, wayl->prompt->cursor, new_len);
 
-        update_matches(c);
-        refresh(c);
+        matches_update(wayl->matches, wayl->prompt->text);
+        refresh(wayl);
     }
 
-    repeat_start(c->repeat, key - 8);
+    repeat_start(&wayl->repeat, key - 8);
 
 }
 
@@ -421,7 +480,8 @@ keyboard_repeat_info(void *data, struct wl_keyboard *wl_keyboard,
 {
     struct wayland *wayl = data;
     LOG_DBG("keyboard repeat: rate=%d, delay=%d", rate, delay);
-    repeat_configure(c->repeat, delay, rate);
+    wayl->repeat.delay = delay;
+    wayl->repeat.rate = rate;
 }
 
 static const struct wl_keyboard_listener keyboard_listener = {
@@ -446,7 +506,7 @@ seat_handle_capabilities(void *data, struct wl_seat *wl_seat,
         wl_keyboard_release(wayl->keyboard);
 
     wayl->keyboard = wl_seat_get_keyboard(wl_seat);
-    wl_keyboard_add_listener(wayl->keyboard, &keyboard_listener, c);
+    wl_keyboard_add_listener(wayl->keyboard, &keyboard_listener, wayl);
 }
 
 static void
@@ -553,7 +613,7 @@ handle_global(void *data, struct wl_registry *registry,
 
     else if (strcmp(interface, wl_shm_interface.name) == 0) {
         wayl->shm = wl_registry_bind(wayl->registry, name, &wl_shm_interface, 1);
-        wl_shm_add_listener(wayl->shm, &shm_listener, &c->wl);
+        wl_shm_add_listener(wayl->shm, &shm_listener, wayl);
         wl_display_roundtrip(wayl->display);
     }
 
@@ -587,7 +647,7 @@ handle_global(void *data, struct wl_registry *registry,
 
     else if (strcmp(interface, wl_seat_interface.name) == 0) {
         wayl->seat = wl_registry_bind(wayl->registry, name, &wl_seat_interface, 4);
-        wl_seat_add_listener(wayl->seat, &seat_listener, c);
+        wl_seat_add_listener(wayl->seat, &seat_listener, wayl);
         wl_display_roundtrip(wayl->display);
     }
 
@@ -619,11 +679,134 @@ static const struct zwlr_layer_surface_v1_listener layer_surface_listener = {
     .configure = layer_surface_configure,
 };
 
-struct wayland *
-wayl_init(struct fdm *fdm, int width, int height)
+static void frame_callback(
+    void *data, struct wl_callback *wl_callback, uint32_t callback_data);
+
+static const struct wl_callback_listener frame_listener = {
+    .done = &frame_callback,
+};
+
+static void
+commit_buffer(struct wayland *wayl, struct buffer *buf)
 {
-    struct wayland *wayl = malloc(sizeof(*wayl));
+    assert(buf->busy);
+
+    wl_surface_set_buffer_scale(wayl->surface, wayl->monitor->scale);
+    wl_surface_attach(wayl->surface, buf->wl_buf, 0, 0);
+    wl_surface_damage_buffer(wayl->surface, 0, 0, buf->width, buf->height);
+
+    struct wl_callback *cb = wl_surface_frame(wayl->surface);
+    wl_callback_add_listener(cb, &frame_listener, wayl);
+
+    wayl->frame_is_scheduled = true;
+    wl_surface_commit(wayl->surface);
+}
+
+static void
+frame_callback(void *data, struct wl_callback *wl_callback, uint32_t callback_data)
+{
+    struct wayland *wayl = data;
+
+    wayl->frame_is_scheduled = false;
+    wl_callback_destroy(wl_callback);
+
+    if (wayl->pending != NULL) {
+        commit_buffer(wayl, wayl->pending);
+        wayl->pending = NULL;
+    }
+}
+
+static void
+refresh(struct wayland *wayl)
+{
+    struct buffer *buf = shm_get_buffer(wayl->shm, wayl->width, wayl->height);
+
+    /* Background + border */
+    render_background(wayl->render, buf);
+
+    /* Window content */
+    render_prompt(wayl->render, buf, wayl->prompt);
+    render_match_list(wayl->render, buf, wayl->matches, wcslen(wayl->prompt->text));
+
+    cairo_surface_flush(buf->cairo_surface);
+
+    if (wayl->frame_is_scheduled) {
+        /* There's already a frame being drawn - delay current frame
+         * (overwriting any previous pending frame) */
+
+        if (wayl->pending != NULL)
+            wayl->pending->busy = false;
+
+        wayl->pending = buf;
+    } else {
+        /* No pending frames - render immediately */
+        assert(wayl->pending == NULL);
+        commit_buffer(wayl, buf);
+    }
+}
+
+static bool
+fdm_handler(struct fdm *fdm, int fd, int events, void *data)
+{
+    struct wayland *wayl = data;
+    int event_count = wl_display_dispatch(wayl->display);
+
+    if (events & EPOLLHUP) {
+        LOG_WARN("disconnected from Wayland");
+        return false;
+    }
+
+    return event_count != -1 && wayl->status == KEEP_RUNNING;
+}
+
+static bool
+fdm_repeat(struct fdm *fdm, int fd, int events, void *data)
+{
+    struct wayland *wayl = data;
+    struct repeat *repeat = &wayl->repeat;
+
+    uint64_t expiration_count;
+    ssize_t ret = read(
+        repeat->fd, &expiration_count, sizeof(expiration_count));
+
+    if (ret < 0 && errno != EAGAIN) {
+        LOG_ERRNO("failed to read key repeat count from timer fd");
+        return false;
+    }
+
+    repeat->dont_re_repeat = true;
+    for (size_t i = 0; i < expiration_count; i++)
+        keyboard_key(wayl, NULL, 0, 0, repeat->key, XKB_KEY_DOWN);
+    repeat->dont_re_repeat = false;
+
+    if (events & EPOLLHUP) {
+        LOG_ERR("keyboard repeater timer FD closed unexpectedly");
+        return false;
+    }
+
+    return true;
+}
+
+struct wayland *
+wayl_init(struct fdm *fdm, struct render *render, struct prompt *prompt,
+          struct matches *matches, int width, int height,
+          const char *output_name, bool dmenu_mode)
+{
+    struct wayland *wayl = calloc(1, sizeof(*wayl));
+
     wayl->fdm = fdm;
+    wayl->render = render;
+    wayl->prompt = prompt;
+    wayl->matches = matches;
+    wayl->status = KEEP_RUNNING;
+    wayl->exit_code = EXIT_FAILURE;
+    wayl->dmenu_mode = dmenu_mode;
+
+    wayl->repeat.fd = timerfd_create(CLOCK_BOOTTIME, TFD_CLOEXEC | TFD_NONBLOCK);
+    if (wayl->repeat.fd == -1) {
+        LOG_ERRNO("failed to create keyboard repeat timer FD");
+        goto out;
+    }
 
     wayl->display = wl_display_connect(NULL);
     if (wayl->display == NULL) {
@@ -637,7 +820,7 @@ wayl_init(struct fdm *fdm, int width, int height)
         goto out;
     }
 
-    wl_registry_add_listener(wayl->registry, &registry_listener, &c);
+    wl_registry_add_listener(wayl->registry, &registry_listener, wayl);
     wl_display_roundtrip(wayl->display);
 
     if (wayl->compositor == NULL) {
@@ -712,10 +895,40 @@ wayl_init(struct fdm *fdm, int width, int height)
         goto out;
     }
 
+    const int scale = wayl->monitor->scale;
+
+    width /= scale; width *= scale;
+    height /= scale; height *= scale;
+
+    wayl->width = width;
+    wayl->height = height;
+
+    zwlr_layer_surface_v1_set_size(wayl->layer_surface, width / scale, height / scale);
+    zwlr_layer_surface_v1_set_keyboard_interactivity(wayl->layer_surface, 1);
+
+    zwlr_layer_surface_v1_add_listener(
+        wayl->layer_surface, &layer_surface_listener, wayl);
+
+    /* Trigger a 'configure' event, after which we'll have the width */
+    wl_surface_commit(wayl->surface);
+    wl_display_roundtrip(wayl->display);
+
+    if (!fdm_add(wayl->fdm, wl_display_get_fd(wayl->display), EPOLLIN, &fdm_handler, wayl)) {
+        LOG_ERR("failed to register Wayland socket with FDM");
+        goto out;
+    }
+
+    if (!fdm_add(wayl->fdm, wayl->repeat.fd, EPOLLIN, &fdm_repeat, wayl)) {
+        LOG_ERR("failed to register keyboard repeat timer FD with FDM");
+        goto out;
+    }
+
+    refresh(wayl);
     return wayl;
 
-err:
-    free(wayl);
+out:
+    wayl_destroy(wayl);
+    return NULL;
 }
 
 void
@@ -724,5 +937,66 @@ wayl_destroy(struct wayland *wayl)
     if (wayl == NULL)
         return;
 
+    if (wayl->display != NULL)
+        fdm_del(wayl->fdm, wl_display_get_fd(wayl->display));
+
+    if (wayl->repeat.fd > 0)
+        fdm_del(wayl->fdm, wayl->repeat.fd);
+
+    tll_foreach(wayl->monitors, it) {
+        free(it->item.name);
+        if (it->item.xdg)
+            zxdg_output_v1_destroy(it->item.xdg);
+        if (it->item.output != NULL)
+            wl_output_destroy(it->item.output);
+        tll_remove(wayl->monitors, it);
+    }
+
+    if (wayl->xdg_output_manager != NULL)
+        zxdg_output_manager_v1_destroy(wayl->xdg_output_manager);
+
+    if (wayl->layer_surface != NULL)
+        zwlr_layer_surface_v1_destroy(wayl->layer_surface);
+    if (wayl->layer_shell != NULL)
+        zwlr_layer_shell_v1_destroy(wayl->layer_shell);
+    if (wayl->keyboard != NULL)
+        wl_keyboard_destroy(wayl->keyboard);
+    if (wayl->surface != NULL)
+        wl_surface_destroy(wayl->surface);
+    if (wayl->seat != NULL)
+        wl_seat_destroy(wayl->seat);
+    if (wayl->compositor != NULL)
+        wl_compositor_destroy(wayl->compositor);
+    if (wayl->shm != NULL)
+        wl_shm_destroy(wayl->shm);
+    if (wayl->registry != NULL)
+        wl_registry_destroy(wayl->registry);
+    if (wayl->display != NULL)
+        wl_display_disconnect(wayl->display);
+    if (wayl->xkb_state != NULL)
+        xkb_state_unref(wayl->xkb_state);
+    if (wayl->xkb_keymap != NULL)
+        xkb_keymap_unref(wayl->xkb_keymap);
+    if (wayl->xkb != NULL)
+        xkb_context_unref(wayl->xkb);
+
     free(wayl);
+}
+
+void
+wayl_flush(struct wayland *wayl)
+{
+    wl_display_flush(wayl->display);
+}
+
+bool
+wayl_exit_code(const struct wayland *wayl)
+{
+    return wayl->exit_code;
+}
+
+bool
+wayl_update_cache(const struct wayland *wayl)
+{
+    return wayl->status == EXIT_UPDATE_CACHE;
 }

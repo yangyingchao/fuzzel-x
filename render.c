@@ -154,13 +154,14 @@ render_match_text(struct buffer *buf, double *_x, double _y,
 
 void
 render_match_list(const struct render *render, struct buffer *buf,
-                  const struct match matches[], size_t match_count,
-                  size_t match_length, size_t selected)
+                  const struct matches *matches, size_t match_length)
 {
     struct font *font = render->regular_font;
     const double x_margin = render->options.x_margin;
     const double y_margin = render->options.y_margin;
     const double border_size = render->options.border_size;
+    const size_t match_count = matches_get_count(matches);
+    const size_t selected = matches_get_match_index(matches);
 
     assert(match_count == 0 || selected < match_count);
 
@@ -175,7 +176,7 @@ render_match_list(const struct render *render, struct buffer *buf,
     double y = first_row + (row_height + font->fextents.height) / 2 - font->fextents.descent;
 
     for (size_t i = 0; i < match_count; i++) {
-        const struct match *match = &matches[i];
+        const struct match *match = matches_get(matches, i);//&matches[i];
 
         /* Hightlight selected entry */
         if (i == selected) {

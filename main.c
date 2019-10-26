@@ -37,7 +37,6 @@
 #include "dmenu.h"
 #include "fdm.h"
 #include "font.h"
-#include "kbd-repeater.h"
 #include "match.h"
 #include "render.h"
 #include "shm.h"
@@ -45,238 +44,6 @@
 #include "version.h"
 #include "wayland.h"
 #include "xdg.h"
-
-#if 0
-struct monitor {
-    struct wl_output *output;
-    struct zxdg_output_v1 *xdg;
-    char *name;
-
-    int x;
-    int y;
-
-    int width_mm;
-    int height_mm;
-
-    int width_px;
-    int height_px;
-
-    int scale;
-};
-
-struct wayland {
-    struct wl_display *display;
-    struct wl_registry *registry;
-    struct wl_compositor *compositor;
-    struct wl_surface *surface;
-    struct zwlr_layer_shell_v1 *layer_shell;
-    struct zwlr_layer_surface_v1 *layer_surface;
-    struct wl_shm *shm;
-    struct wl_seat *seat;
-    struct wl_keyboard *keyboard;
-    struct zxdg_output_manager_v1 *xdg_output_manager;
-
-    tll(struct monitor) monitors;
-    const struct monitor *monitor;
-
-    struct xkb_context *xkb;
-    struct xkb_keymap *xkb_keymap;
-    struct xkb_state *xkb_state;
-};
-#endif
-struct context {
-    volatile enum { KEEP_RUNNING, EXIT_UPDATE_CACHE, EXIT} status;
-    int exit_code;
-
-    //struct wayland wl;
-    struct wayland *wayl;
-    struct render *render;
-    struct repeat *repeat;
-
-    bool dmenu_mode;
-    struct prompt prompt;
-    struct application_list applications;
-
-    struct match *matches;
-    size_t match_count;
-    size_t selected;
-
-    bool frame_is_scheduled;
-    struct buffer *pending;
-
-    /* Window configuration */
-    int width;
-    int height;
-};
-
-static int max_matches;
-
-static void refresh(struct context *c);
-static void update_matches(struct context *c);
-
-static int
-sort_match_by_count(const void *_a, const void *_b)
-{
-    const struct match *a = _a;
-    const struct match *b = _b;
-    return b->application->count - a->application->count;
-}
-
-static wchar_t *
-wcscasestr(const wchar_t *haystack, const wchar_t *needle)
-{
-    const size_t hay_len = wcslen(haystack);
-    const size_t needle_len = wcslen(needle);
-
-    if (needle_len > hay_len)
-        return NULL;
-
-    for (size_t i = 0; i < wcslen(haystack) - wcslen(needle) + 1; i++) {
-        bool matched = true;
-        for (size_t j = 0; j < wcslen(needle); j++) {
-            if (towlower(haystack[i + j]) != towlower(needle[j])) {
-                matched = false;
-                break;
-            }
-        }
-
-        if (matched)
-            return (wchar_t *)&haystack[i];
-    }
-
-    return NULL;
-}
-
-static void
-update_matches(struct context *c)
-{
-    /* Nothing entered; all programs found matches */
-    if (wcslen(c->prompt.text) == 0) {
-
-        for (size_t i = 0; i < c->applications.count; i++) {
-            c->matches[i] = (struct match){
-                .application = &c->applications.v[i],
-                .start_title = -1,
-                .start_comment = -1};
-        }
-
-        /* Sort */
-        c->match_count = c->applications.count;
-        qsort(c->matches, c->match_count, sizeof(c->matches[0]), &sort_match_by_count);
-
-        /* Limit count (don't render outside window) */
-        if (c->match_count > max_matches)
-            c->match_count = max_matches;
-
-        if (c->selected >= c->match_count && c->selected > 0)
-            c->selected = c->match_count - 1;
-        return;
-    }
-
-    c->match_count = 0;
-    for (size_t i = 0; i < c->applications.count; i++) {
-        struct application *app = &c->applications.v[i];
-        size_t start_title = -1;
-        size_t start_comment = -1;
-
-        const wchar_t *m = wcscasestr(app->title, c->prompt.text);
-        if (m != NULL)
-            start_title = m - app->title;
-
-        if (app->comment != NULL) {
-            m = wcscasestr(app->comment, c->prompt.text);
-            if (m != NULL)
-                start_comment = m - app->comment;
-        }
-
-        if (start_title == -1 && start_comment == -1)
-            continue;
-
-        c->matches[c->match_count++] = (struct match){
-            .application = app,
-            .start_title = start_title,
-            .start_comment = start_comment};
-    }
-
-    /* Sort */
-    qsort(c->matches, c->match_count, sizeof(c->matches[0]), &sort_match_by_count);
-
-    /* Limit count (don't render outside window) */
-    if (c->match_count > max_matches)
-        c->match_count = max_matches;
-
-    if (c->selected >= c->match_count && c->selected > 0)
-        c->selected = c->match_count - 1;
-}
-
-static void frame_callback(
-    void *data, struct wl_callback *wl_callback, uint32_t callback_data);
-
-static const struct wl_callback_listener frame_listener = {
-    .done = &frame_callback,
-};
-
-static void
-commit_buffer(struct context *c, struct buffer *buf)
-{
-    assert(buf->busy);
-
-    wl_surface_set_buffer_scale(c->wl.surface, c->wl.monitor->scale);
-    wl_surface_attach(c->wl.surface, buf->wl_buf, 0, 0);
-    wl_surface_damage(c->wl.surface, 0, 0, buf->width, buf->height);
-
-    struct wl_callback *cb = wl_surface_frame(c->wl.surface);
-    wl_callback_add_listener(cb, &frame_listener, c);
-
-    c->frame_is_scheduled = true;
-    wl_surface_commit(c->wl.surface);
-}
-
-static void
-frame_callback(void *data, struct wl_callback *wl_callback, uint32_t callback_data)
-{
-    struct context *c = data;
-
-    c->frame_is_scheduled = false;
-    wl_callback_destroy(wl_callback);
-
-    if (c->pending != NULL) {
-        commit_buffer(c, c->pending);
-        c->pending = NULL;
-    }
-}
-
-static void
-refresh(struct context *c)
-{
-    LOG_DBG("refresh");
-
-    struct buffer *buf = shm_get_buffer(c->wl.shm, c->width, c->height);
-
-    /* Background + border */
-    render_background(c->render, buf);
-
-    /* Window content */
-    render_prompt(c->render, buf, &c->prompt);
-    render_match_list(c->render, buf, c->matches, c->match_count,
-                      wcslen(c->prompt.text), c->selected);
-
-    cairo_surface_flush(buf->cairo_surface);
-
-    if (c->frame_is_scheduled) {
-        /* There's already a frame being drawn - delay current frame
-         * (overwriting any previous pending frame) */
-
-        if (c->pending != NULL)
-            c->pending->busy = false;
-
-        c->pending = buf;
-    } else {
-        /* No pending frames - render immediately */
-        assert(c->pending == NULL);
-        commit_buffer(c, buf);
-    }
-}
 
 static struct rgba
 hex_to_rgba(uint32_t color)
@@ -407,27 +174,6 @@ write_cache(const struct application_list *apps)
     }
 
     close(fd);
-}
-
-static bool
-fdm_wayl(struct fdm *fdm, int fd, int events, void *data)
-{
-    struct context *c = data;
-    int event_count = wl_display_dispatch(c->wl.display);
-
-    if (events & EPOLLHUP) {
-        LOG_WARN("disconnected from Wayland");
-        return false;
-    }
-
-    return event_count != -1;
-}
-
-static void
-repeat_cb(uint32_t key, void *data)
-{
-    struct context *c = data;
-    keyboard_key(c, NULL, 0, 0, key, XKB_KEY_DOWN);
 }
 
 static void
@@ -592,19 +338,17 @@ main(int argc, char *const *argv)
 
     setlocale(LC_ALL, "");
 
-    struct context c = {
-        .status = KEEP_RUNNING,
-        .exit_code = EXIT_FAILURE,
-        .wl = {0},
-        .dmenu_mode = dmenu_mode,
-        .prompt = {
-            .prompt = wcsdup(L"> "),
-            .text = calloc(1, sizeof(wchar_t)),
-            .cursor = 0
-        },
+    struct application_list applications = {0};
+    struct prompt prompt = {
+        .prompt = wcsdup(L"> "),
+        .text = calloc(1, sizeof(wchar_t)),
+        .cursor = 0
     };
 
     struct fdm *fdm = NULL;
+    struct matches *matches = NULL;
+    struct render *render = NULL;
+    struct wayland *wayl = NULL;
 
     struct font *font = font_from_name(font_name);
     if (font == NULL)
@@ -613,44 +357,13 @@ main(int argc, char *const *argv)
     LOG_DBG("height: %d, ascent: %d, descent: %d",
             font->fextents.height, font->fextents.ascent, font->fextents.descent);
 
-    if ((fdm = fdm_init()) == NULL)
-        goto out;
-
-    if ((c.repeat = repeat_init(fdm, &repeat_cb, &c)) == NULL)
-        goto out;
-
-    if (dmenu_mode)
-        dmenu_load_entries(&c.applications);
-    else
-        xdg_find_programs(icon_theme, font->fextents.height, &c.applications);
-    c.matches = malloc(c.applications.count * sizeof(c.matches[0]));
-    read_cache(&c.applications);
-
-    const int scale = c.wl.monitor->scale;
-
-    width /= scale; width *= scale;
-    height /= scale; height *= scale;
-
-    c.width = width;
-    c.height = height;
-
-    zwlr_layer_surface_v1_set_size(c.wl.layer_surface, width / scale, height / scale);
-    zwlr_layer_surface_v1_set_keyboard_interactivity(c.wl.layer_surface, 1);
-
-    zwlr_layer_surface_v1_add_listener(
-        c.wl.layer_surface, &layer_surface_listener, &c.wl);
-
-    /* Trigger a 'configure' event, after which we'll have the width */
-    wl_surface_commit(c.wl.surface);
-    wl_display_roundtrip(c.wl.display);
-
     const double line_height = 2 * y_margin + font->fextents.height;
-    max_matches = (height - 2 * border_width - line_height) / line_height;
+    size_t max_matches = (height - 2 * border_width - line_height) / line_height;
     LOG_DBG("max matches: %d", max_matches);
 
     struct options options = {
-        .width = c.width,
-        .height = c.height,
+        .width = width,
+        .height = height,
         .x_margin = x_margin,
         .y_margin = y_margin,
         .border_size = border_width,
@@ -661,43 +374,48 @@ main(int argc, char *const *argv)
         .match_color = hex_to_rgba(match_color),
         .selection_color = hex_to_rgba(selection_color),
     };
-    c.render = render_init(font, options);
+    render = render_init(font, options);
 
-    update_matches(&c);
-    refresh(&c);
+    if (dmenu_mode)
+        dmenu_load_entries(&applications);
+    else
+        xdg_find_programs(icon_theme, font->fextents.height, &applications);
+    read_cache(&applications);
 
-    wl_display_dispatch_pending(c.wl.display);
-    wl_display_flush(c.wl.display);
-
-    if (!fdm_add(fdm, wl_display_get_fd(c.wl.display), EPOLLIN, &fdm_wayl, &c)) {
-        LOG_ERR("failed to register Wayland socket with FDM");
+    if ((fdm = fdm_init()) == NULL)
         goto out;
-    }
 
-    while (c.status == KEEP_RUNNING) {
-        wl_display_flush(c.wl.display);
+    if ((matches = matches_init(&applications, max_matches)) == NULL)
+        goto out;
+
+    matches_update(matches, prompt.text);
+
+    if ((wayl = wayl_init(fdm, render, &prompt, matches, width, height, output_name, dmenu_mode)) == NULL)
+        goto out;
+
+    while (true) {
+        wayl_flush(wayl);
         if (!fdm_poll(fdm))
             break;
     }
 
-    if (c.status == EXIT_UPDATE_CACHE)
-        write_cache(&c.applications);
+    if (wayl_update_cache(wayl))
+        write_cache(&applications);
 
-    ret = c.exit_code;
+    ret = wayl_exit_code(wayl);
 
 out:
-    repeat_destroy(c.repeat);
-    if (fdm != NULL)
-        fdm_del(fdm, wl_display_get_fd(c.wl.display));
-    fdm_destroy(fdm);
-
-    render_destroy(c.render);
     shm_fini();
 
-    free(c.prompt.prompt);
-    free(c.prompt.text);
-    for (size_t i = 0; i < c.applications.count; i++) {
-        struct application *app = &c.applications.v[i];
+    wayl_destroy(wayl);
+    render_destroy(render);
+    matches_destroy(matches);
+    fdm_destroy(fdm);
+
+    free(prompt.prompt);
+    free(prompt.text);
+    for (size_t i = 0; i < applications.count; i++) {
+        struct application *app = &applications.v[i];
 
         free(app->path);
         free(app->exec);
@@ -708,45 +426,7 @@ out:
         else if (app->icon.type == ICON_SVG)
             g_object_unref(app->icon.svg);
     }
-    free(c.applications.v);
-    free(c.matches);
-
-    tll_foreach(c.wl.monitors, it) {
-        free(it->item.name);
-        if (it->item.xdg)
-            zxdg_output_v1_destroy(it->item.xdg);
-        if (it->item.output != NULL)
-            wl_output_destroy(it->item.output);
-        tll_remove(c.wl.monitors, it);
-    }
-
-    if (c.wl.xdg_output_manager != NULL)
-        zxdg_output_manager_v1_destroy(c.wl.xdg_output_manager);
-
-    if (c.wl.layer_surface != NULL)
-        zwlr_layer_surface_v1_destroy(c.wl.layer_surface);
-    if (c.wl.layer_shell != NULL)
-        zwlr_layer_shell_v1_destroy(c.wl.layer_shell);
-    if (c.wl.keyboard != NULL)
-        wl_keyboard_destroy(c.wl.keyboard);
-    if (c.wl.surface != NULL)
-        wl_surface_destroy(c.wl.surface);
-    if (c.wl.seat != NULL)
-        wl_seat_destroy(c.wl.seat);
-    if (c.wl.compositor != NULL)
-        wl_compositor_destroy(c.wl.compositor);
-    if (c.wl.shm != NULL)
-        wl_shm_destroy(c.wl.shm);
-    if (c.wl.registry != NULL)
-        wl_registry_destroy(c.wl.registry);
-    if (c.wl.display != NULL)
-        wl_display_disconnect(c.wl.display);
-    if (c.wl.xkb_state != NULL)
-        xkb_state_unref(c.wl.xkb_state);
-    if (c.wl.xkb_keymap != NULL)
-        xkb_keymap_unref(c.wl.xkb_keymap);
-    if (c.wl.xkb != NULL)
-        xkb_context_unref(c.wl.xkb);
+    free(applications.v);
 
     cairo_debug_reset_static_data();
 
