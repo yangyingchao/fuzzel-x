@@ -355,7 +355,7 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
             memmove(&wayl->prompt->text[wayl->prompt->cursor],
                     &wayl->prompt->text[next_char],
                     (wcslen(wayl->prompt->text) - next_char + 1) * sizeof(wchar_t));
-            matches_update(wayl->matches, wayl->prompt->text);
+            matches_update(wayl->matches, wayl->prompt);
             refresh(wayl);
         }
     }
@@ -366,7 +366,7 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
             wayl->prompt->text[prev_char] = L'\0';
             wayl->prompt->cursor = prev_char;
 
-            matches_update(wayl->matches, wayl->prompt->text);
+            matches_update(wayl->matches, wayl->prompt);
             refresh(wayl);
         }
     }
@@ -378,7 +378,7 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
                 &wayl->prompt->text[wayl->prompt->cursor],
                 (wcslen(wayl->prompt->text) - wayl->prompt->cursor + 1) * sizeof(wchar_t));
         wayl->prompt->cursor = new_cursor;
-        matches_update(wayl->matches, wayl->prompt->text);
+        matches_update(wayl->matches, wayl->prompt);
         refresh(wayl);
     }
 
@@ -388,13 +388,13 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
         memmove(&wayl->prompt->text[wayl->prompt->cursor],
                 &wayl->prompt->text[next_word],
                 (wcslen(wayl->prompt->text) - next_word + 1) * sizeof(wchar_t));
-        matches_update(wayl->matches, wayl->prompt->text);
+        matches_update(wayl->matches, wayl->prompt);
         refresh(wayl);
     }
 
     else if (sym == XKB_KEY_k && effective_mods == ctrl) {
         wayl->prompt->text[wayl->prompt->cursor] = L'\0';
-        matches_update(wayl->matches, wayl->prompt->text);
+        matches_update(wayl->matches, wayl->prompt);
         refresh(wayl);
     }
 
@@ -452,7 +452,7 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
         LOG_DBG("prompt: \"%S\" (cursor=%zu, length=%zu)",
                 wayl->prompt->text, wayl->prompt->cursor, new_len);
 
-        matches_update(wayl->matches, wayl->prompt->text);
+        matches_update(wayl->matches, wayl->prompt);
         refresh(wayl);
     }
 
@@ -726,7 +726,7 @@ refresh(struct wayland *wayl)
 
     /* Window content */
     render_prompt(wayl->render, buf, wayl->prompt);
-    render_match_list(wayl->render, buf, wayl->matches, wcslen(wayl->prompt->text));
+    render_match_list(wayl->render, buf, wayl->prompt, wayl->matches);
 
     cairo_surface_flush(buf->cairo_surface);
 

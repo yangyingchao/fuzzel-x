@@ -70,7 +70,7 @@ executable(
   'log.c', 'log.h',
   'main.c',
   'match.c', 'match.h',
-  'prompt.h',
+  'prompt.c', 'prompt.h',
   'render.c', 'render.h',
   'shm.c', 'shm.h',
   'stride.h',

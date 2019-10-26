@@ -339,13 +339,8 @@ main(int argc, char *const *argv)
     setlocale(LC_ALL, "");
 
     struct application_list applications = {0};
-    struct prompt prompt = {
-        .prompt = wcsdup(L"> "),
-        .text = calloc(1, sizeof(wchar_t)),
-        .cursor = 0
-    };
-
     struct fdm *fdm = NULL;
+    struct prompt *prompt = NULL;
     struct matches *matches = NULL;
     struct render *render = NULL;
     struct wayland *wayl = NULL;
@@ -385,12 +380,15 @@ main(int argc, char *const *argv)
     if ((fdm = fdm_init()) == NULL)
         goto out;
 
+    if ((prompt = prompt_init(L"> ")) == NULL)
+        goto out;
+
     if ((matches = matches_init(&applications, max_matches)) == NULL)
         goto out;
 
-    matches_update(matches, prompt.text);
+    matches_update(matches, prompt);
 
-    if ((wayl = wayl_init(fdm, render, &prompt, matches, width, height, output_name, dmenu_mode)) == NULL)
+    if ((wayl = wayl_init(fdm, render, prompt, matches, width, height, output_name, dmenu_mode)) == NULL)
         goto out;
 
     while (true) {
@@ -410,10 +408,9 @@ out:
     wayl_destroy(wayl);
     render_destroy(render);
     matches_destroy(matches);
+    prompt_destroy(prompt);
     fdm_destroy(fdm);
 
-    free(prompt.prompt);
-    free(prompt.text);
     for (size_t i = 0; i < applications.count; i++) {
         struct application *app = &applications.v[i];
 

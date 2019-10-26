@@ -42,5 +42,6 @@ void render_prompt(
     const struct render *render, struct buffer *buf,
     const struct prompt *prompt);
 
-void render_match_list(const struct render *render, struct buffer *buf,
-                       const struct matches *matches, size_t match_length);
+void render_match_list(
+    const struct render *render, struct buffer *buf,
+    const struct prompt *prompt, const struct matches *matches);

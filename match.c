@@ -124,10 +124,10 @@ wcscasestr(const wchar_t *haystack, const wchar_t *needle)
 }
 
 void
-matches_update(struct matches *matches, const wchar_t *match_text)
+matches_update(struct matches *matches, const struct prompt *prompt)
 {
     /* Nothing entered; all programs found matches */
-    if (wcslen(match_text) == 0) {
+    if (wcslen(prompt->text) == 0) {
 
         for (size_t i = 0; i < matches->applications->count; i++) {
             matches->matches[i] = (struct match){
@@ -155,12 +155,12 @@ matches_update(struct matches *matches, const wchar_t *match_text)
         size_t start_title = -1;
         size_t start_comment = -1;
 
-        const wchar_t *m = wcscasestr(app->title, match_text);
+        const wchar_t *m = wcscasestr(app->title, prompt->text);
         if (m != NULL)
             start_title = m - app->title;
 
         if (app->comment != NULL) {
-            m = wcscasestr(app->comment, match_text);
+            m = wcscasestr(app->comment, prompt->text);
             if (m != NULL)
                 start_comment = m - app->comment;
         }

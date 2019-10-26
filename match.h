@@ -2,7 +2,9 @@
 
 #include <stdbool.h>
 #include <unistd.h>
+
 #include "application.h"
+#include "prompt.h"
 
 struct match {
     struct application *application;
@@ -15,7 +17,7 @@ struct matches *matches_init(
     const struct application_list *applications, size_t max_matches);
 void matches_destroy(struct matches *matches);
 
-void matches_update(struct matches *matches, const wchar_t *match_text);
+void matches_update(struct matches *matches, const struct prompt *prompt);
 
 const struct match *matches_get(const struct matches *matches, size_t idx);
 const struct match *matches_get_match(const struct matches *matches);

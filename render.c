@@ -154,7 +154,7 @@ render_match_text(struct buffer *buf, double *_x, double _y,
 
 void
 render_match_list(const struct render *render, struct buffer *buf,
-                  const struct matches *matches, size_t match_length)
+                  const struct prompt *prompt, const struct matches *matches)
 {
     struct font *font = render->regular_font;
     const double x_margin = render->options.x_margin;
@@ -256,7 +256,7 @@ render_match_list(const struct render *render, struct buffer *buf,
         /* Application title */
         render_match_text(
             buf, &cur_x, y,
-            match->application->title, match->start_title, match_length,
+            match->application->title, match->start_title, wcslen(prompt->text),
             render->regular_font,
             render->options.pix_text_color, render->options.pix_match_color);
 
