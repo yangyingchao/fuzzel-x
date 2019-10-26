@@ -94,9 +94,9 @@ err:
 bool
 application_execute(const struct application *app, const struct prompt *prompt)
 {
-    const size_t clen = wcstombs(NULL, prompt->text, 0);
+    const size_t clen = wcstombs(NULL, prompt_text(prompt), 0);
     char cprompt[clen + 1];
-    wcstombs(cprompt, prompt->text, clen + 1);
+    wcstombs(cprompt, prompt_text(prompt), clen + 1);
 
     const char *execute = app != NULL ? app->exec : cprompt;
     const char *path = app != NULL ? app->path : NULL;

@@ -230,13 +230,14 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
             sym, mods, consumed, significant, effective_mods);
 
     if (sym == XKB_KEY_Home || (sym == XKB_KEY_a && effective_mods == ctrl)) {
-        wayl->prompt->cursor = 0;
-        refresh(wayl);
+        if (prompt_cursor_home(wayl->prompt))
+            refresh(wayl);
     }
 
     else if (sym == XKB_KEY_End || (sym == XKB_KEY_e && effective_mods == ctrl)) {
-        wayl->prompt->cursor = wcslen(wayl->prompt->text);
-        refresh(wayl);
+        //wayl->prompt->cursor = wcslen(wayl->prompt->text);
+        if (prompt_cursor_end(wayl->prompt))
+            refresh(wayl);
     }
 
     else if ((sym == XKB_KEY_b && effective_mods == alt) ||

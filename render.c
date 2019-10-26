@@ -104,14 +104,14 @@ render_prompt(const struct render *render, struct buffer *buf,
               const struct prompt *prompt)
 {
     struct font *font = render->regular_font;
-    const size_t prompt_len = wcslen(prompt->prompt);
-    const size_t text_len = wcslen(prompt->text);
+    const size_t prompt_len = wcslen(prompt_prompt(prompt));
+    const size_t text_len = wcslen(prompt_text(prompt));
 
     int x = render->options.border_size + render->options.x_margin;
     int y = render->options.border_size + render->options.y_margin + font->fextents.ascent;
 
     for (size_t i = 0; i < prompt_len + text_len; i++) {
-        wchar_t wc = i < prompt_len ? prompt->prompt[i] : prompt->text[i - prompt_len];
+        wchar_t wc = i < prompt_len ? prompt_prompt(prompt)[i] : prompt_text(prompt)[i - prompt_len];
         const struct glyph *glyph = font_glyph_for_wc(font, wc);
         if (glyph == NULL)
             continue;
@@ -120,7 +120,7 @@ render_prompt(const struct render *render, struct buffer *buf,
         x += glyph->x_advance;
 
         /* Cursor */
-        if (prompt->cursor + prompt_len - 1 == i) {
+        if (prompt_cursor(prompt) + prompt_len - 1 == i) {
             pixman_image_fill_rectangles(
                 PIXMAN_OP_SRC, buf->pix, &render->options.pix_text_color,
                 1, &(pixman_rectangle16_t){
@@ -256,7 +256,7 @@ render_match_list(const struct render *render, struct buffer *buf,
         /* Application title */
         render_match_text(
             buf, &cur_x, y,
-            match->application->title, match->start_title, wcslen(prompt->text),
+            match->application->title, match->start_title, wcslen(prompt_text(prompt)),
             render->regular_font,
             render->options.pix_text_color, render->options.pix_match_color);
 
