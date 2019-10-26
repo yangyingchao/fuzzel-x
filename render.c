@@ -104,14 +104,18 @@ render_prompt(const struct render *render, struct buffer *buf,
               const struct prompt *prompt)
 {
     struct font *font = render->regular_font;
-    const size_t prompt_len = wcslen(prompt_prompt(prompt));
-    const size_t text_len = wcslen(prompt_text(prompt));
+
+    const wchar_t *pprompt = prompt_prompt(prompt);
+    const size_t prompt_len = wcslen(pprompt);
+
+    const wchar_t *ptext = prompt_text(prompt);
+    const size_t text_len = wcslen(ptext);
 
     int x = render->options.border_size + render->options.x_margin;
     int y = render->options.border_size + render->options.y_margin + font->fextents.ascent;
 
     for (size_t i = 0; i < prompt_len + text_len; i++) {
-        wchar_t wc = i < prompt_len ? prompt_prompt(prompt)[i] : prompt_text(prompt)[i - prompt_len];
+        wchar_t wc = i < prompt_len ? pprompt[i] : ptext[i - prompt_len];
         const struct glyph *glyph = font_glyph_for_wc(font, wc);
         if (glyph == NULL)
             continue;
