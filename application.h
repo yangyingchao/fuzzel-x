@@ -31,4 +31,4 @@ struct application_list {
     size_t count;
 };
 
-bool application_execute(struct application *app, const struct prompt *prompt);
+bool application_execute(const struct application *app, const struct prompt *prompt);

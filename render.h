@@ -10,7 +10,7 @@
 
 struct rgba {double r; double g; double b; double a;};
 
-struct options {
+struct render_options {
     int width;
     int height;
     int x_margin;
@@ -33,7 +33,7 @@ struct options {
 };
 
 struct render;
-struct render *render_init(struct font *font, struct options options);
+struct render *render_init(struct font *font, const struct render_options *options);
 void render_destroy(struct render *render);
 
 void render_background(const struct render *render, struct buffer *buf);
@@ -42,6 +42,6 @@ void render_prompt(
     const struct render *render, struct buffer *buf,
     const struct prompt *prompt);
 
-void render_match_list(const struct render *render, struct buffer *buf,
-                       const struct match matches[], size_t match_count,
-                       size_t match_length, size_t selected);
+void render_match_list(
+    const struct render *render, struct buffer *buf,
+    const struct prompt *prompt, const struct matches *matches);

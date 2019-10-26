@@ -9,7 +9,7 @@
 #include "font.h"
 
 struct render {
-    struct options options;
+    struct render_options options;
     struct font *regular_font;
 };
 
@@ -104,14 +104,18 @@ render_prompt(const struct render *render, struct buffer *buf,
               const struct prompt *prompt)
 {
     struct font *font = render->regular_font;
-    const size_t prompt_len = wcslen(prompt->prompt);
-    const size_t text_len = wcslen(prompt->text);
+
+    const wchar_t *pprompt = prompt_prompt(prompt);
+    const size_t prompt_len = wcslen(pprompt);
+
+    const wchar_t *ptext = prompt_text(prompt);
+    const size_t text_len = wcslen(ptext);
 
     int x = render->options.border_size + render->options.x_margin;
     int y = render->options.border_size + render->options.y_margin + font->fextents.ascent;
 
     for (size_t i = 0; i < prompt_len + text_len; i++) {
-        wchar_t wc = i < prompt_len ? prompt->prompt[i] : prompt->text[i - prompt_len];
+        wchar_t wc = i < prompt_len ? pprompt[i] : ptext[i - prompt_len];
         const struct glyph *glyph = font_glyph_for_wc(font, wc);
         if (glyph == NULL)
             continue;
@@ -120,7 +124,7 @@ render_prompt(const struct render *render, struct buffer *buf,
         x += glyph->x_advance;
 
         /* Cursor */
-        if (prompt->cursor + prompt_len - 1 == i) {
+        if (prompt_cursor(prompt) + prompt_len - 1 == i) {
             pixman_image_fill_rectangles(
                 PIXMAN_OP_SRC, buf->pix, &render->options.pix_text_color,
                 1, &(pixman_rectangle16_t){
@@ -154,13 +158,14 @@ render_match_text(struct buffer *buf, double *_x, double _y,
 
 void
 render_match_list(const struct render *render, struct buffer *buf,
-                  const struct match matches[], size_t match_count,
-                  size_t match_length, size_t selected)
+                  const struct prompt *prompt, const struct matches *matches)
 {
     struct font *font = render->regular_font;
     const double x_margin = render->options.x_margin;
     const double y_margin = render->options.y_margin;
     const double border_size = render->options.border_size;
+    const size_t match_count = matches_get_count(matches);
+    const size_t selected = matches_get_match_index(matches);
 
     assert(match_count == 0 || selected < match_count);
 
@@ -175,7 +180,7 @@ render_match_list(const struct render *render, struct buffer *buf,
     double y = first_row + (row_height + font->fextents.height) / 2 - font->fextents.descent;
 
     for (size_t i = 0; i < match_count; i++) {
-        const struct match *match = &matches[i];
+        const struct match *match = matches_get(matches, i);//&matches[i];
 
         /* Hightlight selected entry */
         if (i == selected) {
@@ -255,7 +260,7 @@ render_match_list(const struct render *render, struct buffer *buf,
         /* Application title */
         render_match_text(
             buf, &cur_x, y,
-            match->application->title, match->start_title, match_length,
+            match->application->title, match->start_title, wcslen(prompt_text(prompt)),
             render->regular_font,
             render->options.pix_text_color, render->options.pix_match_color);
 
@@ -264,10 +269,10 @@ render_match_list(const struct render *render, struct buffer *buf,
 }
 
 struct render *
-render_init(struct font *font, struct options options)
+render_init(struct font *font, const struct render_options *options)
 {
     struct render *render = calloc(1, sizeof(*render));
-    render->options = options;
+    render->options = *options;
     render->regular_font = font;
 
     /* TODO: the one providing the options should calculate these */
@@ -285,7 +290,6 @@ render_destroy(struct render *render)
     if (render == NULL)
         return;
 
-    //cairo_scaled_font_destroy(render->regular_font);
     font_destroy(render->regular_font);
     free(render);
 }
