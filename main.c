@@ -336,7 +336,7 @@ main(int argc, char *const *argv)
     setlocale(LC_ALL, "");
 
     /* Load applications */
-    struct application_list applications = {0};
+    struct application_list *apps = NULL;
     struct fdm *fdm = NULL;
     struct prompt *prompt = NULL;
     struct matches *matches = NULL;
@@ -362,11 +362,13 @@ main(int argc, char *const *argv)
     LOG_DBG("max matches: %d", max_matches);
 
     /* Load applications */
+    if ((apps = applications_init()) == NULL)
+        goto out;
     if (dmenu_mode)
-        dmenu_load_entries(&applications);
+        dmenu_load_entries(apps);
     else
-        xdg_find_programs(icon_theme, font->fextents.height, &applications);
-    read_cache(&applications);
+        xdg_find_programs(icon_theme, font->fextents.height, apps);
+    read_cache(apps);
 
     if ((render = render_init(font, &render_options)) == NULL)
         goto out;
@@ -377,7 +379,7 @@ main(int argc, char *const *argv)
     if ((prompt = prompt_init(L"> ")) == NULL)
         goto out;
 
-    if ((matches = matches_init(&applications, max_matches)) == NULL)
+    if ((matches = matches_init(apps, max_matches)) == NULL)
         goto out;
 
     matches_update(matches, prompt);
@@ -394,7 +396,7 @@ main(int argc, char *const *argv)
     }
 
     if (wayl_update_cache(wayl))
-        write_cache(&applications);
+        write_cache(apps);
 
     ret = wayl_exit_code(wayl);
 
@@ -406,7 +408,7 @@ out:
     matches_destroy(matches);
     prompt_destroy(prompt);
     fdm_destroy(fdm);
-    applications_destroy(&applications);
+    applications_destroy(apps);
 
     cairo_debug_reset_static_data();
     return ret;

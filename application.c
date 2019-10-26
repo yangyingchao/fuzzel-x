@@ -193,9 +193,20 @@ application_execute(const struct application *app, const struct prompt *prompt)
     }
 }
 
+struct application_list *
+applications_init(void)
+{
+    struct application_list *apps = malloc(sizeof(*apps));
+    *apps = (struct application_list){0};
+    return apps;
+}
+
 void
 applications_destroy(struct application_list *apps)
 {
+    if (apps == NULL)
+        return;
+
     for (size_t i = 0; i < apps->count; i++) {
         struct application *app = &apps->v[i];
 
@@ -210,5 +221,5 @@ applications_destroy(struct application_list *apps)
             g_object_unref(app->icon.svg);
     }
     free(apps->v);
-    //free(apps);
+    free(apps);
 }

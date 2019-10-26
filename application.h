@@ -34,4 +34,5 @@ struct application_list {
     size_t count;
 };
 
+struct application_list *applications_init(void);
 void applications_destroy(struct application_list *apps);
