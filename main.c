@@ -406,22 +406,8 @@ out:
     matches_destroy(matches);
     prompt_destroy(prompt);
     fdm_destroy(fdm);
-
-    for (size_t i = 0; i < applications.count; i++) {
-        struct application *app = &applications.v[i];
-
-        free(app->path);
-        free(app->exec);
-        free(app->title);
-        free(app->comment);
-        if (app->icon.type == ICON_SURFACE)
-            cairo_surface_destroy(app->icon.surface);
-        else if (app->icon.type == ICON_SVG)
-            g_object_unref(app->icon.svg);
-    }
-    free(applications.v);
+    applications_destroy(&applications);
 
     cairo_debug_reset_static_data();
-
     return ret;
 }

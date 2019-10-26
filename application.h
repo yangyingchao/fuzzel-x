@@ -26,9 +26,12 @@ struct application {
     unsigned count;
 };
 
+bool application_execute(
+    const struct application *app, const struct prompt *prompt);
+
 struct application_list {
     struct application *v;
     size_t count;
 };
 
-bool application_execute(const struct application *app, const struct prompt *prompt);
+void applications_destroy(struct application_list *apps);

@@ -192,3 +192,23 @@ application_execute(const struct application *app, const struct prompt *prompt)
         return ret == 0;
     }
 }
+
+void
+applications_destroy(struct application_list *apps)
+{
+    for (size_t i = 0; i < apps->count; i++) {
+        struct application *app = &apps->v[i];
+
+        free(app->path);
+        free(app->exec);
+        free(app->title);
+        free(app->comment);
+
+        if (app->icon.type == ICON_SURFACE)
+            cairo_surface_destroy(app->icon.surface);
+        else if (app->icon.type == ICON_SVG)
+            g_object_unref(app->icon.svg);
+    }
+    free(apps->v);
+    //free(apps);
+}
