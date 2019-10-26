@@ -107,9 +107,9 @@ wcscasestr(const wchar_t *haystack, const wchar_t *needle)
     if (needle_len > hay_len)
         return NULL;
 
-    for (size_t i = 0; i < wcslen(haystack) - wcslen(needle) + 1; i++) {
+    for (size_t i = 0; i < hay_len - needle_len + 1; i++) {
         bool matched = true;
-        for (size_t j = 0; j < wcslen(needle); j++) {
+        for (size_t j = 0; j < needle_len; j++) {
             if (towlower(haystack[i + j]) != towlower(needle[j])) {
                 matched = false;
                 break;
