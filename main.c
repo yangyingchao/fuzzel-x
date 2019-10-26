@@ -1,34 +1,13 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
 #include <stdbool.h>
-#include <wctype.h>
-#include <unistd.h>
-#include <errno.h>
 #include <getopt.h>
 
 #include <locale.h>
 
 #include <sys/types.h>
-#include <sys/epoll.h>
-#include <sys/eventfd.h>
 #include <sys/mman.h>
-#include <sys/stat.h>
-#include <sys/wait.h>
-#include <dirent.h>
 #include <fcntl.h>
-
-#include <cairo.h>
-
-#include <wayland-client.h>
-#include <wayland-cursor.h>
-#include <wayland-util.h>
-
-#include <xkbcommon/xkbcommon.h>
-#include <xkbcommon/xkbcommon-keysyms.h>
-
-#include <xdg-output-unstable-v1.h>
-#include <wlr-layer-shell-unstable-v1.h>
 
 #define LOG_MODULE "fuzzel"
 #define LOG_ENABLE_DBG 0
