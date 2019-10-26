@@ -235,7 +235,6 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
     }
 
     else if (sym == XKB_KEY_End || (sym == XKB_KEY_e && effective_mods == ctrl)) {
-        //wayl->prompt->cursor = wcslen(wayl->prompt->text);
         if (prompt_cursor_end(wayl->prompt))
             refresh(wayl);
     }
@@ -361,28 +360,8 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
         if (count == 0)
             return;
 
-        const char *b = buf;
-        mbstate_t ps = {0};
-        size_t wlen = mbsnrtowcs(NULL, &b, count, 0, &ps);
-
-        const size_t new_len = wcslen(wayl->prompt->text) + wlen + 1;
-        wchar_t *new_text = realloc(wayl->prompt->text, new_len * sizeof(wchar_t));
-        if (new_text == NULL)
+        if (!prompt_insert_chars(wayl->prompt, buf, count))
             return;
-
-        memmove(&new_text[wayl->prompt->cursor + wlen],
-                &new_text[wayl->prompt->cursor],
-                (wcslen(new_text) - wayl->prompt->cursor + 1) * sizeof(wchar_t));
-
-        b = buf;
-        ps = (mbstate_t){0};
-        mbsnrtowcs(&new_text[wayl->prompt->cursor], &b, count, wlen + 1, &ps);
-
-        wayl->prompt->text = new_text;
-        wayl->prompt->cursor += wlen;
-
-        LOG_DBG("prompt: \"%S\" (cursor=%zu, length=%zu)",
-                wayl->prompt->text, wayl->prompt->cursor, new_len);
 
         matches_update(wayl->matches, wayl->prompt);
         refresh(wayl);
