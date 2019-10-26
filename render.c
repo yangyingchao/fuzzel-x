@@ -9,7 +9,7 @@
 #include "font.h"
 
 struct render {
-    struct options options;
+    struct render_options options;
     struct font *regular_font;
 };
 
@@ -269,10 +269,10 @@ render_match_list(const struct render *render, struct buffer *buf,
 }
 
 struct render *
-render_init(struct font *font, struct options options)
+render_init(struct font *font, const struct render_options *options)
 {
     struct render *render = calloc(1, sizeof(*render));
-    render->options = options;
+    render->options = *options;
     render->regular_font = font;
 
     /* TODO: the one providing the options should calculate these */
@@ -290,7 +290,6 @@ render_destroy(struct render *render)
     if (render == NULL)
         return;
 
-    //cairo_scaled_font_destroy(render->regular_font);
     font_destroy(render->regular_font);
     free(render);
 }

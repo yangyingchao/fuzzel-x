@@ -7,6 +7,7 @@
 
 #include <sys/types.h>
 #include <sys/mman.h>
+#include <sys/stat.h>
 #include <fcntl.h>
 
 #define LOG_MODULE "fuzzel"
@@ -202,19 +203,21 @@ main(int argc, char *const *argv)
     const char *output_name = NULL;
     const char *font_name = "monospace";
     const char *icon_theme = "hicolor";
-
-    int width = 500;
-    int height = 300;
-    const int x_margin = 20;
-    const int y_margin = 4;
-    int border_width = 1;
-    int border_radius = 10;
-    uint32_t text_color = 0xffffffff;
-    uint32_t match_color = 0xcc9393ff;
-    uint32_t background = 0x000000ff;
-    uint32_t selection_color = 0x333333ff;
-    uint32_t border_color = 0xffffffff;
     bool dmenu_mode = false;
+
+    struct render_options render_options = {
+        .width = 500,
+        .height = 300,
+        .x_margin = 20,
+        .y_margin = 4,
+        .border_size = 1,
+        .border_radius = 10,
+        .background_color = hex_to_rgba(0x000000ff),
+        .border_color = hex_to_rgba(0xffffffff),
+        .text_color = hex_to_rgba(0xffffffff),
+        .match_color = hex_to_rgba(0xcc9393ff),
+        .selection_color = hex_to_rgba(0x333333ff),
+    };
 
     while (true) {
         int c = getopt_long(argc, argv, ":o:f:i:g:b:t:m:s:B:r:C:dvh", longopts, NULL);
@@ -235,42 +238,54 @@ main(int argc, char *const *argv)
             break;
 
         case 'g':
-            if (sscanf(optarg, "%dx%d", &width, &height) != 2) {
+            if (sscanf(optarg, "%dx%d", &render_options.width, &render_options.height) != 2) {
                 LOG_ERR("%s: invalid geometry (must be <width>x<height>)", optarg);
                 return EXIT_FAILURE;
             }
             break;
 
-        case 'b':
+        case 'b': {
+            uint32_t background;
             if (sscanf(optarg, "%08x", &background) != 1) {
                 LOG_ERR("%s: invalid color", optarg);
                 return EXIT_FAILURE;
             }
+            render_options.background_color = hex_to_rgba(background);
             break;
+        }
 
-        case 't':
+        case 't': {
+            uint32_t text_color;
             if (sscanf(optarg, "%08x", &text_color) != 1) {
                 LOG_ERR("%s: invalid color", optarg);
                 return EXIT_FAILURE;
             }
+            render_options.text_color = hex_to_rgba(text_color);
             break;
+        }
 
-        case 'm':
+        case 'm': {
+            uint32_t match_color;
             if (sscanf(optarg, "%x", &match_color) != 1) {
                 LOG_ERR("%s: invalid color", optarg);
                 return EXIT_FAILURE;
             }
+            render_options.match_color = hex_to_rgba(match_color);
             break;
+        }
 
-        case 's':
+        case 's': {
+            uint32_t selection_color;
             if (sscanf(optarg, "%x", &selection_color) != 1) {
                 LOG_ERR("%s: invalid color", optarg);
                 return EXIT_FAILURE;
             }
+            render_options.selection_color = hex_to_rgba(selection_color);
             break;
+        }
 
         case 'B':
-            if (sscanf(optarg, "%d", &border_width) != 1) {
+            if (sscanf(optarg, "%d", &render_options.border_size) != 1) {
                 LOG_ERR(
                     "%s: invalid border width (must be an integer)", optarg);
                 return EXIT_FAILURE;
@@ -278,18 +293,21 @@ main(int argc, char *const *argv)
             break;
 
         case 'r':
-            if (sscanf(optarg, "%d", &border_radius) != 1) {
+            if (sscanf(optarg, "%d", &render_options.border_radius) != 1) {
                 LOG_ERR("%s: invalid border radius (must be an integer)", optarg);
                 return EXIT_FAILURE;
             }
             break;
 
-        case 'C':
+        case 'C': {
+            uint32_t border_color;
             if (sscanf(optarg, "%x", &border_color) != 1) {
                 LOG_ERR("%s: invalid color", optarg);
                 return EXIT_FAILURE;
             }
+            render_options.border_color = hex_to_rgba(border_color);
             break;
+        }
 
         case 'd':
             dmenu_mode = true;
@@ -328,27 +346,19 @@ main(int argc, char *const *argv)
     if (font == NULL)
         goto out;
 
-    LOG_DBG("height: %d, ascent: %d, descent: %d",
-            font->fextents.height, font->fextents.ascent, font->fextents.descent);
+    LOG_DBG(
+        "font: height: %d, ascent: %d, descent: %d",
+        font->fextents.height, font->fextents.ascent, font->fextents.descent);
 
-    const double line_height = 2 * y_margin + font->fextents.height;
-    size_t max_matches = (height - 2 * border_width - line_height) / line_height;
+    const double line_height
+        = 2 * render_options.y_margin + font->fextents.height;
+    const size_t max_matches =
+        (render_options.height - 2 * render_options.border_size - line_height)
+        / line_height;
+
     LOG_DBG("max matches: %d", max_matches);
 
-    struct options options = {
-        .width = width,
-        .height = height,
-        .x_margin = x_margin,
-        .y_margin = y_margin,
-        .border_size = border_width,
-        .border_radius = border_radius,
-        .background_color = hex_to_rgba(background),
-        .border_color = hex_to_rgba(border_color),
-        .text_color = hex_to_rgba(text_color),
-        .match_color = hex_to_rgba(match_color),
-        .selection_color = hex_to_rgba(selection_color),
-    };
-    render = render_init(font, options);
+    render = render_init(font, &render_options);
 
     if (dmenu_mode)
         dmenu_load_entries(&applications);
@@ -367,7 +377,9 @@ main(int argc, char *const *argv)
 
     matches_update(matches, prompt);
 
-    if ((wayl = wayl_init(fdm, render, prompt, matches, width, height, output_name, dmenu_mode)) == NULL)
+    if ((wayl = wayl_init(
+             fdm, render, prompt, matches, render_options.width,
+             render_options.height, output_name, dmenu_mode)) == NULL)
         goto out;
 
     while (true) {
