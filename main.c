@@ -335,21 +335,24 @@ main(int argc, char *const *argv)
 
     setlocale(LC_ALL, "");
 
+    /* Load applications */
     struct application_list applications = {0};
     struct fdm *fdm = NULL;
     struct prompt *prompt = NULL;
     struct matches *matches = NULL;
     struct render *render = NULL;
     struct wayland *wayl = NULL;
+    struct font *font = NULL;
 
-    struct font *font = font_from_name(font_name);
-    if (font == NULL)
+    if ((font = font_from_name(font_name)) == NULL)
         goto out;
 
     LOG_DBG(
         "font: height: %d, ascent: %d, descent: %d",
         font->fextents.height, font->fextents.ascent, font->fextents.descent);
 
+    /* Calculate number of entries we can show, based on the total
+     * height and the fonts line height */
     const double line_height
         = 2 * render_options.y_margin + font->fextents.height;
     const size_t max_matches =
@@ -358,13 +361,15 @@ main(int argc, char *const *argv)
 
     LOG_DBG("max matches: %d", max_matches);
 
-    render = render_init(font, &render_options);
-
+    /* Load applications */
     if (dmenu_mode)
         dmenu_load_entries(&applications);
     else
         xdg_find_programs(icon_theme, font->fextents.height, &applications);
     read_cache(&applications);
+
+    if ((render = render_init(font, &render_options)) == NULL)
+        goto out;
 
     if ((fdm = fdm_init()) == NULL)
         goto out;
