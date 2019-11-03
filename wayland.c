@@ -680,7 +680,10 @@ fdm_repeat(struct fdm *fdm, int fd, int events, void *data)
     ssize_t ret = read(
         repeat->fd, &expiration_count, sizeof(expiration_count));
 
-    if (ret < 0 && errno != EAGAIN) {
+    if (ret < 0) {
+        if (errno == EAGAIN)
+            return true;
+
         LOG_ERRNO("failed to read key repeat count from timer fd");
         return false;
     }
