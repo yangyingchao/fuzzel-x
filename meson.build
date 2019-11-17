@@ -60,6 +60,8 @@ version = custom_target(
   output: 'version.h',
   command: [generate_version_sh, meson.project_version(), '@SOURCE_DIR@', '@OUTPUT@'])
 
+tllist = subproject('tllist').get_variable('tllist')
+
 executable(
   'fuzzel',
   'application.c', 'application.h',
@@ -74,7 +76,6 @@ executable(
   'render.c', 'render.h',
   'shm.c', 'shm.h',
   'stride.h',
-  'tllist.h',
   'wayland.c', 'wayland.h',
   'xdg.c', 'xdg.h',
   wl_proto_src + wl_proto_headers, version,
@@ -87,7 +88,8 @@ executable(
                  wayland_client,
                  wayland_cursor,
                  wlroots,
-                 xkb],
+                 xkb,
+                 tllist],
   install: true)
 
 subdir('completions')
