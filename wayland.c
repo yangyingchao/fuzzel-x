@@ -19,10 +19,11 @@
 #include <xdg-output-unstable-v1.h>
 #include <wlr-layer-shell-unstable-v1.h>
 
+#include <tllist.h>
+
 #define LOG_MODULE "wayland"
 #define LOG_ENABLE_DBG 0
 #include "log.h"
-#include "tllist.h"
 #include "prompt.h"
 #include "dmenu.h"
 #include "shm.h"

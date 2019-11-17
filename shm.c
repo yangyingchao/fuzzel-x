@@ -7,9 +7,10 @@
 #include <sys/mman.h>
 #include <linux/memfd.h>
 
+#include <tllist.h>
+
 #define LOG_MODULE "shm"
 #include "log.h"
-#include "tllist.h"
 
 static tll(struct buffer) buffers;
 

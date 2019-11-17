@@ -10,6 +10,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#include <tllist.h>
+
 #define LOG_MODULE "fuzzel"
 #define LOG_ENABLE_DBG 0
 #include "log.h"
@@ -20,7 +22,6 @@
 #include "match.h"
 #include "render.h"
 #include "shm.h"
-#include "tllist.h"
 #include "version.h"
 #include "wayland.h"
 #include "xdg.h"

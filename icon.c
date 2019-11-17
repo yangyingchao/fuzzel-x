@@ -10,9 +10,10 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#include <tllist.h>
+
 #define LOG_MODULE "icon"
 #include "log.h"
-#include "tllist.h"
 #include "xdg.h"
 
 typedef tll(char *) theme_names_t;

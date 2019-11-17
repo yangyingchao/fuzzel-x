@@ -3,10 +3,11 @@
 #include <stdbool.h>
 #include <errno.h>
 
+#include <tllist.h>
+
 #define LOG_MODULE "dmenu"
 #define LOG_ENABLE_DBG 0
 #include "log.h"
-#include "tllist.h"
 
 void
 dmenu_load_entries(struct application_list *applications)
