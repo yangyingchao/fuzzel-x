@@ -19,7 +19,9 @@ _arguments \
 
 case "${state}" in
     fonts)
-        _values 'font families' $(fc-list : family | tr -d ' ')
+        if command -v fc-list > /dev/null; then
+            _values 'font families' $(fc-list : family | tr -d ' ')
+        fi
         ;;
 
     icon_theme)
