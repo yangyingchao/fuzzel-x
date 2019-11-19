@@ -16,8 +16,12 @@ options:
 
 *-o*,*--output*=_OUTPUT_
 	Specifies the monitor to display the window on. In _Sway_, you can
-	list the available outputs with *swaymsg -t get_outputs*. The default is
-	to use the last monitor found.
+	list the available outputs with *swaymsg -t get_outputs*.
+	
+	The default is to let the compositor choose output. Note in this
+	case, fuzzel will _not_ know which scaling factor to use, which
+	will make the result look blurry if the compositor selected output
+	has a scaling factor other than 1.
 
 *-f*,*--font*=_FONT_
 	Font and style to use, in fontconfig format. See *FONT FORMAT*.
