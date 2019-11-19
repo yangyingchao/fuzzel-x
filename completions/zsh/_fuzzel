@@ -4,7 +4,7 @@ _arguments \
     -s \
     '(-v --version)'{-v,--version}'[show the version number and quit]' \
     '(-h --help)'{-h,--help}'[show help message and quit]' \
-    '(-o --output)'{-o,--output}'[output (monitor) to display on (none)]' \
+    '(-o --output)'{-o,--output}'[output (monitor) to display on (none)]:output:->outputs' \
     '(-f --font)'{-f,--font}'[font name and style in fontconfig format (monospace)]:font:->fonts' \
     '(-i --icon-theme)'{-i,--icon-theme}'[icon theme name (hicolor)]:theme:->icon_theme' \
     '(-g --geometry)'{-g,--geometry}'[window WIDTHxHEIGHT, in pixels (500x300)]' \
@@ -24,5 +24,11 @@ case "${state}" in
 
     icon_theme)
         _values 'icon themes' $(cd /usr/share/icons; echo *)
+        ;;
+
+    outputs)
+        if command -v swaymsg > /dev/null; then
+            _values 'outputs' $(swaymsg -t get_outputs --raw|grep name|cut -d '"' -f 4)
+        fi
         ;;
 esac
