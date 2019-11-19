@@ -642,7 +642,8 @@ commit_buffer(struct wayland *wayl, struct buffer *buf)
 {
     assert(buf->busy);
 
-    wl_surface_set_buffer_scale(wayl->surface, wayl->monitor->scale);
+    if (wayl->monitor != NULL)
+        wl_surface_set_buffer_scale(wayl->surface, wayl->monitor->scale);
     wl_surface_attach(wayl->surface, buf->wl_buf, 0, 0);
     wl_surface_damage_buffer(wayl->surface, 0, 0, buf->width, buf->height);
 
@@ -797,6 +798,7 @@ wayl_init(struct fdm *fdm, struct render *render, struct prompt *prompt,
 
     tll_foreach(wayl->monitors, it) {
         const struct monitor *mon = &it->item;
+
         LOG_INFO("monitor: %s: %dx%d+%d+%d (%dx%dmm)",
                  mon->name, mon->width_px, mon->height_px,
                  mon->x, mon->y, mon->width_mm, mon->height_mm);
@@ -804,21 +806,11 @@ wayl_init(struct fdm *fdm, struct render *render, struct prompt *prompt,
         if (output_name != NULL && strcmp(output_name, mon->name) == 0) {
             wayl->monitor = mon;
             break;
-        } else if (output_name == NULL) {
-            /* Use last monitor found */
-            wayl->monitor = mon;
         }
     }
 
-    if (wayl->monitor == NULL && output_name != NULL) {
-        LOG_ERR("%s: no output with that name found", output_name);
-        goto out;
-    }
-
-    if (wayl->monitor == NULL) {
-        LOG_ERR("no outputs found");
-        goto out;
-    }
+    LOG_DBG("using output: %s",
+            wayl->monitor != NULL ? wayl->monitor->name : NULL);
 
     wayl->surface = wl_compositor_create_surface(wayl->compositor);
     if (wayl->surface == NULL) {
@@ -841,7 +833,8 @@ wayl_init(struct fdm *fdm, struct render *render, struct prompt *prompt,
 #endif
 
     wayl->layer_surface = zwlr_layer_shell_v1_get_layer_surface(
-        wayl->layer_shell, wayl->surface, wayl->monitor->output,
+        wayl->layer_shell, wayl->surface,
+        wayl->monitor != NULL ? wayl->monitor->output : NULL,
         ZWLR_LAYER_SHELL_V1_LAYER_TOP, "fuzzel");
 
     if (wayl->layer_surface == NULL) {
@@ -849,7 +842,7 @@ wayl_init(struct fdm *fdm, struct render *render, struct prompt *prompt,
         goto out;
     }
 
-    const int scale = wayl->monitor->scale;
+    const int scale = wayl->monitor != NULL ? wayl->monitor->scale : 1;
 
     width /= scale; width *= scale;
     height /= scale; height *= scale;
