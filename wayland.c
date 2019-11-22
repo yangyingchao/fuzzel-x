@@ -210,6 +210,7 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
     }
 
     key += 8;
+    bool should_repeat = xkb_keymap_key_repeats(wayl->kbd.xkb_keymap, key);
     xkb_keysym_t sym = xkb_state_key_get_one_sym(wayl->xkb_state, key);
 
     xkb_mod_mask_t mods = xkb_state_serialize_mods(
@@ -368,7 +369,8 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
         refresh(wayl);
     }
 
-    repeat_start(&wayl->repeat, key - 8);
+    if (should_repeat)
+        repeat_start(&wayl->repeat, key - 8);
 
 }
 
