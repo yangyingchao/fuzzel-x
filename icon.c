@@ -155,13 +155,13 @@ load_theme_in(const char *dir, struct icon_theme *theme,
 
     theme_dir_fd = open(dir, O_RDONLY);
     if (theme_dir_fd == -1) {
-        //LOG_WARN("%s: failed to open", dir);
+        //LOG_ERRNO("%s: failed to open", dir);
         goto out;
     }
 
     index_fd = openat(theme_dir_fd, "index.theme", O_RDONLY);
     if (index_fd == -1) {
-        LOG_ERRNO("%s/index.theme: failed to open", dir);
+        //LOG_ERRNO("%s/index.theme: failed to open", dir);
         goto out;
     }
 
