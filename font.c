@@ -169,7 +169,10 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int start_idx,
         dpi = 96;
 
     double size;
-    if (FcPatternGetDouble(final_pattern, FC_PIXEL_SIZE, 0, &size)) {
+    double pixel_size;
+    if (FcPatternGetDouble(final_pattern, FC_SIZE, 0, &size) != FcResultMatch ||
+        FcPatternGetDouble(final_pattern, FC_PIXEL_SIZE, 0, &pixel_size) != FcResultMatch)
+    {
         LOG_ERR("%s: failed to get size", face_file);
         FcPatternDestroy(final_pattern);
         return false;
@@ -179,9 +182,32 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int start_idx,
     if (FcPatternGetBool(final_pattern, FC_SCALABLE, 0, &scalable) != FcResultMatch)
         scalable = FcTrue;
 
+    FcBool outline;
+    if (FcPatternGetBool(final_pattern, FC_OUTLINE, 0, &outline) != FcResultMatch)
+        outline = FcTrue;
+
     double pixel_fixup;
-    if (FcPatternGetDouble(final_pattern, "pixelsizefixupfactor", 0, &pixel_fixup) != FcResultMatch)
-        pixel_fixup = 1.;
+    if (FcPatternGetDouble(final_pattern, "pixelsizefixupfactor", 0, &pixel_fixup) != FcResultMatch) {
+        /*
+         * Force a fixup factor on scalable bitmap fonts (typically
+         * emoji fonts). The fixup factor is
+         *   requested-pixel-size / actual-pixels-size
+         */
+        if (scalable && !outline) {
+            double original_pixel_size;
+            if (FcPatternGetDouble(pattern, FC_PIXEL_SIZE, 0, &original_pixel_size) != FcResultMatch) {
+                double original_size;
+                if (FcPatternGetDouble(pattern, FC_SIZE, 0, &original_size) != FcResultMatch)
+                    original_size = size;
+                original_pixel_size = original_size * dpi / 72;
+            }
+            pixel_fixup = original_pixel_size / pixel_size;
+
+            LOG_DBG("estimated fixup factor to %f (requested pixel size: %f, actual: %f)",
+                    pixel_fixup, original_pixel_size, pixel_size);
+        } else
+            pixel_fixup = 1.;
+    }
 
     LOG_DBG("loading: %s", face_file);
 
@@ -190,7 +216,7 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int start_idx,
     if (ft_err != 0)
         LOG_ERR("%s: failed to create FreeType face", face_file);
 
-    if ((ft_err = FT_Set_Char_Size(ft_face, size * 64, 0, 0, 0)) != 0)
+    if ((ft_err = FT_Set_Char_Size(ft_face, pixel_size * 64, 0, 0, 0)) != 0)
         LOG_WARN("failed to set character size");
 
     FcBool fc_hinting;
@@ -268,7 +294,7 @@ from_font_set(FcPattern *pattern, FcFontSet *fonts, int start_idx,
     font->face = ft_face;
     font->load_flags = load_flags | FT_LOAD_COLOR;
     font->render_flags = render_flags;
-    font->pixel_size_fixup = scalable ? pixel_fixup : 1.;
+    font->pixel_size_fixup = pixel_fixup;
     font->bgr = fc_rgba == FC_RGBA_BGR || fc_rgba == FC_RGBA_VBGR;
     font->fc_idx = font_idx;
     font->is_fallback = is_fallback;
