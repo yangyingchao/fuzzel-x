@@ -355,7 +355,7 @@ main(int argc, char *const *argv)
     /* Calculate number of entries we can show, based on the total
      * height and the fonts line height */
     const double line_height
-        = 2 * render_options.y_margin + font->fextents.height;
+        = 2 * render_options.y_margin + font->height;
     const size_t max_matches =
         (render_options.height - 2 * render_options.border_size - line_height)
         / line_height;
@@ -368,7 +368,7 @@ main(int argc, char *const *argv)
     if (dmenu_mode)
         dmenu_load_entries(apps);
     else
-        xdg_find_programs(icon_theme, font->fextents.height, apps);
+        xdg_find_programs(icon_theme, font->height, apps);
     read_cache(apps);
 
     if ((render = render_init(font, &render_options)) == NULL)

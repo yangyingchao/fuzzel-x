@@ -112,7 +112,7 @@ render_prompt(const struct render *render, struct buffer *buf,
     const size_t text_len = wcslen(ptext);
 
     int x = render->options.border_size + render->options.x_margin;
-    int y = render->options.border_size + render->options.y_margin + font->fextents.ascent;
+    int y = render->options.border_size + render->options.y_margin + font->ascent;
 
     for (size_t i = 0; i < prompt_len + text_len; i++) {
         wchar_t wc = i < prompt_len ? pprompt[i] : ptext[i - prompt_len];
@@ -128,8 +128,8 @@ render_prompt(const struct render *render, struct buffer *buf,
             pixman_image_fill_rectangles(
                 PIXMAN_OP_SRC, buf->pix, &render->options.pix_text_color,
                 1, &(pixman_rectangle16_t){
-                    x, y - font->fextents.ascent,
-                    font->underline.thickness, font->fextents.ascent + font->fextents.descent});
+                    x, y - font->ascent,
+                    font->underline.thickness, font->ascent + font->descent});
         }
     }
 }
@@ -169,7 +169,7 @@ render_match_list(const struct render *render, struct buffer *buf,
 
     assert(match_count == 0 || selected < match_count);
 
-    const double row_height = 2 * y_margin + font->fextents.height;
+    const double row_height = 2 * y_margin + font->height;
     const double first_row = 1 * border_size + row_height;
     const double sel_margin = x_margin / 3;
 
@@ -177,7 +177,7 @@ render_match_list(const struct render *render, struct buffer *buf,
      * LOG_DBG("height=%f, ascent=%f, descent=%f", fextents.height, fextents.ascent,
      *         fextents.descent);
      */
-    double y = first_row + (row_height + font->fextents.height) / 2 - font->fextents.descent;
+    double y = first_row + (row_height + font->height) / 2 - font->descent;
 
     for (size_t i = 0; i < match_count; i++) {
         const struct match *match = matches_get(matches, i);//&matches[i];
@@ -208,7 +208,7 @@ render_match_list(const struct render *render, struct buffer *buf,
             double scale = 1.0;
 
             if (height > row_height) {
-                scale = font->fextents.height / height;
+                scale = font->height / height;
                 LOG_DBG("%s: scaling: %f (row-height: %f, size=%fx%f)",
                         match->application->title, scale, row_height, width, height);
 
@@ -237,7 +237,7 @@ render_match_list(const struct render *render, struct buffer *buf,
             RsvgDimensionData dim;
             rsvg_handle_get_dimensions(svg, &dim);
 
-            double height = font->fextents.height;
+            double height = font->height;
             double scale = height / dim.height;
 
             cairo_save(buf->cairo);
