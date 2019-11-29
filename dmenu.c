@@ -14,9 +14,10 @@ dmenu_load_entries(struct application_list *applications)
 {
     tll(wchar_t *) entries = tll_init();
 
+    char *line = NULL;
+
     errno = 0;
     while (true) {
-        char *line = NULL;
         size_t alloc_size = 0;
         ssize_t len = getline(&line, &alloc_size, stdin);
 
@@ -34,12 +35,15 @@ dmenu_load_entries(struct application_list *applications)
         LOG_DBG("%s", line);
 
         size_t wlen = mbstowcs(NULL, line, 0);
+        if (wlen == (size_t) -1)
+            continue;
+
         wchar_t *wline = malloc((wlen + 1) * sizeof(wchar_t));
         mbstowcs(wline, line, wlen + 1);
         tll_push_back(entries, wline);
-
-        free(line);
     }
+
+    free(line);
 
     applications->v = malloc(tll_length(entries) * sizeof(applications->v[0]));
     applications->count = tll_length(entries);

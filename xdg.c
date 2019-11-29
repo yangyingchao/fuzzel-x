@@ -226,9 +226,12 @@ parse_desktop_file(int fd, icon_theme_list_t themes, int icon_size,
         if (key != NULL && value != NULL) {
             if (strcmp(key, "Name") == 0) {
                 assert(name == NULL);
+
                 size_t wlen = mbstowcs(NULL, value, 0);
-                name = malloc((wlen + 1) * sizeof(wchar_t));
-                mbstowcs(name, value, wlen + 1);
+                if (wlen != (size_t)-1) {
+                    name = malloc((wlen + 1) * sizeof(wchar_t));
+                    mbstowcs(name, value, wlen + 1);
+                }
             }
 
             else if (strcmp(key, "Exec") == 0)
@@ -239,9 +242,12 @@ parse_desktop_file(int fd, icon_theme_list_t themes, int icon_size,
 
             else if (strcmp(key, "GenericName") == 0) {
                 assert(generic_name == NULL);
+
                 size_t wlen = mbstowcs(NULL, value, 0);
-                generic_name = malloc((wlen + 1) * sizeof(wchar_t));
-                mbstowcs(generic_name, value, wlen + 1);
+                if (wlen != (size_t)-1) {
+                    generic_name = malloc((wlen + 1) * sizeof(wchar_t));
+                    mbstowcs(generic_name, value, wlen + 1);
+                }
             }
 
             else if (strcmp(key, "Icon") == 0)

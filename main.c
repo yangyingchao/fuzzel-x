@@ -90,6 +90,9 @@ read_cache(struct application_list *apps)
         sscanf(count_str, "%u", &count);
 
         size_t wlen = mbstowcs(NULL, title, 0);
+        if (wlen == (size_t)-1)
+            continue;
+
         wchar_t wtitle[wlen + 1];
         mbstowcs(wtitle, title, wlen + 1);
 
