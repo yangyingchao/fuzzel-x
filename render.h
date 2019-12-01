@@ -3,7 +3,8 @@
 #include <pixman.h>
 #include <cairo.h>
 
-#include "font.h"
+#include <fcft/fcft.h>
+
 #include "shm.h"
 #include "match.h"
 #include "tllist.h"

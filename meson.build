@@ -67,12 +67,18 @@ else
   tllist = dependency('tllist')
 endif
 
+fcft_proj = subproject('fcft', required: false)
+if fcft_proj.found()
+  fcft = fcft_proj.get_variable('fcft')
+else
+  fcft = dependency('fcft')
+endif
+
 executable(
   'fuzzel',
   'application.c', 'application.h',
   'dmenu.c', 'dmenu.h',
   'fdm.c', 'fdm.h',
-  'font.c', 'font.h',
   'icon.c', 'icon.h',
   'log.c', 'log.h',
   'main.c',
@@ -94,7 +100,8 @@ executable(
                  wayland_cursor,
                  wlroots,
                  xkb,
-                 tllist],
+                 tllist,
+                 fcft],
   install: true)
 
 subdir('completions')
