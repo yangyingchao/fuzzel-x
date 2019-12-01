@@ -348,13 +348,8 @@ main(int argc, char *const *argv)
     struct wayland *wayl = NULL;
     struct font *font = NULL;
 
-    font_list_t font_list = tll_init();
-    tll_push_back(font_list, font_name);
-    if ((font = font_from_name(font_list, NULL)) == NULL) {
-        tll_free(font_list);
+    if ((font = font_from_name(&(const char *){font_name}, 1, NULL)) == NULL)
         goto out;
-    }
-    tll_free(font_list);
 
     LOG_DBG(
         "font: height: %d, ascent: %d, descent: %d",
