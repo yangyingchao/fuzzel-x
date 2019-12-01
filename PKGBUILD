@@ -6,7 +6,7 @@ arch=('x86_64')
 url=https://codeberg.org/dnkl/fuzzel
 license=(mit)
 makedepends=('meson' 'ninja' 'scdoc')
-depends=('libxkbcommon' 'wayland' 'wlroots' 'cairo' 'librsvg' 'tllist' 'fcft')
+depends=('libxkbcommon' 'wayland' 'wlroots' 'cairo' 'librsvg' 'tllist>=1.0.0' 'fcft>=0.1.0')
 source=()
 
 pkgver() {
