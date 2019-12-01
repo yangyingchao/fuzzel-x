@@ -4,9 +4,10 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <fcft/fcft.h>
+
 #define LOG_MODULE "render"
 #include "log.h"
-#include "font.h"
 
 struct render {
     struct render_options options;
@@ -173,10 +174,6 @@ render_match_list(const struct render *render, struct buffer *buf,
     const double first_row = 1 * border_size + row_height;
     const double sel_margin = x_margin / 3;
 
-    /*
-     * LOG_DBG("height=%f, ascent=%f, descent=%f", fextents.height, fextents.ascent,
-     *         fextents.descent);
-     */
     double y = first_row + (row_height + font->height) / 2 - font->descent;
 
     for (size_t i = 0; i < match_count; i++) {

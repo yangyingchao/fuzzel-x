@@ -11,6 +11,7 @@
 #include <fcntl.h>
 
 #include <tllist.h>
+#include <fcft/fcft.h>
 
 #define LOG_MODULE "fuzzel"
 #define LOG_ENABLE_DBG 0
@@ -18,7 +19,6 @@
 #include "application.h"
 #include "dmenu.h"
 #include "fdm.h"
-#include "font.h"
 #include "match.h"
 #include "render.h"
 #include "shm.h"
@@ -348,12 +348,17 @@ main(int argc, char *const *argv)
     struct wayland *wayl = NULL;
     struct font *font = NULL;
 
-    if ((font = font_from_name(font_name)) == NULL)
+    font_list_t font_list = tll_init();
+    tll_push_back(font_list, font_name);
+    if ((font = font_from_name(font_list, NULL)) == NULL) {
+        tll_free(font_list);
         goto out;
+    }
+    tll_free(font_list);
 
     LOG_DBG(
         "font: height: %d, ascent: %d, descent: %d",
-        font->fextents.height, font->fextents.ascent, font->fextents.descent);
+        font->height, font->ascent, font->descent);
 
     /* Calculate number of entries we can show, based on the total
      * height and the fonts line height */
@@ -363,7 +368,7 @@ main(int argc, char *const *argv)
         (render_options.height - 2 * render_options.border_size - line_height)
         / line_height;
 
-    LOG_DBG("max matches: %d", max_matches);
+    LOG_DBG("max matches: %zu", max_matches);
 
     /* Load applications */
     if ((apps = applications_init()) == NULL)

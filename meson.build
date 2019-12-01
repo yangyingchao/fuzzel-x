@@ -16,8 +16,6 @@ add_project_arguments(
 )
 
 pixman = dependency('pixman-1')
-freetype = dependency('freetype2')
-fontconfig = dependency('fontconfig')
 cairo = dependency('cairo')
 cairo_ft = dependency('cairo-ft')
 librsvg = dependency('librsvg-2.0')
@@ -60,14 +58,25 @@ version = custom_target(
   output: 'version.h',
   command: [generate_version_sh, meson.project_version(), '@SOURCE_DIR@', '@OUTPUT@'])
 
-tllist = subproject('tllist').get_variable('tllist')
+tllist_proj = subproject('tllist', required: false)
+if tllist_proj.found()
+  tllist = tllist_proj.get_variable('tllist')
+else
+  tllist = dependency('tllist')
+endif
+
+fcft_proj = subproject('fcft', required: false)
+if fcft_proj.found()
+  fcft = fcft_proj.get_variable('fcft')
+else
+  fcft = dependency('fcft')
+endif
 
 executable(
   'fuzzel',
   'application.c', 'application.h',
   'dmenu.c', 'dmenu.h',
   'fdm.c', 'fdm.h',
-  'font.c', 'font.h',
   'icon.c', 'icon.h',
   'log.c', 'log.h',
   'main.c',
@@ -80,8 +89,6 @@ executable(
   'xdg.c', 'xdg.h',
   wl_proto_src + wl_proto_headers, version,
   dependencies: [pixman,
-                 freetype,
-                 fontconfig,
                  cairo,
                  cairo_ft,
                  librsvg,
@@ -89,7 +96,8 @@ executable(
                  wayland_cursor,
                  wlroots,
                  xkb,
-                 tllist],
+                 tllist,
+                 fcft],
   install: true)
 
 subdir('completions')
