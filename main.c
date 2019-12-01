@@ -368,7 +368,7 @@ main(int argc, char *const *argv)
         (render_options.height - 2 * render_options.border_size - line_height)
         / line_height;
 
-    LOG_DBG("max matches: %d", max_matches);
+    LOG_DBG("max matches: %zu", max_matches);
 
     /* Load applications */
     if ((apps = applications_init()) == NULL)
