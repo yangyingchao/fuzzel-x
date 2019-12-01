@@ -16,8 +16,6 @@ add_project_arguments(
 )
 
 pixman = dependency('pixman-1')
-freetype = dependency('freetype2')
-fontconfig = dependency('fontconfig')
 cairo = dependency('cairo')
 cairo_ft = dependency('cairo-ft')
 librsvg = dependency('librsvg-2.0')
@@ -91,8 +89,6 @@ executable(
   'xdg.c', 'xdg.h',
   wl_proto_src + wl_proto_headers, version,
   dependencies: [pixman,
-                 freetype,
-                 fontconfig,
                  cairo,
                  cairo_ft,
                  librsvg,
