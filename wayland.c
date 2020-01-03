@@ -703,13 +703,21 @@ static bool
 fdm_handler(struct fdm *fdm, int fd, int events, void *data)
 {
     struct wayland *wayl = data;
-    int event_count = wl_display_dispatch(wayl->display);
+    int event_count = 0;
+
+    if (events & EPOLLIN)
+        wl_display_read_events(wayl->display);
+
+    while (wl_display_prepare_read(wayl->display) != 0)
+        wl_display_dispatch_pending(wayl->display);
 
     if (events & EPOLLHUP) {
         LOG_WARN("disconnected from Wayland");
+        wl_display_cancel_read(wayl->display);
         return false;
     }
 
+    wl_display_flush(wayl->display);
     return event_count != -1 && wayl->status == KEEP_RUNNING;
 }
 
@@ -861,6 +869,11 @@ wayl_init(struct fdm *fdm, struct render *render, struct prompt *prompt,
     /* Trigger a 'configure' event, after which we'll have the width */
     wl_surface_commit(wayl->surface);
     wl_display_roundtrip(wayl->display);
+
+    if (wl_display_prepare_read(wayl->display) != 0) {
+        LOG_ERRNO("failed to prepare for reading wayland events");
+        goto out;
+    }
 
     if (!fdm_add(wayl->fdm, wl_display_get_fd(wayl->display), EPOLLIN, &fdm_handler, wayl)) {
         LOG_ERR("failed to register Wayland socket with FDM");
