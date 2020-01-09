@@ -7,14 +7,14 @@ _arguments \
     '(-o --output)'{-o,--output}'[output (monitor) to display on (none)]:output:->outputs' \
     '(-f --font)'{-f,--font}'[font name and style in fontconfig format (monospace)]:font:->fonts' \
     '(-i --icon-theme)'{-i,--icon-theme}'[icon theme name (hicolor)]:theme:->icon_theme' \
-    '(-g --geometry)'{-g,--geometry}'[window WIDTHxHEIGHT, in pixels (500x300)]' \
-    '(-b --background)'{-b,--background}'[background color (000000ff)]' \
-    '(-t --text-color)'{-t,--text-color}'[text color (ffffffff)]' \
-    '(-m --match-color)'{-m,--match-color}'[color of matched substring (cc9393ff)]' \
-    '(-s --selection-color)'{-s,--selection-color}'[background color of selected item (333333ff)]' \
-    '(-B --border-width)'{-B,--border-width}'[width of border, in pixels (1)]' \
-    '(-r --border-radius)'{-r,--border-radius}'[amount of corner "roundness" (10)]' \
-    '(-C --border-color)'{-C,--border-color}'[border color (ffffffff)]' \
+    '(-g --geometry)'{-g,--geometry}'[window WIDTHxHEIGHT, in pixels (500x300)]:geometry:()' \
+    '(-b --background)'{-b,--background}'[background color (000000ff)]:background:()' \
+    '(-t --text-color)'{-t,--text-color}'[text color (ffffffff)]:text-color:()' \
+    '(-m --match-color)'{-m,--match-color}'[color of matched substring (cc9393ff)]:match-color:()' \
+    '(-s --selection-color)'{-s,--selection-color}'[background color of selected item (333333ff)]:selection-color:()' \
+    '(-B --border-width)'{-B,--border-width}'[width of border, in pixels (1)]:border-width:()' \
+    '(-r --border-radius)'{-r,--border-radius}'[amount of corner "roundness" (10)]:border-radius:()' \
+    '(-C --border-color)'{-C,--border-color}'[border color (ffffffff)]:border-color:()' \
     '(-d --dmenu)'{-d,--dmenu}'[dmenu compatibility mode; list entries are read from stdin]'
 
 case "${state}" in
