@@ -65,6 +65,9 @@ render_background(const struct render *render, struct buffer *buf)
 static pixman_color_t
 rgba2pixman(struct rgba rgba)
 {
+    if (rgba.a == 0.)
+        return (pixman_color_t){0, 0, 0, 0};
+
     uint16_t r = rgba.r * 65535.0;
     uint16_t g = rgba.g * 65535.0;
     uint16_t b = rgba.b * 65535.0;
