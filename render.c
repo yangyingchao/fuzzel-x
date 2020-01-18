@@ -115,12 +115,20 @@ render_prompt(const struct render *render, struct buffer *buf,
     int x = render->options.border_size + render->options.x_margin;
     int y = render->options.border_size + render->options.y_margin + font->ascent;
 
+    wchar_t prev = 0;
+
     for (size_t i = 0; i < prompt_len + text_len; i++) {
         wchar_t wc = i < prompt_len ? pprompt[i] : ptext[i - prompt_len];
         const struct glyph *glyph = font_glyph_for_wc(font, wc);
-        if (glyph == NULL)
+        if (glyph == NULL) {
+            prev = wc;
             continue;
+        }
 
+        long x_kern;
+        font_kerning(font, prev, wc, &x_kern, NULL);
+
+        x += x_kern;
         render_glyph(buf->pix, glyph, x, y, &render->options.pix_text_color);
         x += glyph->x_advance;
 
@@ -132,6 +140,8 @@ render_prompt(const struct render *render, struct buffer *buf,
                     x, y - font->ascent,
                     font->underline.thickness, font->ascent + font->descent});
         }
+
+        prev = wc;
     }
 }
 
@@ -149,7 +159,12 @@ render_match_text(struct buffer *buf, double *_x, double _y,
         if (glyph == NULL)
             continue;
 
+        long x_kern = 0;
+        if (i > 0)
+            font_kerning(font, text[i - 1], text[i], &x_kern, NULL);
+
         bool is_match = start >= 0 && i >= start && i < start + length;
+        x += x_kern;
         render_glyph(buf->pix, glyph, x, y, is_match ? &match_color : &regular_color);
         x += glyph->x_advance;
     }
