@@ -348,7 +348,18 @@ main(int argc, char *const *argv)
     struct wayland *wayl = NULL;
     struct font *font = NULL;
 
-    if ((font = font_from_name(&(const char *){font_name}, 1, NULL)) == NULL)
+    if ((fdm = fdm_init()) == NULL)
+        goto out;
+
+    if ((wayl = wayl_init(
+             fdm, render_options.width, render_options.height,
+             output_name)) == NULL)
+        goto out;
+
+    char font_attrs[128];
+    snprintf(font_attrs, sizeof(font_attrs), "dpi=%d", wayl_ppi(wayl));
+
+    if ((font = font_from_name(&(const char *){font_name}, 1, font_attrs)) == NULL)
         goto out;
 
     LOG_DBG(
@@ -377,9 +388,6 @@ main(int argc, char *const *argv)
     if ((render = render_init(font, &render_options)) == NULL)
         goto out;
 
-    if ((fdm = fdm_init()) == NULL)
-        goto out;
-
     if ((prompt = prompt_init(L"> ")) == NULL)
         goto out;
 
@@ -387,11 +395,8 @@ main(int argc, char *const *argv)
         goto out;
 
     matches_update(matches, prompt);
-
-    if ((wayl = wayl_init(
-             fdm, render, prompt, matches, render_options.width,
-             render_options.height, output_name, dmenu_mode)) == NULL)
-        goto out;
+    wayl_configure(wayl, render, prompt, matches, dmenu_mode);
+    wayl_refresh(wayl);
 
     while (true) {
         wayl_flush(wayl);

@@ -43,6 +43,9 @@ struct monitor {
     int width_px;
     int height_px;
 
+    int x_ppi;
+    int y_ppi;
+
     int scale;
 };
 
@@ -91,8 +94,6 @@ struct wayland {
     struct xkb_keymap *xkb_keymap;
     struct xkb_state *xkb_state;
 };
-
-static void refresh(struct wayland *wayl);
 
 bool
 repeat_start(struct repeat *repeat, uint32_t key)
@@ -233,25 +234,25 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
 
     if (sym == XKB_KEY_Home || (sym == XKB_KEY_a && effective_mods == ctrl)) {
         if (prompt_cursor_home(wayl->prompt))
-            refresh(wayl);
+            wayl_refresh(wayl);
     }
 
     else if (sym == XKB_KEY_End || (sym == XKB_KEY_e && effective_mods == ctrl)) {
         if (prompt_cursor_end(wayl->prompt))
-            refresh(wayl);
+            wayl_refresh(wayl);
     }
 
     else if ((sym == XKB_KEY_b && effective_mods == alt) ||
              (sym == XKB_KEY_Left && effective_mods == ctrl)) {
         if (prompt_cursor_prev_word(wayl->prompt))
-            refresh(wayl);
+            wayl_refresh(wayl);
     }
 
     else if ((sym == XKB_KEY_f && effective_mods == alt) ||
              (sym == XKB_KEY_Right && effective_mods == ctrl)) {
 
         if (prompt_cursor_next_word(wayl->prompt))
-            refresh(wayl);
+            wayl_refresh(wayl);
     }
 
     else if ((sym == XKB_KEY_Escape && effective_mods == 0) ||
@@ -262,49 +263,49 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
     else if ((sym == XKB_KEY_p && effective_mods == ctrl) ||
              (sym == XKB_KEY_Up && effective_mods == 0)) {
         if (matches_selected_prev(wayl->matches, false))
-            refresh(wayl);
+            wayl_refresh(wayl);
     }
 
     else if ((sym == XKB_KEY_n && effective_mods == ctrl) ||
              (sym == XKB_KEY_Down && effective_mods == 0)) {
         if (matches_selected_next(wayl->matches, false))
-            refresh(wayl);
+            wayl_refresh(wayl);
     }
 
     else if (sym == XKB_KEY_Tab && effective_mods == 0) {
         if (matches_selected_next(wayl->matches, true))
-            refresh(wayl);
+            wayl_refresh(wayl);
     }
 
     else if (sym == XKB_KEY_ISO_Left_Tab && effective_mods == 0) {
         if (matches_selected_prev(wayl->matches, true))
-            refresh(wayl);
+            wayl_refresh(wayl);
     }
 
     else if ((sym == XKB_KEY_b && effective_mods == ctrl) ||
              (sym == XKB_KEY_Left && effective_mods == 0)) {
         if (prompt_cursor_prev_char(wayl->prompt))
-            refresh(wayl);
+            wayl_refresh(wayl);
     }
 
     else if ((sym == XKB_KEY_f && effective_mods == ctrl) ||
              (sym == XKB_KEY_Right && effective_mods == 0)) {
         if (prompt_cursor_next_char(wayl->prompt))
-            refresh(wayl);
+            wayl_refresh(wayl);
     }
 
     else if ((sym == XKB_KEY_d && effective_mods == ctrl) ||
              (sym == XKB_KEY_Delete && effective_mods == 0)) {
         if (prompt_erase_next_char(wayl->prompt)) {
             matches_update(wayl->matches, wayl->prompt);
-            refresh(wayl);
+            wayl_refresh(wayl);
         }
     }
 
     else if (sym == XKB_KEY_BackSpace && effective_mods == 0) {
         if (prompt_erase_prev_char(wayl->prompt)) {
             matches_update(wayl->matches, wayl->prompt);
-            refresh(wayl);
+            wayl_refresh(wayl);
         }
     }
 
@@ -312,7 +313,7 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
                                           effective_mods == alt)) {
         if (prompt_erase_prev_word(wayl->prompt)) {
             matches_update(wayl->matches, wayl->prompt);
-            refresh(wayl);
+            wayl_refresh(wayl);
         }
     }
 
@@ -320,14 +321,14 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
              (sym == XKB_KEY_Delete && effective_mods == ctrl)) {
         if (prompt_erase_next_word(wayl->prompt)) {
             matches_update(wayl->matches, wayl->prompt);
-            refresh(wayl);
+            wayl_refresh(wayl);
         }
     }
 
     else if (sym == XKB_KEY_k && effective_mods == ctrl) {
         if (prompt_erase_after_cursor(wayl->prompt)) {
             matches_update(wayl->matches, wayl->prompt);
-            refresh(wayl);
+            wayl_refresh(wayl);
         }
     }
 
@@ -366,7 +367,7 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
             return;
 
         matches_update(wayl->matches, wayl->prompt);
-        refresh(wayl);
+        wayl_refresh(wayl);
     }
 
     if (should_repeat)
@@ -434,6 +435,15 @@ static const struct wl_seat_listener seat_listener = {
 };
 
 static void
+output_update_ppi(struct monitor *mon)
+{
+    int x_inches = mon->width_mm * 0.03937008;
+    int y_inches = mon->height_mm * 0.03937008;
+    mon->x_ppi = mon->width_px / x_inches;
+    mon->y_ppi = mon->height_px / y_inches;
+}
+
+static void
 output_geometry(void *data, struct wl_output *wl_output, int32_t x, int32_t y,
                 int32_t physical_width, int32_t physical_height,
                 int32_t subpixel, const char *make, const char *model,
@@ -442,6 +452,7 @@ output_geometry(void *data, struct wl_output *wl_output, int32_t x, int32_t y,
     struct monitor *mon = data;
     mon->width_mm = physical_width;
     mon->height_mm = physical_height;
+    output_update_ppi(mon);
 }
 
 static void
@@ -485,6 +496,7 @@ xdg_output_handle_logical_size(void *data, struct zxdg_output_v1 *xdg_output,
     struct monitor *mon = data;
     mon->width_px = width;
     mon->height_px = height;
+    output_update_ppi(mon);
 }
 
 static void
@@ -670,8 +682,8 @@ frame_callback(void *data, struct wl_callback *wl_callback, uint32_t callback_da
     }
 }
 
-static void
-refresh(struct wayland *wayl)
+void
+wayl_refresh(struct wayland *wayl)
 {
     struct buffer *buf = shm_get_buffer(wayl->shm, wayl->width, wayl->height);
 
@@ -753,19 +765,17 @@ fdm_repeat(struct fdm *fdm, int fd, int events, void *data)
 }
 
 struct wayland *
-wayl_init(struct fdm *fdm, struct render *render, struct prompt *prompt,
-          struct matches *matches, int width, int height,
-          const char *output_name, bool dmenu_mode)
+wayl_init(struct fdm *fdm, int width, int height, const char *output_name)
 {
     struct wayland *wayl = calloc(1, sizeof(*wayl));
 
     wayl->fdm = fdm;
-    wayl->render = render;
-    wayl->prompt = prompt;
-    wayl->matches = matches;
+    //wayl->render = render;
+    //wayl->prompt = prompt;
+    //wayl->matches = matches;
     wayl->status = KEEP_RUNNING;
     wayl->exit_code = EXIT_FAILURE;
-    wayl->dmenu_mode = dmenu_mode;
+    //wayl->dmenu_mode = dmenu_mode;
 
     wayl->repeat.fd = timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
     if (wayl->repeat.fd == -1) {
@@ -809,9 +819,10 @@ wayl_init(struct fdm *fdm, struct render *render, struct prompt *prompt,
     tll_foreach(wayl->monitors, it) {
         const struct monitor *mon = &it->item;
 
-        LOG_INFO("monitor: %s: %dx%d+%d+%d (%dx%dmm)",
+        LOG_INFO("monitor: %s: %dx%d+%d+%d (%dx%dmm, PPI=%dx%d)",
                  mon->name, mon->width_px, mon->height_px,
-                 mon->x, mon->y, mon->width_mm, mon->height_mm);
+                 mon->x, mon->y, mon->width_mm, mon->height_mm,
+                 mon->x_ppi, mon->y_ppi);
 
         if (output_name != NULL && strcmp(output_name, mon->name) == 0) {
             wayl->monitor = mon;
@@ -885,12 +896,24 @@ wayl_init(struct fdm *fdm, struct render *render, struct prompt *prompt,
         goto out;
     }
 
-    refresh(wayl);
+    //wayl_refresh(wayl);
     return wayl;
 
 out:
     wayl_destroy(wayl);
     return NULL;
+}
+
+void
+wayl_configure(
+    struct wayland *wayl, struct render *render, struct prompt *prompt,
+    struct matches *matches, bool dmenu_mode)
+{
+    wayl->render = render;
+    wayl->prompt = prompt;
+    wayl->matches = matches;
+    wayl->status = KEEP_RUNNING;
+    wayl->dmenu_mode = dmenu_mode;
 }
 
 void
@@ -949,6 +972,12 @@ void
 wayl_flush(struct wayland *wayl)
 {
     wl_display_flush(wayl->display);
+}
+
+int
+wayl_ppi(const struct wayland *wayl)
+{
+    return wayl->monitor != NULL ? wayl->monitor->x_ppi : 96;
 }
 
 bool
