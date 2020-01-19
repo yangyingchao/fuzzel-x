@@ -362,14 +362,6 @@ main(int argc, char *const *argv)
     if ((font = font_from_name(&(const char *){font_name}, 1, font_attrs)) == NULL)
         goto out;
 
-    /* Enable subpixel antialiasing only when BOTH background and
-     * selection colors are opaque */
-    if (render_options.background_color.a == 1.0 &&
-        render_options.selection_color.a == 1.0)
-    {
-        font_enable_subpixel_antialias(font);
-    }
-
     LOG_DBG(
         "font: height: %d, ascent: %d, descent: %d",
         font->height, font->ascent, font->descent);

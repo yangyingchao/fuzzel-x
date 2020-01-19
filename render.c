@@ -115,6 +115,10 @@ render_prompt(const struct render *render, struct buffer *buf,
     const wchar_t *ptext = prompt_text(prompt);
     const size_t text_len = wcslen(ptext);
 
+    const bool subpixel_antialias =
+        render->options.background_color.a == 1. &&
+        render->options.selection_color.a == 1.;
+
     int x = render->options.border_size + render->options.x_margin;
     int y = render->options.border_size + render->options.y_margin + font->ascent;
 
@@ -122,7 +126,7 @@ render_prompt(const struct render *render, struct buffer *buf,
 
     for (size_t i = 0; i < prompt_len + text_len; i++) {
         wchar_t wc = i < prompt_len ? pprompt[i] : ptext[i - prompt_len];
-        const struct glyph *glyph = font_glyph_for_wc(font, wc);
+        const struct glyph *glyph = font_glyph_for_wc(font, wc, subpixel_antialias);
         if (glyph == NULL) {
             prev = wc;
             continue;
@@ -151,14 +155,14 @@ render_prompt(const struct render *render, struct buffer *buf,
 static void
 render_match_text(struct buffer *buf, double *_x, double _y,
                   const wchar_t *text, ssize_t start, size_t length,
-                  struct font *font,
+                  struct font *font, bool subpixel_antialias,
                   pixman_color_t regular_color, pixman_color_t match_color)
 {
     int x = *_x;
     int y = _y;
 
     for (size_t i = 0; i < wcslen(text); i++) {
-        const struct glyph *glyph = font_glyph_for_wc(font, text[i]);
+        const struct glyph *glyph = font_glyph_for_wc(font, text[i], subpixel_antialias);
         if (glyph == NULL)
             continue;
 
@@ -185,6 +189,9 @@ render_match_list(const struct render *render, struct buffer *buf,
     const double border_size = render->options.border_size;
     const size_t match_count = matches_get_count(matches);
     const size_t selected = matches_get_match_index(matches);
+    const bool subpixel_antialias =
+        render->options.background_color.a == 1. &&
+        render->options.selection_color.a == 1.;
 
     assert(match_count == 0 || selected < match_count);
 
@@ -276,7 +283,7 @@ render_match_list(const struct render *render, struct buffer *buf,
         render_match_text(
             buf, &cur_x, y,
             match->application->title, match->start_title, wcslen(prompt_text(prompt)),
-            render->regular_font,
+            render->regular_font, subpixel_antialias,
             render->options.pix_text_color, render->options.pix_match_color);
 
         y += row_height;
