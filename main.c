@@ -359,7 +359,7 @@ main(int argc, char *const *argv)
     char font_attrs[128];
     snprintf(font_attrs, sizeof(font_attrs), "dpi=%d", wayl_ppi(wayl));
 
-    if ((font = font_from_name(&(const char *){font_name}, 1, font_attrs)) == NULL)
+    if ((font = font_from_name(1, &(const char *){font_name}, font_attrs)) == NULL)
         goto out;
 
     LOG_DBG(
