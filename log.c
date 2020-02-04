@@ -16,7 +16,7 @@ static bool colorize = false;
 static void __attribute__((constructor))
 init(void)
 {
-    colorize = isatty(STDOUT_FILENO);
+    colorize = isatty(STDERR_FILENO);
     openlog(NULL, /*LOG_PID*/0, LOG_USER);
     setlogmask(LOG_UPTO(LOG_WARNING));
 }
