@@ -856,7 +856,7 @@ wayl_init(struct fdm *fdm, int width, int height, const char *output_name)
     wayl->layer_surface = zwlr_layer_shell_v1_get_layer_surface(
         wayl->layer_shell, wayl->surface,
         wayl->monitor != NULL ? wayl->monitor->output : NULL,
-        ZWLR_LAYER_SHELL_V1_LAYER_TOP, "fuzzel");
+        ZWLR_LAYER_SHELL_V1_LAYER_TOP, "launcher");
 
     if (wayl->layer_surface == NULL) {
         LOG_ERR("failed to create layer shell surface");
