@@ -12,19 +12,38 @@
 #include <syslog.h>
 
 static bool colorize = false;
+static bool do_syslog = true;
 
-static void __attribute__((constructor))
-init(void)
+void
+log_init(enum log_colorize _colorize, bool _do_syslog,
+         enum log_facility syslog_facility, enum log_class syslog_level)
 {
-    colorize = isatty(STDERR_FILENO);
-    openlog(NULL, /*LOG_PID*/0, LOG_USER);
-    setlogmask(LOG_UPTO(LOG_WARNING));
+    static const int facility_map[] = {
+        [LOG_FACILITY_USER] = LOG_USER,
+        [LOG_FACILITY_DAEMON] = LOG_DAEMON,
+    };
+
+    static const int level_map[] = {
+        [LOG_CLASS_ERROR] = LOG_ERR,
+        [LOG_CLASS_WARNING] = LOG_WARNING,
+        [LOG_CLASS_INFO] = LOG_INFO,
+        [LOG_CLASS_DEBUG] = LOG_DEBUG,
+    };
+
+    colorize = _colorize == LOG_COLORIZE_NEVER ? false : _colorize == LOG_COLORIZE_ALWAYS ? true : isatty(STDERR_FILENO);
+    do_syslog = _do_syslog;
+
+    if (do_syslog) {
+        openlog(NULL, /*LOG_PID*/0, facility_map[syslog_facility]);
+        setlogmask(LOG_UPTO(level_map[syslog_level]));
+    }
 }
 
-static void __attribute__((destructor))
-fini(void)
+void
+log_deinit(void)
 {
-    closelog();
+    if (do_syslog)
+        closelog();
 }
 
 static void
@@ -42,17 +61,11 @@ _log(enum log_class log_class, const char *module, const char *file, int lineno,
 
     char clr[16];
     snprintf(clr, sizeof(clr), "\e[%dm", class_clr);
-    fprintf(
-        stderr,
-        "%s%s%s: ", colorize ? clr : "", class, colorize ? "\e[0m" : "");
+    fprintf(stderr, "%s%s%s: ", colorize ? clr : "", class, colorize ? "\e[0m" : "");
 
     if (colorize)
         fprintf(stderr, "\e[2m");
-#if defined(_DEBUG)
     fprintf(stderr, "%s:%d: ", file, lineno);
-#else
-    fprintf(stderr, "%s: ", module);
-#endif
     if (colorize)
         fprintf(stderr, "\e[0m");
 
@@ -65,9 +78,14 @@ _log(enum log_class log_class, const char *module, const char *file, int lineno,
 }
 
 static void
-_sys_log(enum log_class log_class, const char *module, const char *file,
-         int lineno, const char *fmt, int sys_errno, va_list va)
+_sys_log(enum log_class log_class, const char *module,
+         const char *file __attribute__((unused)),
+         int lineno __attribute__((unused)),
+         const char *fmt, int sys_errno, va_list va)
 {
+    if (!do_syslog)
+        return;
+
     /* Map our log level to syslog's level */
     int level = -1;
     switch (log_class) {
@@ -100,7 +118,7 @@ _sys_log(enum log_class log_class, const char *module, const char *file,
     idx += vsnprintf(&msg[idx], required_len + 1 - idx, fmt, va);
 
     if (sys_errno != 0) {
-        idx += snprintf(
+        snprintf(
             &msg[idx], required_len + 1 - idx, ": %s", strerror(sys_errno));
     }
 

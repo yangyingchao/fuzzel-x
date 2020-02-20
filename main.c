@@ -243,7 +243,7 @@ main(int argc, char *const *argv)
 
         case 'g':
             if (sscanf(optarg, "%dx%d", &render_options.width, &render_options.height) != 2) {
-                LOG_ERR("%s: invalid geometry (must be <width>x<height>)", optarg);
+                fprintf(stderr, "%s: invalid geometry (must be <width>x<height>)\n", optarg);
                 return EXIT_FAILURE;
             }
             break;
@@ -251,7 +251,7 @@ main(int argc, char *const *argv)
         case 'b': {
             uint32_t background;
             if (sscanf(optarg, "%08x", &background) != 1) {
-                LOG_ERR("%s: invalid color", optarg);
+                fprintf(stderr, "%s: invalid color\n", optarg);
                 return EXIT_FAILURE;
             }
             render_options.background_color = hex_to_rgba(background);
@@ -261,7 +261,7 @@ main(int argc, char *const *argv)
         case 't': {
             uint32_t text_color;
             if (sscanf(optarg, "%08x", &text_color) != 1) {
-                LOG_ERR("%s: invalid color", optarg);
+                fprintf(stderr, "%s: invalid color\n", optarg);
                 return EXIT_FAILURE;
             }
             render_options.text_color = hex_to_rgba(text_color);
@@ -271,7 +271,7 @@ main(int argc, char *const *argv)
         case 'm': {
             uint32_t match_color;
             if (sscanf(optarg, "%x", &match_color) != 1) {
-                LOG_ERR("%s: invalid color", optarg);
+                fprintf(stderr, "%s: invalid color\n", optarg);
                 return EXIT_FAILURE;
             }
             render_options.match_color = hex_to_rgba(match_color);
@@ -281,7 +281,7 @@ main(int argc, char *const *argv)
         case 's': {
             uint32_t selection_color;
             if (sscanf(optarg, "%x", &selection_color) != 1) {
-                LOG_ERR("%s: invalid color", optarg);
+                fprintf(stderr, "%s: invalid color\n", optarg);
                 return EXIT_FAILURE;
             }
             render_options.selection_color = hex_to_rgba(selection_color);
@@ -290,15 +290,17 @@ main(int argc, char *const *argv)
 
         case 'B':
             if (sscanf(optarg, "%d", &render_options.border_size) != 1) {
-                LOG_ERR(
-                    "%s: invalid border width (must be an integer)", optarg);
+                fprintf(
+                    stderr,
+                    "%s: invalid border width (must be an integer)\n", optarg);
                 return EXIT_FAILURE;
             }
             break;
 
         case 'r':
             if (sscanf(optarg, "%d", &render_options.border_radius) != 1) {
-                LOG_ERR("%s: invalid border radius (must be an integer)", optarg);
+                fprintf(stderr, "%s: invalid border radius (must be an integer)\n",
+                        optarg);
                 return EXIT_FAILURE;
             }
             break;
@@ -306,7 +308,7 @@ main(int argc, char *const *argv)
         case 'C': {
             uint32_t border_color;
             if (sscanf(optarg, "%x", &border_color) != 1) {
-                LOG_ERR("%s: invalid color", optarg);
+                fprintf(stderr, "%s: invalid color\n", optarg);
                 return EXIT_FAILURE;
             }
             render_options.border_color = hex_to_rgba(border_color);
@@ -338,6 +340,8 @@ main(int argc, char *const *argv)
     int ret = EXIT_FAILURE;
 
     setlocale(LC_ALL, "");
+
+    log_init(LOG_COLORIZE_AUTO, true, LOG_FACILITY_USER, LOG_CLASS_WARNING);
 
     /* Load applications */
     struct application_list *apps = NULL;
@@ -420,5 +424,6 @@ out:
     applications_destroy(apps);
 
     cairo_debug_reset_static_data();
+    log_deinit();
     return ret;
 }
