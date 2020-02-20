@@ -4,6 +4,7 @@
 #include <wctype.h>
 #include <unistd.h>
 #include <errno.h>
+#include <locale.h>
 
 #include <sys/mman.h>
 #include <sys/epoll.h>
@@ -15,6 +16,7 @@
 
 #include <xkbcommon/xkbcommon.h>
 #include <xkbcommon/xkbcommon-keysyms.h>
+#include <xkbcommon/xkbcommon-compose.h>
 
 #include <xdg-output-unstable-v1.h>
 #include <wlr-layer-shell-unstable-v1.h>
@@ -93,6 +95,8 @@ struct wayland {
     struct xkb_context *xkb;
     struct xkb_keymap *xkb_keymap;
     struct xkb_state *xkb_state;
+    struct xkb_compose_table *xkb_compose_table;
+    struct xkb_compose_state *xkb_compose_state;
 };
 
 bool
@@ -154,6 +158,27 @@ keyboard_keymap(void *data, struct wl_keyboard *wl_keyboard,
 
     char *map_str = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
 
+    if (wayl->xkb_compose_state != NULL) {
+        xkb_compose_state_unref(wayl->xkb_compose_state);
+        wayl->xkb_compose_state = NULL;
+    }
+    if (wayl->xkb_compose_table != NULL) {
+        xkb_compose_table_unref(wayl->xkb_compose_table);
+        wayl->xkb_compose_table = NULL;
+    }
+    if (wayl->xkb_keymap != NULL) {
+        xkb_keymap_unref(wayl->xkb_keymap);
+        wayl->xkb_keymap = NULL;
+    }
+    if (wayl->xkb_state != NULL) {
+        xkb_state_unref(wayl->xkb_state);
+        wayl->xkb_state = NULL;
+    }
+    if (wayl->xkb != NULL) {
+        xkb_context_unref(wayl->xkb);
+        wayl->xkb = NULL;
+    }
+
     wayl->xkb = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
     wayl->xkb_keymap = xkb_keymap_new_from_string(
         wayl->xkb, map_str, XKB_KEYMAP_FORMAT_TEXT_V1,
@@ -161,6 +186,12 @@ keyboard_keymap(void *data, struct wl_keyboard *wl_keyboard,
 
     /* TODO: initialize in enter? */
     wayl->xkb_state = xkb_state_new(wayl->xkb_keymap);
+
+    /* Compose (dead keys) */
+    wayl->xkb_compose_table = xkb_compose_table_new_from_locale(
+        wayl->xkb, setlocale(LC_CTYPE, NULL), XKB_COMPOSE_COMPILE_NO_FLAGS);
+    wayl->xkb_compose_state = xkb_compose_state_new(
+        wayl->xkb_compose_table, XKB_COMPOSE_STATE_NO_FLAGS);
 
     munmap(map_str, size);
     close(fd);
@@ -213,6 +244,15 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
     key += 8;
     bool should_repeat = xkb_keymap_key_repeats(wayl->xkb_keymap, key);
     xkb_keysym_t sym = xkb_state_key_get_one_sym(wayl->xkb_state, key);
+
+    xkb_compose_state_feed(wayl->xkb_compose_state, sym);
+    enum xkb_compose_status compose_status = xkb_compose_state_get_status(
+        wayl->xkb_compose_state);
+
+    if (compose_status == XKB_COMPOSE_COMPOSING) {
+        /* TODO: goto maybe_repeat? */
+        return;
+    }
 
     xkb_mod_mask_t mods = xkb_state_serialize_mods(
         wayl->xkb_state, XKB_STATE_MODS_EFFECTIVE);
@@ -357,8 +397,23 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
     }
 
     else if (effective_mods == 0) {
-        char buf[128] = {0};
-        int count = xkb_state_key_get_utf8(wayl->xkb_state, key, buf, sizeof(buf));
+        /*
+         * Compose, and maybe emit "normal" character
+         */
+
+        char buf[64] = {0};
+        int count = 0;
+
+        if (compose_status == XKB_COMPOSE_COMPOSED) {
+            count = xkb_compose_state_get_utf8(
+                wayl->xkb_compose_state, (char *)buf, sizeof(buf));
+            xkb_compose_state_reset(wayl->xkb_compose_state);
+        } else if (compose_status == XKB_COMPOSE_CANCELLED) {
+            goto maybe_repeat;
+        } else {
+            count = xkb_state_key_get_utf8(
+                wayl->xkb_state, key, (char *)buf, sizeof(buf));
+        }
 
         if (count == 0)
             return;
@@ -369,6 +424,8 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
         matches_update(wayl->matches, wayl->prompt);
         wayl_refresh(wayl);
     }
+
+maybe_repeat:
 
     if (should_repeat)
         repeat_start(&wayl->repeat, key - 8);
@@ -958,6 +1015,10 @@ wayl_destroy(struct wayland *wayl)
         wl_registry_destroy(wayl->registry);
     if (wayl->display != NULL)
         wl_display_disconnect(wayl->display);
+    if (wayl->xkb_compose_state != NULL)
+        xkb_compose_state_unref(wayl->xkb_compose_state);
+    if (wayl->xkb_compose_table != NULL)
+        xkb_compose_table_unref(wayl->xkb_compose_table);
     if (wayl->xkb_state != NULL)
         xkb_state_unref(wayl->xkb_state);
     if (wayl->xkb_keymap != NULL)
