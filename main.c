@@ -389,7 +389,8 @@ main(int argc, char *const *argv)
         xdg_find_programs(icon_theme, font->height, apps);
     read_cache(apps);
 
-    if ((render = render_init(font, &render_options)) == NULL)
+    if ((render = render_init(font, &render_options,
+                              wayl_subpixel(wayl))) == NULL)
         goto out;
 
     if ((prompt = prompt_init(L"> ")) == NULL)

@@ -8,10 +8,12 @@
 
 #define LOG_MODULE "render"
 #include "log.h"
+#include "wayland.h"
 
 struct render {
     struct render_options options;
     struct fcft_font *regular_font;
+    enum fcft_subpixel subpixel;
 };
 
 void
@@ -189,10 +191,10 @@ render_match_list(const struct render *render, struct buffer *buf,
     const double border_size = render->options.border_size;
     const size_t match_count = matches_get_count(matches);
     const size_t selected = matches_get_match_index(matches);
-    const enum fcft_subpixel subpixel_antialias =
+    const enum fcft_subpixel subpixel =
         (render->options.background_color.a == 1. &&
          render->options.selection_color.a == 1.)
-        ? FCFT_SUBPIXEL_DEFAULT : FCFT_SUBPIXEL_NONE;
+        ? render->subpixel : FCFT_SUBPIXEL_NONE;
 
     assert(match_count == 0 || selected < match_count);
 
@@ -284,7 +286,7 @@ render_match_list(const struct render *render, struct buffer *buf,
         render_match_text(
             buf, &cur_x, y,
             match->application->title, match->start_title, wcslen(prompt_text(prompt)),
-            render->regular_font, subpixel_antialias,
+            render->regular_font, subpixel,
             render->options.pix_text_color, render->options.pix_match_color);
 
         y += row_height;
@@ -292,11 +294,13 @@ render_match_list(const struct render *render, struct buffer *buf,
 }
 
 struct render *
-render_init(struct fcft_font *font, const struct render_options *options)
+render_init(struct fcft_font *font, const struct render_options *options,
+            enum fcft_subpixel subpixel)
 {
     struct render *render = calloc(1, sizeof(*render));
     render->options = *options;
     render->regular_font = font;
+    render->subpixel = subpixel;
 
     /* TODO: the one providing the options should calculate these */
     render->options.pix_background_color = rgba2pixman(render->options.background_color);
