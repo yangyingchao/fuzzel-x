@@ -34,7 +34,7 @@ struct render_options {
 };
 
 struct render;
-struct render *render_init(struct font *font, const struct render_options *options);
+struct render *render_init(struct fcft_font *font, const struct render_options *options);
 void render_destroy(struct render *render);
 
 void render_background(const struct render *render, struct buffer *buf);
