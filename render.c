@@ -139,7 +139,7 @@ render_prompt(const struct render *render, struct buffer *buf,
 
         x += x_kern;
         render_glyph(buf->pix, glyph, x, y, &render->options.pix_text_color);
-        x += glyph->x_advance;
+        x += glyph->advance.x;
 
         /* Cursor */
         if (prompt_cursor(prompt) + prompt_len - 1 == i) {
@@ -175,7 +175,7 @@ render_match_text(struct buffer *buf, double *_x, double _y,
         bool is_match = start >= 0 && i >= start && i < start + length;
         x += x_kern;
         render_glyph(buf->pix, glyph, x, y, is_match ? &match_color : &regular_color);
-        x += glyph->x_advance;
+        x += glyph->advance.x;
     }
 
     *_x = x;
