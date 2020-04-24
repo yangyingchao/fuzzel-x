@@ -49,6 +49,7 @@ struct monitor {
     int y_ppi;
 
     int scale;
+    enum fcft_subpixel subpixel;
 };
 
 struct repeat {
@@ -509,6 +510,7 @@ output_geometry(void *data, struct wl_output *wl_output, int32_t x, int32_t y,
     struct monitor *mon = data;
     mon->width_mm = physical_width;
     mon->height_mm = physical_height;
+    mon->subpixel = subpixel;
     output_update_ppi(mon);
 }
 
@@ -1039,6 +1041,13 @@ int
 wayl_ppi(const struct wayland *wayl)
 {
     return wayl->monitor != NULL ? wayl->monitor->x_ppi : 96;
+}
+
+enum fcft_subpixel
+wayl_subpixel(const struct wayland *wayl)
+{
+    return wayl->monitor != NULL
+        ? wayl->monitor->subpixel : FCFT_SUBPIXEL_DEFAULT;
 }
 
 bool

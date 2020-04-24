@@ -8,10 +8,12 @@
 
 #define LOG_MODULE "render"
 #include "log.h"
+#include "wayland.h"
 
 struct render {
     struct render_options options;
-    struct font *regular_font;
+    struct fcft_font *regular_font;
+    enum fcft_subpixel subpixel;
 };
 
 void
@@ -84,7 +86,7 @@ rgba2pixman(struct rgba rgba)
 }
 
 static void
-render_glyph(pixman_image_t *pix, const struct glyph *glyph, int x, int y, const pixman_color_t *color)
+render_glyph(pixman_image_t *pix, const struct fcft_glyph *glyph, int x, int y, const pixman_color_t *color)
 {
     if (pixman_image_get_format(glyph->pix) == PIXMAN_a8r8g8b8) {
         /* Glyph surface is a pre-rendered image (typically a color emoji...) */
@@ -107,7 +109,7 @@ void
 render_prompt(const struct render *render, struct buffer *buf,
               const struct prompt *prompt)
 {
-    struct font *font = render->regular_font;
+    struct fcft_font *font = render->regular_font;
 
     const wchar_t *pprompt = prompt_prompt(prompt);
     const size_t prompt_len = wcslen(pprompt);
@@ -126,18 +128,18 @@ render_prompt(const struct render *render, struct buffer *buf,
 
     for (size_t i = 0; i < prompt_len + text_len; i++) {
         wchar_t wc = i < prompt_len ? pprompt[i] : ptext[i - prompt_len];
-        const struct glyph *glyph = font_glyph_for_wc(font, wc, subpixel_antialias);
+        const struct fcft_glyph *glyph = fcft_glyph_rasterize(font, wc, subpixel_antialias);
         if (glyph == NULL) {
             prev = wc;
             continue;
         }
 
         long x_kern;
-        font_kerning(font, prev, wc, &x_kern, NULL);
+        fcft_kerning(font, prev, wc, &x_kern, NULL);
 
         x += x_kern;
         render_glyph(buf->pix, glyph, x, y, &render->options.pix_text_color);
-        x += glyph->x_advance;
+        x += glyph->advance.x;
 
         /* Cursor */
         if (prompt_cursor(prompt) + prompt_len - 1 == i) {
@@ -155,25 +157,25 @@ render_prompt(const struct render *render, struct buffer *buf,
 static void
 render_match_text(struct buffer *buf, double *_x, double _y,
                   const wchar_t *text, ssize_t start, size_t length,
-                  struct font *font, bool subpixel_antialias,
+                  struct fcft_font *font, bool subpixel_antialias,
                   pixman_color_t regular_color, pixman_color_t match_color)
 {
     int x = *_x;
     int y = _y;
 
     for (size_t i = 0; i < wcslen(text); i++) {
-        const struct glyph *glyph = font_glyph_for_wc(font, text[i], subpixel_antialias);
+        const struct fcft_glyph *glyph = fcft_glyph_rasterize(font, text[i], subpixel_antialias);
         if (glyph == NULL)
             continue;
 
-        long x_kern = 0;
+        long x_kern = 0, y_kern = 0;
         if (i > 0)
-            font_kerning(font, text[i - 1], text[i], &x_kern, NULL);
+            fcft_kerning(font, text[i - 1], text[i], &x_kern, &y_kern);
 
         bool is_match = start >= 0 && i >= start && i < start + length;
         x += x_kern;
-        render_glyph(buf->pix, glyph, x, y, is_match ? &match_color : &regular_color);
-        x += glyph->x_advance;
+        render_glyph(buf->pix, glyph, x, y + y_kern, is_match ? &match_color : &regular_color);
+        x += glyph->advance.x;
     }
 
     *_x = x;
@@ -183,15 +185,16 @@ void
 render_match_list(const struct render *render, struct buffer *buf,
                   const struct prompt *prompt, const struct matches *matches)
 {
-    struct font *font = render->regular_font;
+    struct fcft_font *font = render->regular_font;
     const double x_margin = render->options.x_margin;
     const double y_margin = render->options.y_margin;
     const double border_size = render->options.border_size;
     const size_t match_count = matches_get_count(matches);
     const size_t selected = matches_get_match_index(matches);
-    const bool subpixel_antialias =
-        render->options.background_color.a == 1. &&
-        render->options.selection_color.a == 1.;
+    const enum fcft_subpixel subpixel =
+        (render->options.background_color.a == 1. &&
+         render->options.selection_color.a == 1.)
+        ? render->subpixel : FCFT_SUBPIXEL_NONE;
 
     assert(match_count == 0 || selected < match_count);
 
@@ -283,7 +286,7 @@ render_match_list(const struct render *render, struct buffer *buf,
         render_match_text(
             buf, &cur_x, y,
             match->application->title, match->start_title, wcslen(prompt_text(prompt)),
-            render->regular_font, subpixel_antialias,
+            render->regular_font, subpixel,
             render->options.pix_text_color, render->options.pix_match_color);
 
         y += row_height;
@@ -291,11 +294,13 @@ render_match_list(const struct render *render, struct buffer *buf,
 }
 
 struct render *
-render_init(struct font *font, const struct render_options *options)
+render_init(struct fcft_font *font, const struct render_options *options,
+            enum fcft_subpixel subpixel)
 {
     struct render *render = calloc(1, sizeof(*render));
     render->options = *options;
     render->regular_font = font;
+    render->subpixel = subpixel;
 
     /* TODO: the one providing the options should calculate these */
     render->options.pix_background_color = rgba2pixman(render->options.background_color);
@@ -312,6 +317,6 @@ render_destroy(struct render *render)
     if (render == NULL)
         return;
 
-    font_destroy(render->regular_font);
+    fcft_destroy(render->regular_font);
     free(render);
 }

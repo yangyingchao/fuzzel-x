@@ -1,5 +1,7 @@
 #pragma once
 
+#include <fcft/fcft.h>
+
 #include "fdm.h"
 
 #include "prompt.h"
@@ -19,5 +21,6 @@ void wayl_refresh(struct wayland *wayl);
 void wayl_flush(struct wayland *wayl);
 
 int wayl_ppi(const struct wayland *wayl);
+enum fcft_subpixel wayl_subpixel(const struct wayland *wayl);
 bool wayl_exit_code(const struct wayland *wayl);
 bool wayl_update_cache(const struct wayland *wayl);
