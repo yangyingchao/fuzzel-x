@@ -168,13 +168,13 @@ render_match_text(struct buffer *buf, double *_x, double _y,
         if (glyph == NULL)
             continue;
 
-        long x_kern = 0;
+        long x_kern = 0, y_kern = 0;
         if (i > 0)
-            fcft_kerning(font, text[i - 1], text[i], &x_kern, NULL);
+            fcft_kerning(font, text[i - 1], text[i], &x_kern, &y_kern);
 
         bool is_match = start >= 0 && i >= start && i < start + length;
         x += x_kern;
-        render_glyph(buf->pix, glyph, x, y, is_match ? &match_color : &regular_color);
+        render_glyph(buf->pix, glyph, x, y + y_kern, is_match ? &match_color : &regular_color);
         x += glyph->advance.x;
     }
 
