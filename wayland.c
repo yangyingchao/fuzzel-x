@@ -472,14 +472,17 @@ seat_handle_capabilities(void *data, struct wl_seat *wl_seat,
 {
     struct wayland *wayl = data;
 
-    if (!(caps & WL_SEAT_CAPABILITY_KEYBOARD))
-        return;
-
-    if (wayl->keyboard != NULL)
-        wl_keyboard_release(wayl->keyboard);
-
-    wayl->keyboard = wl_seat_get_keyboard(wl_seat);
-    wl_keyboard_add_listener(wayl->keyboard, &keyboard_listener, wayl);
+    if (caps & WL_SEAT_CAPABILITY_KEYBOARD) {
+        if (wayl->keyboard == NULL) {
+            wayl->keyboard = wl_seat_get_keyboard(wl_seat);
+            wl_keyboard_add_listener(wayl->keyboard, &keyboard_listener, wayl);
+        }
+    } else {
+        if (wayl->keyboard != NULL) {
+            wl_keyboard_release(wayl->keyboard);
+            wayl->keyboard = NULL;
+        }
+    }
 }
 
 static void
