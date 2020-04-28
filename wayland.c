@@ -32,9 +32,11 @@
 #include "render.h"
 
 struct monitor {
+    struct wayland *wayl;
     struct wl_output *output;
     struct zxdg_output_v1 *xdg;
     char *name;
+    uint32_t wl_name;
 
     int x;
     int y;
@@ -90,6 +92,7 @@ struct wayland {
     struct wl_keyboard *keyboard;
     struct zxdg_output_manager_v1 *xdg_output_manager;
 
+    char *output_name;
     tll(struct monitor) monitors;
     const struct monitor *monitor;
 
@@ -571,7 +574,11 @@ xdg_output_handle_name(void *data, struct zxdg_output_v1 *xdg_output,
                        const char *name)
 {
     struct monitor *mon = data;
+    struct wayland *wayl = mon->wayl;
     mon->name = strdup(name);
+
+    if (wayl->output_name != NULL && strcmp(wayl->output_name, mon->name) == 0)
+        wayl->monitor = mon;
 }
 
 static void
@@ -603,6 +610,7 @@ static void
 handle_global(void *data, struct wl_registry *registry,
               uint32_t name, const char *interface, uint32_t version)
 {
+    LOG_DBG("global: 0x%08x, interface=%s, version=%u", name, interface, version);
     struct wayland *wayl = data;
 
     if (strcmp(interface, wl_compositor_interface.name) == 0) {
@@ -633,7 +641,11 @@ handle_global(void *data, struct wl_registry *registry,
         struct wl_output *output = wl_registry_bind(
             wayl->registry, name, &wl_output_interface, required);
 
-        tll_push_back(wayl->monitors, ((struct monitor){.output = output}));
+        tll_push_back(wayl->monitors, ((struct monitor){
+            .output = output,
+            .wayl = wayl,
+            .wl_name = name,
+        }));
 
         struct monitor *mon = &tll_back(wayl->monitors);
         wl_output_add_listener(output, &output_listener, mon);
@@ -685,9 +697,40 @@ handle_global(void *data, struct wl_registry *registry,
 }
 
 static void
+monitor_destroy(struct monitor *mon)
+{
+    free(mon->name);
+    if (mon->xdg != NULL)
+        zxdg_output_v1_destroy(mon->xdg);
+    if (mon->output != NULL)
+        wl_output_destroy(mon->output);
+    // free(mon->make);
+    // free(mon->model);
+}
+
+static void
 handle_global_remove(void *data, struct wl_registry *registry, uint32_t name)
 {
-    LOG_WARN("global removed: %u", name);
+    LOG_DBG("global removed: 0x%08x", name);
+
+    struct wayland *wayl = data;
+    tll_foreach(wayl->monitors, it) {
+        struct monitor *mon = &it->item;
+
+        if (mon->wl_name != name)
+            continue;
+
+        LOG_INFO("monitor disabled: %s", mon->name);
+
+        if (wayl->monitor == mon)
+            wayl->monitor = NULL;
+
+        monitor_destroy(mon);
+        tll_remove(wayl->monitors, it);
+        return;
+    }
+
+    LOG_WARN("unknown global removed: 0x%08x", name);
 }
 
 static const struct wl_registry_listener registry_listener = {
@@ -837,6 +880,7 @@ wayl_init(struct fdm *fdm, int width, int height, const char *output_name)
     //wayl->matches = matches;
     wayl->status = KEEP_RUNNING;
     wayl->exit_code = EXIT_FAILURE;
+    wayl->output_name = output_name != NULL ? strdup(output_name) : NULL;
     //wayl->dmenu_mode = dmenu_mode;
 
     wayl->repeat.fd = timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
@@ -880,16 +924,10 @@ wayl_init(struct fdm *fdm, int width, int height, const char *output_name)
 
     tll_foreach(wayl->monitors, it) {
         const struct monitor *mon = &it->item;
-
         LOG_INFO("monitor: %s: %dx%d+%d+%d (%dx%dmm, PPI=%dx%d)",
                  mon->name, mon->width_px, mon->height_px,
                  mon->x, mon->y, mon->width_mm, mon->height_mm,
                  mon->x_ppi, mon->y_ppi);
-
-        if (output_name != NULL && strcmp(output_name, mon->name) == 0) {
-            wayl->monitor = mon;
-            break;
-        }
     }
 
     LOG_DBG("using output: %s",
@@ -991,11 +1029,7 @@ wayl_destroy(struct wayland *wayl)
         fdm_del(wayl->fdm, wayl->repeat.fd);
 
     tll_foreach(wayl->monitors, it) {
-        free(it->item.name);
-        if (it->item.xdg)
-            zxdg_output_v1_destroy(it->item.xdg);
-        if (it->item.output != NULL)
-            wl_output_destroy(it->item.output);
+        monitor_destroy(&it->item);
         tll_remove(wayl->monitors, it);
     }
 
@@ -1031,6 +1065,7 @@ wayl_destroy(struct wayland *wayl)
     if (wayl->xkb != NULL)
         xkb_context_unref(wayl->xkb);
 
+    free(wayl->output_name);
     free(wayl);
 }
 
