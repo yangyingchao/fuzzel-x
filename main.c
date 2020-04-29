@@ -339,8 +339,6 @@ main(int argc, char *const *argv)
 
     int ret = EXIT_FAILURE;
 
-    setlocale(LC_ALL, "");
-
     log_init(LOG_COLORIZE_AUTO, true, LOG_FACILITY_USER, LOG_CLASS_WARNING);
 
     /* Load applications */
@@ -379,6 +377,8 @@ main(int argc, char *const *argv)
         / line_height;
 
     LOG_DBG("max matches: %zu", max_matches);
+
+    setlocale(LC_ALL, "");
 
     /* Load applications */
     if ((apps = applications_init()) == NULL)
