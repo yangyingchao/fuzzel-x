@@ -11,7 +11,8 @@ project('fuzzel', 'c',
 is_debug_build = get_option('buildtype').startswith('debug')
 
 add_project_arguments(
-  ['-D_GNU_SOURCE'] + (is_debug_build ? ['-D_DEBUG'] : []),
+  ['-D_POSIX_C_SOURCE=200809L', '-D_GNU_SOURCE'] +
+  (is_debug_build ? ['-D_DEBUG'] : []),
   language: 'c',
 )
 
