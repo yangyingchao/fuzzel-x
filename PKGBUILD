@@ -2,7 +2,7 @@ pkgname=fuzzel
 pkgver=1.3.0
 pkgrel=1
 pkgdesc="Simplistic application launcher for wayland"
-arch=('x86_64')
+arch=('x86_64' 'aarch64')
 url=https://codeberg.org/dnkl/fuzzel
 license=(mit)
 makedepends=('meson' 'ninja' 'scdoc' 'tllist>=1.0.1')
