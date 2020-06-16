@@ -22,10 +22,8 @@ dmenu_load_entries(struct application_list *applications)
         ssize_t len = getline(&line, &alloc_size, stdin);
 
         if (len == -1) {
-            free(line);
-            if (errno != 0) {
+            if (errno != 0)
                 LOG_ERRNO("failed to read from stdin");
-            }
             break;
         }
 
