@@ -168,7 +168,7 @@ load_icon(const char *name, int icon_size, icon_theme_list_t themes)
 
 static void
 parse_desktop_file(int fd, icon_theme_list_t themes, int icon_size,
-                   application_llist_t *applications)
+                   const char *terminal, application_llist_t *applications)
 {
     FILE *f = fdopen(fd, "r");
     if (f == NULL)
@@ -183,6 +183,7 @@ parse_desktop_file(int fd, icon_theme_list_t themes, int icon_size,
     char *path = NULL;
     char *icon = NULL;
     bool visible = true;
+    bool use_terminal = false;
 
     while (true) {
         char *line = NULL;
@@ -259,6 +260,11 @@ parse_desktop_file(int fd, icon_theme_list_t themes, int icon_size,
                 if (strcmp(value, "true") == 0)
                     visible = false;
             }
+
+            else if (strcmp(key, "Terminal") == 0) {
+                if (strcmp(value, "true") == 0)
+                    use_terminal = true;
+            }
         }
 
         free(line);
@@ -276,6 +282,16 @@ parse_desktop_file(int fd, icon_theme_list_t themes, int icon_size,
         }
 
         if (!already_added) {
+            if (use_terminal && terminal != NULL) {
+                char *exec_with_terminal = malloc(
+                    strlen(terminal) + 1 + strlen(exec) + 1);
+                strcpy(exec_with_terminal, terminal);
+                strcat(exec_with_terminal, " ");
+                strcat(exec_with_terminal, exec);
+                free(exec);
+                exec = exec_with_terminal;
+            }
+
             tll_push_back(
                 *applications,
                 ((struct application){
@@ -297,7 +313,7 @@ parse_desktop_file(int fd, icon_theme_list_t themes, int icon_size,
 
 static void
 scan_dir(int base_fd, icon_theme_list_t themes, int icon_size,
-         application_llist_t *applications)
+         const char *terminal, application_llist_t *applications)
 {
     DIR *d = fdopendir(base_fd);
     if (d == NULL) {
@@ -322,7 +338,7 @@ scan_dir(int base_fd, icon_theme_list_t themes, int icon_size,
                 continue;
             }
 
-            scan_dir(dir_fd, themes, icon_size, applications);
+            scan_dir(dir_fd, themes, icon_size, terminal, applications);
             close(dir_fd);
         } else if (S_ISREG(st.st_mode)) {
             /* Skip files not ending with ".desktop" */
@@ -339,7 +355,8 @@ scan_dir(int base_fd, icon_theme_list_t themes, int icon_size,
             if (fd == -1)
                 LOG_WARN("%s: failed to open", e->d_name);
             else {
-                parse_desktop_file(fd, themes, icon_size, applications);
+                parse_desktop_file(
+                    fd, themes, icon_size, terminal, applications);
                 close(fd);
             }
         }
@@ -358,7 +375,7 @@ sort_application_by_title(const void *_a, const void *_b)
 }
 
 void
-xdg_find_programs(const char *icon_theme, int icon_size,
+xdg_find_programs(const char *icon_theme, int icon_size, const char *terminal,
                   struct application_list *applications)
 {
     icon_theme_list_t themes = icon_load_theme(icon_theme);
@@ -376,7 +393,7 @@ xdg_find_programs(const char *icon_theme, int icon_size,
 
         int fd = open(path, O_RDONLY);
         if (fd != -1) {
-            scan_dir(fd, themes, icon_size, &apps);
+            scan_dir(fd, themes, icon_size, terminal, &apps);
             close(fd);
         }
     }

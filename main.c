@@ -169,6 +169,8 @@ print_usage(const char *prog_name)
     printf("  -o,--output=OUTPUT         output (monitor) to display on (none)\n"
            "  -f,--font=FONT             font name and style in fontconfig format (monospace)\n"
            "  -i,--icon-theme=NAME       icon theme name (\"hicolor\")\n"
+           "  -T,--terminal              terminal command to use when launching 'terminal' programs, e.g. \"xterm -e\".\n"
+           "                             Not used in dmenu mode. (default: not set)\n"
            "  -g,--geometry=WxH          window WIDTHxHEIGHT, in pixels (500x300)\n"
            "  -b,--background-color=HEX  background color (000000ff)\n"
            "  -t,--text-color=HEX        text color (ffffffff)\n"
@@ -198,6 +200,7 @@ main(int argc, char *const *argv)
         {"border-width",     required_argument, 0, 'B'},
         {"border-radius",    required_argument, 0, 'r'},
         {"border-color",     required_argument, 0, 'C'},
+        {"terminal",         required_argument, 0, 'T'},
         {"dmenu",            no_argument,       0, 'd'},
         {"version",          no_argument,       0, 'v'},
         {"help",             no_argument,       0, 'h'},
@@ -207,6 +210,7 @@ main(int argc, char *const *argv)
     const char *output_name = NULL;
     const char *font_name = "monospace";
     const char *icon_theme = "hicolor";
+    const char *terminal = NULL;
     bool dmenu_mode = false;
 
     struct render_options render_options = {
@@ -224,7 +228,7 @@ main(int argc, char *const *argv)
     };
 
     while (true) {
-        int c = getopt_long(argc, argv, ":o:f:i:g:b:t:m:s:B:r:C:dvh", longopts, NULL);
+        int c = getopt_long(argc, argv, ":o:f:i:g:b:t:m:s:B:r:C:T:dvh", longopts, NULL);
         if (c == -1)
             break;
 
@@ -239,6 +243,10 @@ main(int argc, char *const *argv)
 
         case 'i':
             icon_theme = optarg;
+            break;
+
+        case 'T':
+            terminal = optarg;
             break;
 
         case 'g':
@@ -386,7 +394,7 @@ main(int argc, char *const *argv)
     if (dmenu_mode)
         dmenu_load_entries(apps);
     else
-        xdg_find_programs(icon_theme, font->height, apps);
+        xdg_find_programs(icon_theme, font->height, terminal, apps);
     read_cache(apps);
 
     if ((render = render_init(font, &render_options,
