@@ -30,6 +30,11 @@ options:
 *-i*,*--icon-theme*=_NAME_
 	Icon theme name to use. Example: _Adwaita_. Default: _hicolor_.
 
+*-T*,*--terminal*=_TERMINAL ARGS_
+	Command to launch XDG applications with the property
+	*Terminal=true* (_htop_, for example). Example: _xterm -e_.
+	Default: _not set_.
+
 *-g*,*--geometry*=_WIDTHxHEIGHT_
 	The window width and height, in pixels. Default: _500x300_.
 
