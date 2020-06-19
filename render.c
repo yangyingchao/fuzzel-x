@@ -274,7 +274,8 @@ render_match_list(const struct render *render, struct buffer *buf,
                 first_row + i * row_height + (row_height - height) / 2);
             cairo_scale(buf->cairo, scale, scale);
 
-            rsvg_handle_render_cairo(svg, buf->cairo);
+            if (cairo_status(buf->cairo) == CAIRO_STATUS_SUCCESS)
+                rsvg_handle_render_cairo(svg, buf->cairo);
             cairo_restore(buf->cairo);
             break;
         }
