@@ -205,10 +205,49 @@ render_match_list(const struct render *render, struct buffer *buf,
     double y = first_row + (row_height + font->height) / 2 - font->descent;
 
     for (size_t i = 0; i < match_count; i++) {
-        const struct match *match = matches_get(matches, i);//&matches[i];
+        const struct match *match = matches_get(matches, i);
 
-        /* Hightlight selected entry */
         if (i == selected) {
+            /* If currently selected item has a scalable icon, and if
+             * there's "enough" free space, render a large
+             * representation of the icon */
+
+            if (match->application->icon.type == ICON_SVG) {
+                RsvgHandle *svg = match->application->icon.svg;
+                RsvgDimensionData dim;
+                rsvg_handle_get_dimensions(svg, &dim);
+
+                const double max_height = render->options.height * 0.618;
+                const double max_width = render->options.width * 0.618;
+
+                const double scale_x = max_width / dim.width;
+                const double scale_y = max_height / dim.height;
+                const double scale = scale_x < scale_y ? scale_x : scale_y;
+
+                const double height = dim.height * scale;
+                const double width = dim.width * scale;
+
+                const double img_x = (render->options.width - width) / 2.;
+                const double img_y = first_row + (render->options.height - height) / 2.;
+
+                double list_end = first_row + match_count * row_height;
+
+                if (img_y > list_end) {
+
+                    cairo_save(buf->cairo);
+                    cairo_set_operator(buf->cairo, CAIRO_OPERATOR_ATOP);
+
+                    /* Translate + scale. Note: order matters! */
+                    cairo_translate(buf->cairo, img_x, img_y);
+                    cairo_scale(buf->cairo, scale, scale);
+
+                    if (cairo_status(buf->cairo) == CAIRO_STATUS_SUCCESS)
+                        rsvg_handle_render_cairo(svg, buf->cairo);
+                    cairo_restore(buf->cairo);
+                }
+            }
+
+            /* Hightlight selected entry */
             const struct rgba *sc = &render->options.selection_color;
             cairo_set_source_rgba(buf->cairo, sc->r, sc->g, sc->b, sc->a);
             cairo_set_operator(buf->cairo, CAIRO_OPERATOR_SOURCE);
