@@ -994,6 +994,35 @@ update_size(struct wayland *wayl)
     wl_display_roundtrip(wayl->display);
 }
 
+static void
+surface_enter(void *data, struct wl_surface *wl_surface,
+              struct wl_output *wl_output)
+{
+    struct wayland *wayl = data;
+
+    tll_foreach(wayl->monitors, it) {
+        if (it->item.output != wl_output)
+            continue;
+
+        wayl->monitor = &it->item;
+        update_size(wayl);
+        break;
+    }
+}
+
+static void
+surface_leave(void *data, struct wl_surface *wl_surface,
+              struct wl_output *wl_output)
+{
+    struct wayland *wayl = data;
+    wayl->monitor = NULL;
+}
+
+static const struct wl_surface_listener surface_listener = {
+    .enter = &surface_enter,
+    .leave = &surface_leave,
+};
+
 struct wayland *
 wayl_init(struct fdm *fdm, int width, int height, const char *output_name)
 {
@@ -1060,6 +1089,8 @@ wayl_init(struct fdm *fdm, int width, int height, const char *output_name)
         goto out;
     }
 
+    wl_surface_add_listener(wayl->surface, &surface_listener, wayl);
+
 #if 0
     wayl->pointer.surface = wl_compositor_create_surface(wayl->compositor);
     if (wayl->pointer.surface == NULL) {
@@ -1104,7 +1135,6 @@ wayl_init(struct fdm *fdm, int width, int height, const char *output_name)
         goto out;
     }
 
-    //wayl_refresh(wayl);
     return wayl;
 
 out:
