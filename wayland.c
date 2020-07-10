@@ -541,6 +541,54 @@ static const struct wl_seat_listener seat_listener = {
     .name = seat_handle_name,
 };
 
+static int
+guess_scale(const struct wayland *wayl)
+{
+    if (tll_length(wayl->monitors) == 0)
+        return 1;
+
+    bool all_have_same_scale = true;
+    int last_scale = -1;
+
+    tll_foreach(wayl->monitors, it) {
+        if (last_scale == -1)
+            last_scale = it->item.scale;
+        else if (last_scale != it->item.scale) {
+            all_have_same_scale = false;
+            break;
+        }
+    }
+
+    if (all_have_same_scale) {
+        assert(last_scale >= 1);
+        return last_scale;
+    }
+
+    return 1;
+}
+
+static void
+update_size(struct wayland *wayl)
+{
+    const struct monitor *mon = wayl->monitor;
+    const int scale = mon != NULL ? mon->scale : guess_scale(wayl);
+
+    if (scale == wayl->scale)
+        return;
+
+    wayl->scale = scale;
+
+    wayl->width /= scale; wayl->width *= scale;
+    wayl->height /= scale; wayl->height *= scale;
+
+    zwlr_layer_surface_v1_set_size(
+        wayl->layer_surface, wayl->width / scale, wayl->height / scale);
+
+    /* Trigger a 'configure' event, after which we'll have the width */
+    wl_surface_commit(wayl->surface);
+    wl_display_roundtrip(wayl->display);
+}
+
 static void
 output_update_ppi(struct monitor *mon)
 {
@@ -579,6 +627,14 @@ output_scale(void *data, struct wl_output *wl_output, int32_t factor)
 {
     struct monitor *mon = data;
     mon->scale = factor;
+
+    if (mon->wayl->monitor == mon) {
+        int old_scale = mon->wayl->scale;
+        update_size(mon->wayl);
+
+        if (mon->wayl->scale != old_scale)
+            wayl_refresh(mon->wayl);
+    }
 }
 
 static const struct wl_output_listener output_listener = {
@@ -946,54 +1002,6 @@ fdm_handler(struct fdm *fdm, int fd, int events, void *data)
     return event_count != -1 && wayl->status == KEEP_RUNNING;
 }
 
-static int
-guess_scale(const struct wayland *wayl)
-{
-    if (tll_length(wayl->monitors) == 0)
-        return 1;
-
-    bool all_have_same_scale = true;
-    int last_scale = -1;
-
-    tll_foreach(wayl->monitors, it) {
-        if (last_scale == -1)
-            last_scale = it->item.scale;
-        else if (last_scale != it->item.scale) {
-            all_have_same_scale = false;
-            break;
-        }
-    }
-
-    if (all_have_same_scale) {
-        assert(last_scale >= 1);
-        return last_scale;
-    }
-
-    return 1;
-}
-
-static void
-update_size(struct wayland *wayl)
-{
-    const struct monitor *mon = wayl->monitor;
-    const int scale = mon != NULL ? mon->scale : guess_scale(wayl);
-
-    if (scale == wayl->scale)
-        return;
-
-    wayl->scale = scale;
-
-    wayl->width /= scale; wayl->width *= scale;
-    wayl->height /= scale; wayl->height *= scale;
-
-    zwlr_layer_surface_v1_set_size(
-        wayl->layer_surface, wayl->width / scale, wayl->height / scale);
-
-    /* Trigger a 'configure' event, after which we'll have the width */
-    wl_surface_commit(wayl->surface);
-    wl_display_roundtrip(wayl->display);
-}
-
 static void
 surface_enter(void *data, struct wl_surface *wl_surface,
               struct wl_output *wl_output)
@@ -1004,8 +1012,13 @@ surface_enter(void *data, struct wl_surface *wl_surface,
         if (it->item.output != wl_output)
             continue;
 
+        int old_scale = wayl->scale;
+
         wayl->monitor = &it->item;
         update_size(wayl);
+
+        if (wayl->scale != old_scale)
+            wayl_refresh(wayl);
         break;
     }
 }
