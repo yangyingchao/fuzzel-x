@@ -63,6 +63,23 @@ struct repeat {
     uint32_t key;
 };
 
+struct seat {
+    struct wayland *wayl;
+    struct wl_seat *wl_seat;
+    uint32_t wl_name;
+    char *name;
+
+    struct wl_keyboard *wl_keyboard;
+    struct {
+        struct xkb_context *xkb;
+        struct xkb_keymap *xkb_keymap;
+        struct xkb_state *xkb_state;
+        struct xkb_compose_table *xkb_compose_table;
+        struct xkb_compose_state *xkb_compose_state;
+        struct repeat repeat;
+    } kbd;
+};
+
 struct wayland {
     struct fdm *fdm;
     struct render *render;
@@ -71,8 +88,6 @@ struct wayland {
 
     int width;
     int height;
-
-    struct repeat repeat;
 
     enum { KEEP_RUNNING, EXIT_UPDATE_CACHE, EXIT} status;
     int exit_code;
@@ -88,19 +103,14 @@ struct wayland {
     struct zwlr_layer_shell_v1 *layer_shell;
     struct zwlr_layer_surface_v1 *layer_surface;
     struct wl_shm *shm;
-    struct wl_seat *seat;
-    struct wl_keyboard *keyboard;
     struct zxdg_output_manager_v1 *xdg_output_manager;
 
     char *output_name;
     tll(struct monitor) monitors;
     const struct monitor *monitor;
 
-    struct xkb_context *xkb;
-    struct xkb_keymap *xkb_keymap;
-    struct xkb_state *xkb_state;
-    struct xkb_compose_table *xkb_compose_table;
-    struct xkb_compose_state *xkb_compose_state;
+    tll(struct seat) seats;
+
 };
 
 bool
@@ -146,6 +156,33 @@ repeat_stop(struct repeat *repeat, uint32_t key)
 }
 
 static void
+seat_destroy(struct seat *seat)
+{
+    if (seat == NULL)
+        return;
+
+    if (seat->kbd.xkb_compose_state != NULL)
+        xkb_compose_state_unref(seat->kbd.xkb_compose_state);
+    if (seat->kbd.xkb_compose_table != NULL)
+        xkb_compose_table_unref(seat->kbd.xkb_compose_table);
+    if (seat->kbd.xkb_state != NULL)
+        xkb_state_unref(seat->kbd.xkb_state);
+    if (seat->kbd.xkb_keymap != NULL)
+        xkb_keymap_unref(seat->kbd.xkb_keymap);
+    if (seat->kbd.xkb != NULL)
+        xkb_context_unref(seat->kbd.xkb);
+    if (seat->kbd.repeat.fd > 0)
+        fdm_del(seat->wayl->fdm, seat->kbd.repeat.fd);
+    if (seat->wl_keyboard != NULL)
+        wl_keyboard_destroy(seat->wl_keyboard);
+
+    if (seat->wl_seat != NULL)
+        wl_seat_destroy(seat->wl_seat);
+
+    free(seat->name);
+}
+
+static void
 shm_format(void *data, struct wl_shm *wl_shm, uint32_t format)
 {
 }
@@ -158,44 +195,44 @@ static void
 keyboard_keymap(void *data, struct wl_keyboard *wl_keyboard,
                 uint32_t format, int32_t fd, uint32_t size)
 {
-    struct wayland *wayl = data;
+    struct seat *seat = data;
 
     char *map_str = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
 
-    if (wayl->xkb_compose_state != NULL) {
-        xkb_compose_state_unref(wayl->xkb_compose_state);
-        wayl->xkb_compose_state = NULL;
+    if (seat->kbd.xkb_compose_state != NULL) {
+        xkb_compose_state_unref(seat->kbd.xkb_compose_state);
+        seat->kbd.xkb_compose_state = NULL;
     }
-    if (wayl->xkb_compose_table != NULL) {
-        xkb_compose_table_unref(wayl->xkb_compose_table);
-        wayl->xkb_compose_table = NULL;
+    if (seat->kbd.xkb_compose_table != NULL) {
+        xkb_compose_table_unref(seat->kbd.xkb_compose_table);
+        seat->kbd.xkb_compose_table = NULL;
     }
-    if (wayl->xkb_keymap != NULL) {
-        xkb_keymap_unref(wayl->xkb_keymap);
-        wayl->xkb_keymap = NULL;
+    if (seat->kbd.xkb_keymap != NULL) {
+        xkb_keymap_unref(seat->kbd.xkb_keymap);
+        seat->kbd.xkb_keymap = NULL;
     }
-    if (wayl->xkb_state != NULL) {
-        xkb_state_unref(wayl->xkb_state);
-        wayl->xkb_state = NULL;
+    if (seat->kbd.xkb_state != NULL) {
+        xkb_state_unref(seat->kbd.xkb_state);
+        seat->kbd.xkb_state = NULL;
     }
-    if (wayl->xkb != NULL) {
-        xkb_context_unref(wayl->xkb);
-        wayl->xkb = NULL;
+    if (seat->kbd.xkb != NULL) {
+        xkb_context_unref(seat->kbd.xkb);
+        seat->kbd.xkb = NULL;
     }
 
-    wayl->xkb = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
-    wayl->xkb_keymap = xkb_keymap_new_from_string(
-        wayl->xkb, map_str, XKB_KEYMAP_FORMAT_TEXT_V1,
+    seat->kbd.xkb = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
+    seat->kbd.xkb_keymap = xkb_keymap_new_from_string(
+        seat->kbd.xkb, map_str, XKB_KEYMAP_FORMAT_TEXT_V1,
         XKB_KEYMAP_COMPILE_NO_FLAGS);
 
     /* TODO: initialize in enter? */
-    wayl->xkb_state = xkb_state_new(wayl->xkb_keymap);
+    seat->kbd.xkb_state = xkb_state_new(seat->kbd.xkb_keymap);
 
     /* Compose (dead keys) */
-    wayl->xkb_compose_table = xkb_compose_table_new_from_locale(
-        wayl->xkb, setlocale(LC_CTYPE, NULL), XKB_COMPOSE_COMPILE_NO_FLAGS);
-    wayl->xkb_compose_state = xkb_compose_state_new(
-        wayl->xkb_compose_table, XKB_COMPOSE_STATE_NO_FLAGS);
+    seat->kbd.xkb_compose_table = xkb_compose_table_new_from_locale(
+        seat->kbd.xkb, setlocale(LC_CTYPE, NULL), XKB_COMPOSE_COMPILE_NO_FLAGS);
+    seat->kbd.xkb_compose_state = xkb_compose_state_new(
+        seat->kbd.xkb_compose_table, XKB_COMPOSE_STATE_NO_FLAGS);
 
     munmap(map_str, size);
     close(fd);
@@ -217,9 +254,9 @@ static void
 keyboard_leave(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
                struct wl_surface *surface)
 {
-    struct wayland *wayl = data;
-    repeat_stop(&wayl->repeat, -1);
-    wayl->status = EXIT;
+    struct seat *seat = data;
+    repeat_stop(&seat->kbd.repeat, -1);
+    seat->wayl->status = EXIT;
 }
 
 static void
@@ -231,27 +268,28 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
     static xkb_mod_mask_t alt = -1;
     //static xkb_mod_mask_t shift = -1;
 
-    struct wayland *wayl = data;
+    struct seat *seat = data;
+    struct wayland *wayl = seat->wayl;
 
     if (!mod_masks_initialized) {
         mod_masks_initialized = true;
-        ctrl = 1 << xkb_keymap_mod_get_index(wayl->xkb_keymap, "Control");
-        alt = 1 << xkb_keymap_mod_get_index(wayl->xkb_keymap, "Mod1");
-        //shift = 1 << xkb_keymap_mod_get_index(wayl->xkb_keymap, "Shift");
+        ctrl = 1 << xkb_keymap_mod_get_index(seat->kbd.xkb_keymap, "Control");
+        alt = 1 << xkb_keymap_mod_get_index(seat->kbd.xkb_keymap, "Mod1");
+        //shift = 1 << xkb_keymap_mod_get_index(seat->kbd.xkb_keymap, "Shift");
     }
 
     if (state == XKB_KEY_UP) {
-        repeat_stop(&wayl->repeat, key);
+        repeat_stop(&seat->kbd.repeat, key);
         return;
     }
 
     key += 8;
-    bool should_repeat = xkb_keymap_key_repeats(wayl->xkb_keymap, key);
-    xkb_keysym_t sym = xkb_state_key_get_one_sym(wayl->xkb_state, key);
+    bool should_repeat = xkb_keymap_key_repeats(seat->kbd.xkb_keymap, key);
+    xkb_keysym_t sym = xkb_state_key_get_one_sym(seat->kbd.xkb_state, key);
 
-    xkb_compose_state_feed(wayl->xkb_compose_state, sym);
+    xkb_compose_state_feed(seat->kbd.xkb_compose_state, sym);
     enum xkb_compose_status compose_status = xkb_compose_state_get_status(
-        wayl->xkb_compose_state);
+        seat->kbd.xkb_compose_state);
 
     if (compose_status == XKB_COMPOSE_COMPOSING) {
         /* TODO: goto maybe_repeat? */
@@ -259,15 +297,15 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
     }
 
     xkb_mod_mask_t mods = xkb_state_serialize_mods(
-        wayl->xkb_state, XKB_STATE_MODS_EFFECTIVE);
-    xkb_mod_mask_t consumed = xkb_state_key_get_consumed_mods(wayl->xkb_state, key);
+        seat->kbd.xkb_state, XKB_STATE_MODS_EFFECTIVE);
+    xkb_mod_mask_t consumed = xkb_state_key_get_consumed_mods(seat->kbd.xkb_state, key);
     xkb_mod_mask_t significant = ctrl | alt /*| shift*/;
     xkb_mod_mask_t effective_mods = mods & ~consumed & significant;
 
 #if 0
     for (size_t i = 0; i < 32; i++) {
         if (mods & (1 << i)) {
-            LOG_DBG("%s", xkb_keymap_mod_get_name(wayl->xkb_keymap, i));
+            LOG_DBG("%s", xkb_keymap_mod_get_name(seat->kbd.xkb_keymap, i));
         }
     }
 #endif
@@ -410,13 +448,13 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
 
         if (compose_status == XKB_COMPOSE_COMPOSED) {
             count = xkb_compose_state_get_utf8(
-                wayl->xkb_compose_state, buf, sizeof(buf));
-            xkb_compose_state_reset(wayl->xkb_compose_state);
+                seat->kbd.xkb_compose_state, buf, sizeof(buf));
+            xkb_compose_state_reset(seat->kbd.xkb_compose_state);
         } else if (compose_status == XKB_COMPOSE_CANCELLED) {
             goto maybe_repeat;
         } else {
             count = xkb_state_key_get_utf8(
-                wayl->xkb_state, key, buf, sizeof(buf));
+                seat->kbd.xkb_state, key, buf, sizeof(buf));
         }
 
         if (count == 0)
@@ -432,7 +470,7 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
 maybe_repeat:
 
     if (should_repeat)
-        repeat_start(&wayl->repeat, key - 8);
+        repeat_start(&seat->kbd.repeat, key - 8);
 
 }
 
@@ -441,23 +479,23 @@ keyboard_modifiers(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
                    uint32_t mods_depressed, uint32_t mods_latched,
                    uint32_t mods_locked, uint32_t group)
 {
-    struct wayland *wayl = data;
+    struct seat *seat = data;
 
     LOG_DBG("modifiers: depressed=0x%x, latched=0x%x, locked=0x%x, group=%u",
             mods_depressed, mods_latched, mods_locked, group);
 
     xkb_state_update_mask(
-        wayl->xkb_state, mods_depressed, mods_latched, mods_locked, 0, 0, group);
+        seat->kbd.xkb_state, mods_depressed, mods_latched, mods_locked, 0, 0, group);
 }
 
 static void
 keyboard_repeat_info(void *data, struct wl_keyboard *wl_keyboard,
                      int32_t rate, int32_t delay)
 {
-    struct wayland *wayl = data;
+    struct seat *seat = data;
     LOG_DBG("keyboard repeat: rate=%d, delay=%d", rate, delay);
-    wayl->repeat.delay = delay;
-    wayl->repeat.rate = rate;
+    seat->kbd.repeat.delay = delay;
+    seat->kbd.repeat.rate = rate;
 }
 
 static const struct wl_keyboard_listener keyboard_listener = {
@@ -473,17 +511,18 @@ static void
 seat_handle_capabilities(void *data, struct wl_seat *wl_seat,
                          enum wl_seat_capability caps)
 {
-    struct wayland *wayl = data;
+    struct seat *seat = data;
+    assert(seat->wl_seat == wl_seat);
 
     if (caps & WL_SEAT_CAPABILITY_KEYBOARD) {
-        if (wayl->keyboard == NULL) {
-            wayl->keyboard = wl_seat_get_keyboard(wl_seat);
-            wl_keyboard_add_listener(wayl->keyboard, &keyboard_listener, wayl);
+        if (seat->wl_keyboard == NULL) {
+            seat->wl_keyboard = wl_seat_get_keyboard(wl_seat);
+            wl_keyboard_add_listener(seat->wl_keyboard, &keyboard_listener, seat);
         }
     } else {
-        if (wayl->keyboard != NULL) {
-            wl_keyboard_release(wayl->keyboard);
-            wayl->keyboard = NULL;
+        if (seat->wl_keyboard != NULL) {
+            wl_keyboard_release(seat->wl_keyboard);
+            seat->wl_keyboard = NULL;
         }
     }
 }
@@ -491,6 +530,9 @@ seat_handle_capabilities(void *data, struct wl_seat *wl_seat,
 static void
 seat_handle_name(void *data, struct wl_seat *wl_seat, const char *name)
 {
+    struct seat *seat = data;
+    free(seat->name);
+    seat->name = strdup(name);
 }
 
 static const struct wl_seat_listener seat_listener = {
@@ -606,6 +648,37 @@ verify_iface_version(const char *iface, uint32_t version, uint32_t wanted)
     return false;
 }
 
+static bool
+fdm_repeat(struct fdm *fdm, int fd, int events, void *data)
+{
+    struct seat *seat = data;
+    struct repeat *repeat = &seat->kbd.repeat;
+
+    uint64_t expiration_count;
+    ssize_t ret = read(
+        repeat->fd, &expiration_count, sizeof(expiration_count));
+
+    if (ret < 0) {
+        if (errno == EAGAIN)
+            return true;
+
+        LOG_ERRNO("failed to read key repeat count from timer fd");
+        return false;
+    }
+
+    repeat->dont_re_repeat = true;
+    for (size_t i = 0; i < expiration_count; i++)
+        keyboard_key(seat, NULL, 0, 0, repeat->key, XKB_KEY_DOWN);
+    repeat->dont_re_repeat = false;
+
+    if (events & EPOLLHUP) {
+        LOG_ERR("keyboard repeater timer FD closed unexpectedly");
+        return false;
+    }
+
+    return true;
+}
+
 static void
 handle_global(void *data, struct wl_registry *registry,
               uint32_t name, const char *interface, uint32_t version)
@@ -630,7 +703,6 @@ handle_global(void *data, struct wl_registry *registry,
         wayl->shm = wl_registry_bind(
             wayl->registry, name, &wl_shm_interface, required);
         wl_shm_add_listener(wayl->shm, &shm_listener, wayl);
-        wl_display_roundtrip(wayl->display);
     }
 
     else if (strcmp(interface, wl_output_interface.name) == 0) {
@@ -663,7 +735,6 @@ handle_global(void *data, struct wl_registry *registry,
 
             zxdg_output_v1_add_listener(mon->xdg, &xdg_output_listener, mon);
         }
-        wl_display_roundtrip(wayl->display);
     }
 
     else if (strcmp(interface, zwlr_layer_shell_v1_interface.name) == 0) {
@@ -680,10 +751,37 @@ handle_global(void *data, struct wl_registry *registry,
         if (!verify_iface_version(interface, version, required))
             return;
 
-        wayl->seat = wl_registry_bind(
+        struct wl_seat *wl_seat = wl_registry_bind(
             wayl->registry, name, &wl_seat_interface, required);
-        wl_seat_add_listener(wayl->seat, &seat_listener, wayl);
-        wl_display_roundtrip(wayl->display);
+
+        int repeat_fd = timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
+        if (repeat_fd == -1) {
+            LOG_ERRNO("failed to create keyboard repeat timer FD");
+            wl_seat_destroy(wl_seat);
+            return;
+        }
+
+        tll_push_back(wayl->seats, ((struct seat){
+                    .wayl = wayl,
+                        .wl_seat = wl_seat,
+                        .wl_name = name,
+                        .kbd = {
+                        .repeat = {
+                            .fd = repeat_fd,
+                        },
+                    }}));
+
+        struct seat *seat = &tll_back(wayl->seats);
+
+        if (!fdm_add(wayl->fdm, repeat_fd, EPOLLIN, &fdm_repeat, seat)) {
+            LOG_ERR("failed to register keyboard repeat timer FD with FDM");
+            close(seat->kbd.repeat.fd);
+            wl_seat_destroy(seat->wl_seat);
+            tll_pop_back(wayl->seats);
+            return;
+        }
+
+        wl_seat_add_listener(wl_seat, &seat_listener, seat);
     }
 
     else if (strcmp(interface, zxdg_output_manager_v1_interface.name) == 0) {
@@ -846,37 +944,6 @@ fdm_handler(struct fdm *fdm, int fd, int events, void *data)
     return event_count != -1 && wayl->status == KEEP_RUNNING;
 }
 
-static bool
-fdm_repeat(struct fdm *fdm, int fd, int events, void *data)
-{
-    struct wayland *wayl = data;
-    struct repeat *repeat = &wayl->repeat;
-
-    uint64_t expiration_count;
-    ssize_t ret = read(
-        repeat->fd, &expiration_count, sizeof(expiration_count));
-
-    if (ret < 0) {
-        if (errno == EAGAIN)
-            return true;
-
-        LOG_ERRNO("failed to read key repeat count from timer fd");
-        return false;
-    }
-
-    repeat->dont_re_repeat = true;
-    for (size_t i = 0; i < expiration_count; i++)
-        keyboard_key(wayl, NULL, 0, 0, repeat->key, XKB_KEY_DOWN);
-    repeat->dont_re_repeat = false;
-
-    if (events & EPOLLHUP) {
-        LOG_ERR("keyboard repeater timer FD closed unexpectedly");
-        return false;
-    }
-
-    return true;
-}
-
 struct wayland *
 wayl_init(struct fdm *fdm, int width, int height, const char *output_name)
 {
@@ -890,12 +957,6 @@ wayl_init(struct fdm *fdm, int width, int height, const char *output_name)
     wayl->exit_code = EXIT_FAILURE;
     wayl->output_name = output_name != NULL ? strdup(output_name) : NULL;
     //wayl->dmenu_mode = dmenu_mode;
-
-    wayl->repeat.fd = timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
-    if (wayl->repeat.fd == -1) {
-        LOG_ERRNO("failed to create keyboard repeat timer FD");
-        goto out;
-    }
 
     wayl->display = wl_display_connect(NULL);
     if (wayl->display == NULL) {
@@ -924,6 +985,8 @@ wayl_init(struct fdm *fdm, int width, int height, const char *output_name)
         LOG_ERR("no shared memory buffers interface");
         goto out;
     }
+
+    wl_display_roundtrip(wayl->display);
 
     if (tll_length(wayl->monitors) == 0) {
         LOG_ERR("no monitors");
@@ -999,11 +1062,6 @@ wayl_init(struct fdm *fdm, int width, int height, const char *output_name)
         goto out;
     }
 
-    if (!fdm_add(wayl->fdm, wayl->repeat.fd, EPOLLIN, &fdm_repeat, wayl)) {
-        LOG_ERR("failed to register keyboard repeat timer FD with FDM");
-        goto out;
-    }
-
     //wayl_refresh(wayl);
     return wayl;
 
@@ -1033,13 +1091,13 @@ wayl_destroy(struct wayland *wayl)
     if (wayl->display != NULL)
         fdm_del_no_close(wayl->fdm, wl_display_get_fd(wayl->display));
 
-    if (wayl->repeat.fd > 0)
-        fdm_del(wayl->fdm, wayl->repeat.fd);
+    tll_foreach(wayl->seats, it)
+        seat_destroy(&it->item);
+    tll_free(wayl->seats);
 
-    tll_foreach(wayl->monitors, it) {
+    tll_foreach(wayl->monitors, it)
         monitor_destroy(&it->item);
-        tll_remove(wayl->monitors, it);
-    }
+    tll_free(wayl->monitors);
 
     if (wayl->xdg_output_manager != NULL)
         zxdg_output_manager_v1_destroy(wayl->xdg_output_manager);
@@ -1048,12 +1106,8 @@ wayl_destroy(struct wayland *wayl)
         zwlr_layer_surface_v1_destroy(wayl->layer_surface);
     if (wayl->layer_shell != NULL)
         zwlr_layer_shell_v1_destroy(wayl->layer_shell);
-    if (wayl->keyboard != NULL)
-        wl_keyboard_destroy(wayl->keyboard);
     if (wayl->surface != NULL)
         wl_surface_destroy(wayl->surface);
-    if (wayl->seat != NULL)
-        wl_seat_destroy(wayl->seat);
     if (wayl->compositor != NULL)
         wl_compositor_destroy(wayl->compositor);
     if (wayl->shm != NULL)
@@ -1062,16 +1116,6 @@ wayl_destroy(struct wayland *wayl)
         wl_registry_destroy(wayl->registry);
     if (wayl->display != NULL)
         wl_display_disconnect(wayl->display);
-    if (wayl->xkb_compose_state != NULL)
-        xkb_compose_state_unref(wayl->xkb_compose_state);
-    if (wayl->xkb_compose_table != NULL)
-        xkb_compose_table_unref(wayl->xkb_compose_table);
-    if (wayl->xkb_state != NULL)
-        xkb_state_unref(wayl->xkb_state);
-    if (wayl->xkb_keymap != NULL)
-        xkb_keymap_unref(wayl->xkb_keymap);
-    if (wayl->xkb != NULL)
-        xkb_context_unref(wayl->xkb);
 
     free(wayl->output_name);
     free(wayl);
