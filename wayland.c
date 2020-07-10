@@ -71,6 +71,7 @@ struct seat {
 
     struct wl_keyboard *wl_keyboard;
     struct {
+        uint32_t serial;
         struct xkb_context *xkb;
         struct xkb_keymap *xkb_keymap;
         struct xkb_state *xkb_state;
@@ -78,6 +79,19 @@ struct seat {
         struct xkb_compose_state *xkb_compose_state;
         struct repeat repeat;
     } kbd;
+
+    struct wl_pointer *wl_pointer;
+    struct {
+        uint32_t serial;
+
+        int x;
+        int y;
+
+        struct wl_surface *surface;
+        struct wl_cursor_theme *theme;
+        struct wl_cursor *cursor;
+        int scale;
+    } pointer;
 };
 
 struct wayland {
@@ -177,6 +191,13 @@ seat_destroy(struct seat *seat)
     if (seat->wl_keyboard != NULL)
         wl_keyboard_destroy(seat->wl_keyboard);
 
+    if (seat->pointer.theme != NULL)
+        wl_cursor_theme_destroy(seat->pointer.theme);
+    if (seat->pointer.surface != NULL)
+        wl_surface_destroy(seat->pointer.surface);
+    if (seat->wl_pointer != NULL)
+        wl_pointer_destroy(seat->wl_pointer);
+
     if (seat->wl_seat != NULL)
         wl_seat_destroy(seat->wl_seat);
 
@@ -243,7 +264,8 @@ static void
 keyboard_enter(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
                struct wl_surface *surface, struct wl_array *keys)
 {
-    LOG_DBG("enter");
+    struct seat *seat = data;
+    seat->kbd.serial = serial;
 #if 0
     uint32_t *key;
     wl_array_for_each(key, keys)
@@ -257,6 +279,7 @@ keyboard_leave(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
 {
     struct seat *seat = data;
     repeat_stop(&seat->kbd.repeat, -1);
+    seat->kbd.serial = 0;
     seat->wayl->status = EXIT;
 }
 
@@ -509,6 +532,76 @@ static const struct wl_keyboard_listener keyboard_listener = {
 };
 
 static void
+wl_pointer_enter(void *data, struct wl_pointer *wl_pointer,
+                 uint32_t serial, struct wl_surface *surface,
+                 wl_fixed_t surface_x, wl_fixed_t surface_y)
+{
+    struct seat *seat = data;
+    seat->pointer.serial = serial;
+}
+
+static void
+wl_pointer_leave(void *data, struct wl_pointer *wl_pointer,
+                 uint32_t serial, struct wl_surface *surface)
+{
+    struct seat *seat = data;
+    seat->pointer.serial = serial;
+}
+
+static void
+wl_pointer_motion(void *data, struct wl_pointer *wl_pointer,
+                  uint32_t time, wl_fixed_t surface_x, wl_fixed_t surface_y)
+{
+}
+
+static void
+wl_pointer_button(void *data, struct wl_pointer *wl_pointer,
+                  uint32_t serial, uint32_t time, uint32_t button, uint32_t state)
+{
+}
+
+static void
+wl_pointer_axis(void *data, struct wl_pointer *wl_pointer,
+                uint32_t time, uint32_t axis, wl_fixed_t value)
+{
+}
+
+static void
+wl_pointer_frame(void *data, struct wl_pointer *wl_pointer)
+{
+}
+
+static void
+wl_pointer_axis_source(void *data, struct wl_pointer *wl_pointer,
+                       uint32_t axis_source)
+{
+}
+
+static void
+wl_pointer_axis_stop(void *data, struct wl_pointer *wl_pointer,
+                     uint32_t time, uint32_t axis)
+{
+}
+
+static void
+wl_pointer_axis_discrete(void *data, struct wl_pointer *wl_pointer,
+                         uint32_t axis, int32_t discrete)
+{
+}
+
+static const struct wl_pointer_listener pointer_listener = {
+    .enter = wl_pointer_enter,
+    .leave = wl_pointer_leave,
+    .motion = wl_pointer_motion,
+    .button = wl_pointer_button,
+    .axis = wl_pointer_axis,
+    .frame = wl_pointer_frame,
+    .axis_source = wl_pointer_axis_source,
+    .axis_stop = wl_pointer_axis_stop,
+    .axis_discrete = wl_pointer_axis_discrete,
+};
+
+static void
 seat_handle_capabilities(void *data, struct wl_seat *wl_seat,
                          enum wl_seat_capability caps)
 {
@@ -524,6 +617,34 @@ seat_handle_capabilities(void *data, struct wl_seat *wl_seat,
         if (seat->wl_keyboard != NULL) {
             wl_keyboard_release(seat->wl_keyboard);
             seat->wl_keyboard = NULL;
+        }
+    }
+
+    if (caps & WL_SEAT_CAPABILITY_POINTER) {
+        if (seat->wl_pointer == NULL) {
+            assert(seat->pointer.surface == NULL);
+            seat->pointer.surface = wl_compositor_create_surface(seat->wayl->compositor);
+
+            if (seat->pointer.surface == NULL) {
+                LOG_ERR("%s: failed to create pointer surface", seat->name);
+                return;
+            }
+
+            seat->wl_pointer = wl_seat_get_pointer(wl_seat);
+            wl_pointer_add_listener(seat->wl_pointer, &pointer_listener, seat);
+        }
+    } else {
+        if (seat->wl_pointer != NULL) {
+            wl_pointer_release(seat->wl_pointer);
+            wl_surface_destroy(seat->pointer.surface);
+
+            if (seat->pointer.theme != NULL)
+                wl_cursor_theme_destroy(seat->pointer.theme);
+
+            seat->wl_pointer = NULL;
+            seat->pointer.surface = NULL;
+            seat->pointer.theme = NULL;
+            seat->pointer.cursor = NULL;
         }
     }
 }
@@ -882,6 +1003,19 @@ handle_global_remove(void *data, struct wl_registry *registry, uint32_t name)
 
         monitor_destroy(mon);
         tll_remove(wayl->monitors, it);
+        return;
+    }
+
+    tll_foreach(wayl->seats, it) {
+        struct seat *seat = &it->item;
+
+        if (seat->wl_name != name)
+            continue;
+
+        LOG_INFO("seat removed: %s", seat->name);
+
+        seat_destroy(seat);
+        tll_remove(wayl->seats, it);
         return;
     }
 
