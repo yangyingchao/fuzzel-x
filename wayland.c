@@ -88,6 +88,7 @@ struct wayland {
 
     int width;
     int height;
+    int scale;
 
     enum { KEEP_RUNNING, EXIT_UPDATE_CACHE, EXIT} status;
     int exit_code;
@@ -867,8 +868,9 @@ commit_buffer(struct wayland *wayl, struct buffer *buf)
 {
     assert(buf->busy);
 
-    if (wayl->monitor != NULL)
-        wl_surface_set_buffer_scale(wayl->surface, wayl->monitor->scale);
+    assert(wayl->scale >= 1);
+
+    wl_surface_set_buffer_scale(wayl->surface, wayl->scale);
     wl_surface_attach(wayl->surface, buf->wl_buf, 0, 0);
     wl_surface_damage_buffer(wayl->surface, 0, 0, buf->width, buf->height);
 
@@ -942,6 +944,54 @@ fdm_handler(struct fdm *fdm, int fd, int events, void *data)
 
     wl_display_flush(wayl->display);
     return event_count != -1 && wayl->status == KEEP_RUNNING;
+}
+
+static int
+guess_scale(const struct wayland *wayl)
+{
+    if (tll_length(wayl->monitors) == 0)
+        return 1;
+
+    bool all_have_same_scale = true;
+    int last_scale = -1;
+
+    tll_foreach(wayl->monitors, it) {
+        if (last_scale == -1)
+            last_scale = it->item.scale;
+        else if (last_scale != it->item.scale) {
+            all_have_same_scale = false;
+            break;
+        }
+    }
+
+    if (all_have_same_scale) {
+        assert(last_scale >= 1);
+        return last_scale;
+    }
+
+    return 1;
+}
+
+static void
+update_size(struct wayland *wayl)
+{
+    const struct monitor *mon = wayl->monitor;
+    const int scale = mon != NULL ? mon->scale : guess_scale(wayl);
+
+    if (scale == wayl->scale)
+        return;
+
+    wayl->scale = scale;
+
+    wayl->width /= scale; wayl->width *= scale;
+    wayl->height /= scale; wayl->height *= scale;
+
+    zwlr_layer_surface_v1_set_size(
+        wayl->layer_surface, wayl->width / scale, wayl->height / scale);
+
+    /* Trigger a 'configure' event, after which we'll have the width */
+    wl_surface_commit(wayl->surface);
+    wl_display_roundtrip(wayl->display);
 }
 
 struct wayland *
@@ -1034,23 +1084,15 @@ wayl_init(struct fdm *fdm, int width, int height, const char *output_name)
         goto out;
     }
 
-    const int scale = wayl->monitor != NULL ? wayl->monitor->scale : 1;
-
-    width /= scale; width *= scale;
-    height /= scale; height *= scale;
-
-    wayl->width = width;
-    wayl->height = height;
-
-    zwlr_layer_surface_v1_set_size(wayl->layer_surface, width / scale, height / scale);
     zwlr_layer_surface_v1_set_keyboard_interactivity(wayl->layer_surface, 1);
 
     zwlr_layer_surface_v1_add_listener(
         wayl->layer_surface, &layer_surface_listener, wayl);
 
-    /* Trigger a 'configure' event, after which we'll have the width */
-    wl_surface_commit(wayl->surface);
-    wl_display_roundtrip(wayl->display);
+    wayl->width = width;
+    wayl->height = height;
+
+    update_size(wayl);
 
     if (wl_display_prepare_read(wayl->display) != 0) {
         LOG_ERRNO("failed to prepare for reading wayland events");
