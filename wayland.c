@@ -205,6 +205,81 @@ seat_destroy(struct seat *seat)
 }
 
 static void
+update_cursor_surface(struct seat *seat)
+{
+    if (seat->pointer.surface == NULL || seat->pointer.theme == NULL)
+        return;
+
+    if (seat->pointer.cursor == NULL) {
+        seat->pointer.cursor = wl_cursor_theme_get_cursor(
+            seat->pointer.theme, "left_ptr");
+
+        if (seat->pointer.cursor == NULL) {
+            LOG_ERR("%s: failed to load cursor 'left_ptr'", seat->name);
+            return;
+        }
+    }
+
+    struct wl_cursor_image *image = seat->pointer.cursor->images[0];
+
+    const int scale = seat->pointer.scale;
+    wl_surface_set_buffer_scale(seat->pointer.surface, scale);
+
+    wl_surface_attach(
+        seat->pointer.surface, wl_cursor_image_get_buffer(image), 0, 0);
+
+    wl_pointer_set_cursor(
+        seat->wl_pointer, seat->pointer.serial, seat->pointer.surface,
+        image->hotspot_x / scale, image->hotspot_y / scale);
+
+    wl_surface_damage_buffer(seat->pointer.surface, 0, 0, INT32_MAX, INT32_MAX);
+
+    wl_surface_commit(seat->pointer.surface);
+    wl_display_flush(seat->wayl->display);
+}
+
+static bool
+reload_cursor_theme(struct seat *seat, int new_scale)
+{
+    assert(seat->pointer.surface != NULL);
+
+    if (seat->pointer.theme != NULL && seat->pointer.scale == new_scale)
+        return true;
+
+    if (seat->pointer.theme != NULL) {
+        wl_cursor_theme_destroy(seat->pointer.theme);
+        seat->pointer.theme = NULL;
+        seat->pointer.cursor = NULL;
+    }
+
+    const char *xcursor_theme = getenv("XCURSOR_THEME");
+    int xcursor_size = 24;
+
+    {
+        const char *env_cursor_size = getenv("XCURSOR_SIZE");
+        if (env_cursor_size != NULL) {
+            unsigned size;
+            if (sscanf(env_cursor_size, "%u", &size) == 1)
+                xcursor_size = size;
+        }
+    }
+
+    LOG_INFO("cursor theme: %s, size: %u, scale: %d",
+             xcursor_theme, xcursor_size, new_scale);
+
+    seat->pointer.theme = wl_cursor_theme_load(
+        xcursor_theme, xcursor_size * new_scale, seat->wayl->shm);
+
+    if (seat->pointer.theme == NULL) {
+        LOG_ERR("failed to load cursor theme");
+        return false;
+    }
+
+    seat->pointer.scale = new_scale;
+    return true;
+}
+
+static void
 shm_format(void *data, struct wl_shm *wl_shm, uint32_t format)
 {
 }
@@ -538,6 +613,8 @@ wl_pointer_enter(void *data, struct wl_pointer *wl_pointer,
 {
     struct seat *seat = data;
     seat->pointer.serial = serial;
+    reload_cursor_theme(seat, seat->wayl->scale);
+    update_cursor_surface(seat);
 }
 
 static void
