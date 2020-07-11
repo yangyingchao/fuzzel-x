@@ -35,20 +35,55 @@ struct monitor {
     struct wayland *wayl;
     struct wl_output *output;
     struct zxdg_output_v1 *xdg;
-    char *name;
     uint32_t wl_name;
 
     int x;
     int y;
 
-    int width_mm;
-    int height_mm;
+    struct {
+        /* Physical size, in mm */
+        struct {
+            int width;
+            int height;
+        } mm;
 
-    int width_px;
-    int height_px;
+        /* Physical size, in pixels */
+        struct {
+            int width;
+            int height;
+        } px_real;
 
-    int x_ppi;
-    int y_ppi;
+        /* Scaled size, in pixels */
+        struct {
+            int width;
+            int height;
+        } px_scaled;
+    } dim;
+
+    struct {
+        /* PPI, based on physical size */
+        struct {
+            int x;
+            int y;
+        } real;
+
+        /* PPI, logical, based on scaled size */
+        struct {
+            int x;
+            int y;
+        } scaled;
+    } ppi;
+
+    /* From wl_output */
+    char *make;
+    char *model;
+
+    /* From xdg_output */
+    char *name;
+    char *description;
+
+    float inch;  /* e.g. 24" */
+    float refresh;
 
     int scale;
     enum fcft_subpixel subpixel;
@@ -790,10 +825,16 @@ update_size(struct wayland *wayl)
 static void
 output_update_ppi(struct monitor *mon)
 {
-    int x_inches = mon->width_mm * 0.03937008;
-    int y_inches = mon->height_mm * 0.03937008;
-    mon->x_ppi = mon->width_px / x_inches;
-    mon->y_ppi = mon->height_px / y_inches;
+    if (mon->dim.mm.width == 0 || mon->dim.mm.height == 0)
+        return;
+
+    int x_inches = mon->dim.mm.width * 0.03937008;
+    int y_inches = mon->dim.mm.height * 0.03937008;
+    mon->ppi.real.x = mon->dim.px_real.width / x_inches;
+    mon->ppi.real.y = mon->dim.px_real.height / y_inches;
+
+    mon->ppi.scaled.x = mon->dim.px_scaled.width / x_inches;
+    mon->ppi.scaled.y = mon->dim.px_scaled.height / y_inches;
 }
 
 static void
@@ -803,8 +844,11 @@ output_geometry(void *data, struct wl_output *wl_output, int32_t x, int32_t y,
                 int32_t transform)
 {
     struct monitor *mon = data;
-    mon->width_mm = physical_width;
-    mon->height_mm = physical_height;
+    mon->dim.mm.width = physical_width;
+    mon->dim.mm.height = physical_height;
+    mon->inch = sqrt(pow(mon->dim.mm.width, 2) + pow(mon->dim.mm.height, 2)) * 0.03937008;
+    mon->make = make != NULL ? strdup(make) : NULL;
+    mon->model = model != NULL ? strdup(model) : NULL;
     mon->subpixel = subpixel;
     output_update_ppi(mon);
 }
@@ -813,6 +857,14 @@ static void
 output_mode(void *data, struct wl_output *wl_output, uint32_t flags,
             int32_t width, int32_t height, int32_t refresh)
 {
+    if ((flags & WL_OUTPUT_MODE_CURRENT) == 0)
+        return;
+
+    struct monitor *mon = data;
+    mon->refresh = (float)refresh / 1000;
+    mon->dim.px_real.width = width;
+    mon->dim.px_real.height = height;
+    output_update_ppi(mon);
 }
 
 static void
@@ -856,8 +908,8 @@ xdg_output_handle_logical_size(void *data, struct zxdg_output_v1 *xdg_output,
                                int32_t width, int32_t height)
 {
     struct monitor *mon = data;
-    mon->width_px = width;
-    mon->height_px = height;
+    mon->dim.px_scaled.width = width;
+    mon->dim.px_scaled.height = height;
     output_update_ppi(mon);
 }
 
@@ -872,16 +924,23 @@ xdg_output_handle_name(void *data, struct zxdg_output_v1 *xdg_output,
 {
     struct monitor *mon = data;
     struct wayland *wayl = mon->wayl;
-    mon->name = strdup(name);
 
-    if (wayl->output_name != NULL && strcmp(wayl->output_name, mon->name) == 0)
+    mon->name = name != NULL ? strdup(name) : NULL;
+
+    if (wayl->output_name != NULL &&
+        mon->name != NULL &&
+        strcmp(wayl->output_name, mon->name) == 0)
+    {
         wayl->monitor = mon;
+    }
 }
 
 static void
 xdg_output_handle_description(void *data, struct zxdg_output_v1 *xdg_output,
                               const char *description)
 {
+    struct monitor *mon = data;
+    mon->description = description != NULL ? strdup(description) : NULL;
 }
 
 static struct zxdg_output_v1_listener xdg_output_listener = {
@@ -1057,8 +1116,8 @@ monitor_destroy(struct monitor *mon)
         zxdg_output_v1_destroy(mon->xdg);
     if (mon->output != NULL)
         wl_output_destroy(mon->output);
-    // free(mon->make);
-    // free(mon->model);
+    free(mon->make);
+    free(mon->model);
 }
 
 static void
@@ -1298,10 +1357,14 @@ wayl_init(struct fdm *fdm, int width, int height, const char *output_name)
 
     tll_foreach(wayl->monitors, it) {
         const struct monitor *mon = &it->item;
-        LOG_INFO("monitor: %s: %dx%d+%d+%d (%dx%dmm, PPI=%dx%d)",
-                 mon->name, mon->width_px, mon->height_px,
-                 mon->x, mon->y, mon->width_mm, mon->height_mm,
-                 mon->x_ppi, mon->y_ppi);
+        LOG_INFO(
+            "%s: %dx%d+%dx%d@%dHz %s %.2f\" scale=%d PPI=%dx%d (physical) PPI=%dx%d (logical)",
+            mon->name, mon->dim.px_real.width, mon->dim.px_real.height,
+            mon->x, mon->y, (int)round(mon->refresh),
+            mon->model != NULL ? mon->model : mon->description,
+            mon->inch, mon->scale,
+            mon->ppi.real.x, mon->ppi.real.y,
+            mon->ppi.scaled.x, mon->ppi.scaled.y);
     }
 
     LOG_DBG("using output: %s",
@@ -1426,7 +1489,19 @@ wayl_flush(struct wayland *wayl)
 int
 wayl_ppi(const struct wayland *wayl)
 {
-    return wayl->monitor != NULL ? wayl->monitor->x_ppi : 96;
+    /* Use user configured output, if available, otherwise use the
+     * "first" output */
+    const struct monitor *mon = wayl->monitor != NULL
+        ? wayl->monitor
+        : (tll_length(wayl->monitors) > 0
+           ? &tll_front(wayl->monitors)
+           : NULL);
+
+    if (mon != NULL)
+        return mon->ppi.scaled.y * mon->scale;
+
+    /* No outputs available, return "something" */
+    return 96;
 }
 
 enum fcft_subpixel
