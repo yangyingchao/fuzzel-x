@@ -220,11 +220,11 @@ main(int argc, char *const *argv)
         .y_margin = 4,
         .border_size = 1,
         .border_radius = 10,
-        .background_color = hex_to_rgba(0x000000ff),
-        .border_color = hex_to_rgba(0xffffffff),
-        .text_color = hex_to_rgba(0xffffffff),
-        .match_color = hex_to_rgba(0xcc9393ff),
-        .selection_color = hex_to_rgba(0x333333ff),
+        .background_color = hex_to_rgba(0xfdf6e3dd),
+        .border_color = hex_to_rgba(0x002b36ff),
+        .text_color = hex_to_rgba(0x657b83ff),
+        .match_color = hex_to_rgba(0xcb4b16ff),
+        .selection_color = hex_to_rgba(0xeee8d5ff),
     };
 
     while (true) {

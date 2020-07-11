@@ -39,19 +39,19 @@ options:
 	The window width and height, in pixels. Default: _500x300_.
 
 *-b*,*--background*=_HEX_
-	Background color. See *COLORS*. Default: _000000ff_ (black).
+	Background color. See *COLORS*. Default: _fdf6e3dd_.
 
 *-t*,*--text-color*=_HEX_
-	Text color. See *COLORS*. Default: _ffffffff_ (white).
+	Text color. See *COLORS*. Default: _657b83ff_.
 
 *-m*,*--match-color*=_HEX_
 	The color of matching substring(s). As you start typing in the search
 	box, the matching part in each application's name is highlighted with
-	this color. See *COLORS*. Default: _cc9393ff_.
+	this color. See *COLORS*. Default: _cb4b16ff_.
 
 *-s*,*--selection-color*=_HEX_
 	The color to use as background of the currently selected
-	application. See *COLORS*. Default: _333333ff_.
+	application. See *COLORS*. Default: _eee8d5ff_.
 
 *-B*,*--border-width*=_INT_
 	The width of the surrounding border, in pixels. Default: _1_.
@@ -61,7 +61,7 @@ options:
 	0 disables rounded corners. Default: _10_.
 
 *-C*,*--border-color*=_HEX_
-	The color of the border. See *COLORS*. Default: _ffffffff_.
+	The color of the border. See *COLORS*. Default: _002b36ff_.
 
 *-d*,*--dmenu*
 	dmenu compatibility mode. In this mode, the list entries are read
@@ -84,10 +84,12 @@ _Examples_:
 # COLORS
 
 All colors must be specified as a RGBA quadruple, in hex format,
-without a leading '0x'..
+without a leading '0x'.
 
 _EXAMPLES_:
 - white: *ffffffff* (no transparency)
 - black: *000000ff* (no transparency)
 - black: *00000010* (semi-transparent)
 - red: *ff0000ff* (no transparency)
+
+The default color scheme is _Solarized_.
