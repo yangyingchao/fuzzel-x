@@ -1111,13 +1111,14 @@ handle_global(void *data, struct wl_registry *registry,
 static void
 monitor_destroy(struct monitor *mon)
 {
-    free(mon->name);
     if (mon->xdg != NULL)
         zxdg_output_v1_destroy(mon->xdg);
     if (mon->output != NULL)
         wl_output_destroy(mon->output);
+    free(mon->name);
     free(mon->make);
     free(mon->model);
+    free(mon->description);
 }
 
 static void
