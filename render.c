@@ -12,7 +12,7 @@
 
 struct render {
     struct render_options options;
-    struct fcft_font *regular_font;
+    struct fcft_font *font;
     enum fcft_subpixel subpixel;
 };
 
@@ -109,7 +109,7 @@ void
 render_prompt(const struct render *render, struct buffer *buf,
               const struct prompt *prompt)
 {
-    struct fcft_font *font = render->regular_font;
+    struct fcft_font *font = render->font;
 
     const wchar_t *pprompt = prompt_prompt(prompt);
     const size_t prompt_len = wcslen(pprompt);
@@ -185,7 +185,7 @@ void
 render_match_list(const struct render *render, struct buffer *buf,
                   const struct prompt *prompt, const struct matches *matches)
 {
-    struct fcft_font *font = render->regular_font;
+    struct fcft_font *font = render->font;
     const double x_margin = render->options.x_margin;
     const double y_margin = render->options.y_margin;
     const double border_size = render->options.border_size;
@@ -326,7 +326,7 @@ render_match_list(const struct render *render, struct buffer *buf,
         render_match_text(
             buf, &cur_x, y,
             match->application->title, match->start_title, wcslen(prompt_text(prompt)),
-            render->regular_font, subpixel,
+            render->font, subpixel,
             render->options.pix_text_color, render->options.pix_match_color);
 
         y += row_height;
@@ -339,7 +339,7 @@ render_init(struct fcft_font *font, const struct render_options *options,
 {
     struct render *render = calloc(1, sizeof(*render));
     render->options = *options;
-    render->regular_font = font;
+    render->font = font;
     render->subpixel = subpixel;
 
     /* TODO: the one providing the options should calculate these */
@@ -357,6 +357,6 @@ render_destroy(struct render *render)
     if (render == NULL)
         return;
 
-    fcft_destroy(render->regular_font);
+    fcft_destroy(render->font);
     free(render);
 }
