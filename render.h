@@ -34,9 +34,11 @@ struct render_options {
 };
 
 struct render;
-struct render *render_init(struct fcft_font *font, const struct render_options *options,
-                           enum fcft_subpixel subpixel);
+struct render *render_init(
+    const struct render_options *options, enum fcft_subpixel subpixel);
 void render_destroy(struct render *render);
+
+void render_set_font(struct render *render, struct fcft_font *font);
 
 void render_background(const struct render *render, struct buffer *buf);
 

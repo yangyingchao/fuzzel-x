@@ -403,9 +403,7 @@ main(int argc, char *const *argv)
         xdg_find_programs(terminal, apps);
     read_cache(apps);
 
-    icon_reload_application_icons(themes, font->height, apps);
-
-    if ((render = render_init(font, &render_options,
+    if ((render = render_init(&render_options,
                               wayl_subpixel(wayl))) == NULL)
         goto out;
 
@@ -416,6 +414,9 @@ main(int argc, char *const *argv)
         goto out;
 
     matches_max_matches_set(matches, max_matches);
+    icon_reload_application_icons(themes, font->height, apps);
+    render_set_font(render, font);
+
     matches_update(matches, prompt);
     wayl_configure(wayl, render, prompt, matches, dmenu_mode);
     wayl_refresh(wayl);

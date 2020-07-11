@@ -110,6 +110,7 @@ render_prompt(const struct render *render, struct buffer *buf,
               const struct prompt *prompt)
 {
     struct fcft_font *font = render->font;
+    assert(font != NULL);
 
     const wchar_t *pprompt = prompt_prompt(prompt);
     const size_t prompt_len = wcslen(pprompt);
@@ -186,6 +187,8 @@ render_match_list(const struct render *render, struct buffer *buf,
                   const struct prompt *prompt, const struct matches *matches)
 {
     struct fcft_font *font = render->font;
+    assert(font != NULL);
+
     const double x_margin = render->options.x_margin;
     const double y_margin = render->options.y_margin;
     const double border_size = render->options.border_size;
@@ -326,7 +329,7 @@ render_match_list(const struct render *render, struct buffer *buf,
         render_match_text(
             buf, &cur_x, y,
             match->application->title, match->start_title, wcslen(prompt_text(prompt)),
-            render->font, subpixel,
+            font, subpixel,
             render->options.pix_text_color, render->options.pix_match_color);
 
         y += row_height;
@@ -334,13 +337,14 @@ render_match_list(const struct render *render, struct buffer *buf,
 }
 
 struct render *
-render_init(struct fcft_font *font, const struct render_options *options,
+render_init(const struct render_options *options,
             enum fcft_subpixel subpixel)
 {
     struct render *render = calloc(1, sizeof(*render));
-    render->options = *options;
-    render->font = font;
-    render->subpixel = subpixel;
+    *render = (struct render){
+        .options = *options,
+        .subpixel = subpixel,
+    };
 
     /* TODO: the one providing the options should calculate these */
     render->options.pix_background_color = rgba2pixman(render->options.background_color);
@@ -349,6 +353,13 @@ render_init(struct fcft_font *font, const struct render_options *options,
     render->options.pix_match_color = rgba2pixman(render->options.match_color);
     render->options.pix_selection_color = rgba2pixman(render->options.selection_color);
     return render;
+}
+
+void
+render_set_font(struct render *render, struct fcft_font *font)
+{
+    fcft_destroy(render->font);
+    render->font = font;
 }
 
 void
