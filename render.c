@@ -337,13 +337,11 @@ render_match_list(const struct render *render, struct buffer *buf,
 }
 
 struct render *
-render_init(const struct render_options *options,
-            enum fcft_subpixel subpixel)
+render_init(const struct render_options *options)
 {
     struct render *render = calloc(1, sizeof(*render));
     *render = (struct render){
         .options = *options,
-        .subpixel = subpixel,
     };
 
     /* TODO: the one providing the options should calculate these */
@@ -353,6 +351,12 @@ render_init(const struct render_options *options,
     render->options.pix_match_color = rgba2pixman(render->options.match_color);
     render->options.pix_selection_color = rgba2pixman(render->options.selection_color);
     return render;
+}
+
+void
+render_set_subpixel(struct render *render, enum fcft_subpixel subpixel)
+{
+    render->subpixel = subpixel;
 }
 
 void

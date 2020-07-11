@@ -26,10 +26,11 @@
 #define LOG_MODULE "wayland"
 #define LOG_ENABLE_DBG 0
 #include "log.h"
-#include "prompt.h"
 #include "dmenu.h"
-#include "shm.h"
+#include "icon.h"
+#include "prompt.h"
 #include "render.h"
+#include "shm.h"
 
 struct monitor {
     struct wayland *wayl;
@@ -135,9 +136,15 @@ struct wayland {
     struct prompt *prompt;
     struct matches *matches;
 
+    const struct render_options *render_options;
+    char *font_name;
+    const icon_theme_list_t *themes;
+    struct application_list *apps;
+
     int width;
     int height;
     int scale;
+    unsigned dpi;
 
     enum { KEEP_RUNNING, EXIT_UPDATE_CACHE, EXIT} status;
     int exit_code;
@@ -160,7 +167,6 @@ struct wayland {
     const struct monitor *monitor;
 
     tll(struct seat) seats;
-
 };
 
 bool
@@ -800,16 +806,52 @@ guess_scale(const struct wayland *wayl)
     return 1;
 }
 
+static bool
+reload_font(struct wayland *wayl, unsigned new_dpi)
+{
+    LOG_INFO("RELOADING FONT: %d -> %d", wayl->dpi, new_dpi);
+
+    if (wayl->dpi == new_dpi)
+        return true;
+
+    char attrs[256];
+    snprintf(attrs, sizeof(attrs), "dpi=%u", new_dpi);
+
+    wayl->dpi = new_dpi;
+
+    struct fcft_font *font = fcft_from_name(
+        1, (const char *[]){wayl->font_name}, attrs);
+
+    if (font == NULL)
+        return false;
+
+    const double line_height
+        = 2 * wayl->render_options->y_margin + font->height;
+    const size_t max_matches =
+        (wayl->render_options->height - 2 * wayl->render_options->border_size - line_height)
+        / line_height;
+
+    matches_max_matches_set(wayl->matches, max_matches);
+    icon_reload_application_icons(*wayl->themes, font->height, wayl->apps);
+    render_set_font(wayl->render, font);
+    matches_update(wayl->matches, wayl->prompt);
+    return true;
+}
+
 static void
 update_size(struct wayland *wayl)
 {
     const struct monitor *mon = wayl->monitor;
     const int scale = mon != NULL ? mon->scale : guess_scale(wayl);
+    const int dpi = mon != NULL ? mon->ppi.scaled.y * mon->scale : wayl_ppi(wayl);
 
-    if (scale == wayl->scale)
+    if (scale == wayl->scale && dpi == wayl->dpi)
         return;
 
+    reload_font(wayl, dpi);
+
     wayl->scale = scale;
+    wayl->dpi = dpi;
 
     wayl->width /= scale; wayl->width *= scale;
     wayl->height /= scale; wayl->height *= scale;
@@ -880,9 +922,11 @@ output_scale(void *data, struct wl_output *wl_output, int32_t factor)
 
     if (mon->wayl->monitor == mon) {
         int old_scale = mon->wayl->scale;
+        int old_dpi = mon->wayl->dpi;
+
         update_size(mon->wayl);
 
-        if (mon->wayl->scale != old_scale)
+        if (mon->wayl->scale != old_scale || mon->wayl->dpi != old_dpi)
             wayl_refresh(mon->wayl);
     }
 }
@@ -1284,11 +1328,12 @@ surface_enter(void *data, struct wl_surface *wl_surface,
             continue;
 
         int old_scale = wayl->scale;
+        int old_dpi = wayl->dpi;
 
         wayl->monitor = &it->item;
         update_size(wayl);
 
-        if (wayl->scale != old_scale)
+        if (wayl->scale != old_scale || wayl->dpi != old_dpi)
             wayl_refresh(wayl);
         break;
     }
@@ -1308,18 +1353,28 @@ static const struct wl_surface_listener surface_listener = {
 };
 
 struct wayland *
-wayl_init(struct fdm *fdm, int width, int height, const char *output_name)
-{
-    struct wayland *wayl = calloc(1, sizeof(*wayl));
+wayl_init(struct fdm *fdm,
+          struct render *render, struct prompt *prompt, struct matches *matches,
+          const struct render_options *render_options, bool dmenu_mode,
+          const char *output_name, const char *font_name,
 
-    wayl->fdm = fdm;
-    //wayl->render = render;
-    //wayl->prompt = prompt;
-    //wayl->matches = matches;
-    wayl->status = KEEP_RUNNING;
-    wayl->exit_code = EXIT_FAILURE;
-    wayl->output_name = output_name != NULL ? strdup(output_name) : NULL;
-    //wayl->dmenu_mode = dmenu_mode;
+          const icon_theme_list_t *themes, struct application_list *apps)
+{
+    struct wayland *wayl = malloc(sizeof(*wayl));
+    *wayl = (struct wayland){
+        .fdm = fdm,
+        .render = render,
+        .prompt = prompt,
+        .matches = matches,
+        .status = KEEP_RUNNING,
+        .exit_code = EXIT_FAILURE,
+        .dmenu_mode = dmenu_mode,
+        .output_name = output_name != NULL ? strdup(output_name) : NULL,
+        .font_name = strdup(font_name),
+        .render_options = render_options,
+        .themes = themes,
+        .apps = apps,
+    };
 
     wayl->display = wl_display_connect(NULL);
     if (wayl->display == NULL) {
@@ -1408,8 +1463,8 @@ wayl_init(struct fdm *fdm, int width, int height, const char *output_name)
     zwlr_layer_surface_v1_add_listener(
         wayl->layer_surface, &layer_surface_listener, wayl);
 
-    wayl->width = width;
-    wayl->height = height;
+    wayl->width = render_options->width;
+    wayl->height = render_options->height;
 
     update_size(wayl);
 
@@ -1428,18 +1483,6 @@ wayl_init(struct fdm *fdm, int width, int height, const char *output_name)
 out:
     wayl_destroy(wayl);
     return NULL;
-}
-
-void
-wayl_configure(
-    struct wayland *wayl, struct render *render, struct prompt *prompt,
-    struct matches *matches, bool dmenu_mode)
-{
-    wayl->render = render;
-    wayl->prompt = prompt;
-    wayl->matches = matches;
-    wayl->status = KEEP_RUNNING;
-    wayl->dmenu_mode = dmenu_mode;
 }
 
 void
@@ -1478,6 +1521,7 @@ wayl_destroy(struct wayland *wayl)
         wl_display_disconnect(wayl->display);
 
     free(wayl->output_name);
+    free(wayl->font_name);
     free(wayl);
 }
 
@@ -1487,7 +1531,7 @@ wayl_flush(struct wayland *wayl)
     wl_display_flush(wayl->display);
 }
 
-int
+unsigned
 wayl_ppi(const struct wayland *wayl)
 {
     /* Use user configured output, if available, otherwise use the
@@ -1502,7 +1546,7 @@ wayl_ppi(const struct wayland *wayl)
         return mon->ppi.scaled.y * mon->scale;
 
     /* No outputs available, return "something" */
-    return 96;
+    return 96u;
 }
 
 enum fcft_subpixel
