@@ -214,7 +214,7 @@ applications_destroy(struct application_list *apps)
         free(app->exec);
         free(app->title);
         free(app->comment);
-
+        free(app->icon.name);
         if (app->icon.type == ICON_SURFACE)
             cairo_surface_destroy(app->icon.surface);
         else if (app->icon.type == ICON_SVG)

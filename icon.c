@@ -10,6 +10,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#include <librsvg/rsvg.h>
+
 #include <tllist.h>
 
 #define LOG_MODULE "icon"
@@ -259,4 +261,183 @@ icon_themes_destroy(icon_theme_list_t themes)
         theme_destroy(it->item);
         tll_remove(themes, it);
     }
+}
+
+static bool
+icon_null(struct icon *icon)
+{
+    icon->type = ICON_NONE;
+    return true;
+}
+
+static bool
+icon_from_surface(struct icon *icon, cairo_surface_t *surf)
+{
+    icon->type = ICON_SURFACE;
+    icon->surface = surf;
+    return true;
+}
+
+static bool
+icon_from_svg(struct icon *icon, RsvgHandle *svg)
+{
+    icon->type = ICON_SVG;
+    icon->svg = svg;
+    return true;
+}
+
+static void
+icon_reset(struct icon *icon)
+{
+    if (icon->type == ICON_SURFACE) {
+        cairo_surface_destroy(icon->surface);
+        icon->surface = NULL;
+    } else if (icon->type == ICON_SVG) {
+        g_object_unref(icon->svg);
+        icon->svg = NULL;
+    }
+    icon->type = ICON_NONE;
+}
+
+static bool
+reload_icon(struct icon *icon, int icon_size, icon_theme_list_t themes)
+{
+    if (icon->name == NULL)
+        return true;
+
+    const char *name = icon->name;
+    icon_reset(icon);
+
+    if (name == NULL)
+        return icon_null(icon);
+
+    if (name[0] == '/') {
+        cairo_surface_t *surf = cairo_image_surface_create_from_png(name);
+        if (cairo_surface_status(surf) == CAIRO_STATUS_SUCCESS)
+            return icon_from_surface(icon, surf);
+
+        return icon_null(icon);
+    }
+
+    LOG_DBG("looking for %s (wanted size: %d)", name, icon_size);
+
+    tll_foreach(themes, theme_it) {
+        const struct icon_theme *theme = &theme_it->item;
+        int min_diff = 10000;
+
+        /* Assume sorted */
+        for (size_t i = 0; i < 4; i++) {
+            tll_foreach(theme->dirs, it) {
+                const int size = it->item.size * it->item.scale;
+                const int min_size = it->item.min_size * it->item.scale;
+                const int max_size = it->item.max_size * it->item.scale;
+                const bool scalable = it->item.scalable;
+
+                const size_t len = strlen(theme->path) + 1 +
+                    strlen(it->item.path) + 1 +
+                    strlen(name) + strlen(".png") + 1;
+
+                /* Check if a png/svg file exists at all */
+                char *full_path = malloc(len);
+                sprintf(full_path, "%s/%s/%s.png", theme->path, it->item.path, name);
+                if (access(full_path, O_RDONLY) == -1) {
+                    /* Also check for svg variant */
+                    full_path[len - 4] = 's';
+                    full_path[len - 3] = 'v';
+                    full_path[len - 2] = 'g';
+                    if (access(full_path, O_RDONLY) == -1) {
+                        free(full_path);
+                        continue;
+                    }
+                }
+
+                const int diff = scalable ? 0 : abs(size - icon_size);
+                if (i == 0 && diff != 0) {
+                    /* Looking for *exactly* our wanted size */
+                    if (diff < min_diff)
+                        min_diff = diff;
+                    free(full_path);
+                    continue;
+                } else if (i == 1 && diff != min_diff) {
+                    /* Try the one which matches most closely */
+                    free(full_path);
+                    continue;
+                } else if (i == 2 && (icon_size < min_size ||
+                                      icon_size > max_size))
+                {
+                    /* Find one whose scalable range we're in */
+                    free(full_path);
+                    continue;
+                } else {
+                    /* Use anyone available */
+                }
+
+                RsvgHandle *svg = rsvg_handle_new_from_file(full_path, NULL);
+                if (svg != NULL) {
+                    LOG_DBG("%s: %s scalable", name, full_path);
+                    free(full_path);
+                    return icon_from_svg(icon, svg);
+                }
+
+                cairo_surface_t *surf = cairo_image_surface_create_from_png(full_path);
+                if (cairo_surface_status(surf) == CAIRO_STATUS_SUCCESS) {
+                    if (scalable)
+                        LOG_DBG("%s: %s: scalable", name, full_path);
+                    else if (i == 0)
+                        LOG_DBG("%s: %s: exact match", name, full_path);
+                    else if (i == 1)
+                        LOG_DBG("%s: %s: diff = %d", name, full_path, diff);
+                    else if (i == 2)
+                        LOG_DBG("%s: %s: range %d-%d",
+                                name, full_path, min_size, max_size);
+                    else
+                        LOG_DBG("%s: %s: nothing else matched", name, full_path);
+
+                    free(full_path);
+                    return icon_from_surface(icon, surf);
+                }
+
+                free(full_path);
+                cairo_surface_destroy(surf);
+            }
+        }
+    }
+
+    xdg_data_dirs_t dirs = xdg_data_dirs();
+    tll_foreach(dirs, it) {
+        char path[strlen(it->item) + 1 +
+                  strlen("pixmaps") + 1 +
+                  strlen(name) + strlen(".svg") + 1];
+
+        /* Try SVG variant first */
+        sprintf(path, "%s/pixmaps/%s.svg", it->item, name);
+        RsvgHandle *svg = rsvg_handle_new_from_file(path, NULL);
+        if (svg != NULL) {
+            xdg_data_dirs_destroy(dirs);
+            return icon_from_svg(icon, svg);
+        }
+
+        /* No SVG, look for PNG instead */
+        sprintf(path, "%s/pixmaps/%s.png", it->item, name);
+        cairo_surface_t *surf = cairo_image_surface_create_from_png(path);
+        if (cairo_surface_status(surf) == CAIRO_STATUS_SUCCESS) {
+            xdg_data_dirs_destroy(dirs);
+            return icon_from_surface(icon, surf);
+        }
+        cairo_surface_destroy(surf);
+    }
+    xdg_data_dirs_destroy(dirs);
+
+    return icon_null(icon);
+}
+
+bool
+icon_reload_application_icons(icon_theme_list_t themes, int icon_size,
+                              struct application_list *applications)
+{
+    for (size_t i = 0; i < applications->count; i++)
+        if (!reload_icon(&applications->v[i].icon, icon_size, themes))
+            return false;
+
+    return true;
 }

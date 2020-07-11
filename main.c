@@ -358,6 +358,12 @@ main(int argc, char *const *argv)
     struct wayland *wayl = NULL;
     struct fcft_font *font = NULL;
 
+    icon_theme_list_t themes = icon_load_theme(icon_theme);
+    if (tll_length(themes) > 0)
+        LOG_INFO("theme: %s", tll_front(themes).path);
+    else
+        LOG_WARN("%s: icon theme not found", icon_theme);
+
     if ((fdm = fdm_init()) == NULL)
         goto out;
 
@@ -394,8 +400,10 @@ main(int argc, char *const *argv)
     if (dmenu_mode)
         dmenu_load_entries(apps);
     else
-        xdg_find_programs(icon_theme, font->height, terminal, apps);
+        xdg_find_programs(terminal, apps);
     read_cache(apps);
+
+    icon_reload_application_icons(themes, font->height, apps);
 
     if ((render = render_init(font, &render_options,
                               wayl_subpixel(wayl))) == NULL)
@@ -431,6 +439,7 @@ out:
     prompt_destroy(prompt);
     fdm_destroy(fdm);
     applications_destroy(apps);
+    icon_themes_destroy(themes);
 
     cairo_debug_reset_static_data();
     log_deinit();

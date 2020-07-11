@@ -1,6 +1,7 @@
 #pragma once
 
 #include "application.h"
+#include "icon.h"
 #include "tllist.h"
 
 typedef tll(char *) xdg_data_dirs_t;
@@ -12,5 +13,4 @@ void xdg_data_dirs_destroy(xdg_data_dirs_t dirs);
 const char *xdg_cache_dir(void);
 
 void xdg_find_programs(
-    const char *icon_theme, int icon_size, const char *terminal,
-    struct application_list *applications);
+    const char *terminal, struct application_list *applications);

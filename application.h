@@ -10,6 +10,7 @@
 enum icon_type { ICON_NONE, ICON_SURFACE, ICON_SVG };
 
 struct icon {
+    char *name;
     enum icon_type type;
     union {
         cairo_surface_t *surface;

@@ -13,8 +13,6 @@
 #include <fcntl.h>
 #include <pwd.h>
 
-#include <librsvg/rsvg.h>
-
 #define LOG_MODULE "xdg"
 #define LOG_ENABLE_DBG 0
 #include "log.h"
@@ -22,153 +20,9 @@
 
 typedef tll(struct application) application_llist_t;
 
-static struct icon
-icon_null(void)
-{
-    return (struct icon){.type = ICON_NONE};
-}
-
-static struct icon
-icon_from_surface(cairo_surface_t *surf)
-{
-    return (struct icon){.type = ICON_SURFACE, .surface = surf};
-}
-
-static struct icon
-icon_from_svg(RsvgHandle *svg)
-{
-    return (struct icon){.type = ICON_SVG, .svg = svg};
-}
-
-static struct icon
-load_icon(const char *name, int icon_size, icon_theme_list_t themes)
-{
-    if (name == NULL)
-        return icon_null();
-
-    if (name[0] == '/') {
-        cairo_surface_t *surf = cairo_image_surface_create_from_png(name);
-        if (cairo_surface_status(surf) == CAIRO_STATUS_SUCCESS)
-            return icon_from_surface(surf);
-
-        return icon_null();
-    }
-
-    LOG_DBG("looking for %s (wanted size: %d)", name, icon_size);
-
-    tll_foreach(themes, theme_it) {
-        const struct icon_theme *theme = &theme_it->item;
-        int min_diff = 10000;
-
-        /* Assume sorted */
-        for (size_t i = 0; i < 4; i++) {
-            tll_foreach(theme->dirs, it) {
-                const int size = it->item.size * it->item.scale;
-                const int min_size = it->item.min_size * it->item.scale;
-                const int max_size = it->item.max_size * it->item.scale;
-                const bool scalable = it->item.scalable;
-
-                const size_t len = strlen(theme->path) + 1 +
-                    strlen(it->item.path) + 1 +
-                    strlen(name) + strlen(".png") + 1;
-
-                /* Check if a png/svg file exists at all */
-                char *full_path = malloc(len);
-                sprintf(full_path, "%s/%s/%s.png", theme->path, it->item.path, name);
-                if (access(full_path, O_RDONLY) == -1) {
-                    /* Also check for svg variant */
-                    full_path[len - 4] = 's';
-                    full_path[len - 3] = 'v';
-                    full_path[len - 2] = 'g';
-                    if (access(full_path, O_RDONLY) == -1) {
-                        free(full_path);
-                        continue;
-                    }
-                }
-
-                const int diff = scalable ? 0 : abs(size - icon_size);
-                if (i == 0 && diff != 0) {
-                    /* Looking for *exactly* our wanted size */
-                    if (diff < min_diff)
-                        min_diff = diff;
-                    free(full_path);
-                    continue;
-                } else if (i == 1 && diff != min_diff) {
-                    /* Try the one which matches most closely */
-                    free(full_path);
-                    continue;
-                } else if (i == 2 && (icon_size < min_size ||
-                                      icon_size > max_size))
-                {
-                    /* Find one whose scalable range we're in */
-                    free(full_path);
-                    continue;
-                } else {
-                    /* Use anyone available */
-                }
-
-                RsvgHandle *svg = rsvg_handle_new_from_file(full_path, NULL);
-                if (svg != NULL) {
-                    LOG_DBG("%s: %s scalable", name, full_path);
-                    free(full_path);
-                    return icon_from_svg(svg);
-                }
-
-                cairo_surface_t *surf = cairo_image_surface_create_from_png(full_path);
-                if (cairo_surface_status(surf) == CAIRO_STATUS_SUCCESS) {
-                    if (scalable)
-                        LOG_DBG("%s: %s: scalable", name, full_path);
-                    else if (i == 0)
-                        LOG_DBG("%s: %s: exact match", name, full_path);
-                    else if (i == 1)
-                        LOG_DBG("%s: %s: diff = %d", name, full_path, diff);
-                    else if (i == 2)
-                        LOG_DBG("%s: %s: range %d-%d",
-                                name, full_path, min_size, max_size);
-                    else
-                        LOG_DBG("%s: %s: nothing else matched", name, full_path);
-
-                    free(full_path);
-                    return icon_from_surface(surf);
-                }
-
-                free(full_path);
-                cairo_surface_destroy(surf);
-            }
-        }
-    }
-
-    xdg_data_dirs_t dirs = xdg_data_dirs();
-    tll_foreach(dirs, it) {
-        char path[strlen(it->item) + 1 +
-                  strlen("pixmaps") + 1 +
-                  strlen(name) + strlen(".svg") + 1];
-
-        /* Try SVG variant first */
-        sprintf(path, "%s/pixmaps/%s.svg", it->item, name);
-        RsvgHandle *svg = rsvg_handle_new_from_file(path, NULL);
-        if (svg != NULL) {
-            xdg_data_dirs_destroy(dirs);
-            return icon_from_svg(svg);
-        }
-
-        /* No SVG, look for PNG instead */
-        sprintf(path, "%s/pixmaps/%s.png", it->item, name);
-        cairo_surface_t *surf = cairo_image_surface_create_from_png(path);
-        if (cairo_surface_status(surf) == CAIRO_STATUS_SUCCESS) {
-            xdg_data_dirs_destroy(dirs);
-            return icon_from_surface(surf);
-        }
-        cairo_surface_destroy(surf);
-    }
-    xdg_data_dirs_destroy(dirs);
-
-    return icon_null();
-}
-
 static void
-parse_desktop_file(int fd, icon_theme_list_t themes, int icon_size,
-                   const char *terminal, application_llist_t *applications)
+parse_desktop_file(int fd, const char *terminal,
+                   application_llist_t *applications)
 {
     FILE *f = fdopen(fd, "r");
     if (f == NULL)
@@ -297,7 +151,7 @@ parse_desktop_file(int fd, icon_theme_list_t themes, int icon_size,
                 ((struct application){
                     .path = path, .exec = exec, .title = name,
                     .comment = generic_name,
-                    .icon = load_icon(icon, icon_size, themes),
+                    .icon = {.name = icon != NULL ? strdup(icon) : NULL},
                     .count = 0}));
             free(icon);
             return;
@@ -312,8 +166,7 @@ parse_desktop_file(int fd, icon_theme_list_t themes, int icon_size,
 }
 
 static void
-scan_dir(int base_fd, icon_theme_list_t themes, int icon_size,
-         const char *terminal, application_llist_t *applications)
+scan_dir(int base_fd, const char *terminal, application_llist_t *applications)
 {
     DIR *d = fdopendir(base_fd);
     if (d == NULL) {
@@ -338,7 +191,7 @@ scan_dir(int base_fd, icon_theme_list_t themes, int icon_size,
                 continue;
             }
 
-            scan_dir(dir_fd, themes, icon_size, terminal, applications);
+            scan_dir(dir_fd, terminal, applications);
             close(dir_fd);
         } else if (S_ISREG(st.st_mode)) {
             /* Skip files not ending with ".desktop" */
@@ -355,8 +208,7 @@ scan_dir(int base_fd, icon_theme_list_t themes, int icon_size,
             if (fd == -1)
                 LOG_WARN("%s: failed to open", e->d_name);
             else {
-                parse_desktop_file(
-                    fd, themes, icon_size, terminal, applications);
+                parse_desktop_file(fd, terminal, applications);
                 close(fd);
             }
         }
@@ -375,15 +227,8 @@ sort_application_by_title(const void *_a, const void *_b)
 }
 
 void
-xdg_find_programs(const char *icon_theme, int icon_size, const char *terminal,
-                  struct application_list *applications)
+xdg_find_programs(const char *terminal, struct application_list *applications)
 {
-    icon_theme_list_t themes = icon_load_theme(icon_theme);
-    if (tll_length(themes) > 0)
-        LOG_INFO("theme: %s", tll_front(themes).path);
-    else
-        LOG_WARN("%s: icon theme not found", icon_theme);
-
     application_llist_t apps = tll_init();
 
     xdg_data_dirs_t dirs = xdg_data_dirs();
@@ -393,7 +238,7 @@ xdg_find_programs(const char *icon_theme, int icon_size, const char *terminal,
 
         int fd = open(path, O_RDONLY);
         if (fd != -1) {
-            scan_dir(fd, themes, icon_size, terminal, &apps);
+            scan_dir(fd, terminal, &apps);
             close(fd);
         }
     }
@@ -412,7 +257,6 @@ xdg_find_programs(const char *icon_theme, int icon_size, const char *terminal,
           &sort_application_by_title);
 
     xdg_data_dirs_destroy(dirs);
-    icon_themes_destroy(themes);
 }
 
 xdg_data_dirs_t
