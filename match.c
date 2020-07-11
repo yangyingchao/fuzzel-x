@@ -12,7 +12,7 @@ struct matches {
 };
 
 struct matches *
-matches_init(const struct application_list *applications, size_t max_matches)
+matches_init(const struct application_list *applications)
 {
     struct matches *matches = malloc(sizeof(*matches));
     *matches = (struct matches) {
@@ -20,7 +20,7 @@ matches_init(const struct application_list *applications, size_t max_matches)
         .matches = malloc(applications->count * sizeof(matches->matches[0])),
         .match_count = 0,
         .selected = 0,
-        .max_matches = max_matches,
+        .max_matches = 0,
     };
     return matches;
 }
@@ -33,6 +33,18 @@ matches_destroy(struct matches *matches)
 
     free(matches->matches);
     free(matches);
+}
+
+size_t
+matches_max_matches(const struct matches *matches)
+{
+    return matches->max_matches;
+}
+
+void
+matches_max_matches_set(struct matches *matches, size_t max_matches)
+{
+    matches->max_matches = max_matches;
 }
 
 const struct match *
@@ -126,6 +138,8 @@ wcscasestr(const wchar_t *haystack, const wchar_t *needle)
 void
 matches_update(struct matches *matches, const struct prompt *prompt)
 {
+    assert(matches->max_matches > 0);
+
     const wchar_t *ptext = prompt_text(prompt);
 
     /* Nothing entered; all programs found matches */

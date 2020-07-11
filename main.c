@@ -412,9 +412,10 @@ main(int argc, char *const *argv)
     if ((prompt = prompt_init(L"> ")) == NULL)
         goto out;
 
-    if ((matches = matches_init(apps, max_matches)) == NULL)
+    if ((matches = matches_init(apps)) == NULL)
         goto out;
 
+    matches_max_matches_set(matches, max_matches);
     matches_update(matches, prompt);
     wayl_configure(wayl, render, prompt, matches, dmenu_mode);
     wayl_refresh(wayl);
