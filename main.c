@@ -303,14 +303,6 @@ main(int argc, char *const *argv)
             terminal = optarg;
             break;
 
-#if 0
-        case 'g':
-            if (sscanf(optarg, "%dx%d", &render_options.width, &render_options.height) != 2) {
-                fprintf(stderr, "%s: invalid geometry (must be <width>x<height>)\n", optarg);
-                return EXIT_FAILURE;
-            }
-            break;
-#endif
         case 'l':
             if (sscanf(optarg, "%u", &render_options.lines) != 1) {
                 fprintf(stderr, "%s: invalid line count\n", optarg);
