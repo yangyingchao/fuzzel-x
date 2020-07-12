@@ -171,7 +171,8 @@ print_usage(const char *prog_name)
            "  -i,--icon-theme=NAME       icon theme name (\"hicolor\")\n"
            "  -T,--terminal              terminal command to use when launching 'terminal' programs, e.g. \"xterm -e\".\n"
            "                             Not used in dmenu mode. (default: not set)\n"
-           "  -g,--geometry=WxH          window WIDTHxHEIGHT, in pixels (500x300)\n"
+           "  -l,--lines                 number of matches to show\n"
+           "  -w,--width                 window width, in characters (margins and borders not included)\n"
            "  -b,--background-color=HEX  background color (000000ff)\n"
            "  -t,--text-color=HEX        text color (ffffffff)\n"
            "  -m,--match-color=HEX       color of matched substring (cc9393ff)\n"
@@ -246,7 +247,8 @@ main(int argc, char *const *argv)
         {"output"  ,         required_argument, 0, 'o'},
         {"font",             required_argument, 0, 'f'},
         {"icon-theme",       required_argument, 0, 'i'},
-        {"geometry",         required_argument, 0, 'g'},
+        {"lines",            required_argument, 0, 'l'},
+        {"width",            required_argument, 0, 'w'},
         {"background-color", required_argument, 0, 'b'},
         {"text-color",       required_argument, 0, 't'},
         {"match-color",      required_argument, 0, 'm'},
@@ -268,12 +270,10 @@ main(int argc, char *const *argv)
     bool dmenu_mode = false;
 
     struct render_options render_options = {
-        .width = 500,
-        .height = 300,
-        .x_margin = 20,
-        .y_margin = 4,
-        .border_size = 1,
-        .border_radius = 10,
+        .lines = 15,
+        .chars = 30,
+        .border_size = 1u,
+        .border_radius = 10u,
         .background_color = hex_to_rgba(0xfdf6e3dd),
         .border_color = hex_to_rgba(0x002b36ff),
         .text_color = hex_to_rgba(0x657b83ff),
@@ -282,7 +282,7 @@ main(int argc, char *const *argv)
     };
 
     while (true) {
-        int c = getopt_long(argc, argv, ":o:f:i:g:b:t:m:s:B:r:C:T:dvh", longopts, NULL);
+        int c = getopt_long(argc, argv, ":o:f:i:l:w:b:t:m:s:B:r:C:T:dvh", longopts, NULL);
         if (c == -1)
             break;
 
@@ -303,9 +303,24 @@ main(int argc, char *const *argv)
             terminal = optarg;
             break;
 
+#if 0
         case 'g':
             if (sscanf(optarg, "%dx%d", &render_options.width, &render_options.height) != 2) {
                 fprintf(stderr, "%s: invalid geometry (must be <width>x<height>)\n", optarg);
+                return EXIT_FAILURE;
+            }
+            break;
+#endif
+        case 'l':
+            if (sscanf(optarg, "%u", &render_options.lines) != 1) {
+                fprintf(stderr, "%s: invalid line count\n", optarg);
+                return EXIT_FAILURE;
+            }
+            break;
+
+        case 'w':
+            if (sscanf(optarg, "%u", &render_options.chars) != 1) {
+                fprintf(stderr, "%s: invalid width\n", optarg);
                 return EXIT_FAILURE;
             }
             break;
@@ -351,7 +366,7 @@ main(int argc, char *const *argv)
         }
 
         case 'B':
-            if (sscanf(optarg, "%d", &render_options.border_size) != 1) {
+            if (sscanf(optarg, "%u", &render_options.border_size) != 1) {
                 fprintf(
                     stderr,
                     "%s: invalid border width (must be an integer)\n", optarg);
@@ -360,7 +375,7 @@ main(int argc, char *const *argv)
             break;
 
         case 'r':
-            if (sscanf(optarg, "%d", &render_options.border_radius) != 1) {
+            if (sscanf(optarg, "%u", &render_options.border_radius) != 1) {
                 fprintf(stderr, "%s: invalid border radius (must be an integer)\n",
                         optarg);
                 return EXIT_FAILURE;

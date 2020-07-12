@@ -14,6 +14,14 @@ struct render {
     struct render_options options;
     struct fcft_font *font;
     enum fcft_subpixel subpixel;
+
+    unsigned x_margin;
+    unsigned y_margin;
+    unsigned border_size;
+    unsigned row_height;
+
+    unsigned width;
+    unsigned height;
 };
 
 void
@@ -29,8 +37,8 @@ render_background(const struct render *render, struct buffer *buf)
      * (=actual border width).
      */
     const double b = render->options.border_size;
-    const double w = render->options.width - 2 * b;
-    const double h = render->options.height - 2 * b;
+    const double w = render->width - 2 * b;
+    const double h = render->height - 2 * b;
 
     if (render->options.border_radius == 0) {
         cairo_rectangle(buf->cairo, b, b, w, h);
@@ -122,8 +130,8 @@ render_prompt(const struct render *render, struct buffer *buf,
         render->options.background_color.a == 1. &&
         render->options.selection_color.a == 1.;
 
-    int x = render->options.border_size + render->options.x_margin;
-    int y = render->options.border_size + render->options.y_margin + font->ascent;
+    int x = render->border_size + render->x_margin;
+    int y = render->border_size + render->y_margin + font->ascent;
 
     wchar_t prev = 0;
 
@@ -189,9 +197,9 @@ render_match_list(const struct render *render, struct buffer *buf,
     struct fcft_font *font = render->font;
     assert(font != NULL);
 
-    const double x_margin = render->options.x_margin;
-    const double y_margin = render->options.y_margin;
-    const double border_size = render->options.border_size;
+    const double x_margin = render->x_margin;
+    const double y_margin = render->y_margin;
+    const double border_size = render->border_size;
     const size_t match_count = matches_get_count(matches);
     const size_t selected = matches_get_match_index(matches);
     const enum fcft_subpixel subpixel =
@@ -220,8 +228,8 @@ render_match_list(const struct render *render, struct buffer *buf,
                 RsvgDimensionData dim;
                 rsvg_handle_get_dimensions(svg, &dim);
 
-                const double max_height = render->options.height * 0.618;
-                const double max_width = render->options.width * 0.618;
+                const double max_height = render->height * 0.618;
+                const double max_width = render->width * 0.618;
 
                 const double scale_x = max_width / dim.width;
                 const double scale_y = max_height / dim.height;
@@ -230,8 +238,8 @@ render_match_list(const struct render *render, struct buffer *buf,
                 const double height = dim.height * scale;
                 const double width = dim.width * scale;
 
-                const double img_x = (render->options.width - width) / 2.;
-                const double img_y = first_row + (render->options.height - height) / 2.;
+                const double img_x = (render->width - width) / 2.;
+                const double img_y = first_row + (render->height - height) / 2.;
 
                 double list_end = first_row + match_count * row_height;
 
@@ -360,10 +368,54 @@ render_set_subpixel(struct render *render, enum fcft_subpixel subpixel)
 }
 
 void
-render_set_font(struct render *render, struct fcft_font *font)
+render_set_font(struct render *render, struct fcft_font *font, int scale)
 {
     fcft_destroy(render->font);
     render->font = font;
+
+#define max(x, y) ((x) > (y) ? (x) : (y))
+
+    const unsigned y_margin = max(1, (double)font->height / 10.);
+    const unsigned x_margin = font->height * 2;
+
+#undef max
+
+    const unsigned border_size = render->options.border_size * scale;
+    const unsigned row_height = 2 * y_margin + font->height;
+
+    const unsigned height =
+        border_size +                        /* Top border */
+        row_height +                         /* The prompt */
+        render->options.lines * row_height + /* Matches */
+        + row_height / 2 +                   /* Spacing at the bottom */
+        border_size;                         /* Bottom border */
+
+    const struct fcft_glyph *M = fcft_glyph_rasterize(
+        font, L'W', render->subpixel);
+
+    const unsigned width =
+        border_size + x_margin +
+        M->advance.x * render->options.chars +
+        x_margin + border_size;
+
+    render->y_margin = y_margin;
+    render->x_margin = x_margin;
+    render->border_size = border_size;
+    render->row_height = row_height;
+    render->height = height;
+    render->width = width;
+}
+
+unsigned
+render_height_px(const struct render *render)
+{
+    return render->height;
+}
+
+unsigned
+render_width_px(const struct render *render)
+{
+    return render->width;
 }
 
 void

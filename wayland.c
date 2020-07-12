@@ -825,16 +825,13 @@ reload_font(struct wayland *wayl, unsigned new_dpi)
     if (font == NULL)
         return false;
 
-    const double line_height
-        = 2 * wayl->render_options->y_margin + font->height;
-    const size_t max_matches =
-        (wayl->render_options->height - 2 * wayl->render_options->border_size - line_height)
-        / line_height;
-
-    matches_max_matches_set(wayl->matches, max_matches);
+    matches_max_matches_set(wayl->matches, wayl->render_options->lines);
     icon_reload_application_icons(*wayl->themes, font->height, wayl->apps);
-    render_set_font(wayl->render, font);
+    render_set_font(wayl->render, font, wayl->scale);
     matches_update(wayl->matches, wayl->prompt);
+
+    wayl->width = render_width_px(wayl->render);
+    wayl->height = render_height_px(wayl->render);
     return true;
 }
 
@@ -1212,6 +1209,11 @@ static void
 layer_surface_configure(void *data, struct zwlr_layer_surface_v1 *surface,
                         uint32_t serial, uint32_t w, uint32_t h)
 {
+    struct wayland *wayl = data;
+    if (w * wayl->scale != wayl->width || h * wayl->scale != wayl->height)
+        LOG_WARN("expected a configured window size of %ux%u, got %ux%u"
+                 , wayl->width, wayl->height, w * wayl->scale, h * wayl->scale);
+
     zwlr_layer_surface_v1_ack_configure(surface, serial);
 }
 
@@ -1462,9 +1464,6 @@ wayl_init(struct fdm *fdm,
 
     zwlr_layer_surface_v1_add_listener(
         wayl->layer_surface, &layer_surface_listener, wayl);
-
-    wayl->width = render_options->width;
-    wayl->height = render_options->height;
 
     update_size(wayl);
 
