@@ -468,6 +468,8 @@ main(int argc, char *const *argv)
 
     foobar(wayl, &ctx);
 #endif
+    matches_max_matches_set(matches, render_options.lines);
+    matches_update(matches, prompt);
     wayl_refresh(wayl);
 
     while (true) {
