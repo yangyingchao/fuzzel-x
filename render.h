@@ -36,10 +36,8 @@ struct render *render_init(const struct render_options *options);
 void render_destroy(struct render *render);
 
 void render_set_subpixel(struct render *render, enum fcft_subpixel subpixel);
-void render_set_font(struct render *render, struct fcft_font *font, int scale);
-
-unsigned render_height_px(const struct render *render);
-unsigned render_width_px(const struct render *render);
+bool render_set_font(struct render *render, struct fcft_font *font, int scale,
+                     int *new_width, int *new_height);
 
 void render_background(const struct render *render, struct buffer *buf);
 

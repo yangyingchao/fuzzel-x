@@ -809,8 +809,8 @@ guess_scale(const struct wayland *wayl)
 static bool
 reload_font(struct wayland *wayl, unsigned new_dpi, unsigned new_scale)
 {
-    LOG_INFO("RELOADING FONT: scale: %u -> %u, dpi: %u -> %u",
-             wayl->scale, new_scale, wayl->dpi, new_dpi);
+    LOG_DBG("font reload: scale: %u -> %u, dpi: %u -> %u",
+            wayl->scale, new_scale, wayl->dpi, new_dpi);
 
     struct fcft_font *font = NULL;
 
@@ -825,11 +825,8 @@ reload_font(struct wayland *wayl, unsigned new_dpi, unsigned new_scale)
         icon_reload_application_icons(*wayl->themes, font->height, wayl->apps);
     }
 
-    render_set_font(wayl->render, font, new_scale);
-
-    wayl->width = render_width_px(wayl->render);
-    wayl->height = render_height_px(wayl->render);
-    return true;
+    return render_set_font(
+        wayl->render, font, new_scale, &wayl->width, &wayl->height);
 }
 
 static void

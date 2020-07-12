@@ -10,6 +10,8 @@
 #include "log.h"
 #include "wayland.h"
 
+#define max(x, y) ((x) > (y) ? (x) : (y))
+
 struct render {
     struct render_options options;
     struct fcft_font *font;
@@ -19,9 +21,6 @@ struct render {
     unsigned y_margin;
     unsigned border_size;
     unsigned row_height;
-
-    unsigned width;
-    unsigned height;
 };
 
 void
@@ -37,8 +36,11 @@ render_background(const struct render *render, struct buffer *buf)
      * (=actual border width).
      */
     const double b = render->border_size;
-    const double w = render->width - 2 * b;
-    const double h = render->height - 2 * b;
+    const double w = max(buf->width - 2 * b, 0.);
+    const double h = max(buf->height - 2 * b, 0.);
+
+    if (w == 0. || h == 0.)
+        return;
 
     if (render->options.border_radius == 0) {
         cairo_rectangle(buf->cairo, b, b, w, h);
@@ -216,6 +218,12 @@ render_match_list(const struct render *render, struct buffer *buf,
     double y = first_row + (row_height + font->height) / 2 - font->descent;
 
     for (size_t i = 0; i < match_count; i++) {
+        if (y + font->descent + row_height / 2 >= buf->height - y_margin - border_size) {
+            /* Window too small - happens if the compositor doesn't
+             * repsect our requested size */
+            break;
+        }
+
         const struct match *match = matches_get(matches, i);
 
         if (i == selected) {
@@ -228,8 +236,8 @@ render_match_list(const struct render *render, struct buffer *buf,
                 RsvgDimensionData dim;
                 rsvg_handle_get_dimensions(svg, &dim);
 
-                const double max_height = render->height * 0.618;
-                const double max_width = render->width * 0.618;
+                const double max_height = buf->height * 0.618;
+                const double max_width = buf->width * 0.618;
 
                 const double scale_x = max_width / dim.width;
                 const double scale_y = max_height / dim.height;
@@ -238,8 +246,8 @@ render_match_list(const struct render *render, struct buffer *buf,
                 const double height = dim.height * scale;
                 const double width = dim.width * scale;
 
-                const double img_x = (render->width - width) / 2.;
-                const double img_y = first_row + (render->height - height) / 2.;
+                const double img_x = (buf->width - width) / 2.;
+                const double img_y = first_row + (buf->height - height) / 2.;
 
                 double list_end = first_row + match_count * row_height;
 
@@ -367,8 +375,9 @@ render_set_subpixel(struct render *render, enum fcft_subpixel subpixel)
     render->subpixel = subpixel;
 }
 
-void
-render_set_font(struct render *render, struct fcft_font *font, int scale)
+bool
+render_set_font(struct render *render, struct fcft_font *font, int scale,
+                int *new_width, int *new_height)
 {
     if (font != NULL) {
         fcft_destroy(render->font);
@@ -411,20 +420,12 @@ render_set_font(struct render *render, struct fcft_font *font, int scale)
     render->x_margin = x_margin;
     render->border_size = border_size;
     render->row_height = row_height;
-    render->height = height;
-    render->width = width;
-}
+    if (new_width != NULL)
+        *new_width = width;
+    if (new_height != NULL)
+        *new_height = height;
 
-unsigned
-render_height_px(const struct render *render)
-{
-    return render->height;
-}
-
-unsigned
-render_width_px(const struct render *render)
-{
-    return render->width;
+    return true;
 }
 
 void
