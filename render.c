@@ -370,8 +370,13 @@ render_set_subpixel(struct render *render, enum fcft_subpixel subpixel)
 void
 render_set_font(struct render *render, struct fcft_font *font, int scale)
 {
-    fcft_destroy(render->font);
-    render->font = font;
+    if (font != NULL) {
+        fcft_destroy(render->font);
+        render->font = font;
+    } else {
+        assert(render->font != NULL);
+        font = render->font;
+    }
 
 #define max(x, y) ((x) > (y) ? (x) : (y))
 
