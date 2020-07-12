@@ -36,7 +36,7 @@ render_background(const struct render *render, struct buffer *buf)
      * Thus, we need to draw the path offset:ed with half that
      * (=actual border width).
      */
-    const double b = render->options.border_size;
+    const double b = render->border_size;
     const double w = render->width - 2 * b;
     const double h = render->height - 2 * b;
 
