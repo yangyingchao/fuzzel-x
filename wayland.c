@@ -829,6 +829,24 @@ reload_font(struct wayland *wayl, unsigned new_dpi, unsigned new_scale)
         wayl->render, font, new_scale, &wayl->width, &wayl->height);
 }
 
+static unsigned
+wayl_ppi(const struct wayland *wayl)
+{
+    /* Use user configured output, if available, otherwise use the
+     * "first" output */
+    const struct monitor *mon = wayl->monitor != NULL
+        ? wayl->monitor
+        : (tll_length(wayl->monitors) > 0
+           ? &tll_front(wayl->monitors)
+           : NULL);
+
+    if (mon != NULL)
+        return mon->ppi.scaled.y * mon->scale;
+
+    /* No outputs available, return "something" */
+    return 96u;
+}
+
 static void
 update_size(struct wayland *wayl)
 {
@@ -1527,24 +1545,6 @@ void
 wayl_flush(struct wayland *wayl)
 {
     wl_display_flush(wayl->display);
-}
-
-unsigned
-wayl_ppi(const struct wayland *wayl)
-{
-    /* Use user configured output, if available, otherwise use the
-     * "first" output */
-    const struct monitor *mon = wayl->monitor != NULL
-        ? wayl->monitor
-        : (tll_length(wayl->monitors) > 0
-           ? &tll_front(wayl->monitors)
-           : NULL);
-
-    if (mon != NULL)
-        return mon->ppi.scaled.y * mon->scale;
-
-    /* No outputs available, return "something" */
-    return 96u;
 }
 
 enum fcft_subpixel
