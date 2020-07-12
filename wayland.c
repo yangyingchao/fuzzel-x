@@ -845,11 +845,9 @@ update_size(struct wayland *wayl)
     if (scale == wayl->scale && dpi == wayl->dpi)
         return;
 
-    reload_font(wayl, dpi);
-
     wayl->scale = scale;
-    wayl->dpi = dpi;
 
+    reload_font(wayl, dpi);
     wayl->width /= scale; wayl->width *= scale;
     wayl->height /= scale; wayl->height *= scale;
 
