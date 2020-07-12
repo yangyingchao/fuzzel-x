@@ -850,7 +850,7 @@ update_size(struct wayland *wayl)
     zwlr_layer_surface_v1_set_size(
         wayl->layer_surface, wayl->width / scale, wayl->height / scale);
 
-    /* Trigger a 'configure' event, after which we'll have the width */
+    /* Trigger a 'configure' event, after which we'll have the actual width+height */
     wl_surface_commit(wayl->surface);
     wl_display_roundtrip(wayl->display);
 }
