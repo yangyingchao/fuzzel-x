@@ -186,60 +186,6 @@ print_usage(const char *prog_name)
     printf("Colors must be specified as a 32-bit hexadecimal RGBA quadruple.\n");
 }
 
-struct output_change_context {
-    const char *font_name;
-    struct application_list *apps;
-    struct matches *matches;
-    struct prompt *prompt;
-    struct render *render;
-    const struct render_options *render_options;
-    const icon_theme_list_t *themes;
-};
-
-#if 0
-static void
-foobar(struct wayland *wayl, void *data)
-{
-    struct output_change_context *ctx = data;
-
-    const char *font_name = ctx->font_name;
-    struct render *render = ctx->render;
-    struct matches *matches = ctx->matches;
-    struct prompt *prompt = ctx->prompt;
-    struct application_list *apps = ctx->apps;
-    const icon_theme_list_t *themes = ctx->themes;
-    const struct render_options *render_options = ctx->render_options;
-
-    char font_attrs[128];
-    snprintf(font_attrs, sizeof(font_attrs), "dpi=%d", wayl_ppi(wayl));
-
-    struct fcft_font *font = fcft_from_name(
-        1, &(const char *){font_name}, font_attrs);
-
-    if (font == NULL)
-        return;
-
-    LOG_DBG(
-        "font: height: %d, ascent: %d, descent: %d",
-        font->height, font->ascent, font->descent);
-
-    /* Calculate number of entries we can show, based on the total
-     * height and the fonts line height */
-    const double line_height
-        = 2 * render_options->y_margin + font->height;
-    const size_t max_matches =
-        (render_options->height - 2 * render_options->border_size - line_height)
-        / line_height;
-
-    LOG_DBG("max matches: %zu", max_matches);
-
-    matches_max_matches_set(matches, max_matches);
-    icon_reload_application_icons(*themes, font->height, apps);
-    render_set_font(render, font);
-
-    matches_update(matches, prompt);
-}
-#endif
 int
 main(int argc, char *const *argv)
 {
@@ -455,19 +401,6 @@ main(int argc, char *const *argv)
              )) == NULL)
         goto out;
 
-#if 0
-    struct output_change_context ctx = {
-        .font_name = font_name,
-        .apps = apps,
-        .matches = matches,
-        .prompt = prompt,
-        .render = render,
-        .render_options = &render_options,
-        .themes = &themes,
-    };
-
-    foobar(wayl, &ctx);
-#endif
     matches_max_matches_set(matches, render_options.lines);
     matches_update(matches, prompt);
     wayl_refresh(wayl);
