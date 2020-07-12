@@ -32,7 +32,10 @@ struct buffer *
 shm_get_buffer(struct wl_shm *shm, int width, int height)
 {
     tll_foreach(buffers, it) {
-        if (!it->item.busy) {
+        if (!it->item.busy &&
+            it->item.width == width &&
+            it->item.height == height)
+        {
             it->item.busy = true;
             return &it->item;
         }
