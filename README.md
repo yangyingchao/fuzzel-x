@@ -7,6 +7,7 @@ _drun_ mode.
 ## Screenshot
 
 ![Screenshot](doc/screenshot.png)
+_Fuzzel, with transparency, on top of a browser window showing a diff of a fuzzel commit_
 
 
 ## Features:
