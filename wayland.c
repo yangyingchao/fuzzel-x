@@ -807,28 +807,25 @@ guess_scale(const struct wayland *wayl)
 }
 
 static bool
-reload_font(struct wayland *wayl, unsigned new_dpi)
+reload_font(struct wayland *wayl, unsigned new_dpi, unsigned new_scale)
 {
-    LOG_INFO("RELOADING FONT: %d -> %d", wayl->dpi, new_dpi);
+    LOG_INFO("RELOADING FONT: scale: %u -> %u, dpi: %u -> %u",
+             wayl->scale, new_scale, wayl->dpi, new_dpi);
 
-    if (wayl->dpi == new_dpi)
-        return true;
+    struct fcft_font *font = NULL;
 
-    char attrs[256];
-    snprintf(attrs, sizeof(attrs), "dpi=%u", new_dpi);
+    if (wayl->dpi != new_dpi) {
+        char attrs[256];
+        snprintf(attrs, sizeof(attrs), "dpi=%u", new_dpi);
 
-    wayl->dpi = new_dpi;
+        font = fcft_from_name(1, (const char *[]){wayl->font_name}, attrs);
+        if (font == NULL)
+            return false;
 
-    struct fcft_font *font = fcft_from_name(
-        1, (const char *[]){wayl->font_name}, attrs);
+        icon_reload_application_icons(*wayl->themes, font->height, wayl->apps);
+    }
 
-    if (font == NULL)
-        return false;
-
-    matches_max_matches_set(wayl->matches, wayl->render_options->lines);
-    icon_reload_application_icons(*wayl->themes, font->height, wayl->apps);
-    render_set_font(wayl->render, font, wayl->scale);
-    matches_update(wayl->matches, wayl->prompt);
+    render_set_font(wayl->render, font, new_scale);
 
     wayl->width = render_width_px(wayl->render);
     wayl->height = render_height_px(wayl->render);
@@ -845,9 +842,11 @@ update_size(struct wayland *wayl)
     if (scale == wayl->scale && dpi == wayl->dpi)
         return;
 
-    wayl->scale = scale;
+    reload_font(wayl, dpi, scale);
 
-    reload_font(wayl, dpi);
+    wayl->scale = scale;
+    wayl->dpi = dpi;
+
     wayl->width /= scale; wayl->width *= scale;
     wayl->height /= scale; wayl->height *= scale;
 
