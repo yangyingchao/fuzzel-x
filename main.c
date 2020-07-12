@@ -278,7 +278,7 @@ main(int argc, char *const *argv)
         .border_color = hex_to_rgba(0x002b36ff),
         .text_color = hex_to_rgba(0x657b83ff),
         .match_color = hex_to_rgba(0xcb4b16ff),
-        .selection_color = hex_to_rgba(0xeee8d5ff),
+        .selection_color = hex_to_rgba(0xeee8d5dd),
     };
 
     while (true) {
