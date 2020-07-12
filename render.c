@@ -218,7 +218,9 @@ render_match_list(const struct render *render, struct buffer *buf,
     double y = first_row + (row_height + font->height) / 2 - font->descent;
 
     for (size_t i = 0; i < match_count; i++) {
-        if (y + font->descent + row_height / 2 >= buf->height - y_margin - border_size) {
+        if ((int)(y + font->descent + row_height / 2) >
+            (int)(buf->height - y_margin - border_size))
+        {
             /* Window too small - happens if the compositor doesn't
              * repsect our requested size */
             break;
