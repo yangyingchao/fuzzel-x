@@ -403,6 +403,10 @@ render_set_font(struct render *render, struct fcft_font *font, int scale)
         M->advance.x * render->options.chars +
         x_margin + border_size;
 
+    LOG_DBG("x-margin: %d, y-margin: %d, border: %d, row-height: %d, "
+            "height: %d, width: %d, scale: %d",
+            x_margin, y_margin, border_size, row_height, height, width, scale);
+
     render->y_margin = y_margin;
     render->x_margin = x_margin;
     render->border_size = border_size;
