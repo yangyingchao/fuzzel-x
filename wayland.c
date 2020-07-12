@@ -807,35 +807,26 @@ guess_scale(const struct wayland *wayl)
 }
 
 static bool
-reload_font(struct wayland *wayl, unsigned new_dpi)
+reload_font(struct wayland *wayl, unsigned new_dpi, unsigned new_scale)
 {
-    LOG_INFO("RELOADING FONT: %d -> %d", wayl->dpi, new_dpi);
+    LOG_DBG("font reload: scale: %u -> %u, dpi: %u -> %u",
+            wayl->scale, new_scale, wayl->dpi, new_dpi);
 
-    if (wayl->dpi == new_dpi)
-        return true;
+    struct fcft_font *font = NULL;
 
-    char attrs[256];
-    snprintf(attrs, sizeof(attrs), "dpi=%u", new_dpi);
+    if (wayl->dpi != new_dpi) {
+        char attrs[256];
+        snprintf(attrs, sizeof(attrs), "dpi=%u", new_dpi);
 
-    wayl->dpi = new_dpi;
+        font = fcft_from_name(1, (const char *[]){wayl->font_name}, attrs);
+        if (font == NULL)
+            return false;
 
-    struct fcft_font *font = fcft_from_name(
-        1, (const char *[]){wayl->font_name}, attrs);
+        icon_reload_application_icons(*wayl->themes, font->height, wayl->apps);
+    }
 
-    if (font == NULL)
-        return false;
-
-    const double line_height
-        = 2 * wayl->render_options->y_margin + font->height;
-    const size_t max_matches =
-        (wayl->render_options->height - 2 * wayl->render_options->border_size - line_height)
-        / line_height;
-
-    matches_max_matches_set(wayl->matches, max_matches);
-    icon_reload_application_icons(*wayl->themes, font->height, wayl->apps);
-    render_set_font(wayl->render, font);
-    matches_update(wayl->matches, wayl->prompt);
-    return true;
+    return render_set_font(
+        wayl->render, font, new_scale, &wayl->width, &wayl->height);
 }
 
 static void
@@ -848,7 +839,7 @@ update_size(struct wayland *wayl)
     if (scale == wayl->scale && dpi == wayl->dpi)
         return;
 
-    reload_font(wayl, dpi);
+    reload_font(wayl, dpi, scale);
 
     wayl->scale = scale;
     wayl->dpi = dpi;
@@ -859,7 +850,7 @@ update_size(struct wayland *wayl)
     zwlr_layer_surface_v1_set_size(
         wayl->layer_surface, wayl->width / scale, wayl->height / scale);
 
-    /* Trigger a 'configure' event, after which we'll have the width */
+    /* Trigger a 'configure' event, after which we'll have the actual width+height */
     wl_surface_commit(wayl->surface);
     wl_display_roundtrip(wayl->display);
 }
@@ -1212,6 +1203,16 @@ static void
 layer_surface_configure(void *data, struct zwlr_layer_surface_v1 *surface,
                         uint32_t serial, uint32_t w, uint32_t h)
 {
+    struct wayland *wayl = data;
+
+    if (w > 0 && h > 0) {
+        if (w * wayl->scale != wayl->width || h * wayl->scale != wayl->height) {
+            wayl->width = w * wayl->scale;
+            wayl->height = h * wayl->scale;
+            wayl_refresh(wayl);
+        }
+    }
+
     zwlr_layer_surface_v1_ack_configure(surface, serial);
 }
 
@@ -1462,9 +1463,6 @@ wayl_init(struct fdm *fdm,
 
     zwlr_layer_surface_v1_add_listener(
         wayl->layer_surface, &layer_surface_listener, wayl);
-
-    wayl->width = render_options->width;
-    wayl->height = render_options->height;
 
     update_size(wayl);
 

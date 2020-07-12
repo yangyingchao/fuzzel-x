@@ -12,12 +12,10 @@
 struct rgba {double r; double g; double b; double a;};
 
 struct render_options {
-    int width;
-    int height;
-    int x_margin;
-    int y_margin;
-    int border_size;
-    int border_radius;
+    unsigned lines;
+    unsigned chars;
+    unsigned border_size;
+    unsigned border_radius;
 
     struct rgba background_color;
     struct rgba border_color;
@@ -38,7 +36,8 @@ struct render *render_init(const struct render_options *options);
 void render_destroy(struct render *render);
 
 void render_set_subpixel(struct render *render, enum fcft_subpixel subpixel);
-void render_set_font(struct render *render, struct fcft_font *font);
+bool render_set_font(struct render *render, struct fcft_font *font, int scale,
+                     int *new_width, int *new_height);
 
 void render_background(const struct render *render, struct buffer *buf);
 

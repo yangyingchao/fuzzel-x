@@ -35,8 +35,13 @@ options:
 	*Terminal=true* (_htop_, for example). Example: _xterm -e_.
 	Default: _not set_.
 
-*-g*,*--geometry*=_WIDTHxHEIGHT_
-	The window width and height, in pixels. Default: _500x300_.
+*-l*,*--lines*=COUNT
+	The (maximum) number of matches to display. This dictates the
+	window height. Default: _15_.
+
+*-w*,*--width*
+	Window width, in characters. Margins and borders not
+	included. Default: _30_.
 
 *-b*,*--background*=_HEX_
 	Background color. See *COLORS*. Default: _fdf6e3dd_.
@@ -54,7 +59,8 @@ options:
 	application. See *COLORS*. Default: _eee8d5ff_.
 
 *-B*,*--border-width*=_INT_
-	The width of the surrounding border, in pixels. Default: _1_.
+	The width of the surrounding border, in pixels (subject to output
+	scaling). Default: _1_.
 
 *-r*,*--border-radius*=_INT_
 	The corner curvature. Larger means more rounded corners.
