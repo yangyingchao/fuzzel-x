@@ -43,18 +43,14 @@ dmenu_load_entries(struct application_list *applications)
 
     free(line);
 
-    applications->v = malloc(tll_length(entries) * sizeof(applications->v[0]));
+    applications->v = calloc(tll_length(entries), sizeof(applications->v[0]));
     applications->count = tll_length(entries);
 
     size_t i = 0;
     tll_foreach(entries, it) {
         struct application *app = &applications->v[i++];
-        app->path = NULL;
-        app->exec = NULL;
         app->title = it->item;
-        app->comment = NULL;
         app->icon.type = ICON_NONE;
-        app->count = 0;
 
         tll_remove(entries, it);
     }
