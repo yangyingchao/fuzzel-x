@@ -15,10 +15,10 @@ dmenu_load_entries(struct application_list *applications)
     tll(wchar_t *) entries = tll_init();
 
     char *line = NULL;
+    size_t alloc_size = 0;
 
     errno = 0;
     while (true) {
-        size_t alloc_size = 0;
         ssize_t len = getline(&line, &alloc_size, stdin);
 
         if (len == -1) {
