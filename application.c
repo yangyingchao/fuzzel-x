@@ -197,7 +197,7 @@ struct application_list *
 applications_init(void)
 {
     struct application_list *apps = malloc(sizeof(*apps));
-    *apps = (struct application_list){0};
+    *apps = (struct application_list){};
     return apps;
 }
 
