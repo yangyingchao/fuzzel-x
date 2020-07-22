@@ -53,7 +53,6 @@ librsvg = dependency('librsvg-2.0')
 wayland_protocols = dependency('wayland-protocols')
 wayland_client = dependency('wayland-client')
 wayland_cursor = dependency('wayland-cursor')
-wlroots = dependency('wlroots')
 xkb = dependency('xkbcommon')
 
 tllist = dependency('tllist', version: '>=1.0.1', fallback: 'tllist')
@@ -114,7 +113,6 @@ executable(
                  librsvg,
                  wayland_client,
                  wayland_cursor,
-                 wlroots,
                  xkb,
                  tllist,
                  fcft],
