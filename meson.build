@@ -118,5 +118,9 @@ executable(
                  fcft],
   install: true)
 
+install_data(
+  'LICENSE', 'README.md',
+  install_dir: join_paths(get_option('datadir'), 'doc', 'fuzzel'))
+
 subdir('completions')
 subdir('doc')
