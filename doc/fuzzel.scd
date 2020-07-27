@@ -74,6 +74,10 @@ options:
 	from stdin (newline separated). The selected entry is printed to
 	stdout.
 
+*-R*,*--no-run-if-empty*
+	Exit immediately, without showing the UI, if stdin is
+	empty. **dmenu** mode only.
+
 *-v*,*--version*
 	Show the version number and quit
 

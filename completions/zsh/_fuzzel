@@ -17,7 +17,8 @@ _arguments \
     '(-B --border-width)'{-B,--border-width}'[width of border, in pixels (1)]:border-width:()' \
     '(-r --border-radius)'{-r,--border-radius}'[amount of corner "roundness" (10)]:border-radius:()' \
     '(-C --border-color)'{-C,--border-color}'[border color (002b36ff)]:border-color:()' \
-    '(-d --dmenu)'{-d,--dmenu}'[dmenu compatibility mode; list entries are read from stdin]'
+    '(-d --dmenu)'{-d,--dmenu}'[dmenu compatibility mode; list entries are read from stdin]' \
+    '(-R --no-run-if-empty)'{-R,--no-run-if-empty}'[exit immediately without showing the UI if stdin is empty (dmenu mode only)]'
 
 case "${state}" in
     fonts)

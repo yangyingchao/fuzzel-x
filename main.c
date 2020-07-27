@@ -181,6 +181,7 @@ print_usage(const char *prog_name)
            "  -r,--border-radius=INT     amount of corner \"roundness\" (10)\n"
            "  -C,--border-color=HEX      border color (ffffffff)\n"
            "  -d,--dmenu                 dmenu compatibility mode\n"
+           "  -R,--no-run-if-empty       exit immediately without showing UI if stdin is empty (dmenu mode only)\n"
            "  -v,--version               show the version number and quit\n");
     printf("\n");
     printf("Colors must be specified as a 32-bit hexadecimal RGBA quadruple.\n");
@@ -204,6 +205,7 @@ main(int argc, char *const *argv)
         {"border-color",     required_argument, 0, 'C'},
         {"terminal",         required_argument, 0, 'T'},
         {"dmenu",            no_argument,       0, 'd'},
+        {"no-run-if-empty",  no_argument,       0, 'R'},
         {"version",          no_argument,       0, 'v'},
         {"help",             no_argument,       0, 'h'},
         {NULL,               no_argument,       0, 0},
@@ -214,6 +216,7 @@ main(int argc, char *const *argv)
     const char *icon_theme = "hicolor";
     const char *terminal = NULL;
     bool dmenu_mode = false;
+    bool no_run_if_empty = false;
 
     struct render_options render_options = {
         .lines = 15,
@@ -228,7 +231,7 @@ main(int argc, char *const *argv)
     };
 
     while (true) {
-        int c = getopt_long(argc, argv, ":o:f:i:l:w:b:t:m:s:B:r:C:T:dvh", longopts, NULL);
+        int c = getopt_long(argc, argv, ":o:f:i:l:w:b:t:m:s:B:r:C:T:dRvh", longopts, NULL);
         if (c == -1)
             break;
 
@@ -334,6 +337,10 @@ main(int argc, char *const *argv)
             dmenu_mode = true;
             break;
 
+        case 'R':
+            no_run_if_empty = true;
+            break;
+
         case 'v':
             printf("fuzzel version %s\n", FUZZEL_VERSION);
             return EXIT_SUCCESS;
@@ -379,9 +386,11 @@ main(int argc, char *const *argv)
     /* Load applications */
     if ((apps = applications_init()) == NULL)
         goto out;
-    if (dmenu_mode)
+    if (dmenu_mode) {
         dmenu_load_entries(apps);
-    else
+        if (no_run_if_empty && apps->count == 0)
+            goto out;
+    } else
         xdg_find_programs(terminal, apps);
     read_cache(apps);
 
