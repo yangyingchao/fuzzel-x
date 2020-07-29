@@ -25,7 +25,7 @@ options:
 	Default: _monospace_.
 
 *-i*,*--icon-theme*=_NAME_
-	Icon theme name to use. Example: _Adwaita_. Default: _hicolor_.
+	Icon theme to use. Example: _Adwaita_. Default: _hicolor_.
 
 *-T*,*--terminal*=_TERMINAL ARGS_
 	Command to launch XDG applications with the property
