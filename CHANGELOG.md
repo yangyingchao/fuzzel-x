@@ -1,13 +1,10 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [1.4.1](#1-4-1)
 
 
-## Unreleased
-### Added
-### Deprecated
-### Removed
-### Changed
+## 1.4.1
+
 ### Fixed
-### Security
-### Contributors
+
+* Incorrect extension for man pages.
