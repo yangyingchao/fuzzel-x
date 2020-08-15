@@ -4,7 +4,7 @@ scdoc_prog = find_program(scdoc.get_pkgconfig_variable('scdoc'), native: true)
 
 foreach man_src : ['fuzzel.scd']
   base = man_src.split('.')[-2]
-  out = '@0@.1.gz'.format(base)
+  out = '@0@.1'.format(base)
 
   custom_target(
     out,
