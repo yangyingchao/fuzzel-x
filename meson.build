@@ -119,7 +119,7 @@ executable(
   install: true)
 
 install_data(
-  'LICENSE', 'README.md',
+  'LICENSE', 'README.md', 'CHANGELOG.md',
   install_dir: join_paths(get_option('datadir'), 'doc', 'fuzzel'))
 
 subdir('completions')
