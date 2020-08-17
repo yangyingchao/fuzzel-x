@@ -128,9 +128,10 @@ render_prompt(const struct render *render, struct buffer *buf,
     const wchar_t *ptext = prompt_text(prompt);
     const size_t text_len = wcslen(ptext);
 
-    const bool subpixel_antialias =
-        render->options.background_color.a == 1. &&
-        render->options.selection_color.a == 1.;
+    const enum fcft_subpixel subpixel =
+        (render->options.background_color.a == 1. &&
+         render->options.selection_color.a == 1.)
+        ? render->subpixel : FCFT_SUBPIXEL_NONE;
 
     int x = render->border_size + render->x_margin;
     int y = render->border_size + render->y_margin + font->ascent;
@@ -139,7 +140,7 @@ render_prompt(const struct render *render, struct buffer *buf,
 
     for (size_t i = 0; i < prompt_len + text_len; i++) {
         wchar_t wc = i < prompt_len ? pprompt[i] : ptext[i - prompt_len];
-        const struct fcft_glyph *glyph = fcft_glyph_rasterize(font, wc, subpixel_antialias);
+        const struct fcft_glyph *glyph = fcft_glyph_rasterize(font, wc, subpixel);
         if (glyph == NULL) {
             prev = wc;
             continue;
@@ -168,14 +169,14 @@ render_prompt(const struct render *render, struct buffer *buf,
 static void
 render_match_text(struct buffer *buf, double *_x, double _y,
                   const wchar_t *text, ssize_t start, size_t length,
-                  struct fcft_font *font, bool subpixel_antialias,
+                  struct fcft_font *font, enum fcft_subpixel subpixel,
                   pixman_color_t regular_color, pixman_color_t match_color)
 {
     int x = *_x;
     int y = _y;
 
     for (size_t i = 0; i < wcslen(text); i++) {
-        const struct fcft_glyph *glyph = fcft_glyph_rasterize(font, text[i], subpixel_antialias);
+        const struct fcft_glyph *glyph = fcft_glyph_rasterize(font, text[i], subpixel);
         if (glyph == NULL)
             continue;
 

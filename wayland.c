@@ -145,6 +145,7 @@ struct wayland {
     int height;
     int scale;
     unsigned dpi;
+    enum fcft_subpixel subpixel;
 
     enum { KEEP_RUNNING, EXIT_UPDATE_CACHE, EXIT} status;
     int exit_code;
@@ -1290,6 +1291,8 @@ wayl_refresh(struct wayland *wayl)
 {
     struct buffer *buf = shm_get_buffer(wayl->shm, wayl->width, wayl->height);
 
+    render_set_subpixel(wayl->render, wayl->subpixel);
+
     /* Background + border */
     render_background(wayl->render, buf);
 
@@ -1346,14 +1349,20 @@ surface_enter(void *data, struct wl_surface *wl_surface,
         if (it->item.output != wl_output)
             continue;
 
+        enum fcft_subpixel old_subpixel = wayl->subpixel;
         int old_scale = wayl->scale;
         int old_dpi = wayl->dpi;
 
         wayl->monitor = &it->item;
+        wayl->subpixel = wayl->monitor->subpixel;
         update_size(wayl);
 
-        if (wayl->scale != old_scale || wayl->dpi != old_dpi)
+        if (wayl->scale != old_scale ||
+            wayl->dpi != old_dpi ||
+            wayl->subpixel != old_subpixel)
+        {
             wayl_refresh(wayl);
+        }
         break;
     }
 }
@@ -1545,13 +1554,6 @@ void
 wayl_flush(struct wayland *wayl)
 {
     wl_display_flush(wayl->display);
-}
-
-enum fcft_subpixel
-wayl_subpixel(const struct wayland *wayl)
-{
-    return wayl->monitor != NULL
-        ? wayl->monitor->subpixel : FCFT_SUBPIXEL_DEFAULT;
 }
 
 bool
