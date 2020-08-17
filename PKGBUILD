@@ -1,5 +1,5 @@
 pkgname=fuzzel
-pkgver=1.4.1
+pkgver=1.4.2
 pkgrel=1
 pkgdesc="Simplistic application launcher for wayland"
 arch=('x86_64' 'aarch64')
