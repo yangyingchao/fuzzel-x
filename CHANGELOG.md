@@ -9,6 +9,12 @@
 ### Deprecated
 ### Removed
 ### Changed
+### Fixed
+
+* Subpixel antialiasing was not applied correctly on opaque
+  backgrounds.
+
+
 ### Security
 ### Contributors
 

@@ -27,6 +27,5 @@ void wayl_destroy(struct wayland *wayl);
 void wayl_refresh(struct wayland *wayl);
 void wayl_flush(struct wayland *wayl);
 
-enum fcft_subpixel wayl_subpixel(const struct wayland *wayl);
 bool wayl_exit_code(const struct wayland *wayl);
 bool wayl_update_cache(const struct wayland *wayl);
