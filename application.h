@@ -3,7 +3,9 @@
 #include <stdbool.h>
 
 #include <cairo.h>
+#ifdef FUZZEL_ENABLE_SVG
 #include <librsvg/rsvg.h>
+#endif
 
 #include "prompt.h"
 
@@ -14,7 +16,9 @@ struct icon {
     enum icon_type type;
     union {
         cairo_surface_t *surface;
+#ifdef FUZZEL_ENABLE_SVG
         RsvgHandle *svg;
+#endif
     };
 };
 

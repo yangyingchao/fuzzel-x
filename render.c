@@ -235,6 +235,7 @@ render_match_list(const struct render *render, struct buffer *buf,
              * representation of the icon */
 
             if (match->application->icon.type == ICON_SVG) {
+#ifdef FUZZEL_ENABLE_SVG
                 RsvgHandle *svg = match->application->icon.svg;
                 RsvgDimensionData dim;
                 rsvg_handle_get_dimensions(svg, &dim);
@@ -267,8 +268,8 @@ render_match_list(const struct render *render, struct buffer *buf,
                         rsvg_handle_render_cairo(svg, buf->cairo);
                     cairo_restore(buf->cairo);
                 }
+#endif
             }
-
             /* Hightlight selected entry */
             const struct rgba *sc = &render->options.selection_color;
             cairo_set_source_rgba(buf->cairo, sc->r, sc->g, sc->b, sc->a);
@@ -318,6 +319,7 @@ render_match_list(const struct render *render, struct buffer *buf,
         }
 
         case ICON_SVG: {
+#ifdef FUZZEL_ENABLE_SVG
             RsvgHandle *svg = match->application->icon.svg;
 
             RsvgDimensionData dim;
@@ -339,6 +341,7 @@ render_match_list(const struct render *render, struct buffer *buf,
                 rsvg_handle_render_cairo(svg, buf->cairo);
             cairo_restore(buf->cairo);
             break;
+#endif
         }
         }
 
