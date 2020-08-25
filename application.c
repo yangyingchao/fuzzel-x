@@ -1,11 +1,14 @@
 #include "application.h"
 
 #include <stdbool.h>
+#include <stdlib.h>
+#include <string.h>
 #include <errno.h>
 #include <assert.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #include <fcntl.h>
 
 #define LOG_MODULE "application"
@@ -228,8 +231,11 @@ applications_destroy(struct application_list *apps)
         free(app->icon.name);
         if (app->icon.type == ICON_SURFACE)
             cairo_surface_destroy(app->icon.surface);
-        else if (app->icon.type == ICON_SVG)
+        else if (app->icon.type == ICON_SVG) {
+#ifdef FUZZEL_ENABLE_SVG
             g_object_unref(app->icon.svg);
+#endif
+        }
     }
     free(apps->v);
     free(apps);

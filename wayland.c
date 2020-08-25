@@ -1,6 +1,7 @@
 #include "wayland.h"
 
 #include <stdlib.h>
+#include <string.h>
 #include <wctype.h>
 #include <unistd.h>
 #include <errno.h>

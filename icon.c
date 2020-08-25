@@ -10,7 +10,9 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#ifdef FUZZEL_ENABLE_SVG
 #include <librsvg/rsvg.h>
+#endif
 
 #include <tllist.h>
 
@@ -278,6 +280,7 @@ icon_from_surface(struct icon *icon, cairo_surface_t *surf)
     return true;
 }
 
+#ifdef FUZZEL_ENABLE_SVG
 static bool
 icon_from_svg(struct icon *icon, RsvgHandle *svg)
 {
@@ -285,6 +288,7 @@ icon_from_svg(struct icon *icon, RsvgHandle *svg)
     icon->svg = svg;
     return true;
 }
+#endif
 
 static void
 icon_reset(struct icon *icon)
@@ -293,8 +297,10 @@ icon_reset(struct icon *icon)
         cairo_surface_destroy(icon->surface);
         icon->surface = NULL;
     } else if (icon->type == ICON_SVG) {
+#ifdef FUZZEL_ENABLE_SVG
         g_object_unref(icon->svg);
         icon->svg = NULL;
+#endif
     }
     icon->type = ICON_NONE;
 }
@@ -372,13 +378,14 @@ reload_icon(struct icon *icon, int icon_size, icon_theme_list_t themes)
                     /* Use anyone available */
                 }
 
+#ifdef FUZZEL_ENABLE_SVG
                 RsvgHandle *svg = rsvg_handle_new_from_file(full_path, NULL);
                 if (svg != NULL) {
                     LOG_DBG("%s: %s scalable", name, full_path);
                     free(full_path);
                     return icon_from_svg(icon, svg);
                 }
-
+#endif
                 cairo_surface_t *surf = cairo_image_surface_create_from_png(full_path);
                 if (cairo_surface_status(surf) == CAIRO_STATUS_SUCCESS) {
                     if (scalable)
@@ -409,6 +416,7 @@ reload_icon(struct icon *icon, int icon_size, icon_theme_list_t themes)
                   strlen("pixmaps") + 1 +
                   strlen(name) + strlen(".svg") + 1];
 
+#ifdef FUZZEL_ENABLE_SVG
         /* Try SVG variant first */
         sprintf(path, "%s/pixmaps/%s.svg", it->item, name);
         RsvgHandle *svg = rsvg_handle_new_from_file(path, NULL);
@@ -416,6 +424,7 @@ reload_icon(struct icon *icon, int icon_size, icon_theme_list_t themes)
             xdg_data_dirs_destroy(dirs);
             return icon_from_svg(icon, svg);
         }
+#endif
 
         /* No SVG, look for PNG instead */
         sprintf(path, "%s/pixmaps/%s.png", it->item, name);

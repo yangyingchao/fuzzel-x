@@ -1,5 +1,6 @@
 #include "match.h"
 
+#include <stdlib.h>
 #include <wctype.h>
 #include <assert.h>
 

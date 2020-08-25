@@ -49,11 +49,15 @@ endif
 pixman = dependency('pixman-1')
 cairo = dependency('cairo')
 cairo_ft = dependency('cairo-ft')
-librsvg = dependency('librsvg-2.0')
+librsvg = dependency('librsvg-2.0', required: get_option('enable-svg'))
 wayland_protocols = dependency('wayland-protocols')
 wayland_client = dependency('wayland-client')
 wayland_cursor = dependency('wayland-cursor')
 xkb = dependency('xkbcommon')
+
+if get_option('enable-svg')
+  add_project_arguments('-DFUZZEL_ENABLE_SVG=1', language: 'c')
+endif
 
 tllist = dependency('tllist', version: '>=1.0.1', fallback: 'tllist')
 fcft = dependency('fcft', version: ['>=2.0.0', '<3.0.0'], fallback: 'fcft')
