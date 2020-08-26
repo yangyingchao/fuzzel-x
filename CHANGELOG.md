@@ -7,11 +7,19 @@
 
 ## Unreleased
 ### Added
+
+* meson option ‘-Denable-svg=[auto|enabled|disabled]’. When disabled,
+  _librsvg_ is no longer a dependency and SVG icons are
+  disabled. Default: ‘auto‘.
+
+
 ### Deprecated
 ### Removed
 ### Fixed
 ### Security
 ### Contributors
+
+* [magenbluten](https://codeberg.org/magenbluten)
 
 
 ## 1.4.2

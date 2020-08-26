@@ -55,7 +55,7 @@ wayland_client = dependency('wayland-client')
 wayland_cursor = dependency('wayland-cursor')
 xkb = dependency('xkbcommon')
 
-if get_option('enable-svg')
+if librsvg.found()
   add_project_arguments('-DFUZZEL_ENABLE_SVG=1', language: 'c')
 endif
 

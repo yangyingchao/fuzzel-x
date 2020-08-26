@@ -1,1 +1,1 @@
-option('enable-svg', type: 'boolean', value: true)
+option('enable-svg', type: 'feature')
