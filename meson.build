@@ -46,6 +46,7 @@ if cc.has_argument('-fmacro-prefix-map=/foo=')
   add_project_arguments('-fmacro-prefix-map=@0@='.format(relative_dir), language: 'c')
 endif
 
+math = cc.find_library('m')
 pixman = dependency('pixman-1')
 cairo = dependency('cairo')
 cairo_ft = dependency('cairo-ft')
@@ -111,7 +112,8 @@ executable(
   'wayland.c', 'wayland.h',
   'xdg.c', 'xdg.h',
   wl_proto_src + wl_proto_headers, version,
-  dependencies: [pixman,
+  dependencies: [math,
+                 pixman,
                  cairo,
                  cairo_ft,
                  librsvg,
