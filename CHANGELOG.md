@@ -8,9 +8,9 @@
 ## Unreleased
 ### Added
 
-* meson option ‘-Denable-svg=[auto|enabled|disabled]’. When disabled,
+* meson option `Denable-svg=[auto|enabled|disabled]`. When disabled,
   _librsvg_ is no longer a dependency and SVG icons are
-  disabled. Default: ‘auto‘.
+  disabled. Default: `auto`.
 
 
 ### Deprecated
