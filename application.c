@@ -229,12 +229,22 @@ applications_destroy(struct application_list *apps)
         free(app->title);
         free(app->comment);
         free(app->icon.name);
-        if (app->icon.type == ICON_SURFACE)
+        switch (app->icon.type) {
+        case ICON_NONE:
+        case ICON_SURFACE:
             cairo_surface_destroy(app->icon.surface);
-        else if (app->icon.type == ICON_SVG) {
-#ifdef FUZZEL_ENABLE_SVG
+            break;
+
+        case ICON_PNG:
+#if defined(FUZZEL_ENABLE_PNG)
+            abort();
+#endif
+
+        case ICON_SVG:
+#if defined(FUZZEL_ENABLE_SVG)
             g_object_unref(app->icon.svg);
 #endif
+            break;
         }
     }
     free(apps->v);

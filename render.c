@@ -235,7 +235,7 @@ render_match_list(const struct render *render, struct buffer *buf,
              * representation of the icon */
 
             if (match->application->icon.type == ICON_SVG) {
-#ifdef FUZZEL_ENABLE_SVG
+#if defined(FUZZEL_ENABLE_SVG)
                 RsvgHandle *svg = match->application->icon.svg;
                 RsvgDimensionData dim;
                 rsvg_handle_get_dimensions(svg, &dim);
@@ -268,8 +268,9 @@ render_match_list(const struct render *render, struct buffer *buf,
                         rsvg_handle_render_cairo(svg, buf->cairo);
                     cairo_restore(buf->cairo);
                 }
-#endif
+#endif /* FUZZEL_ENABLE_SVG */
             }
+
             /* Hightlight selected entry */
             const struct rgba *sc = &render->options.selection_color;
             cairo_set_source_rgba(buf->cairo, sc->r, sc->g, sc->b, sc->a);
@@ -318,8 +319,29 @@ render_match_list(const struct render *render, struct buffer *buf,
             break;
         }
 
+        case ICON_PNG: {
+#if defined(FUZZEL_ENABLE_PNG)
+            int height = pixman_image_get_height(buf->pix);
+            int width = pixman_image_get_width(buf->pix);
+
+            if (height > row_height) {
+                LOG_ERR("TODO: PNG scaling");
+                abort();
+            }
+
+            cairo_surface_flush(buf->cairo_surface);
+            pixman_image_composite32(
+                PIXMAN_OP_OVER, match->application->icon.png, NULL, buf->pix,
+                0, 0, 0, 0,
+                cur_x, first_row + i * row_height + (row_height - height) / 2,
+                width, height);
+            cairo_surface_mark_dirty(buf->cairo_surface);
+#endif /* FUZZEL_ENABLE_PNG */
+            break;
+        }
+
         case ICON_SVG: {
-#ifdef FUZZEL_ENABLE_SVG
+#if defined(FUZZEL_ENABLE_SVG)
             RsvgHandle *svg = match->application->icon.svg;
 
             RsvgDimensionData dim;
@@ -340,8 +362,8 @@ render_match_list(const struct render *render, struct buffer *buf,
             if (cairo_status(buf->cairo) == CAIRO_STATUS_SUCCESS)
                 rsvg_handle_render_cairo(svg, buf->cairo);
             cairo_restore(buf->cairo);
+#endif /* FUZZEL_ENABLE_SVG */
             break;
-#endif
         }
         }
 

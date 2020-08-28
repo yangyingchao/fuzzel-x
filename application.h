@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include <pixman.h>
 
 #include <cairo.h>
 #ifdef FUZZEL_ENABLE_SVG
@@ -9,14 +10,17 @@
 
 #include "prompt.h"
 
-enum icon_type { ICON_NONE, ICON_SURFACE, ICON_SVG };
+enum icon_type { ICON_NONE, ICON_SURFACE, ICON_PNG, ICON_SVG };
 
 struct icon {
     char *name;
     enum icon_type type;
     union {
         cairo_surface_t *surface;
-#ifdef FUZZEL_ENABLE_SVG
+#if defined(FUZZEL_ENABLE_PNG)
+        pixman_image_t *png;
+#endif
+#if defined(FUZZEL_ENABLE_SVG)
         RsvgHandle *svg;
 #endif
     };

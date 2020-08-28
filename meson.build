@@ -50,11 +50,16 @@ math = cc.find_library('m')
 pixman = dependency('pixman-1')
 cairo = dependency('cairo')
 cairo_ft = dependency('cairo-ft')
+libpng = dependency('libpng', required: get_option('enable-png'))
 librsvg = dependency('librsvg-2.0', required: get_option('enable-svg'))
 wayland_protocols = dependency('wayland-protocols')
 wayland_client = dependency('wayland-client')
 wayland_cursor = dependency('wayland-cursor')
 xkb = dependency('xkbcommon')
+
+if (libpng.found())
+  add_project_arguments('-DFUZZEL_ENABLE_PNG=1', language: 'c')
+endif
 
 if librsvg.found()
   add_project_arguments('-DFUZZEL_ENABLE_SVG=1', language: 'c')
@@ -105,6 +110,7 @@ executable(
   'log.c', 'log.h',
   'main.c',
   'match.c', 'match.h',
+  'png.c', 'png-fuzzel.h',
   'prompt.c', 'prompt.h',
   'render.c', 'render.h',
   'shm.c', 'shm.h',
@@ -116,6 +122,7 @@ executable(
                  pixman,
                  cairo,
                  cairo_ft,
+                 libpng,
                  librsvg,
                  wayland_client,
                  wayland_cursor,
@@ -130,3 +137,11 @@ install_data(
 
 subdir('completions')
 subdir('doc')
+
+summary(
+  {
+    'PNG icons': libpng.found(),
+    'SVG icons': librsvg.found(),
+  },
+  bool_yn: true
+)

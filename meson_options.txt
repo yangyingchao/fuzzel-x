@@ -1,1 +1,2 @@
+option('enable-png', type: 'feature')
 option('enable-svg', type: 'feature')
