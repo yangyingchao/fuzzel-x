@@ -18,7 +18,10 @@ struct icon {
     union {
         cairo_surface_t *surface;
 #if defined(FUZZEL_ENABLE_PNG)
-        pixman_image_t *png;
+        struct {
+            pixman_image_t *pix;
+            bool has_scale_transform;
+        } png;
 #endif
 #if defined(FUZZEL_ENABLE_SVG)
         RsvgHandle *svg;

@@ -290,7 +290,8 @@ static bool
 icon_from_png(struct icon *icon, pixman_image_t *png)
 {
     icon->type = ICON_PNG;
-    icon->png = png;
+    icon->png.pix = png;
+    icon->png.has_scale_transform = false;
     return true;
 }
 #endif
