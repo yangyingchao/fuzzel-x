@@ -277,14 +277,6 @@ icon_null(struct icon *icon)
     return true;
 }
 
-static bool
-icon_from_surface(struct icon *icon, cairo_surface_t *surf)
-{
-    icon->type = ICON_SURFACE;
-    icon->surface = surf;
-    return true;
-}
-
 #if defined(FUZZEL_ENABLE_PNG)
 static bool
 icon_from_png(struct icon *icon, pixman_image_t *png)
@@ -309,14 +301,25 @@ icon_from_svg(struct icon *icon, RsvgHandle *svg)
 static void
 icon_reset(struct icon *icon)
 {
-    if (icon->type == ICON_SURFACE) {
-        cairo_surface_destroy(icon->surface);
-        icon->surface = NULL;
-    } else if (icon->type == ICON_SVG) {
+    switch (icon->type) {
+    case ICON_NONE:
+        break;
+
+    case ICON_PNG:
+#if defined(FUZZEL_ENABLE_PNG)
+        free(pixman_image_get_data(icon->png.pix));
+        pixman_image_unref(icon->png.pix);
+        icon->png.pix = NULL;
+        icon->png.has_scale_transform = false;
+#endif
+        break;
+
+    case ICON_SVG:
 #if defined(FUZZEL_ENABLE_SVG)
         g_object_unref(icon->svg);
         icon->svg = NULL;
 #endif
+        break;
     }
     icon->type = ICON_NONE;
 }
@@ -348,11 +351,6 @@ reload_icon(struct icon *icon, int icon_size, icon_theme_list_t themes)
             return icon_from_png(icon, png);
         }
 #endif
-
-        cairo_surface_t *surf = cairo_image_surface_create_from_png(name);
-        if (cairo_surface_status(surf) == CAIRO_STATUS_SUCCESS)
-            return icon_from_surface(icon, surf);
-
         return icon_null(icon);
     }
 
@@ -437,27 +435,7 @@ reload_icon(struct icon *icon, int icon_size, icon_theme_list_t themes)
                     return icon_from_png(icon, png);
                 }
 #endif
-
-                cairo_surface_t *surf = cairo_image_surface_create_from_png(full_path);
-                if (cairo_surface_status(surf) == CAIRO_STATUS_SUCCESS) {
-                    if (scalable)
-                        LOG_DBG("%s: %s: scalable", name, full_path);
-                    else if (i == 0)
-                        LOG_DBG("%s: %s: exact match", name, full_path);
-                    else if (i == 1)
-                        LOG_DBG("%s: %s: diff = %d", name, full_path, diff);
-                    else if (i == 2)
-                        LOG_DBG("%s: %s: range %d-%d",
-                                name, full_path, min_size, max_size);
-                    else
-                        LOG_DBG("%s: %s: nothing else matched", name, full_path);
-
-                    free(full_path);
-                    return icon_from_surface(icon, surf);
-                }
-
                 free(full_path);
-                cairo_surface_destroy(surf);
             }
         }
     }
@@ -480,6 +458,7 @@ reload_icon(struct icon *icon, int icon_size, icon_theme_list_t themes)
 
 
 #if defined(FUZZEL_ENABLE_PNG)
+        /* No SVG, look for PNG instead */
         sprintf(path, "%s/pixmaps/%s.png", it->item, name);
         pixman_image_t *png = png_load(path);
         if (png != NULL) {
@@ -487,15 +466,6 @@ reload_icon(struct icon *icon, int icon_size, icon_theme_list_t themes)
             return icon_from_png(icon, png);
         }
 #endif
-
-        /* No SVG, look for PNG instead */
-        sprintf(path, "%s/pixmaps/%s.png", it->item, name);
-        cairo_surface_t *surf = cairo_image_surface_create_from_png(path);
-        if (cairo_surface_status(surf) == CAIRO_STATUS_SUCCESS) {
-            xdg_data_dirs_destroy(dirs);
-            return icon_from_surface(icon, surf);
-        }
-        cairo_surface_destroy(surf);
     }
     xdg_data_dirs_destroy(dirs);
 

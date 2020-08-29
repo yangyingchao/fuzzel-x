@@ -231,8 +231,6 @@ applications_destroy(struct application_list *apps)
         free(app->icon.name);
         switch (app->icon.type) {
         case ICON_NONE:
-        case ICON_SURFACE:
-            cairo_surface_destroy(app->icon.surface);
             break;
 
         case ICON_PNG:

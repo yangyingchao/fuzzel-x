@@ -10,13 +10,12 @@
 
 #include "prompt.h"
 
-enum icon_type { ICON_NONE, ICON_SURFACE, ICON_PNG, ICON_SVG };
+enum icon_type { ICON_NONE, ICON_PNG, ICON_SVG };
 
 struct icon {
     char *name;
     enum icon_type type;
     union {
-        cairo_surface_t *surface;
 #if defined(FUZZEL_ENABLE_PNG)
         struct {
             pixman_image_t *pix;

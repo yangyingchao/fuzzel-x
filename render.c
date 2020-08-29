@@ -290,36 +290,6 @@ render_match_list(const struct render *render, struct buffer *buf,
         case ICON_NONE:
             break;
 
-        case ICON_SURFACE: {
-            cairo_surface_t *surf = icon->surface;
-            double width = cairo_image_surface_get_width(surf);
-            double height = cairo_image_surface_get_height(surf);
-            double scale = 1.0;
-
-            if (height > row_height) {
-                scale = font->height / height;
-                LOG_DBG("%s: scaling: %f (row-height: %f, size=%fx%f)",
-                        match->application->title, scale, row_height, width, height);
-
-                width *= scale;
-                height *= scale;
-            }
-
-            cairo_save(buf->cairo);
-            cairo_set_operator(buf->cairo, CAIRO_OPERATOR_OVER);
-
-            /* Translate + scale. Note: order matters! */
-            cairo_translate(
-                buf->cairo, cur_x,
-                first_row + i * row_height + (row_height - height) / 2);
-            cairo_scale(buf->cairo, scale, scale);
-
-            cairo_set_source_surface(buf->cairo, surf, 0, 0);
-            cairo_paint(buf->cairo);
-            cairo_restore(buf->cairo);
-            break;
-        }
-
         case ICON_PNG: {
 #if defined(FUZZEL_ENABLE_PNG)
             cairo_surface_flush(buf->cairo_surface);
