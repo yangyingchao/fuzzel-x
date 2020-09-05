@@ -26,6 +26,31 @@ _Fuzzel, with transparency, on top of a browser window showing a diff of a fuzze
 - No themes (but you **can** configure font and colors)
 
 
+## Requirements
+
+### Runtime
+
+* pixman
+* wayland (_client_ and _cursor_ libraries)
+* xkbcommon
+* cairo
+* libpng (optional)
+* librsvg (optional)
+* [fcft](https://codeberg.org/dnkl/fcft) [^1]
+
+[^1]: can also be built as subprojects, in which case they are
+    statically linked.
+
+
+### Building
+
+* meson
+* ninja
+* wayland protocols
+* scdoc
+* [tllist](https://codeberg.org/dnkl/tllist) [^1]
+
+
 ## Installation
 
 If you have not installed [tllist](https://codeberg.org/dnkl/tllist)
