@@ -10,13 +10,18 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#ifdef FUZZEL_ENABLE_SVG
-#include <librsvg/rsvg.h>
+#if defined(FUZZEL_ENABLE_PNG)
+ #include "png-fuzzel.h"
+#endif
+
+#if defined(FUZZEL_ENABLE_SVG)
+ #include <librsvg/rsvg.h>
 #endif
 
 #include <tllist.h>
 
 #define LOG_MODULE "icon"
+#define LOG_ENABLE_DBG 0
 #include "log.h"
 #include "xdg.h"
 
@@ -272,15 +277,18 @@ icon_null(struct icon *icon)
     return true;
 }
 
+#if defined(FUZZEL_ENABLE_PNG)
 static bool
-icon_from_surface(struct icon *icon, cairo_surface_t *surf)
+icon_from_png(struct icon *icon, pixman_image_t *png)
 {
-    icon->type = ICON_SURFACE;
-    icon->surface = surf;
+    icon->type = ICON_PNG;
+    icon->png.pix = png;
+    icon->png.has_scale_transform = false;
     return true;
 }
+#endif
 
-#ifdef FUZZEL_ENABLE_SVG
+#if defined(FUZZEL_ENABLE_SVG)
 static bool
 icon_from_svg(struct icon *icon, RsvgHandle *svg)
 {
@@ -293,14 +301,25 @@ icon_from_svg(struct icon *icon, RsvgHandle *svg)
 static void
 icon_reset(struct icon *icon)
 {
-    if (icon->type == ICON_SURFACE) {
-        cairo_surface_destroy(icon->surface);
-        icon->surface = NULL;
-    } else if (icon->type == ICON_SVG) {
-#ifdef FUZZEL_ENABLE_SVG
+    switch (icon->type) {
+    case ICON_NONE:
+        break;
+
+    case ICON_PNG:
+#if defined(FUZZEL_ENABLE_PNG)
+        free(pixman_image_get_data(icon->png.pix));
+        pixman_image_unref(icon->png.pix);
+        icon->png.pix = NULL;
+        icon->png.has_scale_transform = false;
+#endif
+        break;
+
+    case ICON_SVG:
+#if defined(FUZZEL_ENABLE_SVG)
         g_object_unref(icon->svg);
         icon->svg = NULL;
 #endif
+        break;
     }
     icon->type = ICON_NONE;
 }
@@ -318,10 +337,20 @@ reload_icon(struct icon *icon, int icon_size, icon_theme_list_t themes)
         return icon_null(icon);
 
     if (name[0] == '/') {
-        cairo_surface_t *surf = cairo_image_surface_create_from_png(name);
-        if (cairo_surface_status(surf) == CAIRO_STATUS_SUCCESS)
-            return icon_from_surface(icon, surf);
-
+#if defined(FUZZEL_ENABLE_SVG)
+        RsvgHandle *svg = rsvg_handle_new_from_file(name, NULL);
+        if (svg != NULL) {
+            LOG_DBG("%s: absolute path SVG", name);
+            return icon_from_svg(icon, svg);
+        }
+#endif
+#if defined(FUZZEL_ENABLE_PNG)
+        pixman_image_t *png = png_load(name);
+        if (png != NULL) {
+            LOG_DBG("%s: absolute path PNG", name);
+            return icon_from_png(icon, png);
+        }
+#endif
         return icon_null(icon);
     }
 
@@ -378,7 +407,7 @@ reload_icon(struct icon *icon, int icon_size, icon_theme_list_t themes)
                     /* Use anyone available */
                 }
 
-#ifdef FUZZEL_ENABLE_SVG
+#if defined(FUZZEL_ENABLE_SVG)
                 RsvgHandle *svg = rsvg_handle_new_from_file(full_path, NULL);
                 if (svg != NULL) {
                     LOG_DBG("%s: %s scalable", name, full_path);
@@ -386,8 +415,10 @@ reload_icon(struct icon *icon, int icon_size, icon_theme_list_t themes)
                     return icon_from_svg(icon, svg);
                 }
 #endif
-                cairo_surface_t *surf = cairo_image_surface_create_from_png(full_path);
-                if (cairo_surface_status(surf) == CAIRO_STATUS_SUCCESS) {
+
+#if defined(FUZZEL_ENABLE_PNG)
+                pixman_image_t *png = png_load(full_path);
+                if (png != NULL) {
                     if (scalable)
                         LOG_DBG("%s: %s: scalable", name, full_path);
                     else if (i == 0)
@@ -401,11 +432,10 @@ reload_icon(struct icon *icon, int icon_size, icon_theme_list_t themes)
                         LOG_DBG("%s: %s: nothing else matched", name, full_path);
 
                     free(full_path);
-                    return icon_from_surface(icon, surf);
+                    return icon_from_png(icon, png);
                 }
-
+#endif
                 free(full_path);
-                cairo_surface_destroy(surf);
             }
         }
     }
@@ -416,7 +446,7 @@ reload_icon(struct icon *icon, int icon_size, icon_theme_list_t themes)
                   strlen("pixmaps") + 1 +
                   strlen(name) + strlen(".svg") + 1];
 
-#ifdef FUZZEL_ENABLE_SVG
+#if defined(FUZZEL_ENABLE_SVG)
         /* Try SVG variant first */
         sprintf(path, "%s/pixmaps/%s.svg", it->item, name);
         RsvgHandle *svg = rsvg_handle_new_from_file(path, NULL);
@@ -426,14 +456,16 @@ reload_icon(struct icon *icon, int icon_size, icon_theme_list_t themes)
         }
 #endif
 
+
+#if defined(FUZZEL_ENABLE_PNG)
         /* No SVG, look for PNG instead */
         sprintf(path, "%s/pixmaps/%s.png", it->item, name);
-        cairo_surface_t *surf = cairo_image_surface_create_from_png(path);
-        if (cairo_surface_status(surf) == CAIRO_STATUS_SUCCESS) {
+        pixman_image_t *png = png_load(path);
+        if (png != NULL) {
             xdg_data_dirs_destroy(dirs);
-            return icon_from_surface(icon, surf);
+            return icon_from_png(icon, png);
         }
-        cairo_surface_destroy(surf);
+#endif
     }
     xdg_data_dirs_destroy(dirs);
 

@@ -235,7 +235,7 @@ render_match_list(const struct render *render, struct buffer *buf,
              * representation of the icon */
 
             if (match->application->icon.type == ICON_SVG) {
-#ifdef FUZZEL_ENABLE_SVG
+#if defined(FUZZEL_ENABLE_SVG)
                 RsvgHandle *svg = match->application->icon.svg;
                 RsvgDimensionData dim;
                 rsvg_handle_get_dimensions(svg, &dim);
@@ -268,8 +268,9 @@ render_match_list(const struct render *render, struct buffer *buf,
                         rsvg_handle_render_cairo(svg, buf->cairo);
                     cairo_restore(buf->cairo);
                 }
-#endif
+#endif /* FUZZEL_ENABLE_SVG */
             }
+
             /* Hightlight selected entry */
             const struct rgba *sc = &render->options.selection_color;
             cairo_set_source_rgba(buf->cairo, sc->r, sc->g, sc->b, sc->a);
@@ -283,47 +284,74 @@ render_match_list(const struct render *render, struct buffer *buf,
         }
 
         double cur_x = border_size + x_margin;
+        struct icon *icon = &match->application->icon;
 
-        switch (match->application->icon.type) {
+        switch (icon->type) {
         case ICON_NONE:
             break;
 
-        case ICON_SURFACE: {
-            cairo_surface_t *surf = match->application->icon.surface;
-            double width = cairo_image_surface_get_width(surf);
-            double height = cairo_image_surface_get_height(surf);
-            double scale = 1.0;
+        case ICON_PNG: {
+#if defined(FUZZEL_ENABLE_PNG)
+            cairo_surface_flush(buf->cairo_surface);
+
+            pixman_image_t *png = icon->png.pix;
+            int height = pixman_image_get_height(png);
+            int width = pixman_image_get_width(png);
 
             if (height > row_height) {
-                scale = font->height / height;
-                LOG_DBG("%s: scaling: %f (row-height: %f, size=%fx%f)",
-                        match->application->title, scale, row_height, width, height);
+                double scale = (double)font->height / height;
 
+                if (!icon->png.has_scale_transform) {
+                    pixman_f_transform_t _scale_transform;
+                    pixman_f_transform_init_scale(
+                        &_scale_transform, 1. / scale, 1. / scale);
+
+                    pixman_transform_t scale_transform;
+                    pixman_transform_from_pixman_f_transform(
+                        &scale_transform, &_scale_transform);
+                    pixman_image_set_transform(png, &scale_transform);
+
+                    int param_count = 0;
+                    pixman_kernel_t kernel = PIXMAN_KERNEL_LANCZOS3;
+                    pixman_fixed_t *params = pixman_filter_create_separable_convolution(
+                        &param_count,
+                        pixman_double_to_fixed(1. / scale),
+                        pixman_double_to_fixed(1. / scale),
+                        kernel, kernel,
+                        kernel, kernel,
+                        pixman_int_to_fixed(1),
+                        pixman_int_to_fixed(1));
+
+                    if (params != NULL || param_count == 0) {
+                        pixman_image_set_filter(
+                            png, PIXMAN_FILTER_SEPARABLE_CONVOLUTION,
+                            params, param_count);
+                    }
+
+                    free(params);
+                    icon->png.has_scale_transform = true;
+                }
+
+                assert(icon->png.has_scale_transform);
                 width *= scale;
                 height *= scale;
             }
 
-            cairo_save(buf->cairo);
-            cairo_set_operator(buf->cairo, CAIRO_OPERATOR_OVER);
+            pixman_image_composite32(
+                PIXMAN_OP_OVER, png, NULL, buf->pix,
+                0, 0, 0, 0,
+                cur_x, first_row + i * row_height + (row_height - height) / 2,
+                width, height);
 
-            /* Translate + scale. Note: order matters! */
-            cairo_translate(
-                buf->cairo, cur_x,
-                first_row + i * row_height + (row_height - height) / 2);
-            cairo_scale(buf->cairo, scale, scale);
-
-            cairo_set_source_surface(buf->cairo, surf, 0, 0);
-            cairo_paint(buf->cairo);
-            cairo_restore(buf->cairo);
+            cairo_surface_mark_dirty(buf->cairo_surface);
+#endif /* FUZZEL_ENABLE_PNG */
             break;
         }
 
         case ICON_SVG: {
-#ifdef FUZZEL_ENABLE_SVG
-            RsvgHandle *svg = match->application->icon.svg;
-
+#if defined(FUZZEL_ENABLE_SVG)
             RsvgDimensionData dim;
-            rsvg_handle_get_dimensions(svg, &dim);
+            rsvg_handle_get_dimensions(icon->svg, &dim);
 
             double height = font->height;
             double scale = height / dim.height;
@@ -338,10 +366,10 @@ render_match_list(const struct render *render, struct buffer *buf,
             cairo_scale(buf->cairo, scale, scale);
 
             if (cairo_status(buf->cairo) == CAIRO_STATUS_SUCCESS)
-                rsvg_handle_render_cairo(svg, buf->cairo);
+                rsvg_handle_render_cairo(icon->svg, buf->cairo);
             cairo_restore(buf->cairo);
+#endif /* FUZZEL_ENABLE_SVG */
             break;
-#endif
         }
         }
 
