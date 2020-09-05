@@ -73,8 +73,13 @@ mkdir -p bld/release && cd bld/release
 Second, configure the build (if you intend to install it globally, you
 might also want `--prefix=/usr`):
 ```sh
-meson --buildtype=release ../..
+meson --buildtype=release -Denable-png=disabled|enabled|auto -Denable-svg=disabled|enabled|auto ../..
 ```
+
+`-Denable-{png,svg}` can be used to force-enable or force-disable png
+and/or svg support. The default is `auto`, which means enable if all
+required libraries are available. PNGs require _libpng_, and SVGs
+require _cairo_ and _librsvg_.
 
 Three, build it:
 ```sh
