@@ -232,17 +232,17 @@ seat_destroy(struct seat *seat)
     if (seat->kbd.repeat.fd > 0)
         fdm_del(seat->wayl->fdm, seat->kbd.repeat.fd);
     if (seat->wl_keyboard != NULL)
-        wl_keyboard_destroy(seat->wl_keyboard);
+        wl_keyboard_release(seat->wl_keyboard);
 
     if (seat->pointer.theme != NULL)
         wl_cursor_theme_destroy(seat->pointer.theme);
     if (seat->pointer.surface != NULL)
         wl_surface_destroy(seat->pointer.surface);
     if (seat->wl_pointer != NULL)
-        wl_pointer_destroy(seat->wl_pointer);
+        wl_pointer_release(seat->wl_pointer);
 
     if (seat->wl_seat != NULL)
-        wl_seat_destroy(seat->wl_seat);
+        wl_seat_release(seat->wl_seat);
 
     free(seat->name);
 }
@@ -1169,7 +1169,7 @@ monitor_destroy(struct monitor *mon)
     if (mon->xdg != NULL)
         zxdg_output_v1_destroy(mon->xdg);
     if (mon->output != NULL)
-        wl_output_destroy(mon->output);
+        wl_output_release(mon->output);
     free(mon->name);
     free(mon->make);
     free(mon->model);
@@ -1543,8 +1543,10 @@ wayl_destroy(struct wayland *wayl)
         wl_shm_destroy(wayl->shm);
     if (wayl->registry != NULL)
         wl_registry_destroy(wayl->registry);
-    if (wayl->display != NULL)
+    if (wayl->display != NULL) {
+        wayl_flush(wayl);
         wl_display_disconnect(wayl->display);
+    }
 
     free(wayl->output_name);
     free(wayl->font_name);
