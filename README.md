@@ -73,13 +73,22 @@ mkdir -p bld/release && cd bld/release
 Second, configure the build (if you intend to install it globally, you
 might also want `--prefix=/usr`):
 ```sh
-meson --buildtype=release -Denable-png=disabled|enabled|auto -Denable-svg=disabled|enabled|auto ../..
+meson --buildtype=release \
+    -Denable-cairo=disabled|enabled|auto \
+    -Denable-png=disabled|enabled|auto \
+    -Denable-svg=disabled|enabled|auto \
+    ../..
 ```
 
 `-Denable-{png,svg}` can be used to force-enable or force-disable png
 and/or svg support. The default is `auto`, which means enable if all
 required libraries are available. PNGs require _libpng_, and SVGs
 require _cairo_ and _librsvg_.
+
+`-Denable-cairo` can be used to force-enable or force-disable cairo
+support. When disabled, fuzzel will not be able to draw rounded
+corners, nor will it support SVGs (regardless of what `-Denable-svg`
+is set to).
 
 Three, build it:
 ```sh
