@@ -53,6 +53,7 @@ endif
 pixman = dependency('pixman-1')
 cairo = dependency('cairo')
 cairo_ft = dependency('cairo-ft')
+libepoll = dependency('epoll-shim', required: false)
 librsvg = dependency('librsvg-2.0')
 wayland_protocols = dependency('wayland-protocols')
 wayland_client = dependency('wayland-client')
@@ -114,6 +115,7 @@ executable(
   dependencies: [pixman,
                  cairo,
                  cairo_ft,
+                 libepoll,
                  librsvg,
                  wayland_client,
                  wayland_cursor,
