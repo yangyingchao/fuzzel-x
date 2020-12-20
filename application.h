@@ -3,9 +3,8 @@
 #include <stdbool.h>
 #include <pixman.h>
 
-#include <cairo.h>
-#ifdef FUZZEL_ENABLE_SVG
-#include <librsvg/rsvg.h>
+#if defined(FUZZEL_ENABLE_SVG)
+ #include <librsvg/rsvg.h>
 #endif
 
 #include "prompt.h"

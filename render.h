@@ -1,7 +1,6 @@
 #pragma once
 
 #include <pixman.h>
-#include <cairo.h>
 
 #include <fcft/fcft.h>
 

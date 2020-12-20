@@ -42,12 +42,21 @@ rgba2pixman(struct rgba rgba)
 void
 render_background(const struct render *render, struct buffer *buf)
 {
-    if (render->options.border_radius == 0) {
+    bool use_pixman =
+#if defined(FUZZEL_ENABLE_CAIRO)
+        render->options.border_radius == 0
+#else
+        true
+#endif
+        ;
+
+    if (use_pixman) {
         pixman_color_t bg = rgba2pixman(render->options.background_color);
         pixman_image_fill_rectangles(
             PIXMAN_OP_SRC, buf->pix, &bg, 1, &(pixman_rectangle16_t){0, 0, buf->width, buf->height}
             );
     } else {
+#if defined(FUZZEL_ENABLE_CAIRO)
         /*
          * Lines in cairo are *between* pixels.
          *
@@ -86,6 +95,9 @@ render_background(const struct render *render, struct buffer *buf)
         const struct rgba *bg = &render->options.background_color;
         cairo_set_source_rgba(buf->cairo, bg->r, bg->g, bg->b, bg->a);
         cairo_fill(buf->cairo);
+#else
+        assert(false);
+#endif
     }
 }
 
@@ -285,7 +297,9 @@ render_match_list(const struct render *render, struct buffer *buf,
 
         case ICON_PNG: {
 #if defined(FUZZEL_ENABLE_PNG)
+ #if defined(FUZZEL_ENABLE_CAIRO)
             cairo_surface_flush(buf->cairo_surface);
+ #endif
 
             pixman_image_t *png = icon->png.pix;
             int height = pixman_image_get_height(png);
@@ -336,7 +350,9 @@ render_match_list(const struct render *render, struct buffer *buf,
                 cur_x, first_row + i * row_height + (row_height - height) / 2,
                 width, height);
 
+ #if defined(FUZZEL_ENABLE_CAIRO)
             cairo_surface_mark_dirty(buf->cairo_surface);
+ #endif
 #endif /* FUZZEL_ENABLE_PNG */
             break;
         }

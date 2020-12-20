@@ -1,2 +1,3 @@
-option('enable-png', type: 'feature')
-option('enable-svg', type: 'feature')
+option('enable-cairo', type: 'feature', description: 'use cairo; required for rounded corners and SVG icons')
+option('enable-png', type: 'feature', description: 'enables support for PNG icons')
+option('enable-svg', type: 'feature', description: 'enables support for SVG icons (note: also requires cairo)')

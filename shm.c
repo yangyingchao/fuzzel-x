@@ -11,6 +11,7 @@
 
 #define LOG_MODULE "shm"
 #include "log.h"
+#include "stride.h"
 
 static tll(struct buffer) buffers;
 
@@ -60,8 +61,11 @@ shm_get_buffer(struct wl_shm *shm, int width, int height)
     struct wl_buffer *buf = NULL;
 
     pixman_image_t *pix = NULL;
+
+#if defined(FUZZEL_ENABLE_CAIRO)
     cairo_surface_t *cairo_surface = NULL;
     cairo_t *cairo = NULL;
+#endif
 
     /* Backing memory for SHM */
     pool_fd = memfd_create("fuzzel-wayland-shm-buffer-pool", MFD_CLOEXEC);
@@ -71,7 +75,7 @@ shm_get_buffer(struct wl_shm *shm, int width, int height)
     }
 
     /* Total size */
-    const uint32_t stride = cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, width);
+    const uint32_t stride = stride_for_format_and_width(PIXMAN_a8r8g8b8, width);
     size = stride * height;
     if (ftruncate(pool_fd, size) == -1) {
         LOG_ERRNO("failed to truncate SHM pool");
@@ -108,6 +112,7 @@ shm_get_buffer(struct wl_shm *shm, int width, int height)
         goto err;
     }
 
+#if defined(FUZZEL_ENABLE_CAIRO)
     /* Create a cairo surface around the mmapped memory */
     cairo_surface = cairo_image_surface_create_for_data(
         mmapped, CAIRO_FORMAT_ARGB32, width, height, stride);
@@ -123,6 +128,7 @@ shm_get_buffer(struct wl_shm *shm, int width, int height)
                 cairo_status_to_string(cairo_status(cairo)));
         goto err;
     }
+#endif
 
     /* Push to list of available buffers, but marked as 'busy' */
     tll_push_back(
@@ -136,9 +142,12 @@ shm_get_buffer(struct wl_shm *shm, int width, int height)
             .mmapped = mmapped,
             .wl_buf = buf,
             .pix = pix,
+
+#if defined(FUZZEL_ENABLE_CAIRO)
             .cairo_surface = cairo_surface,
-            .cairo = cairo}
-            )
+            .cairo = cairo
+#endif
+        })
         );
 
     struct buffer *ret = &tll_back(buffers);
@@ -146,10 +155,12 @@ shm_get_buffer(struct wl_shm *shm, int width, int height)
     return ret;
 
 err:
+#if defined(FUZZEL_ENABLE_CAIRO)
     if (cairo != NULL)
         cairo_destroy(cairo);
     if (cairo_surface != NULL)
         cairo_surface_destroy(cairo_surface);
+#endif
     if (pix != NULL)
         pixman_image_unref(pix);
     if (buf != NULL)
@@ -170,8 +181,11 @@ shm_fini(void)
     tll_foreach(buffers, it) {
         struct buffer *buf = &it->item;
 
+#if defined(FUZZEL_ENABLE_CAIRO)
         cairo_destroy(buf->cairo);
         cairo_surface_destroy(buf->cairo_surface);
+#endif
+
         pixman_image_unref(buf->pix);
         wl_buffer_destroy(buf->wl_buf);
         munmap(buf->mmapped, buf->size);
