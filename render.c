@@ -23,57 +23,6 @@ struct render {
     unsigned row_height;
 };
 
-void
-render_background(const struct render *render, struct buffer *buf)
-{
-    /*
-     * Lines in cairo are *between* pixels.
-     *
-     * To get a sharp 1px line, we need to draw it with
-     * line-width=2.
-     *
-     * Thus, we need to draw the path offset:ed with half that
-     * (=actual border width).
-     */
-    const double b = render->border_size;
-    const double w = max(buf->width - 2 * b, 0.);
-    const double h = max(buf->height - 2 * b, 0.);
-
-    if (w == 0. || h == 0.)
-        return;
-
-    if (render->options.border_radius == 0) {
-        cairo_rectangle(buf->cairo, b, b, w, h);
-    } else {
-        const double from_degree = M_PI / 180;
-        const double radius = render->options.border_radius;
-
-
-        /* Path describing an arc:ed rectangle */
-        cairo_arc(buf->cairo, b + w - radius, b + h - radius, radius,
-                  0.0 * from_degree, 90.0 * from_degree);
-        cairo_arc(buf->cairo, b + radius, b + h - radius, radius,
-                  90.0 * from_degree, 180.0 * from_degree);
-        cairo_arc(buf->cairo, b + radius, b + radius, radius,
-                  180.0 * from_degree, 270.0 * from_degree);
-        cairo_arc(buf->cairo, b + w - radius, b + radius, radius,
-                  270.0 * from_degree, 360.0 * from_degree);
-        cairo_close_path(buf->cairo);
-    }
-
-    /* Border */
-    const struct rgba *bc = &render->options.border_color;
-    cairo_set_operator(buf->cairo, CAIRO_OPERATOR_SOURCE);
-    cairo_set_line_width(buf->cairo, 2 * b);
-    cairo_set_source_rgba(buf->cairo, bc->r, bc->g, bc->b, bc->a);
-    cairo_stroke_preserve(buf->cairo);
-
-    /* Background */
-    const struct rgba *bg = &render->options.background_color;
-    cairo_set_source_rgba(buf->cairo, bg->r, bg->g, bg->b, bg->a);
-    cairo_fill(buf->cairo);
-}
-
 static pixman_color_t
 rgba2pixman(struct rgba rgba)
 {
@@ -88,6 +37,56 @@ rgba2pixman(struct rgba rgba)
         .blue = b * a / 0xffff,
         .alpha = a,
     };
+}
+
+void
+render_background(const struct render *render, struct buffer *buf)
+{
+    if (render->options.border_radius == 0) {
+        pixman_color_t bg = rgba2pixman(render->options.background_color);
+        pixman_image_fill_rectangles(
+            PIXMAN_OP_SRC, buf->pix, &bg, 1, &(pixman_rectangle16_t){0, 0, buf->width, buf->height}
+            );
+    } else {
+        /*
+         * Lines in cairo are *between* pixels.
+         *
+         * To get a sharp 1px line, we need to draw it with
+         * line-width=2.
+         *
+         * Thus, we need to draw the path offset:ed with half that
+         * (=actual border width).
+         */
+        const double b = render->border_size;
+        const double w = max(buf->width - 2 * b, 0.);
+        const double h = max(buf->height - 2 * b, 0.);
+
+        const double from_degree = M_PI / 180;
+        const double radius = render->options.border_radius;
+
+        /* Path describing an arc:ed rectangle */
+        cairo_arc(buf->cairo, b + w - radius, b + h - radius, radius,
+                  0.0 * from_degree, 90.0 * from_degree);
+        cairo_arc(buf->cairo, b + radius, b + h - radius, radius,
+                  90.0 * from_degree, 180.0 * from_degree);
+        cairo_arc(buf->cairo, b + radius, b + radius, radius,
+                  180.0 * from_degree, 270.0 * from_degree);
+        cairo_arc(buf->cairo, b + w - radius, b + radius, radius,
+                  270.0 * from_degree, 360.0 * from_degree);
+        cairo_close_path(buf->cairo);
+
+        /* Border */
+        const struct rgba *bc = &render->options.border_color;
+        cairo_set_operator(buf->cairo, CAIRO_OPERATOR_SOURCE);
+        cairo_set_line_width(buf->cairo, 2 * b);
+        cairo_set_source_rgba(buf->cairo, bc->r, bc->g, bc->b, bc->a);
+        cairo_stroke_preserve(buf->cairo);
+
+        /* Background */
+        const struct rgba *bg = &render->options.background_color;
+        cairo_set_source_rgba(buf->cairo, bg->r, bg->g, bg->b, bg->a);
+        cairo_fill(buf->cairo);
+    }
 }
 
 static void
