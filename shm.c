@@ -5,7 +5,7 @@
 
 #include <sys/types.h>
 #include <sys/mman.h>
-#include <linux/memfd.h>
+#include <fcntl.h>
 
 #include <tllist.h>
 
@@ -64,7 +64,16 @@ shm_get_buffer(struct wl_shm *shm, int width, int height)
     cairo_t *cairo = NULL;
 
     /* Backing memory for SHM */
+#if defined(MEMFD_CREATE)
     pool_fd = memfd_create("fuzzel-wayland-shm-buffer-pool", MFD_CLOEXEC);
+#elif defined(__FreeBSD__)
+    // memfd_create on FreeBSD 13 is SHM_ANON without sealing support
+    pool_fd = shm_open(SHM_ANON, O_RDWR | O_CLOEXEC, 0600);
+#else
+    char name[] = "/tmp/fuzzel-wayland-shm-buffer-pool-XXXXXX";
+    pool_fd = mkostemp(name, O_CLOEXEC);
+    unlink(name);
+#endif
     if (pool_fd == -1) {
         LOG_ERRNO("failed to create SHM backing memory file");
         goto err;
