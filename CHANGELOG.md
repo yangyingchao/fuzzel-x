@@ -24,6 +24,10 @@
 
 
 ### Fixed
+
+* Wrong colors when not fully opaque.
+
+
 ### Security
 ### Contributors
 
