@@ -14,9 +14,9 @@
 * meson option `-Denable-png=[auto|enabled|disabled]`. When disabled,
   _libpng_ is no longer a dependency and PNG icons are
   disabled. Default: `auto`.
-* meson option `-Denable-cairo=auto|enabled|disabled`. When disabled,
-  fuzzel will not be able to draw rounded corners, nor support SVGs
-  (regardless of what `-Denable-svg` is set to)
+* meson option `-Denable-cairo=[auto|enabled|disabled]`. When
+  disabled, fuzzel will not be able to draw rounded corners, nor
+  support SVGs (regardless of what `-Denable-svg` is set to)
   (https://codeberg.org/dnkl/fuzzel/issues/10).
 
 
