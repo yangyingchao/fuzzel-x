@@ -265,16 +265,15 @@ render_match_list(const struct render *render, struct buffer *buf,
 #endif /* FUZZEL_ENABLE_SVG */
             }
 
-            /* Hightlight selected entry */
-            const struct rgba *sc = &render->options.selection_color;
-            cairo_set_source_rgba(buf->cairo, sc->r, sc->g, sc->b, sc->a);
-            cairo_set_operator(buf->cairo, CAIRO_OPERATOR_SOURCE);
-            cairo_rectangle(buf->cairo,
-                            x_margin - sel_margin,
-                            first_row + i * row_height,
-                            buf->width - 2 * (x_margin - sel_margin),
-                            row_height);
-            cairo_fill(buf->cairo);
+            pixman_color_t sc = rgba2pixman(render->options.selection_color);
+            pixman_image_fill_rectangles(
+                PIXMAN_OP_SRC, buf->pix, &sc, 1,
+                &(pixman_rectangle16_t){
+                    x_margin - sel_margin,
+                    first_row + i * row_height,
+                    buf->width - 2 * (x_margin - sel_margin),
+                    row_height}
+                );
         }
 
         double cur_x = border_size + x_margin;
