@@ -23,57 +23,6 @@ struct render {
     unsigned row_height;
 };
 
-void
-render_background(const struct render *render, struct buffer *buf)
-{
-    /*
-     * Lines in cairo are *between* pixels.
-     *
-     * To get a sharp 1px line, we need to draw it with
-     * line-width=2.
-     *
-     * Thus, we need to draw the path offset:ed with half that
-     * (=actual border width).
-     */
-    const double b = render->border_size;
-    const double w = max(buf->width - 2 * b, 0.);
-    const double h = max(buf->height - 2 * b, 0.);
-
-    if (w == 0. || h == 0.)
-        return;
-
-    if (render->options.border_radius == 0) {
-        cairo_rectangle(buf->cairo, b, b, w, h);
-    } else {
-        const double from_degree = M_PI / 180;
-        const double radius = render->options.border_radius;
-
-
-        /* Path describing an arc:ed rectangle */
-        cairo_arc(buf->cairo, b + w - radius, b + h - radius, radius,
-                  0.0 * from_degree, 90.0 * from_degree);
-        cairo_arc(buf->cairo, b + radius, b + h - radius, radius,
-                  90.0 * from_degree, 180.0 * from_degree);
-        cairo_arc(buf->cairo, b + radius, b + radius, radius,
-                  180.0 * from_degree, 270.0 * from_degree);
-        cairo_arc(buf->cairo, b + w - radius, b + radius, radius,
-                  270.0 * from_degree, 360.0 * from_degree);
-        cairo_close_path(buf->cairo);
-    }
-
-    /* Border */
-    const struct rgba *bc = &render->options.border_color;
-    cairo_set_operator(buf->cairo, CAIRO_OPERATOR_SOURCE);
-    cairo_set_line_width(buf->cairo, 2 * b);
-    cairo_set_source_rgba(buf->cairo, bc->r, bc->g, bc->b, bc->a);
-    cairo_stroke_preserve(buf->cairo);
-
-    /* Background */
-    const struct rgba *bg = &render->options.background_color;
-    cairo_set_source_rgba(buf->cairo, bg->r, bg->g, bg->b, bg->a);
-    cairo_fill(buf->cairo);
-}
-
 static pixman_color_t
 rgba2pixman(struct rgba rgba)
 {
@@ -88,6 +37,68 @@ rgba2pixman(struct rgba rgba)
         .blue = b * a / 0xffff,
         .alpha = a,
     };
+}
+
+void
+render_background(const struct render *render, struct buffer *buf)
+{
+    bool use_pixman =
+#if defined(FUZZEL_ENABLE_CAIRO)
+        render->options.border_radius == 0
+#else
+        true
+#endif
+        ;
+
+    if (use_pixman) {
+        pixman_color_t bg = rgba2pixman(render->options.background_color);
+        pixman_image_fill_rectangles(
+            PIXMAN_OP_SRC, buf->pix, &bg, 1, &(pixman_rectangle16_t){0, 0, buf->width, buf->height}
+            );
+    } else {
+#if defined(FUZZEL_ENABLE_CAIRO)
+        /*
+         * Lines in cairo are *between* pixels.
+         *
+         * To get a sharp 1px line, we need to draw it with
+         * line-width=2.
+         *
+         * Thus, we need to draw the path offset:ed with half that
+         * (=actual border width).
+         */
+        const double b = render->border_size;
+        const double w = max(buf->width - 2 * b, 0.);
+        const double h = max(buf->height - 2 * b, 0.);
+
+        const double from_degree = M_PI / 180;
+        const double radius = render->options.border_radius;
+
+        /* Path describing an arc:ed rectangle */
+        cairo_arc(buf->cairo, b + w - radius, b + h - radius, radius,
+                  0.0 * from_degree, 90.0 * from_degree);
+        cairo_arc(buf->cairo, b + radius, b + h - radius, radius,
+                  90.0 * from_degree, 180.0 * from_degree);
+        cairo_arc(buf->cairo, b + radius, b + radius, radius,
+                  180.0 * from_degree, 270.0 * from_degree);
+        cairo_arc(buf->cairo, b + w - radius, b + radius, radius,
+                  270.0 * from_degree, 360.0 * from_degree);
+        cairo_close_path(buf->cairo);
+
+        /* Border */
+        const struct rgba *bc = &render->options.border_color;
+        cairo_set_operator(buf->cairo, CAIRO_OPERATOR_SOURCE);
+        cairo_set_line_width(buf->cairo, 2 * b);
+        cairo_set_source_rgba(buf->cairo, bc->r, bc->g, bc->b, bc->a);
+        cairo_stroke_preserve(buf->cairo);
+
+        /* Background */
+        const struct rgba *bg = &render->options.background_color;
+        cairo_set_source_rgba(buf->cairo, bg->r, bg->g, bg->b, bg->a);
+        cairo_fill(buf->cairo);
+#else
+        assert(false);
+#endif
+    }
 }
 
 static void
@@ -266,16 +277,15 @@ render_match_list(const struct render *render, struct buffer *buf,
 #endif /* FUZZEL_ENABLE_SVG */
             }
 
-            /* Hightlight selected entry */
-            const struct rgba *sc = &render->options.selection_color;
-            cairo_set_source_rgba(buf->cairo, sc->r, sc->g, sc->b, sc->a);
-            cairo_set_operator(buf->cairo, CAIRO_OPERATOR_SOURCE);
-            cairo_rectangle(buf->cairo,
-                            x_margin - sel_margin,
-                            first_row + i * row_height,
-                            buf->width - 2 * (x_margin - sel_margin),
-                            row_height);
-            cairo_fill(buf->cairo);
+            pixman_color_t sc = rgba2pixman(render->options.selection_color);
+            pixman_image_fill_rectangles(
+                PIXMAN_OP_SRC, buf->pix, &sc, 1,
+                &(pixman_rectangle16_t){
+                    x_margin - sel_margin,
+                    first_row + i * row_height,
+                    buf->width - 2 * (x_margin - sel_margin),
+                    row_height}
+                );
         }
 
         double cur_x = border_size + x_margin;
@@ -287,7 +297,9 @@ render_match_list(const struct render *render, struct buffer *buf,
 
         case ICON_PNG: {
 #if defined(FUZZEL_ENABLE_PNG)
+ #if defined(FUZZEL_ENABLE_CAIRO)
             cairo_surface_flush(buf->cairo_surface);
+ #endif
 
             pixman_image_t *png = icon->png.pix;
             int height = pixman_image_get_height(png);
@@ -338,7 +350,9 @@ render_match_list(const struct render *render, struct buffer *buf,
                 cur_x, first_row + i * row_height + (row_height - height) / 2,
                 width, height);
 
+ #if defined(FUZZEL_ENABLE_CAIRO)
             cairo_surface_mark_dirty(buf->cairo_surface);
+ #endif
 #endif /* FUZZEL_ENABLE_PNG */
             break;
         }

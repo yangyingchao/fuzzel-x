@@ -48,20 +48,27 @@ endif
 
 math = cc.find_library('m')
 pixman = dependency('pixman-1')
-cairo = dependency('cairo')
-cairo_ft = dependency('cairo-ft')
+cairo = dependency('cairo', required: get_option('enable-cairo'))
 libpng = dependency('libpng', required: get_option('enable-png'))
-librsvg = dependency('librsvg-2.0', required: get_option('enable-svg'))
+if cairo.found()
+  librsvg = dependency('librsvg-2.0', required: get_option('enable-svg'))
+else
+  librsvg = declare_dependency()
+endif
 wayland_protocols = dependency('wayland-protocols')
 wayland_client = dependency('wayland-client')
 wayland_cursor = dependency('wayland-cursor')
 xkb = dependency('xkbcommon')
 
-if (libpng.found())
+if cairo.found()
+  add_project_arguments('-DFUZZEL_ENABLE_CAIRO=1', language: 'c')
+endif
+
+if libpng.found()
   add_project_arguments('-DFUZZEL_ENABLE_PNG=1', language: 'c')
 endif
 
-if librsvg.found()
+if librsvg.found() and cairo.found()
   add_project_arguments('-DFUZZEL_ENABLE_SVG=1', language: 'c')
 endif
 
@@ -121,7 +128,6 @@ executable(
   dependencies: [math,
                  pixman,
                  cairo,
-                 cairo_ft,
                  libpng,
                  librsvg,
                  wayland_client,
@@ -140,8 +146,9 @@ subdir('doc')
 
 summary(
   {
+    'Cairo': cairo.found(),
     'PNG icons': libpng.found(),
-    'SVG icons': librsvg.found(),
+    'SVG icons': librsvg.found() and cairo.found(),
   },
   bool_yn: true
 )

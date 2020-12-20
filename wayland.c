@@ -1301,7 +1301,9 @@ wayl_refresh(struct wayland *wayl)
     render_prompt(wayl->render, buf, wayl->prompt);
     render_match_list(wayl->render, buf, wayl->prompt, wayl->matches);
 
+#if defined(FUZZEL_ENABLE_CAIRO)
     cairo_surface_flush(buf->cairo_surface);
+#endif
 
     if (wayl->frame_is_scheduled) {
         /* There's already a frame being drawn - delay current frame

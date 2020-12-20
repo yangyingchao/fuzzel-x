@@ -437,7 +437,9 @@ out:
     applications_destroy(apps);
     icon_themes_destroy(themes);
 
+#if defined(FUZZEL_ENABLE_CAIRO)
     cairo_debug_reset_static_data();
+#endif
     log_deinit();
     return ret;
 }

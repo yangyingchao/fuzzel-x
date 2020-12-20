@@ -4,7 +4,9 @@
 #include <stddef.h>
 
 #include <pixman.h>
-#include <cairo.h>
+#if defined(FUZZEL_ENABLE_CAIRO)
+ #include <cairo.h>
+#endif
 #include <wayland-client.h>
 
 struct buffer {
@@ -19,8 +21,11 @@ struct buffer {
     struct wl_buffer *wl_buf;
 
     pixman_image_t *pix;
+
+#if defined(FUZZEL_ENABLE_CAIRO)
     cairo_surface_t *cairo_surface;
     cairo_t *cairo;
+#endif
 };
 
 struct buffer *shm_get_buffer(struct wl_shm *shm, int width, int height);
