@@ -53,6 +53,7 @@ endif
 math = cc.find_library('m')
 pixman = dependency('pixman-1')
 cairo = dependency('cairo', required: get_option('enable-cairo'))
+libepoll = dependency('epoll-shim', required: false)
 libpng = dependency('libpng', required: get_option('enable-png'))
 if cairo.found()
   librsvg = dependency('librsvg-2.0', required: get_option('enable-svg'))
@@ -132,6 +133,7 @@ executable(
   dependencies: [math,
                  pixman,
                  cairo,
+                 libepoll,
                  libpng,
                  librsvg,
                  wayland_client,
