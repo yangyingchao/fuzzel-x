@@ -3,6 +3,8 @@
 Fuzzel is a Wayland-native application launcher, similar to rofi's
 _drun_ mode.
 
+[![Packaging status](https://repology.org/badge/vertical-allrepos/fuzzel.svg)](https://repology.org/project/fuzzel/versions)
+
 
 ## Screenshot
 
