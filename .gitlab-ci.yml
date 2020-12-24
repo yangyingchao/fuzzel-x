@@ -19,7 +19,7 @@ debug-x64:
   stage: build
   script:
     - mkdir -p bld/debug
-    - meson --buildtype=debug fuzzel bld/debug
+    - meson --buildtype=debug . bld/debug
     - ninja -C bld/debug -k0
     - meson test -C bld/debug --print-errorlogs
   artifacts:
@@ -31,7 +31,7 @@ debug-x86:
   stage: build
   script:
     - mkdir -p bld/debug
-    - meson --buildtype=debug fuzzel bld/debug
+    - meson --buildtype=debug . bld/debug
     - ninja -C bld/debug -k0
     - meson test -C bld/debug --print-errorlogs
   artifacts:
@@ -43,7 +43,7 @@ release-x64:
   stage: build
   script:
     - mkdir -p bld/release
-    - meson --buildtype=release fuzzel bld/release
+    - meson --buildtype=release . bld/release
     - ninja -C bld/release -k0
     - meson test -C bld/release --print-errorlogs
   artifacts:
@@ -55,7 +55,7 @@ release-x86:
   stage: build
   script:
     - mkdir -p bld/release
-    - meson --buildtype=release fuzzel bld/release
+    - meson --buildtype=release . bld/release
     - ninja -C bld/release -k0
     - meson test -C bld/release --print-errorlogs
   artifacts:
@@ -67,7 +67,7 @@ no-cairo-no-icons-x64:
   stage: build
   script:
     - mkdir -p bld/no-cairo-no-icons
-    - meson --buildtype=release -Denable-cairo=disabled -Denable-png=disabled -Denable-svg=disabled fuzzel bld/no-cairo-no-icons
+    - meson --buildtype=release -Denable-cairo=disabled -Denable-png=disabled -Denable-svg=disabled . bld/no-cairo-no-icons
     - ninja -C bld/no-cairo-no-icons -k0
     - meson test -C bld/no-cairo-no-icons --print-errorlogs
   artifacts:
