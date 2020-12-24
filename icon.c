@@ -440,6 +440,7 @@ reload_icon(struct icon *icon, int icon_size, icon_theme_list_t themes)
         }
     }
 
+#if defined(FUZZEL_ENABLE_PNG) || defined(FUZZEL_ENABLE_SVG)
     xdg_data_dirs_t dirs = xdg_data_dirs();
     tll_foreach(dirs, it) {
         char path[strlen(it->item) + 1 +
@@ -468,6 +469,7 @@ reload_icon(struct icon *icon, int icon_size, icon_theme_list_t themes)
 #endif
     }
     xdg_data_dirs_destroy(dirs);
+#endif /* FUZZEL_ENABLE_PNG || FUZZEL_ENABLE_SVG */
 
     return icon_null(icon);
 }
