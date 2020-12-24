@@ -43,4 +43,5 @@ tasks:
       meson test -C bld/no-cairo-no-icons --print-errorlogs
   - codespell: |
       pip install codespell
+      cd fuzzel
       ~/.local/bin/codespell *.c *.h
