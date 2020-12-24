@@ -1,0 +1,46 @@
+image: alpine/edge
+packages:
+  - musl-dev
+  - linux-headers
+  - meson
+  - ninja
+  - gcc
+  - scdoc
+  - libxkbcommon-dev
+  - cairo-dev
+  - yaml-dev
+  - librsvg-dev
+  - wayland-dev
+  - wayland-protocols
+  - wlroots-dev
+  - python3
+  - py3-pip
+  - ttf-hack
+
+sources:
+  - https://codeberg.org/dnkl/fuzzel
+
+# triggers:
+#   - action: email
+#     condition: failure
+#     to: <comitter>
+
+tasks:
+  - debug: |
+      mkdir -p bld/debug
+      meson --buildtype=debug fuzzel bld/debug
+      ninja -C bld/debug -k0
+      meson test -C bld/debug --print-errorlogs
+  - release: |
+      mkdir -p bld/release
+      meson --buildtype=release fuzzel bld/release
+      ninja -C bld/release -k0
+      meson test -C bld/release --print-errorlogs
+  - no-cairo-no-icons: |
+      mkdir -p bld/no-cairo-no-icons
+      meson --buildtype=release -Denable-cairo=disabled -Denable-png=disabled -Denable-svg=disabled fuzzel bld/no-cairo-no-icons
+      ninja -C bld/no-cairo-no-icons -k0
+      meson test -C bld/no-cairo-no-icons --print-errorlogs
+  - codespell: |
+      pip install codespell
+      ~/.local/bin/codespell *.c *.h
