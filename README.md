@@ -55,18 +55,6 @@ _Fuzzel, with transparency, on top of a browser window showing a diff of a fuzze
 
 ## Installation
 
-If you have not installed [tllist](https://codeberg.org/dnkl/tllist)
-and [fcft](https://codeberg.org/dnkl/fcft) as system libraries, clone
-them into the `subprojects` directory:
-
-```sh
-mkdir -p subprojects
-pushd subprojects
-git clone https://codeberg.org/dnkl/tllist.git
-git clone https://codeberg.org/dnkl/fcft.git
-popd
-```
-
 To build, first, create a build directory, and switch to it:
 ```sh
 mkdir -p bld/release && cd bld/release
