@@ -11,7 +11,6 @@ before_script:
   - apk add libxkbcommon-dev cairo-dev yaml-dev librsvg-dev
   - apk add wayland-dev wayland-protocols wlroots-dev
   - apk add python3 py3-pip
-  - apk add ttf-hack
   - apk add git
 
 debug-x64:
@@ -21,10 +20,6 @@ debug-x64:
     - mkdir -p bld/debug
     - meson --buildtype=debug . bld/debug
     - ninja -C bld/debug -k0
-    - meson test -C bld/debug --print-errorlogs
-  artifacts:
-    reports:
-      junit: bld/debug/meson-logs/testlog.junit.xml
 
 debug-x86:
   image: i386/alpine:edge
@@ -33,10 +28,6 @@ debug-x86:
     - mkdir -p bld/debug
     - meson --buildtype=debug . bld/debug
     - ninja -C bld/debug -k0
-    - meson test -C bld/debug --print-errorlogs
-  artifacts:
-    reports:
-      junit: bld/debug/meson-logs/testlog.junit.xml
 
 release-x64:
   image: alpine:edge
@@ -45,10 +36,6 @@ release-x64:
     - mkdir -p bld/release
     - meson --buildtype=release . bld/release
     - ninja -C bld/release -k0
-    - meson test -C bld/release --print-errorlogs
-  artifacts:
-    reports:
-      junit: bld/release/meson-logs/testlog.junit.xml
 
 release-x86:
   image: i386/alpine:edge
@@ -57,10 +44,6 @@ release-x86:
     - mkdir -p bld/release
     - meson --buildtype=release . bld/release
     - ninja -C bld/release -k0
-    - meson test -C bld/release --print-errorlogs
-  artifacts:
-    reports:
-      junit: bld/release/meson-logs/testlog.junit.xml
 
 no-cairo-no-icons-x64:
   image: alpine:edge
@@ -69,10 +52,6 @@ no-cairo-no-icons-x64:
     - mkdir -p bld/no-cairo-no-icons
     - meson --buildtype=release -Denable-cairo=disabled -Denable-png=disabled -Denable-svg=disabled . bld/no-cairo-no-icons
     - ninja -C bld/no-cairo-no-icons -k0
-    - meson test -C bld/no-cairo-no-icons --print-errorlogs
-  artifacts:
-    reports:
-      junit: bld/no-cairo-no-icons/meson-logs/testlog.junit.xml
 
 codespell:
   image: alpine:edge
