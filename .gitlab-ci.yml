@@ -10,7 +10,6 @@ before_script:
   - apk add musl-dev linux-headers meson ninja gcc scdoc
   - apk add libxkbcommon-dev cairo-dev yaml-dev librsvg-dev
   - apk add wayland-dev wayland-protocols wlroots-dev
-  - apk add python3 py3-pip
   - apk add git
 
 debug-x64:
