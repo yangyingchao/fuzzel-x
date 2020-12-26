@@ -40,4 +40,4 @@ tasks:
   - codespell: |
       pip install codespell
       cd fuzzel
-      ~/.local/bin/codespell *.c *.h
+      ~/.local/bin/codespell *.c *.h doc/*.scd
