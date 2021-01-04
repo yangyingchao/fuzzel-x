@@ -7,6 +7,7 @@
 #include <fcft/fcft.h>
 
 #define LOG_MODULE "render"
+#define LOG_ENABLE_DBG 0
 #include "log.h"
 #include "wayland.h"
 
@@ -266,6 +267,9 @@ render_match_list(const struct render *render, struct buffer *buf,
                     cairo_save(buf->cairo);
                     cairo_set_operator(buf->cairo, CAIRO_OPERATOR_ATOP);
 
+                    cairo_rectangle(buf->cairo, img_x, img_y, height, width);
+                    cairo_clip(buf->cairo);
+
                     /* Translate + scale. Note: order matters! */
                     cairo_translate(buf->cairo, img_x, img_y);
                     cairo_scale(buf->cairo, scale, scale);
@@ -365,8 +369,16 @@ render_match_list(const struct render *render, struct buffer *buf,
             double height = font->height;
             double scale = height / dim.height;
 
+            double img_x = cur_x;
+            double img_y = first_row + i * row_height + (row_height - height) / 2;
+            double img_width = dim.width * scale;
+            double img_height = dim.height * scale;
+
             cairo_save(buf->cairo);
             cairo_set_operator(buf->cairo, CAIRO_OPERATOR_OVER);
+
+            cairo_rectangle(buf->cairo, img_x, img_y, img_width, img_height);
+            cairo_clip(buf->cairo);
 
             /* Translate + scale. Note: order matters! */
             cairo_translate(

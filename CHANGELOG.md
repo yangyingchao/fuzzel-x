@@ -30,6 +30,7 @@
 ### Fixed
 
 * Wrong colors when not fully opaque.
+* Rendering of SVGs containing multiple icons.
 
 
 ### Security
