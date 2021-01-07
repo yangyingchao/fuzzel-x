@@ -27,6 +27,9 @@ options:
 *-i*,*--icon-theme*=_NAME_
 	Icon theme to use. Example: _Adwaita_. Default: _hicolor_.
 
+*-I*,*--no-icons*
+	Do not render any icons.
+
 *-T*,*--terminal*=_TERMINAL ARGS_
 	Command to launch XDG applications with the property
 	*Terminal=true* (_htop_, for example). Example: _xterm -e_.
