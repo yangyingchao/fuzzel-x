@@ -35,7 +35,7 @@ _Fuzzel, with transparency, on top of a browser window showing a diff of a fuzze
 * pixman
 * wayland (_client_ and _cursor_ libraries)
 * xkbcommon
-* cairo
+* cairo (optional)
 * libpng (optional)
 * librsvg (optional)
 * [fcft](https://codeberg.org/dnkl/fcft) [^1]
