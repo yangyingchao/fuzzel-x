@@ -19,8 +19,10 @@ struct wayland *wayl_init(
     const struct render_options *render_options, bool dmenu_mode,
     const char *output_name, const char *font_name,
 
-    /* TODO? */
-    const icon_theme_list_t *themes, struct application_list *apps
+    /* TODO: we “need” this to reload icons when reloading fonts. Use
+     * a callback instead?  */
+    bool icons_enabled, const icon_theme_list_t *themes,
+    struct application_list *apps
     );
 void wayl_destroy(struct wayland *wayl);
 

@@ -143,6 +143,8 @@ struct wayland {
 
     const struct render_options *render_options;
     char *font_name;
+
+    bool icons_enabled;
     const icon_theme_list_t *themes;
     struct application_list *apps;
 
@@ -828,7 +830,10 @@ reload_font(struct wayland *wayl, float new_dpi, unsigned new_scale)
         if (font == NULL)
             return false;
 
-        icon_reload_application_icons(*wayl->themes, font->height, wayl->apps);
+        if (wayl->icons_enabled) {
+            icon_reload_application_icons(
+                *wayl->themes, font->height, wayl->apps);
+        }
     }
 
     return render_set_font(
@@ -1420,7 +1425,8 @@ wayl_init(struct fdm *fdm,
           const struct render_options *render_options, bool dmenu_mode,
           const char *output_name, const char *font_name,
 
-          const icon_theme_list_t *themes, struct application_list *apps)
+          bool icons_enabled, const icon_theme_list_t *themes,
+          struct application_list *apps)
 {
     struct wayland *wayl = malloc(sizeof(*wayl));
     *wayl = (struct wayland){
@@ -1434,6 +1440,7 @@ wayl_init(struct fdm *fdm,
         .output_name = output_name != NULL ? strdup(output_name) : NULL,
         .font_name = strdup(font_name),
         .render_options = render_options,
+        .icons_enabled = icons_enabled,
         .themes = themes,
         .apps = apps,
     };

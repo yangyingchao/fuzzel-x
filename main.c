@@ -418,7 +418,7 @@ main(int argc, char *const *argv)
     if ((wayl = wayl_init(
              fdm, render, prompt, matches, &render_options,
              dmenu_mode, output_name, font_name,
-             &themes, apps
+             icons_enabled, &themes, apps
              )) == NULL)
         goto out;
 
