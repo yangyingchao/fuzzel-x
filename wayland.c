@@ -76,6 +76,8 @@ struct monitor {
         } scaled;
     } ppi;
 
+    float dpi;
+
     enum wl_output_transform transform;
 
     /* From wl_output */
@@ -147,7 +149,7 @@ struct wayland {
     int width;
     int height;
     int scale;
-    unsigned dpi;
+    float dpi;
     enum fcft_subpixel subpixel;
 
     enum { KEEP_RUNNING, EXIT_UPDATE_CACHE, EXIT} status;
@@ -811,16 +813,16 @@ guess_scale(const struct wayland *wayl)
 }
 
 static bool
-reload_font(struct wayland *wayl, unsigned new_dpi, unsigned new_scale)
+reload_font(struct wayland *wayl, float new_dpi, unsigned new_scale)
 {
-    LOG_DBG("font reload: scale: %u -> %u, dpi: %u -> %u",
+    LOG_DBG("font reload: scale: %u -> %u, dpi: %.2f -> %.2f",
             wayl->scale, new_scale, wayl->dpi, new_dpi);
 
     struct fcft_font *font = NULL;
 
     if (wayl->dpi != new_dpi) {
         char attrs[256];
-        snprintf(attrs, sizeof(attrs), "dpi=%u", new_dpi);
+        snprintf(attrs, sizeof(attrs), "dpi=%.2f", new_dpi);
 
         font = fcft_from_name(1, (const char *[]){wayl->font_name}, attrs);
         if (font == NULL)
@@ -833,7 +835,7 @@ reload_font(struct wayland *wayl, unsigned new_dpi, unsigned new_scale)
         wayl->render, font, new_scale, &wayl->width, &wayl->height);
 }
 
-static unsigned
+static float
 wayl_ppi(const struct wayland *wayl)
 {
     /* Use user configured output, if available, otherwise use the
@@ -845,10 +847,10 @@ wayl_ppi(const struct wayland *wayl)
            : NULL);
 
     if (mon != NULL)
-        return mon->ppi.scaled.y * mon->scale;
+        return mon->dpi;
 
     /* No outputs available, return "something" */
-    return 96u;
+    return 96.;
 }
 
 static void
@@ -856,7 +858,7 @@ update_size(struct wayland *wayl)
 {
     const struct monitor *mon = wayl->monitor;
     const int scale = mon != NULL ? mon->scale : guess_scale(wayl);
-    const int dpi = mon != NULL ? mon->ppi.scaled.y * mon->scale : wayl_ppi(wayl);
+    const float dpi = mon != NULL ? mon->dpi : wayl_ppi(wayl);
 
     if (scale == wayl->scale && dpi == wayl->dpi)
         return;
@@ -910,6 +912,12 @@ output_update_ppi(struct monitor *mon)
 
     mon->ppi.scaled.x = mon->dim.px_scaled.width / x_inches;
     mon->ppi.scaled.y = mon->dim.px_scaled.height / y_inches;
+
+    float px_diag = sqrt(
+        pow(mon->dim.px_scaled.width, 2) +
+        pow(mon->dim.px_scaled.height, 2));
+
+    mon->dpi = px_diag / mon->inch * mon->scale;
 }
 
 static void
@@ -921,7 +929,6 @@ output_geometry(void *data, struct wl_output *wl_output, int32_t x, int32_t y,
     struct monitor *mon = data;
     mon->dim.mm.width = physical_width;
     mon->dim.mm.height = physical_height;
-    LOG_ERR("mm.width = %d, mm.height = %d", physical_width, physical_height);
     mon->inch = sqrt(pow(mon->dim.mm.width, 2) + pow(mon->dim.mm.height, 2)) * 0.03937008;
     mon->make = make != NULL ? strdup(make) : NULL;
     mon->model = model != NULL ? strdup(model) : NULL;
@@ -957,7 +964,7 @@ output_scale(void *data, struct wl_output *wl_output, int32_t factor)
 
     if (mon->wayl->monitor == mon) {
         int old_scale = mon->wayl->scale;
-        int old_dpi = mon->wayl->dpi;
+        float old_dpi = mon->wayl->dpi;
 
         update_size(mon->wayl);
 
@@ -1378,7 +1385,7 @@ surface_enter(void *data, struct wl_surface *wl_surface,
 
         enum fcft_subpixel old_subpixel = wayl->subpixel;
         int old_scale = wayl->scale;
-        int old_dpi = wayl->dpi;
+        float old_dpi = wayl->dpi;
 
         wayl->monitor = &it->item;
         wayl->subpixel = wayl->monitor->subpixel;
@@ -1469,13 +1476,13 @@ wayl_init(struct fdm *fdm,
     tll_foreach(wayl->monitors, it) {
         const struct monitor *mon = &it->item;
         LOG_INFO(
-            "%s: %dx%d+%dx%d@%dHz %s %.2f\" scale=%d PPI=%dx%d (physical) PPI=%dx%d (logical)",
+            "%s: %dx%d+%dx%d@%dHz %s %.2f\" scale=%d PPI=%dx%d (physical) PPI=%dx%d (logical), DPI=%.2f",
             mon->name, mon->dim.px_real.width, mon->dim.px_real.height,
             mon->x, mon->y, (int)round(mon->refresh),
             mon->model != NULL ? mon->model : mon->description,
             mon->inch, mon->scale,
             mon->ppi.real.x, mon->ppi.real.y,
-            mon->ppi.scaled.x, mon->ppi.scaled.y);
+            mon->ppi.scaled.x, mon->ppi.scaled.y, it->item.dpi);
     }
 
     LOG_DBG("using output: %s",
