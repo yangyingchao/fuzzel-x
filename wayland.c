@@ -141,10 +141,13 @@ struct wayland {
     struct prompt *prompt;
     struct matches *matches;
 
+    struct {
+        font_reloaded_t cb;
+        void *data;
+    } font_reloaded;
+
     const struct render_options *render_options;
     char *font_name;
-    const icon_theme_list_t *themes;
-    struct application_list *apps;
 
     int width;
     int height;
@@ -828,7 +831,8 @@ reload_font(struct wayland *wayl, float new_dpi, unsigned new_scale)
         if (font == NULL)
             return false;
 
-        icon_reload_application_icons(*wayl->themes, font->height, wayl->apps);
+        if (wayl->font_reloaded.cb != NULL)
+            wayl->font_reloaded.cb(wayl, font, wayl->font_reloaded.data);
     }
 
     return render_set_font(
@@ -1419,8 +1423,7 @@ wayl_init(struct fdm *fdm,
           struct render *render, struct prompt *prompt, struct matches *matches,
           const struct render_options *render_options, bool dmenu_mode,
           const char *output_name, const char *font_name,
-
-          const icon_theme_list_t *themes, struct application_list *apps)
+          font_reloaded_t font_reloaded_cb, void *data)
 {
     struct wayland *wayl = malloc(sizeof(*wayl));
     *wayl = (struct wayland){
@@ -1434,8 +1437,10 @@ wayl_init(struct fdm *fdm,
         .output_name = output_name != NULL ? strdup(output_name) : NULL,
         .font_name = strdup(font_name),
         .render_options = render_options,
-        .themes = themes,
-        .apps = apps,
+        .font_reloaded = {
+            .cb = font_reloaded_cb,
+            .data = data,
+        },
     };
 
     wayl->display = wl_display_connect(NULL);

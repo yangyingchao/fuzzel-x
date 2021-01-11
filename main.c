@@ -170,6 +170,7 @@ print_usage(const char *prog_name)
     printf("  -o,--output=OUTPUT         output (monitor) to display on (none)\n"
            "  -f,--font=FONT             font name and style in fontconfig format (monospace)\n"
            "  -i,--icon-theme=NAME       icon theme name (\"hicolor\")\n"
+           "  -I,--no-icons              do not render any icons\n"
            "  -T,--terminal              terminal command to use when launching 'terminal' programs, e.g. \"xterm -e\".\n"
            "                             Not used in dmenu mode. (default: not set)\n"
            "  -l,--lines                 number of matches to show\n"
@@ -188,6 +189,20 @@ print_usage(const char *prog_name)
     printf("Colors must be specified as a 32-bit hexadecimal RGBA quadruple.\n");
 }
 
+struct icon_reload_context {
+    bool icons_enabled;
+    const icon_theme_list_t *themes;
+    struct application_list *apps;
+};
+
+static void
+font_reloaded(struct wayland *wayl, struct fcft_font *font, void *data)
+{
+    struct icon_reload_context *ctx = data;
+    if (ctx->icons_enabled)
+        icon_reload_application_icons(*ctx->themes, font->height, ctx->apps);
+}
+
 int
 main(int argc, char *const *argv)
 {
@@ -195,6 +210,7 @@ main(int argc, char *const *argv)
         {"output"  ,         required_argument, 0, 'o'},
         {"font",             required_argument, 0, 'f'},
         {"icon-theme",       required_argument, 0, 'i'},
+        {"no-icons",         no_argument,       0, 'I'},
         {"lines",            required_argument, 0, 'l'},
         {"width",            required_argument, 0, 'w'},
         {"background-color", required_argument, 0, 'b'},
@@ -218,6 +234,7 @@ main(int argc, char *const *argv)
     const char *terminal = NULL;
     bool dmenu_mode = false;
     bool no_run_if_empty = false;
+    bool icons_enabled = true;
 
     struct render_options render_options = {
         .lines = 15,
@@ -232,7 +249,7 @@ main(int argc, char *const *argv)
     };
 
     while (true) {
-        int c = getopt_long(argc, argv, ":o:f:i:l:w:b:t:m:s:B:r:C:T:dRvh", longopts, NULL);
+        int c = getopt_long(argc, argv, ":o:f:i:Il:w:b:t:m:s:B:r:C:T:dRvh", longopts, NULL);
         if (c == -1)
             break;
 
@@ -247,6 +264,10 @@ main(int argc, char *const *argv)
 
         case 'i':
             icon_theme = optarg;
+            break;
+
+        case 'I':
+            icons_enabled = false;
             break;
 
         case 'T':
@@ -372,11 +393,15 @@ main(int argc, char *const *argv)
     struct render *render = NULL;
     struct wayland *wayl = NULL;
 
-    icon_theme_list_t themes = icon_load_theme(icon_theme);
-    if (tll_length(themes) > 0)
-        LOG_INFO("theme: %s", tll_front(themes).path);
-    else
-        LOG_WARN("%s: icon theme not found", icon_theme);
+    icon_theme_list_t themes = tll_init();
+
+    if (icons_enabled) {
+        themes = icon_load_theme(icon_theme);
+        if (tll_length(themes) > 0)
+            LOG_INFO("theme: %s", tll_front(themes).path);
+        else
+            LOG_WARN("%s: icon theme not found", icon_theme);
+    }
 
     if ((fdm = fdm_init()) == NULL)
         goto out;
@@ -404,11 +429,16 @@ main(int argc, char *const *argv)
     if ((matches = matches_init(apps)) == NULL)
         goto out;
 
+    struct icon_reload_context font_reloaded_data = {
+        .icons_enabled = icons_enabled,
+        .themes = &themes,
+        .apps = apps,
+    };
+
     if ((wayl = wayl_init(
              fdm, render, prompt, matches, &render_options,
              dmenu_mode, output_name, font_name,
-             &themes, apps
-             )) == NULL)
+             &font_reloaded, &font_reloaded_data)) == NULL)
         goto out;
 
     matches_max_matches_set(matches, render_options.lines);

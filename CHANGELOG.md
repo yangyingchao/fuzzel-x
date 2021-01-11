@@ -18,6 +18,8 @@
   disabled, fuzzel will not be able to draw rounded corners, nor
   support SVGs (regardless of what `-Denable-svg` is set to)
   (https://codeberg.org/dnkl/fuzzel/issues/10).
+* `-I,--no-icons` command line option; disables all icons
+  (https://codeberg.org/dnkl/fuzzel/issues/12)
 
 
 ### Deprecated
