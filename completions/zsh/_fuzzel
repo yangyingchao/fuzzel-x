@@ -7,6 +7,7 @@ _arguments \
     '(-o --output)'{-o,--output}'[output (monitor) to display on (none)]:output:->outputs' \
     '(-f --font)'{-f,--font}'[font name and style in fontconfig format (monospace)]:font:->fonts' \
     '(-i --icon-theme)'{-i,--icon-theme}'[icon theme name (hicolor)]:theme:->icon_theme' \
+    '(-I --no-icons)'{-I,--no-icons}'[do not render any icons]' \
     '(-T --terminal)'{-T,--terminal}'[terminal command, with arguments]:terminal:_command_names -e' \
     '(-l,--lines)'{-l,--lines}'[maximum number of matches to display (15)]:()' \
     '(-w,--width)'{-w,--width}'[window width, in characters (30)]:()' \
