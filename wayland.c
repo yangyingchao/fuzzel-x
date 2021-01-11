@@ -900,6 +900,12 @@ output_update_ppi(struct monitor *mon)
         y_inches = swap;
         break;
     }
+
+    case WL_OUTPUT_TRANSFORM_NORMAL:
+    case WL_OUTPUT_TRANSFORM_180:
+    case WL_OUTPUT_TRANSFORM_FLIPPED:
+    case WL_OUTPUT_TRANSFORM_FLIPPED_180:
+        break;
     }
 
     mon->ppi.scaled.x = mon->dim.px_scaled.width / x_inches;
