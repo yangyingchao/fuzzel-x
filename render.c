@@ -33,9 +33,9 @@ rgba2pixman(struct rgba rgba)
     uint16_t a = rgba.a * 65535.0;
 
     return (pixman_color_t){
-        .red = r * a / 0xffff,
-        .green = g * a / 0xffff,
-        .blue = b * a / 0xffff,
+        .red = (uint32_t)r * a / 0xffff,
+        .green = (uint32_t)g * a / 0xffff,
+        .blue = (uint32_t)b * a / 0xffff,
         .alpha = a,
     };
 }
