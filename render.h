@@ -9,6 +9,7 @@
 #include "tllist.h"
 
 struct rgba {double r; double g; double b; double a;};
+struct pt_or_px {int px; float pt;};
 
 struct render_options {
     unsigned lines;
@@ -21,6 +22,13 @@ struct render_options {
     struct rgba text_color;
     struct rgba match_color;
     struct rgba selection_color;
+
+    struct {
+        struct pt_or_px x;
+        struct pt_or_px y;
+    } pad;
+    struct pt_or_px line_height;
+    struct pt_or_px letter_spacing;
 
     /* Filled in by render, for now */
     pixman_color_t pix_background_color;
@@ -35,7 +43,8 @@ struct render *render_init(const struct render_options *options);
 void render_destroy(struct render *render);
 
 void render_set_subpixel(struct render *render, enum fcft_subpixel subpixel);
-bool render_set_font(struct render *render, struct fcft_font *font, int scale,
+bool render_set_font(struct render *render, struct fcft_font *font,
+                     int scale, float dpi,
                      int *new_width, int *new_height);
 
 void render_background(const struct render *render, struct buffer *buf);

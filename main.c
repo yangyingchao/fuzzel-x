@@ -168,13 +168,17 @@ print_usage(const char *prog_name)
     printf("\n");
     printf("Options:\n");
     printf("  -o,--output=OUTPUT         output (monitor) to display on (none)\n"
-           "  -f,--font=FONT             font name and style in fontconfig format (monospace)\n"
+           "  -f,--font=FONT             font name+style in fontconfig format (monospace)\n"
            "  -i,--icon-theme=NAME       icon theme name (\"hicolor\")\n"
            "  -I,--no-icons              do not render any icons\n"
-           "  -T,--terminal              terminal command to use when launching 'terminal' programs, e.g. \"xterm -e\".\n"
-           "                             Not used in dmenu mode. (default: not set)\n"
+           "  -T,--terminal              terminal command to use when launching 'terminal'\n"
+           "                             programs, e.g. \"xterm -e\". Not used in dmenu\n"
+           "                             mode (not set)\n"
            "  -l,--lines                 number of matches to show\n"
-           "  -w,--width                 window width, in characters (margins and borders not included)\n"
+           "  -w,--width                 window width, in characters (margins and borders\n"
+           "                             not included)\n"
+           "  -x,--horizontal-pad=PAD    horizontal padding, in pixels\n"
+           "  -y,--vertical-pad=PAD      vertical padding, in pixels"
            "  -b,--background-color=HEX  background color (000000ff)\n"
            "  -t,--text-color=HEX        text color (ffffffff)\n"
            "  -m,--match-color=HEX       color of matched substring (cc9393ff)\n"
@@ -183,7 +187,10 @@ print_usage(const char *prog_name)
            "  -r,--border-radius=INT     amount of corner \"roundness\" (10)\n"
            "  -C,--border-color=HEX      border color (ffffffff)\n"
            "  -d,--dmenu                 dmenu compatibility mode\n"
-           "  -R,--no-run-if-empty       exit immediately without showing UI if stdin is empty (dmenu mode only)\n"
+           "  -R,--no-run-if-empty       exit immediately without showing UI if stdin is \n"
+           "                             empty (dmenu mode only)\n"
+           "     --line-height=HEIGHT    override line height from font metrics\n"
+           "     --letter-spacing=AMOUNT additional letter spacing\n "
            "  -v,--version               show the version number and quit\n");
     printf("\n");
     printf("Colors must be specified as a 32-bit hexadecimal RGBA quadruple.\n");
@@ -203,29 +210,65 @@ font_reloaded(struct wayland *wayl, struct fcft_font *font, void *data)
         icon_reload_application_icons(*ctx->themes, font->height, ctx->apps);
 }
 
+static bool
+pt_or_px_from_string(const char  *s, struct pt_or_px *res)
+{
+    const size_t len = strlen(s);
+    if (len >= 2 && s[len - 2] == 'p' && s[len - 1] == 'x') {
+        errno = 0;
+        char *end = NULL;
+
+        long value = strtol(s, &end, 10);
+        if (!(errno == 0 && end == s + len - 2)) {
+            fprintf(stderr, "%s: not a valid pixel value\n", s);
+            return false;
+        }
+
+        res->pt = 0;
+        res->px = value;
+    } else {
+        errno = 0;
+        char *end = NULL;
+
+        float value = strtof(s, &end);
+        if (!(errno == 0 && *end == '\0')) {
+            fprintf(stderr, "%s: not a valid point value\n", s);
+            return false;
+        }
+        res->pt = value;
+        res->px = 0;
+    }
+
+    return true;
+}
+
 int
 main(int argc, char *const *argv)
 {
     static const struct option longopts[] = {
-        {"output"  ,         required_argument, 0, 'o'},
-        {"font",             required_argument, 0, 'f'},
-        {"icon-theme",       required_argument, 0, 'i'},
-        {"no-icons",         no_argument,       0, 'I'},
-        {"lines",            required_argument, 0, 'l'},
-        {"width",            required_argument, 0, 'w'},
-        {"background-color", required_argument, 0, 'b'},
-        {"text-color",       required_argument, 0, 't'},
-        {"match-color",      required_argument, 0, 'm'},
-        {"selection-color",  required_argument, 0, 's'},
-        {"border-width",     required_argument, 0, 'B'},
-        {"border-radius",    required_argument, 0, 'r'},
-        {"border-color",     required_argument, 0, 'C'},
-        {"terminal",         required_argument, 0, 'T'},
-        {"dmenu",            no_argument,       0, 'd'},
-        {"no-run-if-empty",  no_argument,       0, 'R'},
-        {"version",          no_argument,       0, 'v'},
-        {"help",             no_argument,       0, 'h'},
-        {NULL,               no_argument,       0, 0},
+        {"output"  ,                 required_argument, 0, 'o'},
+        {"font",                     required_argument, 0, 'f'},
+        {"icon-theme",               required_argument, 0, 'i'},
+        {"no-icons",                 no_argument,       0, 'I'},
+        {"lines",                    required_argument, 0, 'l'},
+        {"width",                    required_argument, 0, 'w'},
+        {"horizontal-pad",           required_argument, 0, 'x'},
+        {"vertical-pad",             required_argument, 0, 'y'},
+        {"background-color",         required_argument, 0, 'b'},
+        {"text-color",               required_argument, 0, 't'},
+        {"match-color",              required_argument, 0, 'm'},
+        {"selection-color",          required_argument, 0, 's'},
+        {"border-width",             required_argument, 0, 'B'},
+        {"border-radius",            required_argument, 0, 'r'},
+        {"border-color",             required_argument, 0, 'C'},
+        {"terminal",                 required_argument, 0, 'T'},
+        {"dmenu",                    no_argument,       0, 'd'},
+        {"no-run-if-empty",          no_argument,       0, 'R'},
+        {"line-height",              required_argument, 0, 'H'},
+        {"letter-spacing",           required_argument, 0, 'S'},
+        {"version",                  no_argument,       0, 'v'},
+        {"help",                     no_argument,       0, 'h'},
+        {NULL,                       no_argument,       0, 0},
     };
 
     const char *output_name = NULL;
@@ -241,15 +284,18 @@ main(int argc, char *const *argv)
         .chars = 30,
         .border_size = 1u,
         .border_radius = 10u,
+        .pad = {.x = {.pt = 20}, .y = {.pt = 8}},
         .background_color = hex_to_rgba(0xfdf6e3dd),
         .border_color = hex_to_rgba(0x002b36ff),
         .text_color = hex_to_rgba(0x657b83ff),
         .match_color = hex_to_rgba(0xcb4b16ff),
         .selection_color = hex_to_rgba(0xeee8d5dd),
+        .line_height = {-1, 0.0},
+        .letter_spacing = {0},
     };
 
     while (true) {
-        int c = getopt_long(argc, argv, ":o:f:i:Il:w:b:t:m:s:B:r:C:T:dRvh", longopts, NULL);
+        int c = getopt_long(argc, argv, ":o:f:i:Il:w:x:y:b:t:m:s:B:r:C:T:dRvh", longopts, NULL);
         if (c == -1)
             break;
 
@@ -286,6 +332,16 @@ main(int argc, char *const *argv)
                 fprintf(stderr, "%s: invalid width\n", optarg);
                 return EXIT_FAILURE;
             }
+            break;
+
+        case 'x':
+            if (!pt_or_px_from_string(optarg, &render_options.pad.x))
+                return EXIT_FAILURE;
+            break;
+
+        case 'y':
+            if (!pt_or_px_from_string(optarg, &render_options.pad.y))
+                return EXIT_FAILURE;
             break;
 
         case 'b': {
@@ -362,6 +418,18 @@ main(int argc, char *const *argv)
         case 'R':
             no_run_if_empty = true;
             break;
+
+        case 'H': { /* line-height */
+            if (!pt_or_px_from_string(optarg, &render_options.line_height))
+                return EXIT_FAILURE;
+            break;
+        }
+
+        case 'S': { /* letter-spacing */
+            if (!pt_or_px_from_string(optarg, &render_options.letter_spacing))
+                return EXIT_FAILURE;
+            break;
+        }
 
         case 'v':
             printf("fuzzel version %s\n", FUZZEL_VERSION);
