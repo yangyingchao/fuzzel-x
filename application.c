@@ -235,8 +235,8 @@ applications_destroy(struct application_list *apps)
 
         case ICON_PNG:
 #if defined(FUZZEL_ENABLE_PNG)
-            free(pixman_image_get_data(app->icon.png.pix));
-            pixman_image_unref(app->icon.png.pix);
+            free(pixman_image_get_data(app->icon.png));
+            pixman_image_unref(app->icon.png);
 #endif
             break;
 

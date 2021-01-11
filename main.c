@@ -290,7 +290,7 @@ main(int argc, char *const *argv)
         .text_color = hex_to_rgba(0x657b83ff),
         .match_color = hex_to_rgba(0xcb4b16ff),
         .selection_color = hex_to_rgba(0xeee8d5dd),
-        .line_height = {-1, 0.0},
+        .line_height = {-1, 0.0},  /* Use font metrics */
         .letter_spacing = {0},
     };
 

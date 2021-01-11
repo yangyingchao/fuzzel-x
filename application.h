@@ -16,10 +16,7 @@ struct icon {
     enum icon_type type;
     union {
 #if defined(FUZZEL_ENABLE_PNG)
-        struct {
-            pixman_image_t *pix;
-            bool has_scale_transform;
-        } png;
+        pixman_image_t *png;
 #endif
 #if defined(FUZZEL_ENABLE_SVG)
         RsvgHandle *svg;
