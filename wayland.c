@@ -76,6 +76,8 @@ struct monitor {
         } scaled;
     } ppi;
 
+    enum wl_output_transform transform;
+
     /* From wl_output */
     char *make;
     char *model;
@@ -883,8 +885,22 @@ output_update_ppi(struct monitor *mon)
 
     int x_inches = mon->dim.mm.width * 0.03937008;
     int y_inches = mon->dim.mm.height * 0.03937008;
+
     mon->ppi.real.x = mon->dim.px_real.width / x_inches;
     mon->ppi.real.y = mon->dim.px_real.height / y_inches;
+
+    /* The *logical* size is affected by the transform */
+    switch (mon->transform) {
+    case WL_OUTPUT_TRANSFORM_90:
+    case WL_OUTPUT_TRANSFORM_270:
+    case WL_OUTPUT_TRANSFORM_FLIPPED_90:
+    case WL_OUTPUT_TRANSFORM_FLIPPED_270: {
+        int swap = x_inches;
+        x_inches = y_inches;
+        y_inches = swap;
+        break;
+    }
+    }
 
     mon->ppi.scaled.x = mon->dim.px_scaled.width / x_inches;
     mon->ppi.scaled.y = mon->dim.px_scaled.height / y_inches;
@@ -899,10 +915,12 @@ output_geometry(void *data, struct wl_output *wl_output, int32_t x, int32_t y,
     struct monitor *mon = data;
     mon->dim.mm.width = physical_width;
     mon->dim.mm.height = physical_height;
+    LOG_ERR("mm.width = %d, mm.height = %d", physical_width, physical_height);
     mon->inch = sqrt(pow(mon->dim.mm.width, 2) + pow(mon->dim.mm.height, 2)) * 0.03937008;
     mon->make = make != NULL ? strdup(make) : NULL;
     mon->model = model != NULL ? strdup(model) : NULL;
     mon->subpixel = subpixel;
+    mon->transform = transform;
     output_update_ppi(mon);
 }
 
