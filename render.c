@@ -415,7 +415,7 @@ render_match_list(const struct render *render, struct buffer *buf,
         }
         }
 
-        cur_x += row_height + pt_or_px_as_pixels(
+        cur_x += row_height + font->space_advance.x + pt_or_px_as_pixels(
             &render->options.letter_spacing, render->dpi);
 
         /* Application title */
