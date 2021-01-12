@@ -470,12 +470,8 @@ render_set_font(struct render *render, struct fcft_font *font,
     const struct fcft_glyph *W = fcft_glyph_rasterize(
         font, L'W', render->subpixel);
 
-#define max(x, y) ((x) > (y) ? (x) : (y))
-
     const unsigned x_margin = render->options.pad.x * scale;
     const unsigned y_margin = render->options.pad.y * scale;
-
-#undef max
 
     const unsigned border_size = render->options.border_size * scale;
 
