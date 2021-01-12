@@ -383,7 +383,7 @@ render_match_list(const struct render *render, struct buffer *buf,
         }
 
         case ICON_SVG: {
-#if defined(FUZZEL_ENABLE_SVG) && 0
+#if defined(FUZZEL_ENABLE_SVG)
             RsvgDimensionData dim;
             rsvg_handle_get_dimensions(icon->svg, &dim);
 
