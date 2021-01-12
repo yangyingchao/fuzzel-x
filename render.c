@@ -490,8 +490,9 @@ render_set_font(struct render *render, struct fcft_font *font,
     const unsigned width =
         border_size +
         x_margin +
-        (W->advance.x + pt_or_px_as_pixels(
-            &render->options.letter_spacing, dpi)) * render->options.chars +
+        (max((W->advance.x + pt_or_px_as_pixels(
+                 &render->options.letter_spacing, dpi)), 0)
+         * render->options.chars) +
         x_margin +
         border_size;
 
