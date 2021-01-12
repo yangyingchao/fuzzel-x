@@ -12,6 +12,7 @@
 #include "stride.h"
 #include "wayland.h"
 
+#define min(x, y) ((x) < (y) ? (x) : (y))
 #define max(x, y) ((x) > (y) ? (x) : (y))
 
 struct render {
@@ -321,8 +322,8 @@ render_match_list(const struct render *render, struct buffer *buf,
             int height = pixman_image_get_height(png);
             int width = pixman_image_get_width(png);
 
-            if (height > row_height) {
-                double scale = (double)row_height / height;
+            if (height > min(row_height, font->height)) {
+                double scale = (double)min(row_height, font->height) / height;
 
                 pixman_f_transform_t _scale_transform;
                 pixman_f_transform_init_scale(
@@ -387,7 +388,7 @@ render_match_list(const struct render *render, struct buffer *buf,
             RsvgDimensionData dim;
             rsvg_handle_get_dimensions(icon->svg, &dim);
 
-            double height = font->height;
+            double height = min(row_height, font->height);
             double scale = height / dim.height;
 
             double img_x = cur_x;
