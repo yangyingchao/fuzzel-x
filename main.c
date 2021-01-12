@@ -177,8 +177,8 @@ print_usage(const char *prog_name)
            "  -l,--lines                 number of matches to show\n"
            "  -w,--width                 window width, in characters (margins and borders\n"
            "                             not included)\n"
-           "  -x,--horizontal-pad=PAD    horizontal padding, in pixels\n"
-           "  -y,--vertical-pad=PAD      vertical padding, in pixels"
+           "  -x,--horizontal-pad=PAD    horizontal padding, in pixels (40)\n"
+           "  -y,--vertical-pad=PAD      vertical padding, in pixels (8)\n"
            "  -b,--background-color=HEX  background color (000000ff)\n"
            "  -t,--text-color=HEX        text color (ffffffff)\n"
            "  -m,--match-color=HEX       color of matched substring (cc9393ff)\n"
@@ -284,7 +284,7 @@ main(int argc, char *const *argv)
         .chars = 30,
         .border_size = 1u,
         .border_radius = 10u,
-        .pad = {.x = {.pt = 20}, .y = {.pt = 8}},
+        .pad = {.x = 40, .y = 8},
         .background_color = hex_to_rgba(0xfdf6e3dd),
         .border_color = hex_to_rgba(0x002b36ff),
         .text_color = hex_to_rgba(0x657b83ff),
@@ -335,13 +335,17 @@ main(int argc, char *const *argv)
             break;
 
         case 'x':
-            if (!pt_or_px_from_string(optarg, &render_options.pad.x))
+            if (sscanf(optarg, "%u", &render_options.pad.x) != 1) {
+                fprintf(stderr, "%s: invalid padding\n", optarg);
                 return EXIT_FAILURE;
+            }
             break;
 
         case 'y':
-            if (!pt_or_px_from_string(optarg, &render_options.pad.y))
+            if (sscanf(optarg, "%u", &render_options.pad.y) != 1) {
+                fprintf(stderr, "%s: invalid padding\n", optarg);
                 return EXIT_FAILURE;
+            }
             break;
 
         case 'b': {

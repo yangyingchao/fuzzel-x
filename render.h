@@ -16,6 +16,10 @@ struct render_options {
     unsigned chars;
     unsigned border_size;
     unsigned border_radius;
+    struct {
+        unsigned x;
+        unsigned y;
+    } pad;
 
     struct rgba background_color;
     struct rgba border_color;
@@ -23,10 +27,6 @@ struct render_options {
     struct rgba match_color;
     struct rgba selection_color;
 
-    struct {
-        struct pt_or_px x;
-        struct pt_or_px y;
-    } pad;
     struct pt_or_px line_height;
     struct pt_or_px letter_spacing;
 

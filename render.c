@@ -472,8 +472,8 @@ render_set_font(struct render *render, struct fcft_font *font,
 
 #define max(x, y) ((x) > (y) ? (x) : (y))
 
-    const unsigned x_margin = pt_or_px_as_pixels(&render->options.pad.x, dpi);
-    const unsigned y_margin = pt_or_px_as_pixels(&render->options.pad.y, dpi);
+    const unsigned x_margin = render->options.pad.x * scale;
+    const unsigned y_margin = render->options.pad.y * scale;
 
 #undef max
 
