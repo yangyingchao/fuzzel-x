@@ -23,7 +23,6 @@
 #define LOG_MODULE "icon"
 #define LOG_ENABLE_DBG 0
 #include "log.h"
-#include "stride.h"
 #include "xdg.h"
 
 typedef tll(char *) theme_names_t;
@@ -282,55 +281,6 @@ icon_null(struct icon *icon)
 static bool
 icon_from_png(struct icon *icon, pixman_image_t *png, int icon_size)
 {
-    int height = pixman_image_get_height(png);
-    int width = pixman_image_get_width(png);
-    pixman_format_code_t fmt = pixman_image_get_format(png);
-
-    if (height > icon_size) {
-        double scale = (double)icon_size / height;
-
-        pixman_f_transform_t _scale_transform;
-        pixman_f_transform_init_scale(
-            &_scale_transform, 1. / scale, 1. / scale);
-
-        pixman_transform_t scale_transform;
-        pixman_transform_from_pixman_f_transform(
-            &scale_transform, &_scale_transform);
-        pixman_image_set_transform(png, &scale_transform);
-
-        int param_count = 0;
-        pixman_kernel_t kernel = PIXMAN_KERNEL_LANCZOS3;
-        pixman_fixed_t *params = pixman_filter_create_separable_convolution(
-            &param_count,
-            pixman_double_to_fixed(1. / scale),
-            pixman_double_to_fixed(1. / scale),
-            kernel, kernel,
-            kernel, kernel,
-            pixman_int_to_fixed(1),
-            pixman_int_to_fixed(1));
-
-        if (params != NULL || param_count == 0) {
-            pixman_image_set_filter(
-                png, PIXMAN_FILTER_SEPARABLE_CONVOLUTION,
-                params, param_count);
-        }
-
-        free(params);
-
-        width *= scale;
-        height *= scale;
-
-        int stride = stride_for_format_and_width(fmt, width);
-        uint8_t *data = malloc(height * stride);
-        pixman_image_t *scaled_png = pixman_image_create_bits_no_clear(
-            fmt, width, height, (uint32_t *)data, stride);
-        pixman_image_composite32(
-            PIXMAN_OP_SRC, png, NULL, scaled_png, 0, 0, 0, 0, 0, 0, width, height);
-        free(pixman_image_get_data(png));
-        pixman_image_unref(png);
-        png = scaled_png;
-    }
-
     icon->type = ICON_PNG;
     icon->png = png;
     return true;
