@@ -190,7 +190,7 @@ print_usage(const char *prog_name)
            "  -R,--no-run-if-empty       exit immediately without showing UI if stdin is \n"
            "                             empty (dmenu mode only)\n"
            "     --line-height=HEIGHT    override line height from font metrics\n"
-           "     --letter-spacing=AMOUNT additional letter spacing\n "
+           "     --letter-spacing=AMOUNT additional letter spacing\n"
            "  -v,--version               show the version number and quit\n");
     printf("\n");
     printf("Colors must be specified as a 32-bit hexadecimal RGBA quadruple.\n");
