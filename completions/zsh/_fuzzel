@@ -11,6 +11,8 @@ _arguments \
     '(-T --terminal)'{-T,--terminal}'[terminal command, with arguments]:terminal:_command_names -e' \
     '(-l,--lines)'{-l,--lines}'[maximum number of matches to display (15)]:()' \
     '(-w,--width)'{-w,--width}'[window width, in characters (30)]:()' \
+    '(-x --horizontal-pad)'{-x,--horizontal-pad}'[horizontal padding, in pixels (40)]:()' \
+    '(-y --vertical-pad)'{-y,--vertical-pad}'[vertical padding, in pixels (8)]:()' \
     '(-b --background)'{-b,--background}'[background color (fdf6e3dd)]:background:()' \
     '(-t --text-color)'{-t,--text-color}'[text color (657b83ff)]:text-color:()' \
     '(-m --match-color)'{-m,--match-color}'[color of matched substring (cb4b16ff)]:match-color:()' \
@@ -19,7 +21,9 @@ _arguments \
     '(-r --border-radius)'{-r,--border-radius}'[amount of corner "roundness" (10)]:border-radius:()' \
     '(-C --border-color)'{-C,--border-color}'[border color (002b36ff)]:border-color:()' \
     '(-d --dmenu)'{-d,--dmenu}'[dmenu compatibility mode; list entries are read from stdin]' \
-    '(-R --no-run-if-empty)'{-R,--no-run-if-empty}'[exit immediately without showing the UI if stdin is empty (dmenu mode only)]'
+    '(-R --no-run-if-empty)'{-R,--no-run-if-empty}'[exit immediately without showing the UI if stdin is empty (dmenu mode only)]' \
+    '--line-height[override line height from font metrics, in points or pixels]:()' \
+    '--letter-spacing[additional letter spacing, in points or pixels]:()'
 
 case "${state}" in
     fonts)
