@@ -184,6 +184,9 @@ repeat_start(struct repeat *repeat, uint32_t key)
     if (repeat->dont_re_repeat)
         return true;
 
+    if (repeat->rate == 0)
+        return true;
+
     struct itimerspec t = {
         .it_value = {.tv_sec = 0, .tv_nsec = repeat->delay * 1000000},
         .it_interval = {.tv_sec = 0, .tv_nsec = 1000000000 / repeat->rate},

@@ -35,6 +35,7 @@
 * Rendering of SVGs containing multiple icons.
 * Font being incorrectly scaled on rotated monitors.
 * PPI being calculated incorrectly.
+* Crash on keyboard input when repeat rate was zero (i.e. no repeat).
 
 
 ### Security
