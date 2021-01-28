@@ -15,9 +15,6 @@ packages:
 sources:
   - https://codeberg.org/dnkl/fuzzel
 
-environment:
-  CFLAGS: -Wno-missing-braces
-
 tasks:
   - debug: |
       mkdir -p bld/debug
