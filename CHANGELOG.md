@@ -1,11 +1,12 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [1.5.0](#1-5-0)
 * [1.4.2](#1-4-2)
 * [1.4.1](#1-4-1)
 
 
-## Unreleased
+## 1.5.0
+
 ### Added
 
 * meson option `-Denable-svg=[auto|enabled|disabled]`. When disabled,
@@ -27,8 +28,6 @@
   (https://codeberg.org/dnkl/fuzzel/issues/12).
 
 
-### Deprecated
-### Removed
 ### Changed
 
 * PNGs are now loaded and rendered with _libpng_ instead of _cairo_.
@@ -43,7 +42,6 @@
 * Crash on keyboard input when repeat rate was zero (i.e. no repeat).
 
 
-### Security
 ### Contributors
 
 * [magenbluten](https://codeberg.org/magenbluten)
