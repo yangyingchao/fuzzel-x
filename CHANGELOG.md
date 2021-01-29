@@ -20,6 +20,7 @@
   (https://codeberg.org/dnkl/fuzzel/issues/10).
 * `-I,--no-icons` command line option; disables all icons
   (https://codeberg.org/dnkl/fuzzel/issues/12)
+* FreeBSD port.
 
 
 ### Deprecated
@@ -42,6 +43,7 @@
 ### Contributors
 
 * [magenbluten](https://codeberg.org/magenbluten)
+* jbeich
 
 
 ## 1.4.2
