@@ -279,11 +279,10 @@ icon_null(struct icon *icon)
 
 #if defined(FUZZEL_ENABLE_PNG)
 static bool
-icon_from_png(struct icon *icon, pixman_image_t *png)
+icon_from_png(struct icon *icon, pixman_image_t *png, int icon_size)
 {
     icon->type = ICON_PNG;
-    icon->png.pix = png;
-    icon->png.has_scale_transform = false;
+    icon->png = png;
     return true;
 }
 #endif
@@ -307,10 +306,9 @@ icon_reset(struct icon *icon)
 
     case ICON_PNG:
 #if defined(FUZZEL_ENABLE_PNG)
-        free(pixman_image_get_data(icon->png.pix));
-        pixman_image_unref(icon->png.pix);
-        icon->png.pix = NULL;
-        icon->png.has_scale_transform = false;
+        free(pixman_image_get_data(icon->png));
+        pixman_image_unref(icon->png);
+        icon->png = NULL;
 #endif
         break;
 
@@ -348,7 +346,7 @@ reload_icon(struct icon *icon, int icon_size, icon_theme_list_t themes)
         pixman_image_t *png = png_load(name);
         if (png != NULL) {
             LOG_DBG("%s: absolute path PNG", name);
-            return icon_from_png(icon, png);
+            return icon_from_png(icon, png, icon_size);
         }
 #endif
         return icon_null(icon);
@@ -432,7 +430,7 @@ reload_icon(struct icon *icon, int icon_size, icon_theme_list_t themes)
                         LOG_DBG("%s: %s: nothing else matched", name, full_path);
 
                     free(full_path);
-                    return icon_from_png(icon, png);
+                    return icon_from_png(icon, png, icon_size);
                 }
 #endif
                 free(full_path);
@@ -464,7 +462,7 @@ reload_icon(struct icon *icon, int icon_size, icon_theme_list_t themes)
         pixman_image_t *png = png_load(path);
         if (png != NULL) {
             xdg_data_dirs_destroy(dirs);
-            return icon_from_png(icon, png);
+            return icon_from_png(icon, png, icon_size);
         }
 #endif
     }

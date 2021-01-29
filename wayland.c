@@ -141,13 +141,13 @@ struct wayland {
     struct prompt *prompt;
     struct matches *matches;
 
+    const struct render_options *render_options;
+
+    char *font_name;
     struct {
         font_reloaded_t cb;
         void *data;
     } font_reloaded;
-
-    const struct render_options *render_options;
-    char *font_name;
 
     int width;
     int height;
@@ -839,7 +839,7 @@ reload_font(struct wayland *wayl, float new_dpi, unsigned new_scale)
     }
 
     return render_set_font(
-        wayl->render, font, new_scale, &wayl->width, &wayl->height);
+        wayl->render, font, new_scale, new_dpi, &wayl->width, &wayl->height);
 }
 
 static float

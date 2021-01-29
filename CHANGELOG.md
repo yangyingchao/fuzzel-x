@@ -21,6 +21,10 @@
 * `-I,--no-icons` command line option; disables all icons
   (https://codeberg.org/dnkl/fuzzel/issues/12)
 * FreeBSD port.
+* `-x,--horizontal-pad` and `-y,--vertical-pad` command line options
+  (https://codeberg.org/dnkl/fuzzel/issues/12).
+* `--line-height` and `-letter-spacing` command line options
+  (https://codeberg.org/dnkl/fuzzel/issues/12).
 
 
 ### Deprecated

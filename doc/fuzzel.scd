@@ -43,6 +43,14 @@ options:
 	Window width, in characters. Margins and borders not
 	included. Default: _30_.
 
+*-x*,*--horizontal-pad*=_PAD_
+	Horizontal padding between border and icons and text. In pixels,
+	subject to output scaling. Default: _40_.
+
+*-y*,*--vertical-pad*=_PAD_
+	Vertical padding between border and text. In pixels, subject to
+	output scaling. Default: _8_.
+
 *-b*,*--background*=_HEX_
 	Background color. See *COLORS*. Default: _fdf6e3dd_.
 
@@ -77,6 +85,17 @@ options:
 *-R*,*--no-run-if-empty*
 	Exit immediately, without showing the UI, if stdin is
 	empty. **dmenu** mode only.
+
+*--line-height*=_HEIGHT_
+	Override line height from font metrics. In points by default, but
+	can be specified as pixels by appending 'px'
+	(i.e. *--line-height=16px*). Default: _not set_.
+
+*--letter-spacing*=_AMOUNT_
+	Additional space between letters. In points by default, but can be
+	specified as pixels by appending 'px'
+	(i.e. *letter-spacing=5px*). Negative values are
+	supported. Default: _0_.
 
 *-v*,*--version*
 	Show the version number and quit

@@ -9,14 +9,17 @@
 #define LOG_MODULE "render"
 #define LOG_ENABLE_DBG 0
 #include "log.h"
+#include "stride.h"
 #include "wayland.h"
 
+#define min(x, y) ((x) < (y) ? (x) : (y))
 #define max(x, y) ((x) > (y) ? (x) : (y))
 
 struct render {
     struct render_options options;
     struct fcft_font *font;
     enum fcft_subpixel subpixel;
+    float dpi;
 
     unsigned x_margin;
     unsigned y_margin;
@@ -38,6 +41,14 @@ rgba2pixman(struct rgba rgba)
         .blue = (uint32_t)b * a / 0xffff,
         .alpha = a,
     };
+}
+
+static int
+pt_or_px_as_pixels(const struct pt_or_px *pt_or_px, float dpi)
+{
+    return pt_or_px->px == 0
+        ? pt_or_px->pt * dpi / 72.
+        : pt_or_px->px;
 }
 
 void
@@ -159,6 +170,8 @@ render_prompt(const struct render *render, struct buffer *buf,
         x += x_kern;
         render_glyph(buf->pix, glyph, x, y, &render->options.pix_text_color);
         x += glyph->advance.x;
+        if (i >= prompt_len)
+            x += pt_or_px_as_pixels(&render->options.letter_spacing, render->dpi);
 
         /* Cursor */
         if (prompt_cursor(prompt) + prompt_len - 1 == i) {
@@ -177,6 +190,7 @@ static void
 render_match_text(struct buffer *buf, double *_x, double _y,
                   const wchar_t *text, ssize_t start, size_t length,
                   struct fcft_font *font, enum fcft_subpixel subpixel,
+                  int letter_spacing,
                   pixman_color_t regular_color, pixman_color_t match_color)
 {
     int x = *_x;
@@ -195,6 +209,7 @@ render_match_text(struct buffer *buf, double *_x, double _y,
         x += x_kern;
         render_glyph(buf->pix, glyph, x, y + y_kern, is_match ? &match_color : &regular_color);
         x += glyph->advance.x;
+        x += letter_spacing;
     }
 
     *_x = x;
@@ -207,9 +222,9 @@ render_match_list(const struct render *render, struct buffer *buf,
     struct fcft_font *font = render->font;
     assert(font != NULL);
 
-    const double x_margin = render->x_margin;
-    const double y_margin = render->y_margin;
-    const double border_size = render->border_size;
+    const int x_margin = render->x_margin;
+    const int y_margin = render->y_margin;
+    const int border_size = render->border_size;
     const size_t match_count = matches_get_count(matches);
     const size_t selected = matches_get_match_index(matches);
     const enum fcft_subpixel subpixel =
@@ -219,18 +234,16 @@ render_match_list(const struct render *render, struct buffer *buf,
 
     assert(match_count == 0 || selected < match_count);
 
-    const double row_height = 2 * y_margin + font->height;
-    const double first_row = 1 * border_size + row_height;
-    const double sel_margin = x_margin / 3;
+    const int row_height = render->row_height;
+    const int first_row = 1 * border_size + y_margin + row_height;
+    const int sel_margin = x_margin / 3;
 
-    double y = first_row + (row_height + font->height) / 2 - font->descent;
+    int y = first_row + (row_height + font->height) / 2 - font->descent;
 
     for (size_t i = 0; i < match_count; i++) {
-        if ((int)(y + font->descent + row_height / 2) >
-            (int)(buf->height - y_margin - border_size))
-        {
+        if (y + font->descent > buf->height - y_margin - border_size) {
             /* Window too small - happens if the compositor doesn't
-             * repsect our requested size */
+             * respect our requested size */
             break;
         }
 
@@ -304,48 +317,57 @@ render_match_list(const struct render *render, struct buffer *buf,
  #if defined(FUZZEL_ENABLE_CAIRO)
             cairo_surface_flush(buf->cairo_surface);
  #endif
-
-            pixman_image_t *png = icon->png.pix;
+            pixman_image_t *png = icon->png;
+            pixman_format_code_t fmt = pixman_image_get_format(png);
             int height = pixman_image_get_height(png);
             int width = pixman_image_get_width(png);
 
-            if (height > row_height) {
-                double scale = (double)font->height / height;
+            if (height > min(row_height, font->height)) {
+                double scale = (double)min(row_height, font->height) / height;
 
-                if (!icon->png.has_scale_transform) {
-                    pixman_f_transform_t _scale_transform;
-                    pixman_f_transform_init_scale(
-                        &_scale_transform, 1. / scale, 1. / scale);
+                pixman_f_transform_t _scale_transform;
+                pixman_f_transform_init_scale(
+                    &_scale_transform, 1. / scale, 1. / scale);
 
-                    pixman_transform_t scale_transform;
-                    pixman_transform_from_pixman_f_transform(
-                        &scale_transform, &_scale_transform);
-                    pixman_image_set_transform(png, &scale_transform);
+                pixman_transform_t scale_transform;
+                pixman_transform_from_pixman_f_transform(
+                    &scale_transform, &_scale_transform);
+                pixman_image_set_transform(png, &scale_transform);
 
-                    int param_count = 0;
-                    pixman_kernel_t kernel = PIXMAN_KERNEL_LANCZOS3;
-                    pixman_fixed_t *params = pixman_filter_create_separable_convolution(
-                        &param_count,
-                        pixman_double_to_fixed(1. / scale),
-                        pixman_double_to_fixed(1. / scale),
-                        kernel, kernel,
-                        kernel, kernel,
-                        pixman_int_to_fixed(1),
-                        pixman_int_to_fixed(1));
+                int param_count = 0;
+                pixman_kernel_t kernel = PIXMAN_KERNEL_LANCZOS3;
+                pixman_fixed_t *params = pixman_filter_create_separable_convolution(
+                    &param_count,
+                    pixman_double_to_fixed(1. / scale),
+                    pixman_double_to_fixed(1. / scale),
+                    kernel, kernel,
+                    kernel, kernel,
+                    pixman_int_to_fixed(1),
+                    pixman_int_to_fixed(1));
 
-                    if (params != NULL || param_count == 0) {
-                        pixman_image_set_filter(
-                            png, PIXMAN_FILTER_SEPARABLE_CONVOLUTION,
-                            params, param_count);
-                    }
-
-                    free(params);
-                    icon->png.has_scale_transform = true;
+                if (params != NULL || param_count == 0) {
+                    pixman_image_set_filter(
+                        png, PIXMAN_FILTER_SEPARABLE_CONVOLUTION,
+                        params, param_count);
                 }
 
-                assert(icon->png.has_scale_transform);
+                free(params);
+
                 width *= scale;
                 height *= scale;
+
+                int stride = stride_for_format_and_width(fmt, width);
+                uint8_t *data = malloc(height * stride);
+                pixman_image_t *scaled_png = pixman_image_create_bits_no_clear(
+                    fmt, width, height, (uint32_t *)data, stride);
+                pixman_image_composite32(
+                    PIXMAN_OP_SRC, png, NULL, scaled_png, 0, 0, 0, 0, 0, 0, width, height);
+
+                free(pixman_image_get_data(png));
+                pixman_image_unref(png);
+
+                png = scaled_png;
+                icon->png = png;
             }
 
             pixman_image_composite32(
@@ -366,7 +388,7 @@ render_match_list(const struct render *render, struct buffer *buf,
             RsvgDimensionData dim;
             rsvg_handle_get_dimensions(icon->svg, &dim);
 
-            double height = font->height;
+            double height = min(row_height, font->height);
             double scale = height / dim.height;
 
             double img_x = cur_x;
@@ -394,13 +416,15 @@ render_match_list(const struct render *render, struct buffer *buf,
         }
         }
 
-        cur_x += row_height;
+        cur_x += row_height + font->space_advance.x + pt_or_px_as_pixels(
+            &render->options.letter_spacing, render->dpi);
 
         /* Application title */
         render_match_text(
             buf, &cur_x, y,
             match->application->title, match->start_title, wcslen(prompt_text(prompt)),
             font, subpixel,
+            pt_or_px_as_pixels(&render->options.letter_spacing, render->dpi),
             render->options.pix_text_color, render->options.pix_match_color);
 
         y += row_height;
@@ -415,7 +439,7 @@ render_init(const struct render_options *options)
         .options = *options,
     };
 
-    /* TODO: the one providing the options should calculate these */
+    /* TODO: the one providing the opti3Dons should calculate these */
     render->options.pix_background_color = rgba2pixman(render->options.background_color);
     render->options.pix_border_color = rgba2pixman(render->options.border_color);
     render->options.pix_text_color = rgba2pixman(render->options.text_color);
@@ -431,7 +455,8 @@ render_set_subpixel(struct render *render, enum fcft_subpixel subpixel)
 }
 
 bool
-render_set_font(struct render *render, struct fcft_font *font, int scale,
+render_set_font(struct render *render, struct fcft_font *font,
+                int scale, float dpi,
                 int *new_width, int *new_height)
 {
     if (font != NULL) {
@@ -442,30 +467,34 @@ render_set_font(struct render *render, struct fcft_font *font, int scale,
         font = render->font;
     }
 
-#define max(x, y) ((x) > (y) ? (x) : (y))
+    const struct fcft_glyph *W = fcft_glyph_rasterize(
+        font, L'W', render->subpixel);
 
-    const unsigned y_margin = max(1, (double)font->height / 10.);
-    const unsigned x_margin = font->height * 2;
-
-#undef max
+    const unsigned x_margin = render->options.pad.x * scale;
+    const unsigned y_margin = render->options.pad.y * scale;
 
     const unsigned border_size = render->options.border_size * scale;
-    const unsigned row_height = 2 * y_margin + font->height;
+
+    const unsigned row_height = render->options.line_height.px >= 0
+        ? pt_or_px_as_pixels(&render->options.line_height, dpi)
+        : font->height;
 
     const unsigned height =
         border_size +                        /* Top border */
+        y_margin +
         row_height +                         /* The prompt */
         render->options.lines * row_height + /* Matches */
-        + row_height / 2 +                   /* Spacing at the bottom */
+        y_margin +
         border_size;                         /* Bottom border */
 
-    const struct fcft_glyph *M = fcft_glyph_rasterize(
-        font, L'W', render->subpixel);
-
     const unsigned width =
-        border_size + x_margin +
-        M->advance.x * render->options.chars +
-        x_margin + border_size;
+        border_size +
+        x_margin +
+        (max((W->advance.x + pt_or_px_as_pixels(
+                 &render->options.letter_spacing, dpi)), 0)
+         * render->options.chars) +
+        x_margin +
+        border_size;
 
     LOG_DBG("x-margin: %d, y-margin: %d, border: %d, row-height: %d, "
             "height: %d, width: %d, scale: %d",
@@ -475,6 +504,8 @@ render_set_font(struct render *render, struct fcft_font *font, int scale,
     render->x_margin = x_margin;
     render->border_size = border_size;
     render->row_height = row_height;
+    render->dpi = dpi;
+
     if (new_width != NULL)
         *new_width = width;
     if (new_height != NULL)
