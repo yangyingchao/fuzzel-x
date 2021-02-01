@@ -63,12 +63,14 @@ render_background(const struct render *render, struct buffer *buf)
         ;
 
     if (use_pixman) {
+        unsigned bw = render->options.border_size;
+
         pixman_color_t bg = rgba2pixman(render->options.background_color);
         pixman_image_fill_rectangles(
             PIXMAN_OP_SRC, buf->pix, &bg,
-            1, &(pixman_rectangle16_t){0, 0, buf->width, buf->height});
+            1, &(pixman_rectangle16_t){
+                bw, bw, buf->width - 2 * bw, buf->height - 2 * bw});
 
-        unsigned bw = render->options.border_size;
         pixman_color_t border_color = rgba2pixman(render->options.border_color);
         pixman_image_fill_rectangles(
             PIXMAN_OP_SRC, buf->pix, &border_color,
