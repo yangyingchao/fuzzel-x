@@ -1,25 +1,18 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [1.5.1](#1-5-1)
 * [1.5.0](#1-5-0)
 * [1.4.2](#1-4-2)
 * [1.4.1](#1-4-1)
 
 
-## Unreleased
-### Added
-### Changed
-### Deprecated
-### Removed
+## 1.5.1
+
 ### Fixed
 
 * Regression: border not being rendered when `--border-radius=0`, or
   if fuzzel was built without cairo
   (https://codeberg.org/dnkl/fuzzel/issues/15).
-
-
-### Security
-### Contributors
 
 
 ## 1.5.0
