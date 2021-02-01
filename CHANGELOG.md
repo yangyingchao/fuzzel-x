@@ -13,8 +13,9 @@
 ### Removed
 ### Fixed
 
-* Border not being rendered when `--border-radius=0`, or if fuzzel was
-  built without cairo (https://codeberg.org/dnkl/fuzzel/issues/15).
+* Regression: border not being rendered when `--border-radius=0`, or
+  if fuzzel was built without cairo
+  (https://codeberg.org/dnkl/fuzzel/issues/15).
 
 
 ### Security
