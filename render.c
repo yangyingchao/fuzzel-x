@@ -65,8 +65,19 @@ render_background(const struct render *render, struct buffer *buf)
     if (use_pixman) {
         pixman_color_t bg = rgba2pixman(render->options.background_color);
         pixman_image_fill_rectangles(
-            PIXMAN_OP_SRC, buf->pix, &bg, 1, &(pixman_rectangle16_t){0, 0, buf->width, buf->height}
-            );
+            PIXMAN_OP_SRC, buf->pix, &bg,
+            1, &(pixman_rectangle16_t){0, 0, buf->width, buf->height});
+
+        unsigned bw = render->options.border_size;
+        pixman_color_t border_color = rgba2pixman(render->options.border_color);
+        pixman_image_fill_rectangles(
+            PIXMAN_OP_SRC, buf->pix, &border_color,
+            4, (pixman_rectangle16_t[]){
+                {0, 0, buf->width, bw},                          /* top */
+                {0, bw, bw, buf->height - 2 * bw},               /* left */
+                {buf->width - bw, bw, bw, buf->height - 2 * bw}, /* right */
+                {0, buf->height - bw, buf->width, bw}            /* bottom */
+            });
     } else {
 #if defined(FUZZEL_ENABLE_CAIRO)
         /*
