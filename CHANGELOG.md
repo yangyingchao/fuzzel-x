@@ -13,6 +13,11 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* Crash when compositor provided bad monitor geometry data
+  (https://codeberg.org/dnkl/fuzzel/issues/17).
+
+
 ### Security
 ### Contributors
 
