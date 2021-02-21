@@ -853,7 +853,7 @@ wayl_ppi(const struct wayland *wayl)
            ? &tll_front(wayl->monitors)
            : NULL);
 
-    if (mon != NULL)
+    if (mon != NULL && mon->dpi != 0.)
         return mon->dpi;
 
     /* No outputs available, return "something" */
