@@ -865,7 +865,7 @@ update_size(struct wayland *wayl)
 {
     const struct monitor *mon = wayl->monitor;
     const int scale = mon != NULL ? mon->scale : guess_scale(wayl);
-    const float dpi = mon != NULL ? mon->dpi : wayl_ppi(wayl);
+    const float dpi = wayl_ppi(wayl);
 
     if (scale == wayl->scale && dpi == wayl->dpi)
         return;
