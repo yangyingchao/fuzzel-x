@@ -10,6 +10,12 @@
 ## Unreleased
 ### Added
 ### Changed
+
+* Maximum icon height reduced, from the `line height`, to the `line
+  height` minus the font's `descent`. This ensures a margin between
+  icons.
+
+
 ### Deprecated
 ### Removed
 ### Fixed
