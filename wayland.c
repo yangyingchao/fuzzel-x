@@ -853,7 +853,7 @@ wayl_ppi(const struct wayland *wayl)
            ? &tll_front(wayl->monitors)
            : NULL);
 
-    if (mon != NULL)
+    if (mon != NULL && mon->dpi != 0.)
         return mon->dpi;
 
     /* No outputs available, return "something" */
@@ -865,7 +865,7 @@ update_size(struct wayland *wayl)
 {
     const struct monitor *mon = wayl->monitor;
     const int scale = mon != NULL ? mon->scale : guess_scale(wayl);
-    const float dpi = mon != NULL ? mon->dpi : wayl_ppi(wayl);
+    const float dpi = wayl_ppi(wayl);
 
     if (scale == wayl->scale && dpi == wayl->dpi)
         return;
@@ -934,6 +934,10 @@ output_geometry(void *data, struct wl_output *wl_output, int32_t x, int32_t y,
                 int32_t transform)
 {
     struct monitor *mon = data;
+
+    free(mon->make);
+    free(mon->model);
+
     mon->dim.mm.width = physical_width;
     mon->dim.mm.height = physical_height;
     mon->inch = sqrt(pow(mon->dim.mm.width, 2) + pow(mon->dim.mm.height, 2)) * 0.03937008;
@@ -941,6 +945,7 @@ output_geometry(void *data, struct wl_output *wl_output, int32_t x, int32_t y,
     mon->model = model != NULL ? strdup(model) : NULL;
     mon->subpixel = subpixel;
     mon->transform = transform;
+
     output_update_ppi(mon);
 }
 
@@ -1018,6 +1023,7 @@ xdg_output_handle_name(void *data, struct zxdg_output_v1 *xdg_output,
     struct monitor *mon = data;
     struct wayland *wayl = mon->wayl;
 
+    free(mon->name);
     mon->name = name != NULL ? strdup(name) : NULL;
 
     if (wayl->output_name != NULL &&
@@ -1033,6 +1039,7 @@ xdg_output_handle_description(void *data, struct zxdg_output_v1 *xdg_output,
                               const char *description)
 {
     struct monitor *mon = data;
+    free(mon->description);
     mon->description = description != NULL ? strdup(description) : NULL;
 }
 

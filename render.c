@@ -25,6 +25,7 @@ struct render {
     unsigned y_margin;
     unsigned border_size;
     unsigned row_height;
+    unsigned icon_height;
 };
 
 static pixman_color_t
@@ -250,6 +251,7 @@ render_match_list(const struct render *render, struct buffer *buf,
     const int row_height = render->row_height;
     const int first_row = 1 * border_size + y_margin + row_height;
     const int sel_margin = x_margin / 3;
+    const int icon_height = render->icon_height;
 
     int y = first_row + (row_height + font->height) / 2 - font->descent;
 
@@ -335,8 +337,8 @@ render_match_list(const struct render *render, struct buffer *buf,
             int height = pixman_image_get_height(png);
             int width = pixman_image_get_width(png);
 
-            if (height > min(row_height, font->height)) {
-                double scale = (double)min(row_height, font->height) / height;
+            if (height > icon_height) {
+                double scale = (double)icon_height / height;
 
                 pixman_f_transform_t _scale_transform;
                 pixman_f_transform_init_scale(
@@ -401,7 +403,7 @@ render_match_list(const struct render *render, struct buffer *buf,
             RsvgDimensionData dim;
             rsvg_handle_get_dimensions(icon->svg, &dim);
 
-            double height = min(row_height, font->height);
+            double height = icon_height;
             double scale = height / dim.height;
 
             double img_x = cur_x;
@@ -492,6 +494,8 @@ render_set_font(struct render *render, struct fcft_font *font,
         ? pt_or_px_as_pixels(&render->options.line_height, dpi)
         : font->height;
 
+    const unsigned icon_height = max(0, (row_height - font->descent) * scale);
+
     const unsigned height =
         border_size +                        /* Top border */
         y_margin +
@@ -510,13 +514,15 @@ render_set_font(struct render *render, struct fcft_font *font,
         border_size;
 
     LOG_DBG("x-margin: %d, y-margin: %d, border: %d, row-height: %d, "
-            "height: %d, width: %d, scale: %d",
-            x_margin, y_margin, border_size, row_height, height, width, scale);
+            "icon-height: %d, height: %d, width: %d, scale: %d",
+            x_margin, y_margin, border_size, row_height, icon_height,
+            height, width, scale);
 
     render->y_margin = y_margin;
     render->x_margin = x_margin;
     render->border_size = border_size;
     render->row_height = row_height;
+    render->icon_height = icon_height;
     render->dpi = dpi;
 
     if (new_width != NULL)
