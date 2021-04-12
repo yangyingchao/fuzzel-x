@@ -251,7 +251,6 @@ render_match_list(const struct render *render, struct buffer *buf,
     const int row_height = render->row_height;
     const int first_row = 1 * border_size + y_margin + row_height;
     const int sel_margin = x_margin / 3;
-    const int icon_height = render->icon_height;
 
     int y = first_row + (row_height + font->height) / 2 - font->descent;
 
@@ -337,8 +336,8 @@ render_match_list(const struct render *render, struct buffer *buf,
             int height = pixman_image_get_height(png);
             int width = pixman_image_get_width(png);
 
-            if (height > icon_height) {
-                double scale = (double)icon_height / height;
+            if (height > render->icon_height) {
+                double scale = (double)render->icon_height / height;
 
                 pixman_f_transform_t _scale_transform;
                 pixman_f_transform_init_scale(
@@ -403,7 +402,7 @@ render_match_list(const struct render *render, struct buffer *buf,
             RsvgDimensionData dim;
             rsvg_handle_get_dimensions(icon->svg, &dim);
 
-            double height = icon_height;
+            double height = render->icon_height;
             double scale = height / dim.height;
 
             double img_x = cur_x;
