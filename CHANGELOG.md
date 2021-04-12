@@ -1,14 +1,14 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [1.5.2](#1-5-2)
 * [1.5.1](#1-5-1)
 * [1.5.0](#1-5-0)
 * [1.4.2](#1-4-2)
 * [1.4.1](#1-4-1)
 
 
-## Unreleased
-### Added
+## 1.5.2
+
 ### Changed
 
 * Maximum icon height reduced, from the `line height`, to the `line
@@ -16,16 +16,10 @@
   icons.
 
 
-### Deprecated
-### Removed
 ### Fixed
 
 * Crash when compositor provided bad monitor geometry data
   (https://codeberg.org/dnkl/fuzzel/issues/17).
-
-
-### Security
-### Contributors
 
 
 ## 1.5.1
