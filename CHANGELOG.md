@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [1.5.3](#1-5-3)
 * [1.5.2](#1-5-2)
 * [1.5.1](#1-5-1)
 * [1.5.0](#1-5-0)
@@ -8,17 +8,11 @@
 * [1.4.1](#1-4-1)
 
 
-## Unreleased
-### Added
-### Changed
-### Deprecated
-### Removed
+## 1.5.3
+
 ### Fixed
 
 * Compilation when both PNGs and SVGs have been disabled.
-
-
-### Security
 
 
 ## 1.5.2
