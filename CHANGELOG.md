@@ -14,6 +14,10 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* Compilation when both PNGs and SVGs have been disabled.
+
+
 ### Security
 
 
