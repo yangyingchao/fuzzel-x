@@ -457,9 +457,6 @@ main(int argc, char *const *argv)
     int ret = EXIT_FAILURE;
 
     log_init(LOG_COLORIZE_AUTO, true, LOG_FACILITY_USER, LOG_CLASS_INFO);
-
-    _Static_assert(LOG_CLASS_ERROR + 1 == FCFT_LOG_CLASS_ERROR,
-                   "fcft log level enum offset");
     fcft_log_init(FCFT_LOG_COLORIZE_AUTO, true, FCFT_LOG_CLASS_INFO);
 
     /* Load applications */
