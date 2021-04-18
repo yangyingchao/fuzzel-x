@@ -5,7 +5,7 @@ pkgdesc="Simplistic application launcher for wayland"
 arch=('x86_64' 'aarch64')
 url=https://codeberg.org/dnkl/fuzzel
 license=(mit)
-makedepends=('meson' 'ninja' 'scdoc' 'tllist>=1.0.1')
+makedepends=('meson' 'ninja' 'scdoc' 'wayland-protocols' 'tllist>=1.0.1')
 depends=('libxkbcommon' 'wayland' 'pixman' 'cairo' 'librsvg' 'libpng' 'fcft>=2.0.0')
 source=()
 
