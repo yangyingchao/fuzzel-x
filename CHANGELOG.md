@@ -15,6 +15,10 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* Icon size calculation with scaling factors > 1
+
+
 ### Security
 ### Contributors
 
