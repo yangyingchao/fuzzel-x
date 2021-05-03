@@ -493,7 +493,7 @@ render_set_font(struct render *render, struct fcft_font *font,
         ? pt_or_px_as_pixels(&render->options.line_height, dpi)
         : font->height;
 
-    const unsigned icon_height = max(0, (row_height - font->descent) * scale);
+    const unsigned icon_height = max(0, row_height - font->descent);
 
     const unsigned height =
         border_size +                        /* Top border */
