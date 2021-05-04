@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [1.5.4](#1-5-4)
 * [1.5.3](#1-5-3)
 * [1.5.2](#1-5-2)
 * [1.5.1](#1-5-1)
@@ -9,18 +9,11 @@
 * [1.4.1](#1-4-1)
 
 
-## Unreleased
-### Added
-### Changed
-### Deprecated
-### Removed
+## 1.5.4
+
 ### Fixed
 
 * Icon size calculation with scaling factors > 1
-
-
-### Security
-### Contributors
 
 
 ## 1.5.3
