@@ -205,25 +205,62 @@ render_match_text(struct buffer *buf, double *_x, double _y,
                   const wchar_t *text, ssize_t start, size_t length,
                   struct fcft_font *font, enum fcft_subpixel subpixel,
                   int letter_spacing,
-                  pixman_color_t regular_color, pixman_color_t match_color)
+                  pixman_color_t regular_color, pixman_color_t match_color,
+                  struct fcft_text_run **run)
 {
     int x = *_x;
     int y = _y;
 
-    for (size_t i = 0; i < wcslen(text); i++) {
-        const struct fcft_glyph *glyph = fcft_glyph_rasterize(font, text[i], subpixel);
-        if (glyph == NULL)
-            continue;
+    const struct fcft_glyph **glyphs = NULL;
+    int *clusters = NULL;
+    long *kern = NULL;
+    size_t count = 0;
 
-        long x_kern = 0, y_kern = 0;
-        if (i > 0)
-            fcft_kerning(font, text[i - 1], text[i], &x_kern, &y_kern);
+    if (*run == NULL &&
+        (fcft_capabilities() & FCFT_CAPABILITY_TEXT_RUN_SHAPING))
+    {
+        *run = fcft_text_run_rasterize(font, wcslen(text), text, subpixel);
+    }
 
-        bool is_match = start >= 0 && i >= start && i < start + length;
-        x += x_kern;
-        render_glyph(buf->pix, glyph, x, y + y_kern, is_match ? &match_color : &regular_color);
-        x += glyph->advance.x;
-        x += letter_spacing;
+    if (*run != NULL) {
+        glyphs = (*run)->glyphs;
+        clusters = (*run)->cluster;
+        count = (*run)->count;
+    } else {
+        count = wcslen(text);
+        glyphs = malloc(count * sizeof(glyphs[0]));
+        clusters = malloc(count * sizeof(clusters[0]));
+        kern = malloc(count * sizeof(kern[0]));
+
+        for (size_t i = 0; i < count; i++) {
+            const struct fcft_glyph *glyph = fcft_glyph_rasterize(font, text[i], subpixel);
+            if (glyph == NULL) {
+                glyphs[i] = NULL;
+                continue;
+            }
+
+            if (i > 0)
+                fcft_kerning(font, text[i - 1], text[i], &kern[i], NULL);
+            else
+                kern[i] = 0;
+
+            glyphs[i] = glyph;
+            clusters[i] = i;
+        }
+    }
+
+    for (size_t i = 0; i < count; i++) {
+        bool is_match = start >= 0 && clusters[i] >= start && clusters[i] < start + length;
+        x += kern != NULL ? kern[i] : 0;
+        render_glyph(buf->pix, glyphs[i], x, y, is_match ? &match_color : &regular_color);
+        x += glyphs[i]->advance.x + letter_spacing;
+        y += glyphs[i]->advance.y;
+    }
+
+    if (*run == NULL) {
+        free(kern);
+        free(clusters);
+        free(glyphs);
     }
 
     *_x = x;
@@ -439,7 +476,8 @@ render_match_list(const struct render *render, struct buffer *buf,
             match->application->title, match->start_title, wcslen(prompt_text(prompt)),
             font, subpixel,
             pt_or_px_as_pixels(&render->options.letter_spacing, render->dpi),
-            render->options.pix_text_color, render->options.pix_match_color);
+            render->options.pix_text_color, render->options.pix_match_color,
+            &match->application->shaped);
 
         y += row_height;
     }
