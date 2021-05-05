@@ -7,6 +7,8 @@
  #include <librsvg/rsvg.h>
 #endif
 
+#include <fcft/fcft.h>
+
 #include "prompt.h"
 
 enum icon_type { ICON_NONE, ICON_PNG, ICON_SVG };
@@ -31,6 +33,7 @@ struct application {
     wchar_t *comment;
     struct icon icon;
     unsigned count;
+    struct fcft_text_run *shaped;
 };
 
 bool application_execute(
