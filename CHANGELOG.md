@@ -12,7 +12,15 @@
 
 ## Unreleased
 ### Added
+
+* Text shaping support (https://codeberg.org/dnkl/fuzzel/issues/20).
+
+
 ### Changed
+
+* fcft >= 2.4.0 is now required.
+
+
 ### Deprecated
 ### Removed
 ### Fixed

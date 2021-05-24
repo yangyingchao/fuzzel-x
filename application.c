@@ -246,6 +246,8 @@ applications_destroy(struct application_list *apps)
 #endif
             break;
         }
+
+        fcft_text_run_destroy(app->shaped);
     }
     free(apps->v);
     free(apps);
