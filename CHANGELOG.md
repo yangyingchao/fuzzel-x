@@ -24,6 +24,10 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* Set initial subpixel mode correctly when there is only one monitor.
+
+
 ### Security
 ### Contributors
 

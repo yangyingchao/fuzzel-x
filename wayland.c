@@ -818,6 +818,15 @@ guess_scale(const struct wayland *wayl)
     return 1;
 }
 
+static enum fcft_subpixel
+guess_subpixel(const struct wayland *wayl)
+{
+    if (tll_length(wayl->monitors) == 0)
+        return FCFT_SUBPIXEL_DEFAULT;
+
+    return tll_front(wayl->monitors).subpixel;
+}
+
 static bool
 reload_font(struct wayland *wayl, float new_dpi, unsigned new_scale)
 {
@@ -1540,6 +1549,8 @@ wayl_init(struct fdm *fdm,
     zwlr_layer_surface_v1_add_listener(
         wayl->layer_surface, &layer_surface_listener, wayl);
 
+    wayl->subpixel = wayl->monitor != NULL
+        ? (enum fcft_subpixel)wayl->monitor->subpixel : guess_subpixel(wayl);
     update_size(wayl);
 
     if (wl_display_prepare_read(wayl->display) != 0) {
