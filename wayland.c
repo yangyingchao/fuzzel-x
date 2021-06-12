@@ -573,12 +573,8 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
         struct application *app = match != NULL ? match->application : NULL;
 
         if (wayl->dmenu_mode) {
-            if (match == NULL) {
-                wayl->status = KEEP_RUNNING;
-            } else {
-                dmenu_execute(app);
-                wayl->exit_code = EXIT_SUCCESS;
-            }
+            dmenu_execute(app, wayl->prompt);
+            wayl->exit_code = EXIT_SUCCESS;
         } else {
             bool success = application_execute(app, wayl->prompt);
             wayl->exit_code = success ? EXIT_SUCCESS : EXIT_FAILURE;

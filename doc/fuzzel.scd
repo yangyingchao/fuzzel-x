@@ -80,7 +80,8 @@ options:
 *-d*,*--dmenu*
 	dmenu compatibility mode. In this mode, the list entries are read
 	from stdin (newline separated). The selected entry is printed to
-	stdout.
+	stdout. If the input string does not match any of the entries, the
+	input string is printed as is on stdout.
 
 *-R*,*--no-run-if-empty*
 	Exit immediately, without showing the UI, if stdin is
