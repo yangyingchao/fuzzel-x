@@ -61,7 +61,7 @@ prompt_insert_chars(struct prompt *prompt, const char *text, size_t len)
     prompt->text = new_text;
     prompt->cursor += wlen;
 
-    LOG_DBG("prompt: \"%S\" (cursor=%zu, length=%zu)",
+    LOG_DBG("prompt: \"%ls\" (cursor=%zu, length=%zu)",
             prompt->text, prompt->cursor, new_len);
 
     return true;
