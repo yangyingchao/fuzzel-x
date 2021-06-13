@@ -19,6 +19,9 @@
 ### Changed
 
 * fcft >= 2.4.0 is now required.
+* In dmenu mode, fuzzel now prints the keyboard input as is, if it
+  does not match any of the items
+  (https://codeberg.org/dnkl/fuzzel/issues/23).
 
 
 ### Deprecated

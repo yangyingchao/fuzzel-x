@@ -63,8 +63,11 @@ dmenu_load_entries(struct application_list *applications)
 }
 
 bool
-dmenu_execute(const struct application *app)
+dmenu_execute(const struct application *app, const struct prompt *prompt)
 {
-    printf("%S\n", app->title);
+    if (app != NULL)
+        printf("%ls\n", app->title);
+    else
+        printf("%ls\n", prompt_text(prompt));
     return true;
 }
