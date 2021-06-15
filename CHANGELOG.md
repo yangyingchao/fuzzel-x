@@ -29,6 +29,7 @@
 ### Fixed
 
 * Set initial subpixel mode correctly when there is only one monitor.
+* Crash when `~/.cache/fuzzel` contained invalid/corrupt entries.
 
 
 ### Security

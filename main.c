@@ -88,6 +88,11 @@ read_cache(struct application_list *apps)
         const char *title = strtok_r(line, "|", &ptr);
         const char *count_str = strtok_r(NULL, "|", &ptr);
 
+        if (title == NULL || count_str == NULL) {
+            LOG_ERR("invalid cache entry (cache corrupt?): %s", line);
+            continue;
+        }
+
         int count;
         sscanf(count_str, "%u", &count);
 
