@@ -17,7 +17,7 @@ options:
 *-o*,*--output*=_OUTPUT_
 	Specifies the monitor to display the window on. In _Sway_, you can
 	list the available outputs with *swaymsg -t get_outputs*.
-	
+
 	The default is to let the compositor choose output.
 
 *-f*,*--font*=_FONT_
@@ -50,6 +50,10 @@ options:
 *-y*,*--vertical-pad*=_PAD_
 	Vertical padding between border and text. In pixels, subject to
 	output scaling. Default: _8_.
+
+*-p*,*--inner-pad*=_PAD_
+	Vertical padding between prompt and match list. In pixels, subject to
+	output scaling. Default: _0_.
 
 *-b*,*--background*=_HEX_
 	Background color. See *COLORS*. Default: _fdf6e3dd_.

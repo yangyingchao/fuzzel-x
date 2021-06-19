@@ -19,6 +19,7 @@ struct render_options {
     struct {
         unsigned x;
         unsigned y;
+        unsigned inner;
     } pad;
 
     struct rgba background_color;

@@ -14,6 +14,7 @@
 ### Added
 
 * Text shaping support (https://codeberg.org/dnkl/fuzzel/issues/20).
+* Option for vertical padding between prompt and match list.
 
 
 ### Changed
@@ -34,6 +35,8 @@
 
 ### Security
 ### Contributors
+
+* [loserMcloser](https://codeberg.org/loserMcloser)
 
 
 ## 1.5.4
