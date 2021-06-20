@@ -185,6 +185,7 @@ print_usage(const char *prog_name)
            "                             not included)\n"
            "  -x,--horizontal-pad=PAD    horizontal padding, in pixels (40)\n"
            "  -y,--vertical-pad=PAD      vertical padding, in pixels (8)\n"
+           "  -p,--inner-pad=PAD         vertical padding between prompt and match list, in pixels (0)\n"
            "  -b,--background-color=HEX  background color (000000ff)\n"
            "  -t,--text-color=HEX        text color (ffffffff)\n"
            "  -m,--match-color=HEX       color of matched substring (cc9393ff)\n"
@@ -260,6 +261,7 @@ main(int argc, char *const *argv)
         {"width",                    required_argument, 0, 'w'},
         {"horizontal-pad",           required_argument, 0, 'x'},
         {"vertical-pad",             required_argument, 0, 'y'},
+        {"inner-pad",                required_argument, 0, 'p'},
         {"background-color",         required_argument, 0, 'b'},
         {"text-color",               required_argument, 0, 't'},
         {"match-color",              required_argument, 0, 'm'},
@@ -290,7 +292,7 @@ main(int argc, char *const *argv)
         .chars = 30,
         .border_size = 1u,
         .border_radius = 10u,
-        .pad = {.x = 40, .y = 8},
+        .pad = {.x = 40, .y = 8, .inner = 0},
         .background_color = hex_to_rgba(0xfdf6e3dd),
         .border_color = hex_to_rgba(0x002b36ff),
         .text_color = hex_to_rgba(0x657b83ff),
@@ -301,7 +303,7 @@ main(int argc, char *const *argv)
     };
 
     while (true) {
-        int c = getopt_long(argc, argv, ":o:f:i:Il:w:x:y:b:t:m:s:B:r:C:T:dRvh", longopts, NULL);
+        int c = getopt_long(argc, argv, ":o:f:i:Il:w:x:y:p:b:t:m:s:B:r:C:T:dRvh", longopts, NULL);
         if (c == -1)
             break;
 
@@ -349,6 +351,13 @@ main(int argc, char *const *argv)
 
         case 'y':
             if (sscanf(optarg, "%u", &render_options.pad.y) != 1) {
+                fprintf(stderr, "%s: invalid padding\n", optarg);
+                return EXIT_FAILURE;
+            }
+            break;
+
+        case 'p':
+            if (sscanf(optarg, "%u", &render_options.pad.inner) != 1) {
                 fprintf(stderr, "%s: invalid padding\n", optarg);
                 return EXIT_FAILURE;
             }

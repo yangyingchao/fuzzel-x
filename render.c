@@ -23,6 +23,7 @@ struct render {
 
     unsigned x_margin;
     unsigned y_margin;
+    unsigned inner_pad;
     unsigned border_size;
     unsigned row_height;
     unsigned icon_height;
@@ -275,6 +276,7 @@ render_match_list(const struct render *render, struct buffer *buf,
 
     const int x_margin = render->x_margin;
     const int y_margin = render->y_margin;
+    const int inner_pad = render->inner_pad;
     const int border_size = render->border_size;
     const size_t match_count = matches_get_count(matches);
     const size_t selected = matches_get_match_index(matches);
@@ -286,7 +288,7 @@ render_match_list(const struct render *render, struct buffer *buf,
     assert(match_count == 0 || selected < match_count);
 
     const int row_height = render->row_height;
-    const int first_row = 1 * border_size + y_margin + row_height;
+    const int first_row = 1 * border_size + y_margin + row_height + inner_pad;
     const int sel_margin = x_margin / 3;
 
     int y = first_row + (row_height + font->height) / 2 - font->descent;
@@ -524,6 +526,7 @@ render_set_font(struct render *render, struct fcft_font *font,
 
     const unsigned x_margin = render->options.pad.x * scale;
     const unsigned y_margin = render->options.pad.y * scale;
+    const unsigned inner_pad = render->options.pad.inner * scale;
 
     const unsigned border_size = render->options.border_size * scale;
 
@@ -537,6 +540,7 @@ render_set_font(struct render *render, struct fcft_font *font,
         border_size +                        /* Top border */
         y_margin +
         row_height +                         /* The prompt */
+        inner_pad +                          /* Padding between prompt and matches */
         render->options.lines * row_height + /* Matches */
         y_margin +
         border_size;                         /* Bottom border */
@@ -557,6 +561,7 @@ render_set_font(struct render *render, struct fcft_font *font,
 
     render->y_margin = y_margin;
     render->x_margin = x_margin;
+    render->inner_pad = inner_pad;
     render->border_size = border_size;
     render->row_height = row_height;
     render->icon_height = icon_height;
