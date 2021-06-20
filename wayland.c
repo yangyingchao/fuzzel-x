@@ -1342,6 +1342,11 @@ wayl_refresh(struct wayland *wayl)
 {
     struct buffer *buf = shm_get_buffer(wayl->shm, wayl->width, wayl->height);
 
+    pixman_region32_t clip;
+    pixman_region32_init_rect(&clip, 0, 0, buf->width, buf->height);
+    pixman_image_set_clip_region32(buf->pix, &clip);
+    pixman_region32_fini(&clip);
+
     render_set_subpixel(wayl->render, wayl->subpixel);
 
     /* Background + border */
