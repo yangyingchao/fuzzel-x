@@ -169,8 +169,9 @@ matches_update(struct matches *matches, const struct prompt *prompt)
     matches->match_count = 0;
     for (size_t i = 0; i < matches->applications->count; i++) {
         struct application *app = &matches->applications->v[i];
-        size_t start_title = -1;
-        size_t start_comment = -1;
+        ssize_t start_title = -1;
+        ssize_t start_comment = -1;
+        ssize_t start_basename = -1;
 
         const wchar_t *m = wcscasestr(app->title, ptext);
         if (m != NULL)
@@ -182,13 +183,20 @@ matches_update(struct matches *matches, const struct prompt *prompt)
                 start_comment = m - app->comment;
         }
 
-        if (start_title == -1 && start_comment == -1)
+        if (app->basename != NULL) {
+            m = wcscasestr(app->basename, ptext);
+            if (m != NULL)
+                start_basename = m - app->basename;
+        }
+
+        if (start_title < 0 && start_comment < 0 && start_basename < 0)
             continue;
 
         matches->matches[matches->match_count++] = (struct match){
             .application = app,
             .start_title = start_title,
-            .start_comment = start_comment};
+            .start_comment = start_comment,
+            .start_basename = start_basename};
     }
 
     /* Sort */
