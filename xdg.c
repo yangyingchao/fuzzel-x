@@ -22,7 +22,7 @@
 typedef tll(struct application) application_llist_t;
 
 static void
-parse_desktop_file(int fd, const char *terminal,
+parse_desktop_file(int fd, const wchar_t *file_basename, const char *terminal,
                    application_llist_t *applications)
 {
     FILE *f = fdopen(fd, "r");
@@ -150,6 +150,7 @@ parse_desktop_file(int fd, const char *terminal,
             tll_push_back(
                 *applications,
                 ((struct application){
+                    .basename = wcsdup(file_basename),
                     .path = path, .exec = exec, .title = name,
                     .comment = generic_name,
                     .icon = {.name = icon != NULL ? strdup(icon) : NULL},
@@ -209,7 +210,28 @@ scan_dir(int base_fd, const char *terminal, application_llist_t *applications)
             if (fd == -1)
                 LOG_WARN("%s: failed to open", e->d_name);
             else {
-                parse_desktop_file(fd, terminal, applications);
+                const char *file_basename = strrchr(e->d_name, '/');
+                if (file_basename == NULL)
+                    file_basename = e->d_name;
+                else
+                    file_basename++;
+
+                const char *extension = strchr(file_basename, '.');
+                if (extension == NULL)
+                    extension = file_basename + strlen(file_basename);
+
+                const char *src = file_basename;
+                mbstate_t ps = {0};
+                int chars = mbsnrtowcs(NULL, &src, extension - file_basename, 0, &ps);
+                assert(chars >= 0);
+
+                wchar_t wfile_basename[chars + 1];
+                src = file_basename;
+                memset(&ps, 0, sizeof(ps));
+                mbsnrtowcs(wfile_basename, &src, extension - file_basename, chars, &ps);
+                wfile_basename[chars] = L'\0';
+
+                parse_desktop_file(fd, wfile_basename, terminal, applications);
                 close(fd);
             }
         }

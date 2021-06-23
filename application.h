@@ -29,6 +29,7 @@ struct icon {
 struct application {
     char *path;
     char *exec;
+    wchar_t *basename;
     wchar_t *title;
     wchar_t *comment;
     struct icon icon;
