@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [1.6.0](#1-6-0)
 * [1.5.4](#1-5-4)
 * [1.5.3](#1-5-3)
 * [1.5.2](#1-5-2)
@@ -10,7 +10,8 @@
 * [1.4.1](#1-4-1)
 
 
-## Unreleased
+## 1.6.0
+
 ### Added
 
 * Text shaping support (https://codeberg.org/dnkl/fuzzel/issues/20).
@@ -27,15 +28,12 @@
   (https://codeberg.org/dnkl/fuzzel/issues/25).
 
 
-### Deprecated
-### Removed
 ### Fixed
 
 * Set initial subpixel mode correctly when there is only one monitor.
 * Crash when `~/.cache/fuzzel` contained invalid/corrupt entries.
 
 
-### Security
 ### Contributors
 
 * [loserMcloser](https://codeberg.org/loserMcloser)
