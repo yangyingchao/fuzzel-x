@@ -203,7 +203,7 @@ print_usage(const char *prog_name)
     printf("Colors must be specified as a 32-bit hexadecimal RGBA quadruple.\n");
 }
 
-struct icon_reload_context {
+struct font_reload_context {
     bool icons_enabled;
     const icon_theme_list_t *themes;
     struct application_list *apps;
@@ -212,9 +212,10 @@ struct icon_reload_context {
 static void
 font_reloaded(struct wayland *wayl, struct fcft_font *font, void *data)
 {
-    struct icon_reload_context *ctx = data;
+    struct font_reload_context *ctx = data;
     if (ctx->icons_enabled)
         icon_reload_application_icons(*ctx->themes, font->height, ctx->apps);
+    applications_flush_text_run_cache(ctx->apps);
 }
 
 static bool
@@ -517,7 +518,7 @@ main(int argc, char *const *argv)
     if ((matches = matches_init(apps)) == NULL)
         goto out;
 
-    struct icon_reload_context font_reloaded_data = {
+    struct font_reload_context font_reloaded_data = {
         .icons_enabled = icons_enabled,
         .themes = &themes,
         .apps = apps,

@@ -253,3 +253,12 @@ applications_destroy(struct application_list *apps)
     free(apps->v);
     free(apps);
 }
+
+void
+applications_flush_text_run_cache(struct application_list *apps)
+{
+    for (size_t i = 0; i < apps->count; i++) {
+        fcft_text_run_destroy(apps->v[i].shaped);
+        apps->v[i].shaped = NULL;
+    }
+}

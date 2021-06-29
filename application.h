@@ -47,3 +47,4 @@ struct application_list {
 
 struct application_list *applications_init(void);
 void applications_destroy(struct application_list *apps);
+void applications_flush_text_run_cache(struct application_list *apps);

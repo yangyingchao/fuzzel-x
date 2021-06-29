@@ -17,6 +17,11 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* Wrong font being used for some entries if guessing monitor fuzzel
+  will appear on, and guessing wrong.
+
+
 ### Security
 ### Contributors
 
