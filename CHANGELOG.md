@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [1.6.1](#1-6-1)
 * [1.6.0](#1-6-0)
 * [1.5.4](#1-5-4)
 * [1.5.3](#1-5-3)
@@ -11,19 +11,13 @@
 * [1.4.1](#1-4-1)
 
 
-## Unreleased
-### Added
-### Changed
-### Deprecated
-### Removed
+## 1.6.1
+
 ### Fixed
 
 * Wrong font being used for some entries if guessing monitor fuzzel
-  will appear on, and guessing wrong.
-
-
-### Security
-### Contributors
+  will appear on, and guessing wrong
+  (https://codeberg.org/dnkl/fuzzel/issues/31).
 
 
 ## 1.6.0
