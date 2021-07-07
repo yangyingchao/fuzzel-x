@@ -1,5 +1,6 @@
 # Changelog
 
+* [Unreleased](#unreleased)
 * [1.6.0](#1-6-0)
 * [1.5.4](#1-5-4)
 * [1.5.3](#1-5-3)
@@ -8,6 +9,21 @@
 * [1.5.0](#1-5-0)
 * [1.4.2](#1-4-2)
 * [1.4.1](#1-4-1)
+
+
+## Unreleased
+### Added
+### Changed
+### Deprecated
+### Removed
+### Fixed
+
+* Wrong font being used for some entries if guessing monitor fuzzel
+  will appear on, and guessing wrong.
+
+
+### Security
+### Contributors
 
 
 ## 1.6.0
