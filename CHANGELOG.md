@@ -16,6 +16,12 @@
 ## Unreleased
 ### Added
 ### Changed
+
+* Use `rsvg_handle_render_document()` instead of
+  `rsvg_handle_render_cairo()` on libsrvg >= 2.46, since the latter
+  has been deprecated (https://codeberg.org/dnkl/fuzzel/issues/32).
+
+
 ### Deprecated
 ### Removed
 ### Fixed
