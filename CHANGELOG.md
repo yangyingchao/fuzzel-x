@@ -25,6 +25,10 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* Icons not being searched for in all icon theme instances
+
+
 ### Security
 ### Contributors
 
