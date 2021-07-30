@@ -27,6 +27,8 @@
 ### Fixed
 
 * Icons not being searched for in all icon theme instances
+* Crash when XKB compose file is missing
+  (https://codeberg.org/dnkl/fuzzel/issues/35).
 
 
 ### Security
