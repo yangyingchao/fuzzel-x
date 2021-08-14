@@ -173,32 +173,35 @@ print_usage(const char *prog_name)
     printf("Usage: %s [OPTION]...\n", prog_name);
     printf("\n");
     printf("Options:\n");
-    printf("  -o,--output=OUTPUT         output (monitor) to display on (none)\n"
-           "  -f,--font=FONT             font name+style in fontconfig format (monospace)\n"
-           "  -i,--icon-theme=NAME       icon theme name (\"hicolor\")\n"
-           "  -I,--no-icons              do not render any icons\n"
-           "  -T,--terminal              terminal command to use when launching 'terminal'\n"
-           "                             programs, e.g. \"xterm -e\". Not used in dmenu\n"
-           "                             mode (not set)\n"
-           "  -l,--lines                 number of matches to show\n"
-           "  -w,--width                 window width, in characters (margins and borders\n"
-           "                             not included)\n"
-           "  -x,--horizontal-pad=PAD    horizontal padding, in pixels (40)\n"
-           "  -y,--vertical-pad=PAD      vertical padding, in pixels (8)\n"
-           "  -p,--inner-pad=PAD         vertical padding between prompt and match list, in pixels (0)\n"
-           "  -b,--background-color=HEX  background color (000000ff)\n"
-           "  -t,--text-color=HEX        text color (ffffffff)\n"
-           "  -m,--match-color=HEX       color of matched substring (cc9393ff)\n"
-           "  -s,--selection-color=HEX   background color of selected item (333333ff)\n"
-           "  -B,--border-width=INT      width of border, in pixels (1)\n"
-           "  -r,--border-radius=INT     amount of corner \"roundness\" (10)\n"
-           "  -C,--border-color=HEX      border color (ffffffff)\n"
-           "  -d,--dmenu                 dmenu compatibility mode\n"
-           "  -R,--no-run-if-empty       exit immediately without showing UI if stdin is \n"
-           "                             empty (dmenu mode only)\n"
-           "     --line-height=HEIGHT    override line height from font metrics\n"
-           "     --letter-spacing=AMOUNT additional letter spacing\n"
-           "  -v,--version               show the version number and quit\n");
+    printf("  -o,--output=OUTPUT             output (monitor) to display on (none)\n"
+           "  -f,--font=FONT                 font name and style, in FontConfig format\n"
+           "                                 (monospace)\n"
+           "  -i,--icon-theme=NAME           icon theme name (\"hicolor\")\n"
+           "  -I,--no-icons                  do not render any icons\n"
+           "  -T,--terminal                  terminal command to use when launching\n"
+           "                                'terminal' programs, e.g. \"xterm -e\".\n"
+           "                                 Not used in dmenu mode (not set)\n"
+           "  -l,--lines                     number of matches to show\n"
+           "  -w,--width                     window width, in characters (margins and\n"
+           "                                 borders not included)\n"
+           "  -x,--horizontal-pad=PAD        horizontal padding, in pixels (40)\n"
+           "  -y,--vertical-pad=PAD          vertical padding, in pixels (8)\n"
+           "  -p,--inner-pad=PAD             vertical padding between prompt and match list,\n"
+           "                                 in pixels (0)\n"
+           "  -b,--background-color=HEX      background color (000000ff)\n"
+           "  -t,--text-color=HEX            text color (ffffffff)\n"
+           "  -m,--match-color=HEX           color of matched substring (cc9393ff)\n"
+           "  -s,--selection-color=HEX       background color of selected item (333333ff)\n"
+           "  -S,--selection-text-color=HEX  text color of selected item (ffffffff)\n"
+           "  -B,--border-width=INT          width of border, in pixels (1)\n"
+           "  -r,--border-radius=INT         amount of corner \"roundness\" (10)\n"
+           "  -C,--border-color=HEX          border color (ffffffff)\n"
+           "  -d,--dmenu                     dmenu compatibility mode\n"
+           "  -R,--no-run-if-empty           exit immediately without showing UI if stdin\n"
+           "                                 is empty (dmenu mode only)\n"
+           "     --line-height=HEIGHT        override line height from font metrics\n"
+           "     --letter-spacing=AMOUNT     additional letter spacing\n"
+           "  -v,--version                   show the version number and quit\n");
     printf("\n");
     printf("Colors must be specified as a 32-bit hexadecimal RGBA quadruple.\n");
 }
@@ -253,31 +256,34 @@ pt_or_px_from_string(const char  *s, struct pt_or_px *res)
 int
 main(int argc, char *const *argv)
 {
+    #define OPT_LETTER_SPACING 256
+
     static const struct option longopts[] = {
-        {"output"  ,                 required_argument, 0, 'o'},
-        {"font",                     required_argument, 0, 'f'},
-        {"icon-theme",               required_argument, 0, 'i'},
-        {"no-icons",                 no_argument,       0, 'I'},
-        {"lines",                    required_argument, 0, 'l'},
-        {"width",                    required_argument, 0, 'w'},
-        {"horizontal-pad",           required_argument, 0, 'x'},
-        {"vertical-pad",             required_argument, 0, 'y'},
-        {"inner-pad",                required_argument, 0, 'p'},
-        {"background-color",         required_argument, 0, 'b'},
-        {"text-color",               required_argument, 0, 't'},
-        {"match-color",              required_argument, 0, 'm'},
-        {"selection-color",          required_argument, 0, 's'},
-        {"border-width",             required_argument, 0, 'B'},
-        {"border-radius",            required_argument, 0, 'r'},
-        {"border-color",             required_argument, 0, 'C'},
-        {"terminal",                 required_argument, 0, 'T'},
-        {"dmenu",                    no_argument,       0, 'd'},
-        {"no-run-if-empty",          no_argument,       0, 'R'},
-        {"line-height",              required_argument, 0, 'H'},
-        {"letter-spacing",           required_argument, 0, 'S'},
-        {"version",                  no_argument,       0, 'v'},
-        {"help",                     no_argument,       0, 'h'},
-        {NULL,                       no_argument,       0, 0},
+        {"output"  ,             required_argument, 0, 'o'},
+        {"font",                 required_argument, 0, 'f'},
+        {"icon-theme",           required_argument, 0, 'i'},
+        {"no-icons",             no_argument,       0, 'I'},
+        {"lines",                required_argument, 0, 'l'},
+        {"width",                required_argument, 0, 'w'},
+        {"horizontal-pad",       required_argument, 0, 'x'},
+        {"vertical-pad",         required_argument, 0, 'y'},
+        {"inner-pad",            required_argument, 0, 'p'},
+        {"background-color",     required_argument, 0, 'b'},
+        {"text-color",           required_argument, 0, 't'},
+        {"match-color",          required_argument, 0, 'm'},
+        {"selection-color",      required_argument, 0, 's'},
+        {"selection-text-color", required_argument, 0, 'S'},
+        {"border-width",         required_argument, 0, 'B'},
+        {"border-radius",        required_argument, 0, 'r'},
+        {"border-color",         required_argument, 0, 'C'},
+        {"terminal",             required_argument, 0, 'T'},
+        {"dmenu",                no_argument,       0, 'd'},
+        {"no-run-if-empty",      no_argument,       0, 'R'},
+        {"line-height",          required_argument, 0, 'H'},
+        {"letter-spacing",       required_argument, 0, OPT_LETTER_SPACING},
+        {"version",              no_argument,       0, 'v'},
+        {"help",                 no_argument,       0, 'h'},
+        {NULL,                   no_argument,       0, 0},
     };
 
     const char *output_name = NULL;
@@ -299,12 +305,13 @@ main(int argc, char *const *argv)
         .text_color = hex_to_rgba(0x657b83ff),
         .match_color = hex_to_rgba(0xcb4b16ff),
         .selection_color = hex_to_rgba(0xeee8d5dd),
+        .selection_text_color = hex_to_rgba(0x657b83ff),
         .line_height = {-1, 0.0},  /* Use font metrics */
         .letter_spacing = {0},
     };
 
     while (true) {
-        int c = getopt_long(argc, argv, ":o:f:i:Il:w:x:y:p:b:t:m:s:B:r:C:T:dRvh", longopts, NULL);
+        int c = getopt_long(argc, argv, ":o:f:i:Il:w:x:y:p:b:t:m:s:S:B:r:C:T:dRvh", longopts, NULL);
         if (c == -1)
             break;
 
@@ -404,6 +411,16 @@ main(int argc, char *const *argv)
             break;
         }
 
+        case 'S': {
+            uint32_t selection_text_color;
+            if (sscanf(optarg, "%x", &selection_text_color) != 1) {
+                fprintf(stderr, "%s: invalid color\n", optarg);
+                return EXIT_FAILURE;
+            }
+            render_options.selection_text_color = hex_to_rgba(selection_text_color);
+            break;
+        }
+
         case 'B':
             if (sscanf(optarg, "%u", &render_options.border_size) != 1) {
                 fprintf(
@@ -445,7 +462,7 @@ main(int argc, char *const *argv)
             break;
         }
 
-        case 'S': { /* letter-spacing */
+        case OPT_LETTER_SPACING: {
             if (!pt_or_px_from_string(optarg, &render_options.letter_spacing))
                 return EXIT_FAILURE;
             break;

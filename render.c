@@ -502,8 +502,10 @@ render_match_list(const struct render *render, struct buffer *buf,
             match->application->title, match->start_title, wcslen(prompt_text(prompt)),
             font, subpixel,
             pt_or_px_as_pixels(&render->options.letter_spacing, render->dpi),
-            render->options.pix_text_color, render->options.pix_match_color,
-            &match->application->shaped);
+            (i == selected
+             ? render->options.pix_selection_text_color
+             : render->options.pix_text_color),
+            render->options.pix_match_color, &match->application->shaped);
 
         y += row_height;
     }
@@ -523,6 +525,7 @@ render_init(const struct render_options *options)
     render->options.pix_text_color = rgba2pixman(render->options.text_color);
     render->options.pix_match_color = rgba2pixman(render->options.match_color);
     render->options.pix_selection_color = rgba2pixman(render->options.selection_color);
+    render->options.pix_selection_text_color = rgba2pixman(render->options.selection_text_color);
     return render;
 }
 
