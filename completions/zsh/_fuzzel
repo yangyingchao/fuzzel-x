@@ -18,6 +18,7 @@ _arguments \
     '(-t --text-color)'{-t,--text-color}'[text color (657b83ff)]:text-color:()' \
     '(-m --match-color)'{-m,--match-color}'[color of matched substring (cb4b16ff)]:match-color:()' \
     '(-s --selection-color)'{-s,--selection-color}'[background color of selected item (eee8d5ff)]:selection-color:()' \
+    '(-S --selection-text-color)'{-S,--selection-text-color}'[text color of selected item (657b83ff)]:selection-text-color:()' \
     '(-B --border-width)'{-B,--border-width}'[width of border, in pixels (1)]:border-width:()' \
     '(-r --border-radius)'{-r,--border-radius}'[amount of corner "roundness" (10)]:border-radius:()' \
     '(-C --border-color)'{-C,--border-color}'[border color (002b36ff)]:border-color:()' \

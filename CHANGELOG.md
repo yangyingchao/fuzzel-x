@@ -15,6 +15,12 @@
 
 ## Unreleased
 ### Added
+
+* `-s,--selection-text-color` command line option, that lets you
+  configure the foreground/text color of the currently selected item
+  (https://codeberg.org/dnkl/fuzzel/issues/37).
+
+
 ### Changed
 
 * Use `rsvg_handle_render_document()` instead of
