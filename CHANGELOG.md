@@ -16,6 +16,10 @@
 ## Unreleased
 ### Added
 ### Changed
+
+* `-f,--font` now supports explicit font fallbacks.
+
+
 ### Deprecated
 ### Removed
 ### Fixed

@@ -21,7 +21,7 @@ struct wayland *wayl_init(
     struct fdm *fdm,
     struct render *render, struct prompt *prompt, struct matches *matches,
     const struct render_options *render_options, bool dmenu_mode,
-    const char *output_name, const char *font_name,
+    const char *output_name, const char *font_spec,
     font_reloaded_t font_reloaded_cb, void *data);
 
 void wayl_destroy(struct wayland *wayl);
