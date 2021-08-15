@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [1.6.2](#1-6-2)
 * [1.6.1](#1-6-1)
 * [1.6.0](#1-6-0)
 * [1.5.4](#1-5-4)
@@ -13,7 +13,8 @@
 
 
 
-## Unreleased
+## 1.6.2
+
 ### Added
 
 * `-s,--selection-text-color` command line option, that lets you
@@ -28,17 +29,11 @@
   has been deprecated (https://codeberg.org/dnkl/fuzzel/issues/32).
 
 
-### Deprecated
-### Removed
 ### Fixed
 
 * Icons not being searched for in all icon theme instances
 * Crash when XKB compose file is missing
   (https://codeberg.org/dnkl/fuzzel/issues/35).
-
-
-### Security
-### Contributors
 
 
 ## 1.6.1
