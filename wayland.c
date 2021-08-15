@@ -371,18 +371,27 @@ keyboard_keymap(void *data, struct wl_keyboard *wl_keyboard,
     }
 
     seat->kbd.xkb = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
-    seat->kbd.xkb_keymap = xkb_keymap_new_from_string(
-        seat->kbd.xkb, map_str, XKB_KEYMAP_FORMAT_TEXT_V1,
-        XKB_KEYMAP_COMPILE_NO_FLAGS);
+    if (seat->kbd.xkb != NULL) {
+        seat->kbd.xkb_keymap = xkb_keymap_new_from_string(
+            seat->kbd.xkb, map_str, XKB_KEYMAP_FORMAT_TEXT_V1,
+            XKB_KEYMAP_COMPILE_NO_FLAGS);
 
-    /* TODO: initialize in enter? */
-    seat->kbd.xkb_state = xkb_state_new(seat->kbd.xkb_keymap);
+        /* Compose (dead keys) */
+        seat->kbd.xkb_compose_table = xkb_compose_table_new_from_locale(
+            seat->kbd.xkb, setlocale(LC_CTYPE, NULL), XKB_COMPOSE_COMPILE_NO_FLAGS);
 
-    /* Compose (dead keys) */
-    seat->kbd.xkb_compose_table = xkb_compose_table_new_from_locale(
-        seat->kbd.xkb, setlocale(LC_CTYPE, NULL), XKB_COMPOSE_COMPILE_NO_FLAGS);
-    seat->kbd.xkb_compose_state = xkb_compose_state_new(
-        seat->kbd.xkb_compose_table, XKB_COMPOSE_STATE_NO_FLAGS);
+        if (seat->kbd.xkb_compose_table == NULL) {
+            LOG_WARN("failed to instantiate compose table; dead keys will not work");
+        } else {
+            seat->kbd.xkb_compose_state = xkb_compose_state_new(
+                seat->kbd.xkb_compose_table, XKB_COMPOSE_STATE_NO_FLAGS);
+        }
+    }
+
+    if (seat->kbd.xkb_keymap != NULL) {
+        /* TODO: initialize in enter? */
+        seat->kbd.xkb_state = xkb_state_new(seat->kbd.xkb_keymap);
+    }
 
     munmap(map_str, size);
     close(fd);
@@ -439,9 +448,13 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
     bool should_repeat = xkb_keymap_key_repeats(seat->kbd.xkb_keymap, key);
     xkb_keysym_t sym = xkb_state_key_get_one_sym(seat->kbd.xkb_state, key);
 
-    xkb_compose_state_feed(seat->kbd.xkb_compose_state, sym);
-    enum xkb_compose_status compose_status = xkb_compose_state_get_status(
-        seat->kbd.xkb_compose_state);
+    enum xkb_compose_status compose_status = XKB_COMPOSE_NOTHING;
+
+    if (seat->kbd.xkb_compose_state != NULL) {
+        xkb_compose_state_feed(seat->kbd.xkb_compose_state, sym);
+        compose_status = xkb_compose_state_get_status(
+            seat->kbd.xkb_compose_state);
+    }
 
     if (compose_status == XKB_COMPOSE_COMPOSING) {
         /* TODO: goto maybe_repeat? */

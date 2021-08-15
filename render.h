@@ -27,6 +27,7 @@ struct render_options {
     struct rgba text_color;
     struct rgba match_color;
     struct rgba selection_color;
+    struct rgba selection_text_color;
 
     struct pt_or_px line_height;
     struct pt_or_px letter_spacing;
@@ -37,6 +38,7 @@ struct render_options {
     pixman_color_t pix_text_color;
     pixman_color_t pix_match_color;
     pixman_color_t pix_selection_color;
+    pixman_color_t pix_selection_text_color;
 };
 
 struct render;
