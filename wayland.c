@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <wctype.h>
 #include <unistd.h>
 #include <errno.h>
@@ -143,7 +144,8 @@ struct wayland {
 
     const struct render_options *render_options;
 
-    char *font_name;
+    char **font_names;
+    size_t font_count;
     struct {
         font_reloaded_t cb;
         void *data;
@@ -848,7 +850,8 @@ reload_font(struct wayland *wayl, float new_dpi, unsigned new_scale)
         char attrs[256];
         snprintf(attrs, sizeof(attrs), "dpi=%.2f", new_dpi);
 
-        font = fcft_from_name(1, (const char *[]){wayl->font_name}, attrs);
+        font = fcft_from_name(
+            wayl->font_count, (const char **)wayl->font_names, attrs);
         if (font == NULL)
             return false;
 
@@ -1451,11 +1454,46 @@ static const struct wl_surface_listener surface_listener = {
     .leave = &surface_leave,
 };
 
+static void
+parse_font_spec(const char *font_spec, size_t *count, char ***names)
+{
+    tll(char *) fonts = tll_init();
+
+    char *copy = strdup(font_spec);
+    for (const char *font = strtok(copy, ",");
+         font != NULL;
+         font = strtok(NULL, ","))
+    {
+        while (*font != '\0' && isspace(*font))
+            font++;
+
+        size_t len = strlen(font);
+        while (len > 0 && isspace(font[len - 1]))
+            len--;
+
+        if (font[0] == '\0')
+            continue;
+
+        tll_push_back(fonts, strndup(font, len));
+    }
+    free(copy);
+
+    *count = tll_length(fonts);
+    *names = malloc(*count * sizeof((*names)[0]));
+
+    char **p = *names;
+    tll_foreach(fonts, it) {
+        *p = it->item;
+        tll_remove(fonts, it);
+        p++;
+    }
+}
+
 struct wayland *
 wayl_init(struct fdm *fdm,
           struct render *render, struct prompt *prompt, struct matches *matches,
           const struct render_options *render_options, bool dmenu_mode,
-          const char *output_name, const char *font_name,
+          const char *output_name, const char *font_spec,
           font_reloaded_t font_reloaded_cb, void *data)
 {
     struct wayland *wayl = malloc(sizeof(*wayl));
@@ -1468,13 +1506,14 @@ wayl_init(struct fdm *fdm,
         .exit_code = EXIT_FAILURE,
         .dmenu_mode = dmenu_mode,
         .output_name = output_name != NULL ? strdup(output_name) : NULL,
-        .font_name = strdup(font_name),
         .render_options = render_options,
         .font_reloaded = {
             .cb = font_reloaded_cb,
             .data = data,
         },
     };
+
+    parse_font_spec(font_spec, &wayl->font_count, &wayl->font_names);
 
     wayl->display = wl_display_connect(NULL);
     if (wayl->display == NULL) {
@@ -1621,8 +1660,11 @@ wayl_destroy(struct wayland *wayl)
         wl_display_disconnect(wayl->display);
     }
 
+    for (size_t i = 0; i < wayl->font_count; i++)
+        free(wayl->font_names[i]);
+    free(wayl->font_names);
+
     free(wayl->output_name);
-    free(wayl->font_name);
     free(wayl);
 }
 
