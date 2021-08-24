@@ -117,7 +117,9 @@
 ### Changed
 
 * Meson option `-Denable-png` replaced with `-Dpng-backend=none|libpng`.
-* Meson option `-Denable-svg` replaced with `-Dsvg-backend=none|librsvg|nanosvg`.
+* Meson option `-Denable-svg` replaced with `-Dsvg-backend=none|librsvg|nanosvg
+* fcft >= 3.0 is now required.
+* `-f,--font` now supports explicit font fallbacks.
 
 
 ### Fixed

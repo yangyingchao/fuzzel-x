@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-#include <wchar.h>
 #include <unistd.h>
 #include <limits.h>
 
@@ -17,24 +16,13 @@
 #define LOG_MODULE "xdg"
 #define LOG_ENABLE_DBG 0
 #include "log.h"
+#include "char32.h"
 #include "icon.h"
 
 typedef tll(struct application) application_llist_t;
 
-static wchar_t *
-strdup_to_wchar(const char *s)
-{
-    size_t wlen = mbstowcs(NULL, s, 0);
-    if (wlen == (size_t)-1)
-        return NULL;
-
-    wchar_t *ret = malloc((wlen + 1) * sizeof(wchar_t));
-    mbstowcs(ret, s, wlen + 1);
-    return ret;
-}
-
 static void
-parse_desktop_file(int fd, char *id, const wchar_t *file_basename,
+parse_desktop_file(int fd, char *id, const char32_t *file_basename,
                    const char *terminal, bool include_actions,
                    application_llist_t *applications)
 {
@@ -47,15 +35,15 @@ parse_desktop_file(int fd, char *id, const wchar_t *file_basename,
     tll(char *) action_names = tll_init();
 
     struct action {
-        wchar_t *name;
-        wchar_t *generic_name;
-        wchar_t *comment;
-        wchar_list_t keywords;
-        wchar_list_t categories;
+        char32_t *name;
+        char32_t *generic_name;
+        char32_t *comment;
+        char32_list_t keywords;
+        char32_list_t categories;
 
         char *icon;
         char *exec;
-        wchar_t *wexec;
+        char32_t *wexec;
 
         char *path;
         bool visible;
@@ -115,9 +103,9 @@ parse_desktop_file(int fd, char *id, const wchar_t *file_basename,
 
                         action->generic_name =
                             default_action->generic_name != NULL
-                            ? wcsdup(default_action->generic_name) : NULL;
+                            ? c32dup(default_action->generic_name) : NULL;
                         action->comment = default_action->comment != NULL
-                            ? wcsdup(default_action->comment) : NULL;
+                            ? c32dup(default_action->comment) : NULL;
                         action->path = default_action->path != NULL
                             ? strdup(default_action->path) : NULL;
                         action->icon = default_action->icon != NULL
@@ -126,9 +114,9 @@ parse_desktop_file(int fd, char *id, const wchar_t *file_basename,
                         action->use_terminal = default_action->use_terminal;
 
                         tll_foreach(default_action->keywords, it)
-                            tll_push_back(action->keywords, wcsdup(it->item));
+                            tll_push_back(action->keywords, c32dup(it->item));
                         tll_foreach(default_action->categories, it)
-                            tll_push_back(action->categories, wcsdup(it->item));
+                            tll_push_back(action->categories, c32dup(it->item));
 
                         action_is_valid = true;
                         break;
@@ -154,14 +142,14 @@ parse_desktop_file(int fd, char *id, const wchar_t *file_basename,
         if (key != NULL && value != NULL) {
             if (strcmp(key, "Name") == 0) {
                 free(action->name);
-                action->name = strdup_to_wchar(value);
+                action->name = ambstoc32(value);
             }
 
             else if (strcmp(key, "Exec") == 0) {
                 free(action->exec);
                 free(action->wexec);
                 action->exec = strdup(value);
-                action->wexec = strdup_to_wchar(value);
+                action->wexec = ambstoc32(value);
             }
 
             else if (strcmp(key, "Path") == 0) {
@@ -171,12 +159,12 @@ parse_desktop_file(int fd, char *id, const wchar_t *file_basename,
 
             else if (strcmp(key, "GenericName") == 0) {
                 free(action->generic_name);
-                action->generic_name = strdup_to_wchar(value);
+                action->generic_name = ambstoc32(value);
             }
 
             else if (strcmp(key, "Comment") == 0) {
                 free(action->comment);
-                action->comment = strdup_to_wchar(value);
+                action->comment = ambstoc32(value);
             }
 
             else if (strcmp(key, "Keywords") == 0) {
@@ -184,7 +172,7 @@ parse_desktop_file(int fd, char *id, const wchar_t *file_basename,
                      kw != NULL;
                      kw = strtok(NULL, ";"))
                 {
-                    wchar_t *wide_kw = strdup_to_wchar(kw);
+                    char32_t *wide_kw = ambstoc32(kw);
                     if (wide_kw != NULL)
                         tll_push_back(action->keywords, wide_kw);
                 }
@@ -195,7 +183,7 @@ parse_desktop_file(int fd, char *id, const wchar_t *file_basename,
                      category != NULL;
                      category = strtok(NULL, ";"))
                 {
-                    wchar_t *wide_category = strdup_to_wchar(category);
+                    char32_t *wide_category = ambstoc32(category);
                     if (wide_category != NULL)
                         tll_push_back(action->categories, wide_category);
                 }
@@ -265,17 +253,17 @@ parse_desktop_file(int fd, char *id, const wchar_t *file_basename,
             a->exec = exec_with_terminal;
         }
 
-        wchar_t *title = a->name;
+        char32_t *title = a->name;
         if (a != default_action) {
-            size_t title_len = wcslen(default_action->name) +
+            size_t title_len = c32len(default_action->name) +
                 3 +  /* “ - “ */
-                wcslen(a->name) +
+                c32len(a->name) +
                 1;
-            title = malloc(title_len * sizeof(wchar_t));
+            title = malloc(title_len * sizeof(char32_t));
 
-            wcscpy(title, default_action->name);
-            wcscat(title, L" - ");
-            wcscat(title, a->name);
+            c32cpy(title, default_action->name);
+            c32cat(title, U" - ");
+            c32cat(title, a->name);
             free(a->name);
         }
 
@@ -285,7 +273,7 @@ parse_desktop_file(int fd, char *id, const wchar_t *file_basename,
                 .id = strdup(id),
                 .path = a->path,
                 .exec = a->exec,
-                .basename = wcsdup(file_basename),
+                .basename = c32dup(file_basename),
                 .wexec = a->wexec,
                 .title = title,
                 .generic_name = a->generic_name,
@@ -374,16 +362,12 @@ scan_dir(int base_fd, const char *terminal, bool include_actions,
                 if (extension == NULL)
                     extension = file_basename + strlen(file_basename);
 
-                const char *src = file_basename;
-                mbstate_t ps = {0};
-                int chars = mbsnrtowcs(NULL, &src, extension - file_basename, 0, &ps);
+                int chars = mbsntoc32(NULL, file_basename, extension - file_basename, 0);
                 assert(chars >= 0);
 
-                wchar_t wfile_basename[chars + 1];
-                src = file_basename;
-                memset(&ps, 0, sizeof(ps));
-                mbsnrtowcs(wfile_basename, &src, extension - file_basename, chars, &ps);
-                wfile_basename[chars] = L'\0';
+                char32_t wfile_basename[chars + 1];
+                mbsntoc32(wfile_basename, file_basename, extension - file_basename, chars);
+                wfile_basename[chars] = U'\0';
 
                 char *id = new_id(base_id, e->d_name);
 
@@ -415,7 +399,7 @@ sort_application_by_title(const void *_a, const void *_b)
 {
     const struct application *a = _a;
     const struct application *b = _b;
-    return wcscmp(a->title, b->title);
+    return c32cmp(a->title, b->title);
 }
 
 void
@@ -455,28 +439,28 @@ xdg_find_programs(const char *terminal, bool include_actions,
     for (size_t i = 0; i < applications->count; i++) {
         const struct application *app = &applications->v[i];
 
-        wchar_t keywords[1024];
-        wchar_t categories[1024];
+        char32_t keywords[1024];
+        char32_t categories[1024];
 
         int idx = 0;
         tll_foreach(app->keywords, it) {
             idx += swprintf(&keywords[idx],
                             (sizeof(keywords) / sizeof(keywords[0])) - idx,
-                            L"%ls, ", it->item);
+                            L"%ls, ", (const wchar_t *)it->item);
         }
 
         if (idx > 0)
-            keywords[idx - 2] = L'\0';
+            keywords[idx - 2] = U'\0';
 
         idx = 0;
         tll_foreach(app->categories, it) {
             idx += swprintf(&categories[idx],
                             (sizeof(categories) / sizeof(categories[0])) - idx,
-                            L"%ls, ", it->item);
+                            L"%ls, ", (const wchar_t *)it->item);
         }
 
         if (idx > 0)
-            categories[idx - 2] = L'\0';
+            categories[idx - 2] = U'\0';
 
         LOG_DBG("%s:\n"
                 "  name/title:   %ls\n"
@@ -490,8 +474,12 @@ xdg_find_programs(const char *terminal, bool include_actions,
                 "  icon:\n"
                 "    name: %s\n"
                 "    type: %s",
-                app->id, app->title, app->path, app->exec, app->basename,
-                app->generic_name, app->comment, keywords, categories,
+                app->id, (const wchar_t *)app->title, app->path, app->exec,
+                (const wchar_t *)app->basename,
+                (const wchar_t *)app->generic_name,
+                (const wchar_t *)app->comment,
+                (const wchar_t *)keywords,
+                (const wchar_t *)categories,
                 app->icon.name,
                 app->icon.type == ICON_PNG ? "PNG" :
                 app->icon.type == ICON_SVG ? "SVG" : "<none>");

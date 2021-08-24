@@ -13,6 +13,7 @@
 #define LOG_MODULE "render"
 #define LOG_ENABLE_DBG 0
 #include "log.h"
+#include "char32.h"
 #include "stride.h"
 #include "wayland.h"
 
@@ -173,11 +174,11 @@ render_prompt(const struct render *render, struct buffer *buf,
     struct fcft_font *font = render->font;
     assert(font != NULL);
 
-    const wchar_t *pprompt = prompt_prompt(prompt);
-    const size_t prompt_len = wcslen(pprompt);
+    const char32_t *pprompt = prompt_prompt(prompt);
+    const size_t prompt_len = c32len(pprompt);
 
-    const wchar_t *ptext = prompt_text(prompt);
-    const size_t text_len = wcslen(ptext);
+    const char32_t *ptext = prompt_text(prompt);
+    const size_t text_len = c32len(ptext);
 
     const enum fcft_subpixel subpixel =
         (render->options.background_color.a == 1. &&
@@ -187,11 +188,12 @@ render_prompt(const struct render *render, struct buffer *buf,
     int x = render->border_size + render->x_margin;
     int y = render->border_size + render->y_margin + font->ascent;
 
-    wchar_t prev = 0;
+    char32_t prev = 0;
 
     for (size_t i = 0; i < prompt_len + text_len; i++) {
-        wchar_t wc = i < prompt_len ? pprompt[i] : ptext[i - prompt_len];
-        const struct fcft_glyph *glyph = fcft_glyph_rasterize(font, wc, subpixel);
+        char32_t wc = i < prompt_len ? pprompt[i] : ptext[i - prompt_len];
+        const struct fcft_glyph *glyph = fcft_rasterize_char_utf32(
+            font, wc, subpixel);
         if (glyph == NULL) {
             prev = wc;
             continue;
@@ -221,7 +223,7 @@ render_prompt(const struct render *render, struct buffer *buf,
 
 static void
 render_match_text(struct buffer *buf, double *_x, double _y, double max_x,
-                  const wchar_t *text, ssize_t start, size_t length,
+                  const char32_t *text, ssize_t start, size_t length,
                   struct fcft_font *font, enum fcft_subpixel subpixel,
                   int letter_spacing,
                   pixman_color_t regular_color, pixman_color_t match_color,
@@ -238,7 +240,8 @@ render_match_text(struct buffer *buf, double *_x, double _y, double max_x,
     if (*run == NULL &&
         (fcft_capabilities() & FCFT_CAPABILITY_TEXT_RUN_SHAPING))
     {
-        *run = fcft_text_run_rasterize(font, wcslen(text), text, subpixel);
+        *run = fcft_rasterize_text_run_utf32(
+            font, c32len(text), text, subpixel);
     }
 
     if (*run != NULL) {
@@ -246,13 +249,14 @@ render_match_text(struct buffer *buf, double *_x, double _y, double max_x,
         clusters = (*run)->cluster;
         count = (*run)->count;
     } else {
-        count = wcslen(text);
+        count = c32len(text);
         glyphs = malloc(count * sizeof(glyphs[0]));
         clusters = malloc(count * sizeof(clusters[0]));
         kern = malloc(count * sizeof(kern[0]));
 
         for (size_t i = 0; i < count; i++) {
-            const struct fcft_glyph *glyph = fcft_glyph_rasterize(font, text[i], subpixel);
+            const struct fcft_glyph *glyph = fcft_rasterize_char_utf32(
+                font, text[i], subpixel);
             if (glyph == NULL) {
                 glyphs[i] = NULL;
                 continue;
@@ -273,7 +277,7 @@ render_match_text(struct buffer *buf, double *_x, double _y, double max_x,
 
         if (x + (kern != NULL ? kern[i] : 0) + glyphs[i]->advance.x >= max_x) {
             const struct fcft_glyph *ellipses =
-                fcft_glyph_rasterize(font, L'…', subpixel);
+                fcft_rasterize_char_utf32(font, U'…', subpixel);
 
             if (ellipses != NULL)
                 render_glyph(buf->pix, ellipses, x, y, &regular_color);
@@ -523,7 +527,8 @@ render_match_list(const struct render *render, struct buffer *buf,
         (render->options.background_color.a == 1. &&
          render->options.selection_color.a == 1.)
         ? render->subpixel : FCFT_SUBPIXEL_NONE;
-    const struct fcft_glyph *ellipses = fcft_glyph_rasterize(font, L'…', subpixel);
+    const struct fcft_glyph *ellipses =
+        fcft_rasterize_char_utf32(font, U'…', subpixel);
 
     assert(match_count == 0 || selected < match_count);
 
@@ -609,13 +614,17 @@ render_match_list(const struct render *render, struct buffer *buf,
             }
         }
 
-        cur_x += row_height + font->space_advance.x + pt_or_px_as_pixels(
-            render, &render->options.letter_spacing);
+        const struct fcft_glyph *space = fcft_rasterize_char_utf32(
+            font, U' ', subpixel);
+
+        cur_x += row_height +
+            (space != NULL ? space->advance.x : font->max_advance.x) +
+            pt_or_px_as_pixels(render, &render->options.letter_spacing);
 
         /* Application title */
         render_match_text(
             buf, &cur_x, y, max_x - (ellipses != NULL ? ellipses->width : 0),
-            match->application->title, match->start_title, wcslen(prompt_text(prompt)),
+            match->application->title, match->start_title, c32len(prompt_text(prompt)),
             font, subpixel,
             pt_or_px_as_pixels(render, &render->options.letter_spacing),
             (i == selected
@@ -672,8 +681,8 @@ render_set_font(struct render *render, struct fcft_font *font,
     render->dpi = dpi;
     render->size_font_by_dpi = size_font_by_dpi;
 
-    const struct fcft_glyph *W = fcft_glyph_rasterize(
-        font, L'W', render->subpixel);
+    const struct fcft_glyph *W = fcft_rasterize_char_utf32(
+        font, U'W', render->subpixel);
 
     const unsigned x_margin = render->options.pad.x * scale;
     const unsigned y_margin = render->options.pad.y * scale;

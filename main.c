@@ -23,6 +23,7 @@
 #define LOG_ENABLE_DBG 0
 #include "log.h"
 #include "application.h"
+#include "char32.h"
 #include "dmenu.h"
 #include "fdm.h"
 #include "match.h"
@@ -123,15 +124,15 @@ read_cache(struct application_list *apps)
         int count;
         sscanf(count_str, "%u", &count);
 
-        size_t wlen = mbstowcs(NULL, title, 0);
+        size_t wlen = mbstoc32(NULL, title, 0);
         if (wlen == (size_t)-1)
             continue;
 
-        wchar_t wtitle[wlen + 1];
-        mbstowcs(wtitle, title, wlen + 1);
+        char32_t wtitle[wlen + 1];
+        mbstoc32(wtitle, title, wlen + 1);
 
         for (; app_idx < apps->count; app_idx++) {
-            int cmp = wcscmp(apps->v[app_idx].title, wtitle);
+            int cmp = c32cmp(apps->v[app_idx].title, wtitle);
 
             if (cmp == 0) {
                 apps->v[app_idx].count = count;
@@ -176,10 +177,9 @@ write_cache(const struct application_list *apps)
         sprintf(count_as_str, "%u", apps->v[i].count);
         const size_t count_len = strlen(count_as_str);
 
-        size_t clen = wcstombs(NULL, apps->v[i].title, 0);
+        size_t clen = c32tombs(NULL, apps->v[i].title, 0);
         char ctitle[clen + 1];
-        wcstombs(ctitle, apps->v[i].title, clen + 1);
-
+        c32tombs(ctitle, apps->v[i].title, clen + 1);
 
         if (write(fd, ctitle, clen) != clen ||
             write(fd, "|", 1) != 1 ||
@@ -522,8 +522,8 @@ main(int argc, char *const *argv)
     const char *font_name = "monospace";
     const char *icon_theme = "hicolor";
     const char *terminal = NULL;
-    const wchar_t *prompt_content = L"> ";
-    wchar_t *prompt_allocated = NULL;
+    const char32_t *prompt_content = U"> ";
+    char32_t *prompt_allocated = NULL;
     bool icons_enabled = true;
     bool actions_enabled = false;
     bool fuzzy = true;
@@ -690,21 +690,17 @@ main(int argc, char *const *argv)
             }
             break;
 
-        case 'P': {
-            size_t wlen = mbstowcs(NULL, optarg, 0);
-            if (wlen == (size_t)-1) {
-                fprintf(stderr, "%s: invalid prompt\n", optarg);
-                return EXIT_FAILURE;
-            }
-            prompt_allocated = malloc((wlen + 1) * sizeof(wchar_t));
+        case 'P':
+            free(prompt_allocated);
+            prompt_allocated = ambstoc32(optarg);
+
             if (prompt_allocated == NULL) {
                 fprintf(stderr, "%s: invalid prompt\n", optarg);
                 return EXIT_FAILURE;
             }
-            mbstowcs(prompt_allocated, optarg, wlen + 1);
+
             prompt_content = prompt_allocated;
             break;
-        }
 
         case 'b': {
             uint32_t background;
@@ -906,7 +902,8 @@ main(int argc, char *const *argv)
                    "fcft colorize enum mismatch");
 
     log_init(log_colorize, log_syslog, LOG_FACILITY_USER, log_level);
-    fcft_log_init((enum fcft_log_colorize)log_colorize, log_syslog, (enum fcft_log_class)log_level);
+    fcft_init((enum fcft_log_colorize)log_colorize, log_syslog, (enum fcft_log_class)log_level);
+    atexit(&fcft_fini);
 
     mtx_t icon_lock;
     if (mtx_init(&icon_lock, mtx_plain) != thrd_success) {
