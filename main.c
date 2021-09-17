@@ -276,6 +276,7 @@ main(int argc, char *const *argv)
         {"border-width",         required_argument, 0, 'B'},
         {"border-radius",        required_argument, 0, 'r'},
         {"border-color",         required_argument, 0, 'C'},
+        {"prompt",               required_argument, 0, 'P'},
         {"terminal",             required_argument, 0, 'T'},
         {"dmenu",                no_argument,       0, 'd'},
         {"no-run-if-empty",      no_argument,       0, 'R'},
@@ -290,6 +291,8 @@ main(int argc, char *const *argv)
     const char *font_name = "monospace";
     const char *icon_theme = "hicolor";
     const char *terminal = NULL;
+    const wchar_t *prompt_content = L"> ";
+    wchar_t *prompt_allocated = NULL;
     bool dmenu_mode = false;
     bool no_run_if_empty = false;
     bool icons_enabled = true;
@@ -310,8 +313,10 @@ main(int argc, char *const *argv)
         .letter_spacing = {0},
     };
 
+    setlocale(LC_CTYPE, "");
+
     while (true) {
-        int c = getopt_long(argc, argv, ":o:f:i:Il:w:x:y:p:b:t:m:s:S:B:r:C:T:dRvh", longopts, NULL);
+        int c = getopt_long(argc, argv, ":o:f:i:Il:w:x:y:p:P:b:t:m:s:S:B:r:C:T:dRvh", longopts, NULL);
         if (c == -1)
             break;
 
@@ -371,6 +376,21 @@ main(int argc, char *const *argv)
             }
             break;
 
+        case 'P': {
+            size_t wlen = mbstowcs(NULL, optarg, 0);
+            if (wlen == (size_t)-1) {
+                fprintf(stderr, "%s: invalid prompt\n", optarg);
+                return EXIT_FAILURE;
+            }
+            prompt_allocated = malloc((wlen + 1) * sizeof(wchar_t));
+            if (prompt_allocated == NULL) {
+                fprintf(stderr, "%s: invalid prompt\n", optarg);
+                return EXIT_FAILURE;
+            }
+            mbstowcs(prompt_allocated, optarg, wlen + 1);
+            prompt_content = prompt_allocated;
+            break;
+        }
         case 'b': {
             uint32_t background;
             if (sscanf(optarg, "%08x", &background) != 1) {
@@ -513,8 +533,6 @@ main(int argc, char *const *argv)
         goto out;
 
 
-    setlocale(LC_CTYPE, "");
-
     /* Load applications */
     if ((apps = applications_init()) == NULL)
         goto out;
@@ -529,7 +547,7 @@ main(int argc, char *const *argv)
     if ((render = render_init(&render_options)) == NULL)
         goto out;
 
-    if ((prompt = prompt_init(L"> ")) == NULL)
+    if ((prompt = prompt_init(prompt_content)) == NULL)
         goto out;
 
     if ((matches = matches_init(apps)) == NULL)
@@ -572,6 +590,7 @@ out:
     fdm_destroy(fdm);
     applications_destroy(apps);
     icon_themes_destroy(themes);
+    free(prompt_allocated);
 
 #if defined(FUZZEL_ENABLE_CAIRO)
     cairo_debug_reset_static_data();
