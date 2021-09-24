@@ -23,6 +23,12 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* Removed usage of deprecated function `rsvg_handle_get_dimensions()`
+  when building against recent versions of librsvg
+  (https://codeberg.org/dnkl/fuzzel/issues/45).
+
+
 ### Security
 ### Contributors
 
