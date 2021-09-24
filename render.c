@@ -307,55 +307,51 @@ render_match_list(const struct render *render, struct buffer *buf,
              * there's "enough" free space, render a large
              * representation of the icon */
 
-            if (match->application->icon.type == ICON_SVG) {
+            const double size = min(buf->height * 0.618, buf->width * 0.618);
+            const double img_x = (buf->width - size) / 2.;
+            const double img_y = first_row + (buf->height - size) / 2.;
+
+            const double list_end = first_row + match_count * row_height;
+
+            if (match->application->icon.type == ICON_SVG && img_y > list_end) {
 #if defined(FUZZEL_ENABLE_SVG)
                 RsvgHandle *svg = match->application->icon.svg;
+
+                cairo_save(buf->cairo);
+                cairo_set_operator(buf->cairo, CAIRO_OPERATOR_ATOP);
+
+#if LIBRSVG_CHECK_VERSION(2, 46, 0)
+                if (cairo_status(buf->cairo) == CAIRO_STATUS_SUCCESS) {
+                    const RsvgRectangle viewport = {
+                        .x = img_x,
+                        .y = img_y,
+                        .width = size,
+                        .height = size,
+                    };
+                    rsvg_handle_render_document(svg, buf->cairo, &viewport, NULL);
+                }
+#else
                 RsvgDimensionData dim;
                 rsvg_handle_get_dimensions(svg, &dim);
 
-                const double max_height = buf->height * 0.618;
-                const double max_width = buf->width * 0.618;
-
-                const double scale_x = max_width / dim.width;
-                const double scale_y = max_height / dim.height;
+                const double scale_x = size / dim.width;
+                const double scale_y = size / dim.height;
                 const double scale = scale_x < scale_y ? scale_x : scale_y;
 
                 const double height = dim.height * scale;
                 const double width = dim.width * scale;
 
-                const double img_x = (buf->width - width) / 2.;
-                const double img_y = first_row + (buf->height - height) / 2.;
+                cairo_rectangle(buf->cairo, img_x, img_y, height, width);
+                cairo_clip(buf->cairo);
 
-                double list_end = first_row + match_count * row_height;
+                /* Translate + scale. Note: order matters! */
+                cairo_translate(buf->cairo, img_x, img_y);
+                cairo_scale(buf->cairo, scale, scale);
 
-                if (img_y > list_end) {
-
-                    cairo_save(buf->cairo);
-                    cairo_set_operator(buf->cairo, CAIRO_OPERATOR_ATOP);
-
-                    cairo_rectangle(buf->cairo, img_x, img_y, height, width);
-                    cairo_clip(buf->cairo);
-
-#if LIBRSVG_CHECK_VERSION(2, 46, 0)
-                    if (cairo_status(buf->cairo) == CAIRO_STATUS_SUCCESS) {
-                        RsvgRectangle viewport = {
-                            .x = img_x,
-                            .y = img_y,
-                            .width = width,
-                            .height = height,
-                        };
-                        rsvg_handle_render_document(svg, buf->cairo, &viewport, NULL);
-                    }
-#else
-                    /* Translate + scale. Note: order matters! */
-                    cairo_translate(buf->cairo, img_x, img_y);
-                    cairo_scale(buf->cairo, scale, scale);
-
-                    if (cairo_status(buf->cairo) == CAIRO_STATUS_SUCCESS)
-                        rsvg_handle_render_cairo(svg, buf->cairo);
+                if (cairo_status(buf->cairo) == CAIRO_STATUS_SUCCESS)
+                    rsvg_handle_render_cairo(svg, buf->cairo);
 #endif
-                    cairo_restore(buf->cairo);
-                }
+                cairo_restore(buf->cairo);
 #endif /* FUZZEL_ENABLE_SVG */
             }
 
@@ -450,38 +446,37 @@ render_match_list(const struct render *render, struct buffer *buf,
 
         case ICON_SVG: {
 #if defined(FUZZEL_ENABLE_SVG)
-            RsvgDimensionData dim;
-            rsvg_handle_get_dimensions(icon->svg, &dim);
-
-            double height = render->icon_height;
-            double scale = height / dim.height;
-
-            double img_x = cur_x;
-            double img_y = first_row + i * row_height + (row_height - height) / 2;
-            double img_width = dim.width * scale;
-            double img_height = dim.height * scale;
-
             cairo_save(buf->cairo);
             cairo_set_operator(buf->cairo, CAIRO_OPERATOR_OVER);
 
-            cairo_rectangle(buf->cairo, img_x, img_y, img_width, img_height);
-            cairo_clip(buf->cairo);
+            double size = render->icon_height;
+            double img_x = cur_x;
+            double img_y = first_row + i * row_height + (row_height - size) / 2;
 
 #if LIBRSVG_CHECK_VERSION(2, 46, 0)
             if (cairo_status(buf->cairo) == CAIRO_STATUS_SUCCESS) {
-                RsvgRectangle viewport = {
-                    .x = cur_x,
-                    .y = first_row + i * row_height + (row_height - height) / 2,
-                    .width = img_width,
-                    .height = img_height,
+                const RsvgRectangle viewport = {
+                    .x = img_x,
+                    .y = img_y,
+                    .width = size,
+                    .height = size,
                 };
                 rsvg_handle_render_document(icon->svg, buf->cairo, &viewport, NULL);
             }
 #else
+            RsvgDimensionData dim;
+            rsvg_handle_get_dimensions(icon->svg, &dim);
+
+            double scale = size / dim.height;
+
+            double img_width = dim.width * scale;
+            double img_height = dim.height * scale;
+
+            cairo_rectangle(buf->cairo, img_x, img_y, img_width, img_height);
+            cairo_clip(buf->cairo);
+
             /* Translate + scale. Note: order matters! */
-            cairo_translate(
-                buf->cairo, cur_x,
-                first_row + i * row_height + (row_height - height) / 2);
+            cairo_translate(buf->cairo, img_x, img_y);
             cairo_scale(buf->cairo, scale, scale);
 
             if (cairo_status(buf->cairo) == CAIRO_STATUS_SUCCESS)
