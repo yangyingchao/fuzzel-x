@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [1.6.3](#1-6-3)
 * [1.6.2](#1-6-2)
 * [1.6.1](#1-6-1)
 * [1.6.0](#1-6-0)
@@ -13,7 +13,8 @@
 * [1.4.1](#1-4-1)
 
 
-## Unreleased
+## 1.6.3
+
 ### Added
 
 * `-P,--prompt` command line option, allowing you to set a custom
@@ -25,8 +26,6 @@
 * `-f,--font` now supports explicit font fallbacks.
 
 
-### Deprecated
-### Removed
 ### Fixed
 
 * Removed usage of deprecated function `rsvg_handle_get_dimensions()`
@@ -34,8 +33,9 @@
   (https://codeberg.org/dnkl/fuzzel/issues/45).
 
 
-### Security
 ### Contributors
+
+* [bapt](https://codeberg.org/bapt)
 
 
 ## 1.6.2
