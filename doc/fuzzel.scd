@@ -20,9 +20,12 @@ options:
 
 	The default is to let the compositor choose output.
 
-*-f*,*--font*=_FONT_
-	Font and style to use, in fontconfig format. See *FONT FORMAT*.
-	Default: _monospace_.
+*-f*,*--font*=_FONT_[,_FALLBACK1_,_FALLBACK2_,...]
+	Comma separated list of primary font, and fallback fonts, in
+	FontConfig format. See *FONT FORMAT*. Default: _monospace_.
+
+*-P*,*--prompt*=_PROMPT_
+	Prompt to use. Default: _> _.
 
 *-i*,*--icon-theme*=_NAME_
 	Icon theme to use. Example: _Adwaita_. Default: _hicolor_.

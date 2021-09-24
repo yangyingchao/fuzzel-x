@@ -1,5 +1,6 @@
 # Changelog
 
+* [Unreleased](#unreleased)
 * [1.6.2](#1-6-2)
 * [1.6.1](#1-6-1)
 * [1.6.0](#1-6-0)
@@ -11,6 +12,30 @@
 * [1.4.2](#1-4-2)
 * [1.4.1](#1-4-1)
 
+
+## Unreleased
+### Added
+
+* `-P,--prompt` command line option, allowing you to set a custom
+  prompt.
+
+
+### Changed
+
+* `-f,--font` now supports explicit font fallbacks.
+
+
+### Deprecated
+### Removed
+### Fixed
+
+* Removed usage of deprecated function `rsvg_handle_get_dimensions()`
+  when building against recent versions of librsvg
+  (https://codeberg.org/dnkl/fuzzel/issues/45).
+
+
+### Security
+### Contributors
 
 
 ## 1.6.2
