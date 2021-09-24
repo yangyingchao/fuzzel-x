@@ -15,6 +15,11 @@
 
 ## Unreleased
 ### Added
+
+* `-P,--prompt` command line option, allowing you to set a custom
+  prompt.
+
+
 ### Changed
 
 * `-f,--font` now supports explicit font fallbacks.
