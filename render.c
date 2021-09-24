@@ -308,7 +308,7 @@ render_match_list(const struct render *render, struct buffer *buf,
              * representation of the icon */
 
             const double size = min(buf->height * 0.618, buf->width * 0.618);
-            const double img_x = (buf->width - size) / 2.;
+            const double img_x __attribute__((unused)) = (buf->width - size) / 2.;
             const double img_y = first_row + (buf->height - size) / 2.;
 
             const double list_end = first_row + match_count * row_height;
