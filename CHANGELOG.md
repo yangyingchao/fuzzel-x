@@ -20,6 +20,11 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* Graphical corruption triggered by the “gerbview” SVG icon, from
+  KiCAD (https://codeberg.org/dnkl/fuzzel/issues/47).
+
+
 ### Security
 ### Contributors
 
