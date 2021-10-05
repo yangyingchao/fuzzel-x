@@ -101,6 +101,7 @@ render_background(const struct render *render, struct buffer *buf)
         const double radius = render->options.border_radius;
 
         /* Path describing an arc:ed rectangle */
+        cairo_new_path(buf->cairo);
         cairo_arc(buf->cairo, b + w - radius, b + h - radius, radius,
                   0.0 * from_degree, 90.0 * from_degree);
         cairo_arc(buf->cairo, b + radius, b + h - radius, radius,
