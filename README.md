@@ -104,3 +104,11 @@ For more detailed configuration information, see the man page:
 ```sh
 man fuzzel
 ```
+
+
+## License
+
+Fuzzel is released under the [MIT license](LICENSE).
+
+Fuzzel uses nanosvg, released under the [Zlib
+license](3rd-party/nanosvg/LICENSE.txt).

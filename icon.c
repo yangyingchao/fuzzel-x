@@ -10,12 +10,16 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#if defined(FUZZEL_ENABLE_PNG)
+#if defined(FUZZEL_ENABLE_PNG_LIBPNG)
  #include "png-fuzzel.h"
 #endif
 
-#if defined(FUZZEL_ENABLE_SVG)
+#if defined(FUZZEL_ENABLE_SVG_LIBRSVG)
  #include <librsvg/rsvg.h>
+#endif
+
+#if defined(FUZZEL_ENABLE_SVG_NANOSVG)
+ #include <nanosvg.h>
 #endif
 
 #include <tllist.h>
@@ -276,25 +280,75 @@ icon_null(struct icon *icon)
     return true;
 }
 
-#if defined(FUZZEL_ENABLE_PNG)
+#if defined(FUZZEL_ENABLE_PNG_LIBPNG)
 static bool
-icon_from_png(struct icon *icon, pixman_image_t *png, int icon_size)
+icon_from_png_libpng(struct icon *icon, const char *file_name)
 {
+    pixman_image_t *png = png_load(file_name);
+    if (png == NULL)
+        return false;
+
     icon->type = ICON_PNG;
     icon->png = png;
     return true;
 }
 #endif
 
-#if defined(FUZZEL_ENABLE_SVG)
 static bool
-icon_from_svg(struct icon *icon, RsvgHandle *svg)
+icon_from_png(struct icon *icon, const char *name)
 {
+#if defined(FUZZEL_ENABLE_PNG_LIBPNG)
+    return icon_from_png_libpng(icon, name);
+#else
+    return false;
+#endif
+}
+
+#if defined(FUZZEL_ENABLE_SVG_LIBRSVG)
+static bool
+icon_from_svg_librsvg(struct icon *icon, const char *file_name)
+{
+    RsvgHandle *svg = rsvg_handle_new_from_file(file_name, NULL);
+    if (svg == NULL)
+        return false;
+
     icon->type = ICON_SVG;
     icon->svg = svg;
     return true;
 }
 #endif
+
+#if defined(FUZZEL_ENABLE_SVG_NANOSVG)
+static bool
+icon_from_svg_nanosvg(struct icon *icon, const char *file_name)
+{
+    /* TODO: DPI */
+    NSVGimage *svg = nsvgParseFromFile(file_name, "px", 96);
+    if (svg == NULL)
+        return false;
+
+    if (svg->width == 0 || svg->height == 0)  {
+        nsvgDelete(svg);
+        return false;
+    }
+
+    icon->type = ICON_SVG;
+    icon->svg = svg;
+    return true;
+}
+#endif
+
+static bool
+icon_from_svg(struct icon *icon, const char *name)
+{
+#if defined(FUZZEL_ENABLE_SVG_LIBRSVG)
+    return icon_from_svg_librsvg(icon, name);
+#elif defined(FUZZEL_ENABLE_SVG_NANOSVG)
+    return icon_from_svg_nanosvg(icon, name);
+#else
+    return false;
+#endif
+}
 
 static void
 icon_reset(struct icon *icon)
@@ -304,7 +358,7 @@ icon_reset(struct icon *icon)
         break;
 
     case ICON_PNG:
-#if defined(FUZZEL_ENABLE_PNG)
+#if defined(FUZZEL_ENABLE_PNG_LIBPNG)
         free(pixman_image_get_data(icon->png));
         pixman_image_unref(icon->png);
         icon->png = NULL;
@@ -312,12 +366,23 @@ icon_reset(struct icon *icon)
         break;
 
     case ICON_SVG:
-#if defined(FUZZEL_ENABLE_SVG)
+#if defined(FUZZEL_ENABLE_SVG_LIBRSVG)
         g_object_unref(icon->svg);
+        icon->svg = NULL;
+#elif defined(FUZZEL_ENABLE_SVG_NANOSVG)
+        nsvgDelete(icon->svg);
         icon->svg = NULL;
 #endif
         break;
     }
+
+    tll_foreach(icon->rasterized, it) {
+        struct rasterized *rast = &it->item;
+        free(pixman_image_get_data(rast->pix));
+        pixman_image_unref(rast->pix);
+        tll_remove(icon->rasterized, it);
+    }
+    
     icon->type = ICON_NONE;
 }
 
@@ -334,20 +399,16 @@ reload_icon(struct icon *icon, int icon_size, icon_theme_list_t themes)
         return icon_null(icon);
 
     if (name[0] == '/') {
-#if defined(FUZZEL_ENABLE_SVG)
-        RsvgHandle *svg = rsvg_handle_new_from_file(name, NULL);
-        if (svg != NULL) {
+        if (icon_from_svg(icon, name)) {
             LOG_DBG("%s: absolute path SVG", name);
-            return icon_from_svg(icon, svg);
+            return true;
         }
-#endif
-#if defined(FUZZEL_ENABLE_PNG)
-        pixman_image_t *png = png_load(name);
-        if (png != NULL) {
+
+        if (icon_from_png(icon, name)) {
             LOG_DBG("%s: absolute path PNG", name);
-            return icon_from_png(icon, png, icon_size);
+            return true;
         }
-#endif
+
         return icon_null(icon);
     }
 
@@ -404,18 +465,13 @@ reload_icon(struct icon *icon, int icon_size, icon_theme_list_t themes)
                     /* Use anyone available */
                 }
 
-#if defined(FUZZEL_ENABLE_SVG)
-                RsvgHandle *svg = rsvg_handle_new_from_file(full_path, NULL);
-                if (svg != NULL) {
+                if (icon_from_svg(icon, full_path)) {
                     LOG_DBG("%s: %s scalable", name, full_path);
                     free(full_path);
-                    return icon_from_svg(icon, svg);
+                    return true;
                 }
-#endif
 
-#if defined(FUZZEL_ENABLE_PNG)
-                pixman_image_t *png = png_load(full_path);
-                if (png != NULL) {
+                if (icon_from_png(icon, full_path)) {
                     if (scalable)
                         LOG_DBG("%s: %s: scalable", name, full_path);
                     else if (i == 0)
@@ -429,44 +485,35 @@ reload_icon(struct icon *icon, int icon_size, icon_theme_list_t themes)
                         LOG_DBG("%s: %s: nothing else matched", name, full_path);
 
                     free(full_path);
-                    return icon_from_png(icon, png, icon_size);
+                    return true;
                 }
-#endif
+
                 free(full_path);
             }
         }
     }
 
-#if defined(FUZZEL_ENABLE_PNG) || defined(FUZZEL_ENABLE_SVG)
     xdg_data_dirs_t dirs = xdg_data_dirs();
     tll_foreach(dirs, it) {
         char path[strlen(it->item) + 1 +
                   strlen("pixmaps") + 1 +
                   strlen(name) + strlen(".svg") + 1];
 
-#if defined(FUZZEL_ENABLE_SVG)
         /* Try SVG variant first */
         sprintf(path, "%s/pixmaps/%s.svg", it->item, name);
-        RsvgHandle *svg = rsvg_handle_new_from_file(path, NULL);
-        if (svg != NULL) {
+        if (icon_from_svg(icon, path)) {
             xdg_data_dirs_destroy(dirs);
-            return icon_from_svg(icon, svg);
+            return true;
         }
-#endif
 
-
-#if defined(FUZZEL_ENABLE_PNG)
         /* No SVG, look for PNG instead */
         sprintf(path, "%s/pixmaps/%s.png", it->item, name);
-        pixman_image_t *png = png_load(path);
-        if (png != NULL) {
+        if (icon_from_png(icon, path)) {
             xdg_data_dirs_destroy(dirs);
-            return icon_from_png(icon, png, icon_size);
+            return true;
         }
-#endif
     }
     xdg_data_dirs_destroy(dirs);
-#endif /* FUZZEL_ENABLE_PNG || FUZZEL_ENABLE_SVG */
 
     return icon_null(icon);
 }

@@ -235,21 +235,31 @@ applications_destroy(struct application_list *apps)
             break;
 
         case ICON_PNG:
-#if defined(FUZZEL_ENABLE_PNG)
+#if defined(FUZZEL_ENABLE_PNG_LIBPNG)
             free(pixman_image_get_data(app->icon.png));
             pixman_image_unref(app->icon.png);
 #endif
             break;
 
         case ICON_SVG:
-#if defined(FUZZEL_ENABLE_SVG)
+#if defined(FUZZEL_ENABLE_SVG_LIBRSVG)
             g_object_unref(app->icon.svg);
+#elif defined(FUZZEL_ENABLE_SVG_NANOSVG)
+            nsvgDelete(app->icon.svg);
 #endif
             break;
         }
 
+        tll_foreach(app->icon.rasterized, it) {
+            struct rasterized *rast = &it->item;
+            free(pixman_image_get_data(rast->pix));
+            pixman_image_unref(rast->pix);
+            tll_remove(app->icon.rasterized, it);
+        }
+
         fcft_text_run_destroy(app->shaped);
     }
+
     free(apps->v);
     free(apps);
 }
