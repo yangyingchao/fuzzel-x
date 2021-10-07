@@ -289,6 +289,10 @@ render_svg_librsvg(const struct icon *icon, int x, int y, int size, struct buffe
             .width = size,
             .height = size,
         };
+
+        cairo_rectangle(buf->cairo, x, y, size, size);
+        cairo_clip(buf->cairo);
+
         rsvg_handle_render_document(svg, buf->cairo, &viewport, NULL);
     }
  #else
