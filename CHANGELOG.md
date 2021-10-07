@@ -35,6 +35,8 @@
 
 * Graphical corruption triggered by the “gerbview” SVG icon, from
   KiCAD (https://codeberg.org/dnkl/fuzzel/issues/47).
+* SVG icons containing multiple icons not being limited to the main
+  icon (https://codeberg.org/dnkl/fuzzel/issues/48).
 
 
 ### Security
