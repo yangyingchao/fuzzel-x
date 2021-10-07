@@ -16,7 +16,19 @@
 
 ## Unreleased
 ### Added
+
+* Support for [nanosvg](https://github.com/memononen/nanosvg) as an
+  alternative SVG backend. Nanosvg is bundled with fuzzel and has
+  **no** additional dependencies. This means you can now have SVGs
+  without depending on Cairo.
+
+
 ### Changed
+
+* Meson option `-Denable-png` replaced with `-Dpng-backend=none|libpng`.
+* Meson option `-Denable-svg` replaced with `-Dsvg-backend=none|librsvg|nanosvg`.
+
+
 ### Deprecated
 ### Removed
 ### Fixed

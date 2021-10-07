@@ -3,27 +3,43 @@
 #include <stdbool.h>
 #include <pixman.h>
 
-#if defined(FUZZEL_ENABLE_SVG)
+#if defined(FUZZEL_ENABLE_SVG_LIBRSVG)
  #include <librsvg/rsvg.h>
 #endif
 
+#if defined(FUZZEL_ENABLE_SVG_NANOSVG)
+ #include <nanosvg.h>
+#endif
+
 #include <fcft/fcft.h>
+#include <tllist.h>
 
 #include "prompt.h"
 
 enum icon_type { ICON_NONE, ICON_PNG, ICON_SVG };
 
+struct rasterized {
+    pixman_image_t *pix;
+    int size;
+};
+typedef tll(struct rasterized) rasterized_list_t;
+
 struct icon {
     char *name;
     enum icon_type type;
     union {
-#if defined(FUZZEL_ENABLE_PNG)
+#if defined(FUZZEL_ENABLE_PNG_LIBPNG)
         pixman_image_t *png;
 #endif
-#if defined(FUZZEL_ENABLE_SVG)
+#if defined(FUZZEL_ENABLE_SVG_LIBRSVG)
         RsvgHandle *svg;
+#elif defined(FUZZEL_ENABLE_SVG_NANOSVG)
+        NSVGimage *svg;
 #endif
     };
+
+    /* List of cached rasterizations (used with SVGs) */
+    rasterized_list_t rasterized;
 };
 
 struct application {

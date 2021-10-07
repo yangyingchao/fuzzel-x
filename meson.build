@@ -54,31 +54,44 @@ math = cc.find_library('m')
 pixman = dependency('pixman-1')
 cairo = dependency('cairo', required: get_option('enable-cairo'))
 libepoll = dependency('epoll-shim', required: false)
-libpng = dependency('libpng', required: get_option('enable-png'))
-if cairo.found()
-  librsvg = dependency('librsvg-2.0', required: get_option('enable-svg'))
-else
-  librsvg = declare_dependency()
-endif
 wayland_protocols = dependency('wayland-protocols')
 wayland_client = dependency('wayland-client')
 wayland_cursor = dependency('wayland-cursor')
 xkb = dependency('xkbcommon')
 
+tllist = dependency('tllist', version: '>=1.0.1', fallback: 'tllist')
+fcft = dependency('fcft', version: ['>=2.4.0', '<3.0.0'], fallback: 'fcft')
+
 if cairo.found()
   add_project_arguments('-DFUZZEL_ENABLE_CAIRO=1', language: 'c')
 endif
 
-if libpng.found()
-  add_project_arguments('-DFUZZEL_ENABLE_PNG=1', language: 'c')
+if get_option('png-backend') == 'libpng'
+  libpng = dependency('libpng')
+  add_project_arguments('-DFUZZEL_ENABLE_PNG_LIBPNG=1', language: 'c')
+else
+  libpng = declare_dependency()
 endif
 
-if librsvg.found() and cairo.found()
-  add_project_arguments('-DFUZZEL_ENABLE_SVG=1', language: 'c')
+if cairo.found() and get_option('svg-backend') == 'librsvg'
+  librsvg = dependency('librsvg-2.0')
+  nanosvg = declare_dependency()
+  svg_backend = 'librsvg'
+  add_project_arguments('-DFUZZEL_ENABLE_SVG_LIBRSVG=1', language: 'c')
+elif get_option('svg-backend') == 'nanosvg'
+  librsvg = declare_dependency()
+  nanosvg = declare_dependency(
+    sources: ['nanosvg.c', '3rd-party/nanosvg/src/nanosvg.h',
+              'nanosvgrast.c', '3rd-party/nanosvg/src/nanosvgrast.h'],
+    include_directories: '3rd-party/nanosvg/src',
+    dependencies: math)
+  svg_backend = 'nanosvg'
+  add_project_arguments('-DFUZZEL_ENABLE_SVG_NANOSVG=1', language: 'c')
+else
+  svg_backend = 'none'
+  librsvg = declare_dependency()
+  nanosvg = declare_dependency()
 endif
-
-tllist = dependency('tllist', version: '>=1.0.1', fallback: 'tllist')
-fcft = dependency('fcft', version: ['>=2.4.0', '<3.0.0'], fallback: 'fcft')
 
 wayland_protocols_datadir = wayland_protocols.get_pkgconfig_variable('pkgdatadir')
 
@@ -137,6 +150,7 @@ executable(
                  libepoll,
                  libpng,
                  librsvg,
+                 nanosvg,
                  wayland_client,
                  wayland_cursor,
                  xkb,
@@ -154,8 +168,8 @@ subdir('doc')
 summary(
   {
     'Cairo': cairo.found(),
-    'PNG icons': libpng.found(),
-    'SVG icons': librsvg.found() and cairo.found(),
+    'PNG icons': get_option('png-backend'),
+    'SVG icons': svg_backend,
   },
   bool_yn: true
 )
