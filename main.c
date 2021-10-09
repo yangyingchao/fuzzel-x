@@ -592,7 +592,7 @@ out:
     icon_themes_destroy(themes);
     free(prompt_allocated);
 
-#if defined(FUZZEL_ENABLE_CAIRO)
+#if defined(FUZZEL_ENABLE_CAIRO) && defined(_DEBUG)
     cairo_debug_reset_static_data();
 #endif
     log_deinit();
