@@ -73,7 +73,7 @@ const struct match *
 matches_get(const struct matches *matches, size_t idx)
 {
     const size_t page_no = matches_get_page(matches);
-    const size_t items_on_page = matches_get_count(matches);
+    const size_t items_on_page __attribute__((unused)) = matches_get_count(matches);
 
     assert(idx < items_on_page);
     idx += page_no * matches->max_matches_per_page;
