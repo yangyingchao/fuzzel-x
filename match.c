@@ -137,6 +137,39 @@ matches_selected_next(struct matches *matches, bool wrap)
     return false;
 }
 
+bool
+matches_selected_prev_page(struct matches *matches)
+{
+    const size_t page_no = matches_get_page(matches);
+    if (page_no > 0) {
+        assert(matches->selected >= matches->max_matches_per_page);
+        matches->selected -= matches->max_matches_per_page;
+        return true;
+    } else if (matches->selected > 0) {
+        matches->selected = 0;
+        return true;
+    }
+
+    return false;
+}
+
+bool
+matches_selected_next_page(struct matches *matches)
+{
+    const size_t page_no = matches_get_page(matches);
+    if (page_no + 1 < matches->page_count) {
+        matches->selected = min(
+            matches->selected + matches->max_matches_per_page,
+            matches->match_count - 1);
+        return true;
+    } else if (matches->selected < matches->match_count - 1) {
+        matches->selected = matches->match_count - 1;
+        return true;
+    }
+
+    return false;
+}
+
 static int
 sort_match_by_count(const void *_a, const void *_b)
 {

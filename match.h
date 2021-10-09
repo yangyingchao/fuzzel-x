@@ -33,3 +33,6 @@ size_t matches_get_match_index(const struct matches *matches);
 
 bool matches_selected_prev(struct matches *matches, bool wrap);
 bool matches_selected_next(struct matches *matches, bool wrap);
+
+bool matches_selected_prev_page(struct matches *matches);
+bool matches_selected_next_page(struct matches *matches);
