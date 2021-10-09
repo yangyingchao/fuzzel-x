@@ -23,6 +23,9 @@ void matches_max_matches_per_page_set(
 
 void matches_update(struct matches *matches, const struct prompt *prompt);
 
+size_t matches_get_page_count(const struct matches *matches);
+size_t matches_get_page(const struct matches *matches);
+
 const struct match *matches_get(const struct matches *matches, size_t idx);
 const struct match *matches_get_match(const struct matches *matches);
 size_t matches_get_count(const struct matches *matches);

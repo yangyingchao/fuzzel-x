@@ -4,9 +4,17 @@
 #include <wctype.h>
 #include <assert.h>
 
+#define LOG_MODULE "match"
+#define LOG_ENABLE_DBG 0
+#include "log.h"
+
+#define min(x, y) ((x < y) ? (x) : (y))
+#define max(x, y) ((x > y) ? (x) : (y))
+
 struct matches {
     const struct application_list *applications;
     struct match *matches;
+    size_t page_count;
     size_t match_count;
     size_t selected;
     size_t max_matches_per_page;
@@ -19,6 +27,7 @@ matches_init(const struct application_list *applications)
     *matches = (struct matches) {
         .applications = applications,
         .matches = malloc(applications->count * sizeof(matches->matches[0])),
+        .page_count = 0,
         .match_count = 0,
         .selected = 0,
         .max_matches_per_page = 0,
@@ -48,9 +57,27 @@ matches_max_matches_per_page_set(struct matches *matches, size_t max_matches)
     matches->max_matches_per_page = max_matches;
 }
 
+size_t
+matches_get_page_count(const struct matches *matches)
+{
+    return matches->match_count / matches->max_matches_per_page;
+}
+
+size_t
+matches_get_page(const struct matches *matches)
+{
+    return matches->selected / matches->max_matches_per_page;
+}
+
 const struct match *
 matches_get(const struct matches *matches, size_t idx)
 {
+    const size_t page_no = matches_get_page(matches);
+    const size_t items_on_page = matches_get_count(matches);
+
+    assert(idx < items_on_page);
+    idx += page_no * matches->max_matches_per_page;
+
     assert(idx < matches->match_count);
     return &matches->matches[idx];
 }
@@ -66,13 +93,20 @@ matches_get_match(const struct matches *matches)
 size_t
 matches_get_count(const struct matches *matches)
 {
-    return matches->match_count;
+    const size_t total = matches->match_count;
+    const size_t page_no = matches_get_page(matches);
+
+    if (page_no + 1 >= matches->page_count) {
+        size_t remainder = total % matches->max_matches_per_page;
+        return remainder == 0 ? matches->max_matches_per_page : remainder;
+    } else
+        return matches->max_matches_per_page;
 }
 
 size_t
 matches_get_match_index(const struct matches *matches)
 {
-    return matches->selected;
+    return matches->selected % matches->max_matches_per_page;
 }
 
 bool
@@ -157,12 +191,13 @@ matches_update(struct matches *matches, const struct prompt *prompt)
         matches->match_count = matches->applications->count;
         qsort(matches->matches, matches->match_count, sizeof(matches->matches[0]), &sort_match_by_count);
 
-        /* Limit count (don't render outside window) */
-        if (matches->match_count > matches->max_matches_per_page)
-            matches->match_count = matches->max_matches_per_page;
-
         if (matches->selected >= matches->match_count && matches->selected > 0)
             matches->selected = matches->match_count - 1;
+
+        matches->page_count = (
+            matches->match_count + (matches->max_matches_per_page - 1)) /
+            matches->max_matches_per_page;
+
         return;
     }
 
@@ -202,9 +237,9 @@ matches_update(struct matches *matches, const struct prompt *prompt)
     /* Sort */
     qsort(matches->matches, matches->match_count, sizeof(matches->matches[0]), &sort_match_by_count);
 
-    /* Limit count (don't render outside window) */
-    if (matches->match_count > matches->max_matches_per_page)
-        matches->match_count = matches->max_matches_per_page;
+    matches->page_count = (
+        matches->match_count + (matches->max_matches_per_page - 1)) /
+        matches->max_matches_per_page;
 
     if (matches->selected >= matches->match_count && matches->selected > 0)
         matches->selected = matches->match_count - 1;
