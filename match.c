@@ -9,7 +9,7 @@ struct matches {
     struct match *matches;
     size_t match_count;
     size_t selected;
-    size_t max_matches;
+    size_t max_matches_per_page;
 };
 
 struct matches *
@@ -21,7 +21,7 @@ matches_init(const struct application_list *applications)
         .matches = malloc(applications->count * sizeof(matches->matches[0])),
         .match_count = 0,
         .selected = 0,
-        .max_matches = 0,
+        .max_matches_per_page = 0,
     };
     return matches;
 }
@@ -37,15 +37,15 @@ matches_destroy(struct matches *matches)
 }
 
 size_t
-matches_max_matches(const struct matches *matches)
+matches_max_matches_per_page(const struct matches *matches)
 {
-    return matches->max_matches;
+    return matches->max_matches_per_page;
 }
 
 void
-matches_max_matches_set(struct matches *matches, size_t max_matches)
+matches_max_matches_per_page_set(struct matches *matches, size_t max_matches)
 {
-    matches->max_matches = max_matches;
+    matches->max_matches_per_page = max_matches;
 }
 
 const struct match *
@@ -139,7 +139,7 @@ wcscasestr(const wchar_t *haystack, const wchar_t *needle)
 void
 matches_update(struct matches *matches, const struct prompt *prompt)
 {
-    assert(matches->max_matches > 0);
+    assert(matches->max_matches_per_page > 0);
 
     const wchar_t *ptext = prompt_text(prompt);
 
@@ -158,8 +158,8 @@ matches_update(struct matches *matches, const struct prompt *prompt)
         qsort(matches->matches, matches->match_count, sizeof(matches->matches[0]), &sort_match_by_count);
 
         /* Limit count (don't render outside window) */
-        if (matches->match_count > matches->max_matches)
-            matches->match_count = matches->max_matches;
+        if (matches->match_count > matches->max_matches_per_page)
+            matches->match_count = matches->max_matches_per_page;
 
         if (matches->selected >= matches->match_count && matches->selected > 0)
             matches->selected = matches->match_count - 1;
@@ -203,8 +203,8 @@ matches_update(struct matches *matches, const struct prompt *prompt)
     qsort(matches->matches, matches->match_count, sizeof(matches->matches[0]), &sort_match_by_count);
 
     /* Limit count (don't render outside window) */
-    if (matches->match_count > matches->max_matches)
-        matches->match_count = matches->max_matches;
+    if (matches->match_count > matches->max_matches_per_page)
+        matches->match_count = matches->max_matches_per_page;
 
     if (matches->selected >= matches->match_count && matches->selected > 0)
         matches->selected = matches->match_count - 1;

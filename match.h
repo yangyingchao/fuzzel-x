@@ -17,8 +17,9 @@ struct matches;
 struct matches *matches_init(const struct application_list *applications);
 void matches_destroy(struct matches *matches);
 
-size_t matches_max_matches(const struct matches *matches);
-void matches_max_matches_set(struct matches *matches, size_t max_matches);
+size_t matches_max_matches_per_page(const struct matches *matches);
+void matches_max_matches_per_page_set(
+    struct matches *matches, size_t max_matches);
 
 void matches_update(struct matches *matches, const struct prompt *prompt);
 
