@@ -75,6 +75,12 @@ matches_get(const struct matches *matches, size_t idx)
     const size_t page_no = matches_get_page(matches);
     const size_t items_on_page __attribute__((unused)) = matches_get_count(matches);
 
+    LOG_DBG(
+        "page-count: %zu, page-no: %zu, items-on-page: %zu, idx: %zu, max: %zu, "
+        "match-count: %zu",
+        matches->page_count, page_no, items_on_page, idx,
+        matches->max_matches_per_page, matches->match_count);
+
     assert(idx < items_on_page);
     idx += page_no * matches->max_matches_per_page;
 
@@ -96,7 +102,9 @@ matches_get_count(const struct matches *matches)
     const size_t total = matches->match_count;
     const size_t page_no = matches_get_page(matches);
 
-    if (page_no + 1 >= matches->page_count) {
+    if (total == 0)
+        return 0;
+    else if (page_no + 1 >= matches->page_count) {
         size_t remainder = total % matches->max_matches_per_page;
         return remainder == 0 ? matches->max_matches_per_page : remainder;
     } else
