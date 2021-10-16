@@ -151,6 +151,7 @@ struct wayland {
         void *data;
     } font_reloaded;
 
+    bool render_first_frame_transparent;
     int width;
     int height;
     int scale;
@@ -1361,6 +1362,11 @@ frame_callback(void *data, struct wl_callback *wl_callback, uint32_t callback_da
         commit_buffer(wayl, wayl->pending);
         wayl->pending = NULL;
     }
+
+    if (wayl->render_first_frame_transparent) {
+        wayl->render_first_frame_transparent = false;
+        wayl_refresh(wayl);
+    }
 }
 
 void
@@ -1372,6 +1378,15 @@ wayl_refresh(struct wayland *wayl)
     pixman_region32_init_rect(&clip, 0, 0, buf->width, buf->height);
     pixman_image_set_clip_region32(buf->pix, &clip);
     pixman_region32_fini(&clip);
+
+    if (wayl->render_first_frame_transparent) {
+        pixman_color_t transparent = {0};
+        pixman_image_fill_rectangles(
+            PIXMAN_OP_SRC, buf->pix, &transparent,
+            1, &(pixman_rectangle16_t){0, 0, wayl->width, wayl->height});
+        commit_buffer(wayl, buf);
+        return;
+    }
 
     render_set_subpixel(wayl->render, wayl->subpixel);
 
@@ -1574,6 +1589,23 @@ wayl_init(struct fdm *fdm,
 
     LOG_DBG("using output: %s",
             wayl->monitor != NULL ? wayl->monitor->name : NULL);
+
+    /*
+     * Only do the “first frame is transparent” trick if
+     * needed. I.e. if:
+     *
+     *   - we have more than one monitor (in which case there’s a
+     *    chance we guess the scaling factor, or DPI, wrong).
+     *
+     * and
+     *
+     *   - the user hasn’t selected a specific output.
+     */
+    wayl->render_first_frame_transparent =
+        tll_length(wayl->monitors) > 1 && wayl->monitor == NULL;
+
+    LOG_DBG("using the first-frame-is-transparent trick: %s",
+            wayl->render_first_frame_transparent ? "yes"  :"no");
 
     wayl->surface = wl_compositor_create_surface(wayl->compositor);
     if (wayl->surface == NULL) {
