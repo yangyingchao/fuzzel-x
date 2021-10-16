@@ -531,6 +531,16 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
             wayl_refresh(wayl);
     }
 
+    else if (sym == XKB_KEY_Page_Down && effective_mods == 0) {
+        if (matches_selected_next_page(wayl->matches))
+            wayl_refresh(wayl);
+    }
+
+    else if (sym == XKB_KEY_Page_Up && effective_mods == 0) {
+        if (matches_selected_prev_page(wayl->matches))
+            wayl_refresh(wayl);
+    }
+
     else if ((sym == XKB_KEY_b && effective_mods == ctrl) ||
              (sym == XKB_KEY_Left && effective_mods == 0)) {
         if (prompt_cursor_prev_char(wayl->prompt))

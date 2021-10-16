@@ -565,7 +565,7 @@ main(int argc, char *const *argv)
              &font_reloaded, &font_reloaded_data)) == NULL)
         goto out;
 
-    matches_max_matches_set(matches, render_options.lines);
+    matches_max_matches_per_page_set(matches, render_options.lines);
     matches_update(matches, prompt);
     wayl_refresh(wayl);
 
