@@ -21,6 +21,11 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* Window quickly resized when launched
+  (https://codeberg.org/dnkl/fuzzel/issues/21).
+
+
 ### Security
 ### Contributors
 
