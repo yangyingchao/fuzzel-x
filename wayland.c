@@ -1302,6 +1302,8 @@ layer_surface_configure(void *data, struct zwlr_layer_surface_v1 *surface,
 {
     struct wayland *wayl = data;
 
+    zwlr_layer_surface_v1_ack_configure(surface, serial);
+
     if (w > 0 && h > 0) {
         if (w * wayl->scale != wayl->width || h * wayl->scale != wayl->height) {
             wayl->width = w * wayl->scale;
@@ -1309,8 +1311,6 @@ layer_surface_configure(void *data, struct zwlr_layer_surface_v1 *surface,
             wayl_refresh(wayl);
         }
     }
-
-    zwlr_layer_surface_v1_ack_configure(surface, serial);
 }
 
 static void

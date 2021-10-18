@@ -24,6 +24,7 @@
 
 * Window quickly resized when launched
   (https://codeberg.org/dnkl/fuzzel/issues/21).
+* Layer surface being commited before configure event has been ack:ed.
 
 
 ### Security
