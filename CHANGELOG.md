@@ -17,6 +17,10 @@
 
 ## Unreleased
 ### Added
+
+* `--dpi-aware=no|yes|auto` command line option.
+
+
 ### Changed
 ### Deprecated
 ### Removed
