@@ -47,7 +47,7 @@ void render_destroy(struct render *render);
 
 void render_set_subpixel(struct render *render, enum fcft_subpixel subpixel);
 bool render_set_font(struct render *render, struct fcft_font *font,
-                     int scale, float dpi,
+                     int scale, float dpi, bool size_font_by_dpi,
                      int *new_width, int *new_height);
 
 void render_background(const struct render *render, struct buffer *buf);

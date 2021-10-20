@@ -23,7 +23,10 @@ struct render {
     struct render_options options;
     struct fcft_font *font;
     enum fcft_subpixel subpixel;
+
+    int scale;
     float dpi;
+    bool size_font_by_dpi;
 
     unsigned x_margin;
     unsigned y_margin;
@@ -50,10 +53,13 @@ rgba2pixman(struct rgba rgba)
 }
 
 static int
-pt_or_px_as_pixels(const struct pt_or_px *pt_or_px, float dpi)
+pt_or_px_as_pixels(const struct render *render, const struct pt_or_px *pt_or_px)
 {
+    double scale = !render->size_font_by_dpi ? render->scale : 1.;
+    double dpi = render->size_font_by_dpi  ? render->dpi : 96.;
+
     return pt_or_px->px == 0
-        ? pt_or_px->pt * dpi / 72.
+        ? round(pt_or_px->pt * scale * dpi / 72.)
         : pt_or_px->px;
 }
 
@@ -191,7 +197,7 @@ render_prompt(const struct render *render, struct buffer *buf,
         render_glyph(buf->pix, glyph, x, y, &render->options.pix_text_color);
         x += glyph->advance.x;
         if (i >= prompt_len)
-            x += pt_or_px_as_pixels(&render->options.letter_spacing, render->dpi);
+            x += pt_or_px_as_pixels(render, &render->options.letter_spacing);
 
         /* Cursor */
         if (prompt_cursor(prompt) + prompt_len - 1 == i) {
@@ -565,14 +571,14 @@ render_match_list(const struct render *render, struct buffer *buf,
         }
 
         cur_x += row_height + font->space_advance.x + pt_or_px_as_pixels(
-            &render->options.letter_spacing, render->dpi);
+            render, &render->options.letter_spacing);
 
         /* Application title */
         render_match_text(
             buf, &cur_x, y,
             match->application->title, match->start_title, wcslen(prompt_text(prompt)),
             font, subpixel,
-            pt_or_px_as_pixels(&render->options.letter_spacing, render->dpi),
+            pt_or_px_as_pixels(render, &render->options.letter_spacing),
             (i == selected
              ? render->options.pix_selection_text_color
              : render->options.pix_text_color),
@@ -608,7 +614,7 @@ render_set_subpixel(struct render *render, enum fcft_subpixel subpixel)
 
 bool
 render_set_font(struct render *render, struct fcft_font *font,
-                int scale, float dpi,
+                int scale, float dpi, bool size_font_by_dpi,
                 int *new_width, int *new_height)
 {
     if (font != NULL) {
@@ -618,6 +624,10 @@ render_set_font(struct render *render, struct fcft_font *font,
         assert(render->font != NULL);
         font = render->font;
     }
+
+    render->scale = scale;
+    render->dpi = dpi;
+    render->size_font_by_dpi = size_font_by_dpi;
 
     const struct fcft_glyph *W = fcft_glyph_rasterize(
         font, L'W', render->subpixel);
@@ -629,7 +639,7 @@ render_set_font(struct render *render, struct fcft_font *font,
     const unsigned border_size = render->options.border_size * scale;
 
     const unsigned row_height = render->options.line_height.px >= 0
-        ? pt_or_px_as_pixels(&render->options.line_height, dpi)
+        ? pt_or_px_as_pixels(render, &render->options.line_height)
         : font->height;
 
     const unsigned icon_height = max(0, row_height - font->descent);
@@ -647,7 +657,8 @@ render_set_font(struct render *render, struct fcft_font *font,
         border_size +
         x_margin +
         (max((W->advance.x + pt_or_px_as_pixels(
-                  &render->options.letter_spacing, dpi)), 0)
+                  render, &render->options.letter_spacing)),
+             0)
          * render->options.chars) +
         x_margin +
         border_size;
@@ -663,7 +674,6 @@ render_set_font(struct render *render, struct fcft_font *font,
     render->border_size = border_size;
     render->row_height = row_height;
     render->icon_height = icon_height;
-    render->dpi = dpi;
 
     if (new_width != NULL)
         *new_width = width;

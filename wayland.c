@@ -165,7 +165,7 @@ struct wayland {
     float dpi;
     enum fcft_subpixel subpixel;
     enum dpi_aware dpi_aware;
-    bool font_is_scaled_by_dpi;
+    bool font_is_sized_by_dpi;
 
     enum { KEEP_RUNNING, EXIT_UPDATE_CACHE, EXIT} status;
     int exit_code;
@@ -859,7 +859,7 @@ guess_subpixel(const struct wayland *wayl)
 }
 
 static bool
-scale_font_using_dpi(const struct wayland *wayl)
+size_font_using_dpi(const struct wayland *wayl)
 {
     switch (wayl->dpi_aware) {
     case DPI_AWARE_NO: return false;
@@ -884,12 +884,12 @@ reload_font(struct wayland *wayl, float new_dpi, unsigned new_scale)
 {
     struct fcft_font *font = NULL;
 
-    bool was_scaled_using_dpi = wayl->font_is_scaled_by_dpi;
-    bool will_scale_using_dpi = scale_font_using_dpi(wayl);
+    bool was_sized_using_dpi = wayl->font_is_sized_by_dpi;
+    bool will_size_using_dpi = size_font_using_dpi(wayl);
 
     bool need_font_reload =
-        was_scaled_using_dpi != will_scale_using_dpi ||
-        (will_scale_using_dpi
+        was_sized_using_dpi != will_size_using_dpi ||
+        (will_size_using_dpi
          ? wayl->dpi != new_dpi
          : wayl->scale != new_scale);
 
@@ -899,7 +899,7 @@ reload_font(struct wayland *wayl, float new_dpi, unsigned new_scale)
         was_scaled_using_dpi ? "DPI" : "scaling factor",
         will_scale_using_dpi ? "DPI" : "scaling factor");
 
-    wayl->font_is_scaled_by_dpi = will_scale_using_dpi;
+    wayl->font_is_sized_by_dpi = will_size_using_dpi;
 
     if (need_font_reload) {
         char **names = malloc(wayl->font_count * sizeof(names[0]));
@@ -908,7 +908,7 @@ reload_font(struct wayland *wayl, float new_dpi, unsigned new_scale)
         for (size_t i = 0; i < wayl->font_count; i++) {
             const struct font_spec *spec = &wayl->fonts[i];
             const bool use_px_size = spec->px_size > 0;
-            const int scale = wayl->font_is_scaled_by_dpi ? 1 : new_scale;
+            const int scale = wayl->font_is_sized_by_dpi ? 1 : new_scale;
 
             char size[64];
             size_t size_len;
@@ -928,7 +928,7 @@ reload_font(struct wayland *wayl, float new_dpi, unsigned new_scale)
         }
 
         /* Font’s DPI */
-        float dpi = will_scale_using_dpi ? new_dpi : 96.;
+        float dpi = will_size_using_dpi ? new_dpi : 96.;
         char attrs[256]; snprintf(attrs, sizeof(attrs), "dpi=%.2f", dpi);
 
         font = fcft_from_name(wayl->font_count, (const char **)names, attrs);
@@ -945,7 +945,8 @@ reload_font(struct wayland *wayl, float new_dpi, unsigned new_scale)
     }
 
     return render_set_font(
-        wayl->render, font, new_scale, new_dpi, &wayl->width, &wayl->height);
+        wayl->render, font, new_scale, new_dpi, wayl->font_is_sized_by_dpi,
+        &wayl->width, &wayl->height);
 }
 
 static float
