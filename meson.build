@@ -51,6 +51,7 @@ if cc.has_argument('-fmacro-prefix-map=/foo=')
 endif
 
 math = cc.find_library('m')
+fontconfig = dependency('fontconfig')
 pixman = dependency('pixman-1')
 cairo = dependency('cairo', required: get_option('enable-cairo'))
 libepoll = dependency('epoll-shim', required: false)
@@ -146,6 +147,7 @@ executable(
   wl_proto_src + wl_proto_headers, version,
   dependencies: [math,
                  pixman,
+                 fontconfig,
                  cairo,
                  libepoll,
                  libpng,
