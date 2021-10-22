@@ -92,7 +92,7 @@ const struct match *
 matches_get_match(const struct matches *matches)
 {
     return matches->match_count > 0
-        ? matches_get(matches, matches->selected)
+        ? &matches->matches[matches->selected]
         : NULL;
 }
 
