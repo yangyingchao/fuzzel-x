@@ -19,6 +19,7 @@
 ### Added
 
 * `--dpi-aware=no|yes|auto` command line option.
+* Multi-page view (https://codeberg.org/dnkl/fuzzel/issues/42).
 
 
 ### Changed
