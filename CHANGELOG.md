@@ -25,6 +25,11 @@
 ### Changed
 ### Deprecated
 ### Removed
+
+* Misleading error message about a non-existing cache file
+  (https://codeberg.org/dnkl/fuzzel/issues/59).
+
+
 ### Fixed
 
 * Window quickly resized when launched

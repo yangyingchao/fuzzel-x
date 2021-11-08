@@ -61,7 +61,8 @@ read_cache(struct application_list *apps)
         (fd = openat(cache_dir_fd, "fuzzel", O_RDONLY)) == -1)
     {
         close(cache_dir_fd);
-        LOG_ERRNO("%s/fuzzel: failed to open", path);
+        if (errno != ENOENT)
+            LOG_ERRNO("%s/fuzzel: failed to open", path);
         return;
     }
     close(cache_dir_fd);
