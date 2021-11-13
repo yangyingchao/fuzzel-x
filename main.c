@@ -204,7 +204,7 @@ print_usage(const char *prog_name)
            "     --letter-spacing=AMOUNT     additional letter spacing\n"
            "  -v,--version                   show the version number and quit\n");
     printf("\n");
-    printf("Colors must be specified as a 32-bit hexadecimal RGBA quadruple.\n");
+    printf("All colors are RGBA - i.e. 8-digit hex values, without prefix.\n");
 }
 
 struct font_reload_context {
