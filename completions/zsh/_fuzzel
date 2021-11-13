@@ -6,6 +6,7 @@ _arguments \
     '(-h --help)'{-h,--help}'[show help message and quit]' \
     '(-o --output)'{-o,--output}'[output (monitor) to display on (none)]:output:->outputs' \
     '(-f --font)'{-f,--font}'[font name and style in fontconfig format (monospace)]:font:->fonts' \
+    '(-D --dpi-aware)'{-D,--dpi-aware}"[scale fonts using the monitor's DPI (auto)]:dpi_aware:(no yes auto)" \
     '(-i --icon-theme)'{-i,--icon-theme}'[icon theme name (hicolor)]:theme:->icon_theme' \
     '(-I --no-icons)'{-I,--no-icons}'[do not render any icons]' \
     '(-T --terminal)'{-T,--terminal}'[terminal command, with arguments]:terminal:_command_names -e' \

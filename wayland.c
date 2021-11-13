@@ -19,6 +19,7 @@
 #include <xkbcommon/xkbcommon.h>
 #include <xkbcommon/xkbcommon-keysyms.h>
 #include <xkbcommon/xkbcommon-compose.h>
+#include <fontconfig/fontconfig.h>
 
 #include <xdg-output-unstable-v1.h>
 #include <wlr-layer-shell-unstable-v1.h>
@@ -33,6 +34,12 @@
 #include "prompt.h"
 #include "render.h"
 #include "shm.h"
+
+struct font_spec {
+    char *pattern;
+    double pt_size;
+    int px_size;
+};
 
 struct monitor {
     struct wayland *wayl;
@@ -144,18 +151,21 @@ struct wayland {
 
     const struct render_options *render_options;
 
-    char **font_names;
+    struct font_spec *fonts;
     size_t font_count;
     struct {
         font_reloaded_t cb;
         void *data;
     } font_reloaded;
 
+    bool render_first_frame_transparent;
     int width;
     int height;
     int scale;
     float dpi;
     enum fcft_subpixel subpixel;
+    enum dpi_aware dpi_aware;
+    bool font_is_sized_by_dpi;
 
     enum { KEEP_RUNNING, EXIT_UPDATE_CACHE, EXIT} status;
     int exit_code;
@@ -531,6 +541,16 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
             wayl_refresh(wayl);
     }
 
+    else if (sym == XKB_KEY_Page_Down && effective_mods == 0) {
+        if (matches_selected_next_page(wayl->matches))
+            wayl_refresh(wayl);
+    }
+
+    else if (sym == XKB_KEY_Page_Up && effective_mods == 0) {
+        if (matches_selected_prev_page(wayl->matches))
+            wayl_refresh(wayl);
+    }
+
     else if ((sym == XKB_KEY_b && effective_mods == ctrl) ||
              (sym == XKB_KEY_Left && effective_mods == 0)) {
         if (prompt_cursor_prev_char(wayl->prompt))
@@ -839,19 +859,84 @@ guess_subpixel(const struct wayland *wayl)
 }
 
 static bool
+size_font_using_dpi(const struct wayland *wayl)
+{
+    switch (wayl->dpi_aware) {
+    case DPI_AWARE_NO: return false;
+    case DPI_AWARE_YES: return true;
+
+    case DPI_AWARE_AUTO:
+        tll_foreach(wayl->monitors, it) {
+            const struct monitor *mon = &it->item;
+            if (mon->scale > 1)
+                return false;
+        }
+
+        return true;
+    }
+
+    assert(false);
+    return false;
+}
+
+static bool
 reload_font(struct wayland *wayl, float new_dpi, unsigned new_scale)
 {
-    LOG_DBG("font reload: scale: %u -> %u, dpi: %.2f -> %.2f",
-            wayl->scale, new_scale, wayl->dpi, new_dpi);
-
     struct fcft_font *font = NULL;
 
-    if (wayl->dpi != new_dpi) {
-        char attrs[256];
-        snprintf(attrs, sizeof(attrs), "dpi=%.2f", new_dpi);
+    bool was_sized_using_dpi = wayl->font_is_sized_by_dpi;
+    bool will_size_using_dpi = size_font_using_dpi(wayl);
 
-        font = fcft_from_name(
-            wayl->font_count, (const char **)wayl->font_names, attrs);
+    bool need_font_reload =
+        was_sized_using_dpi != will_size_using_dpi ||
+        (will_size_using_dpi
+         ? wayl->dpi != new_dpi
+         : wayl->scale != new_scale);
+
+    LOG_DBG(
+        "font reload: scale: %u -> %u, dpi: %.2f -> %.2f size method: %s -> %s",
+        wayl->scale, new_scale, wayl->dpi, new_dpi,
+        was_scaled_using_dpi ? "DPI" : "scaling factor",
+        will_scale_using_dpi ? "DPI" : "scaling factor");
+
+    wayl->font_is_sized_by_dpi = will_size_using_dpi;
+
+    if (need_font_reload) {
+        char **names = malloc(wayl->font_count * sizeof(names[0]));
+
+        /* Apply font size, possibly scaled using the scaling factor */
+        for (size_t i = 0; i < wayl->font_count; i++) {
+            const struct font_spec *spec = &wayl->fonts[i];
+            const bool use_px_size = spec->px_size > 0;
+            const int scale = wayl->font_is_sized_by_dpi ? 1 : new_scale;
+
+            char size[64];
+            size_t size_len;
+            if (use_px_size) {
+                size_len = snprintf(
+                    size, sizeof(size), ":pixelsize=%d", spec->px_size * scale);
+            } else {
+                size_len = snprintf(
+                    size, sizeof(size), ":size=%.2f", spec->pt_size * scale);
+            }
+
+            size_t len = strlen(spec->pattern) + size_len + 1;
+            names[i] = malloc(len);
+
+            strcpy(names[i], spec->pattern);
+            strcat(names[i], size);
+        }
+
+        /* Font’s DPI */
+        float dpi = will_size_using_dpi ? new_dpi : 96.;
+        char attrs[256]; snprintf(attrs, sizeof(attrs), "dpi=%.2f", dpi);
+
+        font = fcft_from_name(wayl->font_count, (const char **)names, attrs);
+
+        for (size_t i = 0; i < wayl->font_count; i++)
+            free(names[i]);
+        free(names);
+
         if (font == NULL)
             return false;
 
@@ -860,7 +945,8 @@ reload_font(struct wayland *wayl, float new_dpi, unsigned new_scale)
     }
 
     return render_set_font(
-        wayl->render, font, new_scale, new_dpi, &wayl->width, &wayl->height);
+        wayl->render, font, new_scale, new_dpi, wayl->font_is_sized_by_dpi,
+        &wayl->width, &wayl->height);
 }
 
 static float
@@ -1291,6 +1377,8 @@ layer_surface_configure(void *data, struct zwlr_layer_surface_v1 *surface,
 {
     struct wayland *wayl = data;
 
+    zwlr_layer_surface_v1_ack_configure(surface, serial);
+
     if (w > 0 && h > 0) {
         if (w * wayl->scale != wayl->width || h * wayl->scale != wayl->height) {
             wayl->width = w * wayl->scale;
@@ -1298,8 +1386,6 @@ layer_surface_configure(void *data, struct zwlr_layer_surface_v1 *surface,
             wayl_refresh(wayl);
         }
     }
-
-    zwlr_layer_surface_v1_ack_configure(surface, serial);
 }
 
 static void
@@ -1351,6 +1437,11 @@ frame_callback(void *data, struct wl_callback *wl_callback, uint32_t callback_da
         commit_buffer(wayl, wayl->pending);
         wayl->pending = NULL;
     }
+
+    if (wayl->render_first_frame_transparent) {
+        wayl->render_first_frame_transparent = false;
+        wayl_refresh(wayl);
+    }
 }
 
 void
@@ -1362,6 +1453,15 @@ wayl_refresh(struct wayland *wayl)
     pixman_region32_init_rect(&clip, 0, 0, buf->width, buf->height);
     pixman_image_set_clip_region32(buf->pix, &clip);
     pixman_region32_fini(&clip);
+
+    if (wayl->render_first_frame_transparent) {
+        pixman_color_t transparent = {0};
+        pixman_image_fill_rectangles(
+            PIXMAN_OP_SRC, buf->pix, &transparent,
+            1, &(pixman_rectangle16_t){0, 0, wayl->width, wayl->height});
+        commit_buffer(wayl, buf);
+        return;
+    }
 
     render_set_subpixel(wayl->render, wayl->subpixel);
 
@@ -1454,13 +1554,43 @@ static const struct wl_surface_listener surface_listener = {
     .leave = &surface_leave,
 };
 
-static void
-parse_font_spec(const char *font_spec, size_t *count, char ***names)
+static bool
+font_pattern_to_spec(const char *pattern, struct font_spec *spec)
 {
-    tll(char *) fonts = tll_init();
+    FcPattern *pat = FcNameParse((const FcChar8 *)pattern);
+    if (pat == NULL)
+        return false;
+
+    double pt_size = -1.0;
+    FcPatternGetDouble(pat, FC_SIZE, 0, &pt_size);
+    FcPatternRemove(pat, FC_SIZE, 0);
+
+    int px_size = -1;
+    FcPatternGetInteger(pat, FC_PIXEL_SIZE, 0, &px_size);
+    FcPatternRemove(pat, FC_PIXEL_SIZE, 0);
+
+    if (pt_size == -1. && px_size == -1)
+        pt_size = 12.0;
+
+    char *stripped_pattern = (char *)FcNameUnparse(pat);
+    FcPatternDestroy(pat);
+
+    *spec = (struct font_spec){
+        .pattern = stripped_pattern,
+        .pt_size = pt_size,
+        .px_size = px_size
+    };
+
+    return true;
+}
+
+static void
+parse_font_spec(const char *font_spec, size_t *count, struct font_spec **specs)
+{
+    tll(struct font_spec) fonts = tll_init();
 
     char *copy = strdup(font_spec);
-    for (const char *font = strtok(copy, ",");
+    for (char *font = strtok(copy, ",");
          font != NULL;
          font = strtok(NULL, ","))
     {
@@ -1469,23 +1599,25 @@ parse_font_spec(const char *font_spec, size_t *count, char ***names)
 
         size_t len = strlen(font);
         while (len > 0 && isspace(font[len - 1]))
-            len--;
+            font[--len] = '\0';
 
         if (font[0] == '\0')
             continue;
 
-        tll_push_back(fonts, strndup(font, len));
+        struct font_spec spec;
+        if (font_pattern_to_spec(font, &spec))
+            tll_push_back(fonts, spec);
     }
     free(copy);
 
     *count = tll_length(fonts);
-    *names = malloc(*count * sizeof((*names)[0]));
+    *specs = malloc(*count * sizeof((*specs)[0]));
 
-    char **p = *names;
+    struct font_spec *s = *specs;
     tll_foreach(fonts, it) {
-        *p = it->item;
+        *s = it->item;
         tll_remove(fonts, it);
-        p++;
+        s++;
     }
 }
 
@@ -1494,6 +1626,7 @@ wayl_init(struct fdm *fdm,
           struct render *render, struct prompt *prompt, struct matches *matches,
           const struct render_options *render_options, bool dmenu_mode,
           const char *output_name, const char *font_spec,
+          enum dpi_aware dpi_aware,
           font_reloaded_t font_reloaded_cb, void *data)
 {
     struct wayland *wayl = malloc(sizeof(*wayl));
@@ -1511,9 +1644,10 @@ wayl_init(struct fdm *fdm,
             .cb = font_reloaded_cb,
             .data = data,
         },
+        .dpi_aware = dpi_aware,
     };
 
-    parse_font_spec(font_spec, &wayl->font_count, &wayl->font_names);
+    parse_font_spec(font_spec, &wayl->font_count, &wayl->fonts);
 
     wayl->display = wl_display_connect(NULL);
     if (wayl->display == NULL) {
@@ -1564,6 +1698,23 @@ wayl_init(struct fdm *fdm,
 
     LOG_DBG("using output: %s",
             wayl->monitor != NULL ? wayl->monitor->name : NULL);
+
+    /*
+     * Only do the “first frame is transparent” trick if
+     * needed. I.e. if:
+     *
+     *   - we have more than one monitor (in which case there’s a
+     *    chance we guess the scaling factor, or DPI, wrong).
+     *
+     * and
+     *
+     *   - the user hasn’t selected a specific output.
+     */
+    wayl->render_first_frame_transparent =
+        tll_length(wayl->monitors) > 1 && wayl->monitor == NULL;
+
+    LOG_DBG("using the first-frame-is-transparent trick: %s",
+            wayl->render_first_frame_transparent ? "yes"  :"no");
 
     wayl->surface = wl_compositor_create_surface(wayl->compositor);
     if (wayl->surface == NULL) {
@@ -1661,8 +1812,8 @@ wayl_destroy(struct wayland *wayl)
     }
 
     for (size_t i = 0; i < wayl->font_count; i++)
-        free(wayl->font_names[i]);
-    free(wayl->font_names);
+        free(wayl->fonts[i].pattern);
+    free(wayl->fonts);
 
     free(wayl->output_name);
     free(wayl);

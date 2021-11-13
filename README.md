@@ -1,3 +1,5 @@
+[![CI status](https://ci.codeberg.org/api/badges/dnkl/fuzzel/status.svg)](https://ci.codeberg.org/dnkl/fuzzel)
+
 # Fuzzel
 
 Fuzzel is a Wayland-native application launcher, similar to rofi's

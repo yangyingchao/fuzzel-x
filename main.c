@@ -61,7 +61,8 @@ read_cache(struct application_list *apps)
         (fd = openat(cache_dir_fd, "fuzzel", O_RDONLY)) == -1)
     {
         close(cache_dir_fd);
-        LOG_ERRNO("%s/fuzzel: failed to open", path);
+        if (errno != ENOENT)
+            LOG_ERRNO("%s/fuzzel: failed to open", path);
         return;
     }
     close(cache_dir_fd);
@@ -261,6 +262,7 @@ main(int argc, char *const *argv)
     static const struct option longopts[] = {
         {"output"  ,             required_argument, 0, 'o'},
         {"font",                 required_argument, 0, 'f'},
+        {"dpi-aware",            required_argument, 0, 'D'},
         {"icon-theme",           required_argument, 0, 'i'},
         {"no-icons",             no_argument,       0, 'I'},
         {"lines",                required_argument, 0, 'l'},
@@ -287,6 +289,7 @@ main(int argc, char *const *argv)
         {NULL,                   no_argument,       0, 0},
     };
 
+    enum dpi_aware dpi_aware = DPI_AWARE_AUTO;
     const char *output_name = NULL;
     const char *font_name = "monospace";
     const char *icon_theme = "hicolor";
@@ -316,7 +319,7 @@ main(int argc, char *const *argv)
     setlocale(LC_CTYPE, "");
 
     while (true) {
-        int c = getopt_long(argc, argv, ":o:f:i:Il:w:x:y:p:P:b:t:m:s:S:B:r:C:T:dRvh", longopts, NULL);
+        int c = getopt_long(argc, argv, ":o:f:D:i:Il:w:x:y:p:P:b:t:m:s:S:B:r:C:T:dRvh", longopts, NULL);
         if (c == -1)
             break;
 
@@ -327,6 +330,23 @@ main(int argc, char *const *argv)
 
         case 'f':
             font_name = optarg;
+            break;
+
+        case 'D':
+            if (strcmp(optarg, "auto") == 0)
+                dpi_aware = DPI_AWARE_AUTO;
+            else if (strcmp(optarg, "no") == 0)
+                dpi_aware = DPI_AWARE_NO;
+            else if (strcmp(optarg, "yes") == 0)
+                dpi_aware = DPI_AWARE_YES;
+            else {
+                fprintf(
+                    stderr,
+                    "%s: invalid value for dpi-aware: "
+                    "must be one of 'auto', 'no', or 'yes'\n",
+                    optarg);
+                return EXIT_FAILURE;
+            }
             break;
 
         case 'i':
@@ -561,11 +581,11 @@ main(int argc, char *const *argv)
 
     if ((wayl = wayl_init(
              fdm, render, prompt, matches, &render_options,
-             dmenu_mode, output_name, font_name,
+             dmenu_mode, output_name, font_name, dpi_aware,
              &font_reloaded, &font_reloaded_data)) == NULL)
         goto out;
 
-    matches_max_matches_set(matches, render_options.lines);
+    matches_max_matches_per_page_set(matches, render_options.lines);
     matches_update(matches, prompt);
     wayl_refresh(wayl);
 
