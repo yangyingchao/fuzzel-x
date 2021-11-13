@@ -146,6 +146,10 @@ options:
 	(i.e. *letter-spacing=5px*). Negative values are
 	supported. Default: _0_.
 
+*--launch-prefix*=_COMMAND_
+	Command to launch XDG applications with. Example: _swaymsg exec --_.
+	Default: _not set_.
+
 *-v*,*--version*
 	Show the version number and quit
 

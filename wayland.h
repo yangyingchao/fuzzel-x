@@ -22,7 +22,7 @@ enum dpi_aware {DPI_AWARE_AUTO, DPI_AWARE_YES, DPI_AWARE_NO};
 struct wayland *wayl_init(
     struct fdm *fdm,
     struct render *render, struct prompt *prompt, struct matches *matches,
-    const struct render_options *render_options, bool dmenu_mode,
+    const struct render_options *render_options, bool dmenu_mode, const char *launch_prefix,
     const char *output_name, const char *font_spec, enum dpi_aware dpi_aware,
     font_reloaded_t font_reloaded_cb, void *data);
 
