@@ -60,7 +60,12 @@ options:
 	Prompt to use. Default: _> _.
 
 *-i*,*--icon-theme*=_NAME_
-	Icon theme to use. Example: _Adwaita_. Default: _hicolor_.
+	Icon theme to use. Note that this option is case sensitive; the
+	name must match the theme's folder name.
+	
+	Example: _Adwaita_.
+	
+	Default: _hicolor_.
 
 *-I*,*--no-icons*
 	Do not render any icons.
