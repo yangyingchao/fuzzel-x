@@ -11,6 +11,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <dirent.h>
 
 #include <tllist.h>
 #include <fcft/fcft.h>
@@ -252,6 +253,69 @@ pt_or_px_from_string(const char  *s, struct pt_or_px *res)
     }
 
     return true;
+}
+
+static bool
+have_another_fuzzel_instance(void)
+{
+    bool ret = false;
+
+    pid_t my_pid = getpid();
+    int proc_fd = -1;
+    DIR *proc_dir = NULL;
+
+    if ((proc_fd = open("/proc", O_RDONLY)) < 0) {
+        LOG_ERRNO("/proc: failed to open");
+        goto out;
+    }
+
+    if ((proc_dir = opendir("/proc")) == NULL) {
+        LOG_ERRNO("/proc: failed to open");
+        goto out;
+    }
+
+    for (struct dirent *e = readdir(proc_dir);
+         e != NULL && !ret;
+         e = readdir(proc_dir))
+    {
+        if (e->d_type != DT_DIR)
+            continue;
+
+        errno = 0;
+        char *end = NULL;
+
+        unsigned long pid = strtoul(e->d_name, &end, 10);
+        if (errno != 0 || *end != '\0')
+            continue;
+
+        if (pid == my_pid)
+            continue;
+
+        int pid_fd = openat(proc_fd, e->d_name, O_RDONLY);
+        if (pid_fd < 0)
+            continue;
+
+        int comm_fd = openat(pid_fd, "comm", O_RDONLY);
+        if (comm_fd >= 0) {
+            char comm[8] = {};
+            ssize_t r = read(comm_fd, comm, sizeof(comm) - 1);
+            if (r >= 0) {
+                if (strncmp(comm, "fuzzel", 6) == 0) {
+                    ret = true;
+                }
+            }
+            close(comm_fd);
+        }
+
+        close(pid_fd);
+    }
+
+out:
+    if (proc_dir != NULL)
+        closedir(proc_dir);
+    if (proc_fd >= 0)
+        close(proc_fd);
+    return ret;
 }
 
 int
@@ -540,6 +604,11 @@ main(int argc, char *const *argv)
     struct wayland *wayl = NULL;
 
     icon_theme_list_t themes = tll_init();
+
+    if (have_another_fuzzel_instance()) {
+        LOG_ERR("fuzzel is already running");
+        goto out;
+    }
 
     if (icons_enabled) {
         themes = icon_load_theme(icon_theme);
