@@ -19,6 +19,11 @@
 ## Unreleased
 ### Added
 ### Changed
+
+* Fuzzel now refuses to start if there is another fuzzel instance
+  running (https://codeberg.org/dnkl/fuzzel/issues/57).
+
+
 ### Deprecated
 ### Removed
 ### Fixed
