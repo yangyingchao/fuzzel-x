@@ -67,20 +67,18 @@ might also want `--prefix=/usr`):
 ```sh
 meson --buildtype=release \
     -Denable-cairo=disabled|enabled|auto \
-    -Denable-png=disabled|enabled|auto \
-    -Denable-svg=disabled|enabled|auto \
+    -Dpng-backend=none|libpng \
+    -Dsvg-backend=none|librsvg|nanosvg \
     ../..
 ```
 
-`-Denable-{png,svg}` can be used to force-enable or force-disable png
-and/or svg support. The default is `auto`, which means enable if all
-required libraries are available. PNGs require _libpng_, and SVGs
-require _cairo_ and _librsvg_.
+`-D{png,svg}-backend` can be used to force-enable or force-disable a
+specific png and/or svg backend. Note that _nanosvg_ is builtin
+(i.e. it needs to external dependencies).
 
 `-Denable-cairo` can be used to force-enable or force-disable cairo
 support. When disabled, fuzzel will not be able to draw rounded
-corners, nor will it support SVGs (regardless of what `-Denable-svg`
-is set to).
+corners, nor will it support SVGs using the _librsvg_ backend.
 
 Three, build it:
 ```sh
