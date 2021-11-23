@@ -297,13 +297,15 @@ have_another_fuzzel_instance(void)
 
         int comm_fd = openat(pid_fd, "comm", O_RDONLY);
         if (comm_fd >= 0) {
-            char comm[8] = {};
+            char comm[64] = {};
             ssize_t r = read(comm_fd, comm, sizeof(comm) - 1);
-            if (r >= 0) {
-                if (strncmp(comm, "fuzzel", 6) == 0) {
-                    ret = true;
-                }
-            }
+
+            for (; r > 0 && comm[r - 1] == '\n'; r--)
+                comm[r - 1] = '\0';
+
+            if (strcmp(comm, "fuzzel") == 0)
+                ret = true;
+
             close(comm_fd);
         }
 
