@@ -54,7 +54,7 @@ struct application {
 };
 
 bool application_execute(
-    const struct application *app, const struct prompt *prompt);
+    const struct application *app, const struct prompt *prompt, const char *launch_prefix);
 
 struct application_list {
     struct application *v;

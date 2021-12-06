@@ -170,6 +170,7 @@ struct wayland {
     enum { KEEP_RUNNING, EXIT_UPDATE_CACHE, EXIT} status;
     int exit_code;
     bool dmenu_mode;
+    const char *launch_prefix;
 
     bool frame_is_scheduled;
     struct buffer *pending;
@@ -611,7 +612,7 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
             dmenu_execute(app, wayl->prompt);
             wayl->exit_code = EXIT_SUCCESS;
         } else {
-            bool success = application_execute(app, wayl->prompt);
+            bool success = application_execute(app, wayl->prompt, wayl->launch_prefix);
             wayl->exit_code = success ? EXIT_SUCCESS : EXIT_FAILURE;
 
             if (success && match != NULL) {
@@ -1624,7 +1625,7 @@ parse_font_spec(const char *font_spec, size_t *count, struct font_spec **specs)
 struct wayland *
 wayl_init(struct fdm *fdm,
           struct render *render, struct prompt *prompt, struct matches *matches,
-          const struct render_options *render_options, bool dmenu_mode,
+          const struct render_options *render_options, bool dmenu_mode, const char *launch_prefix,
           const char *output_name, const char *font_spec,
           enum dpi_aware dpi_aware,
           font_reloaded_t font_reloaded_cb, void *data)
@@ -1638,6 +1639,7 @@ wayl_init(struct fdm *fdm,
         .status = KEEP_RUNNING,
         .exit_code = EXIT_FAILURE,
         .dmenu_mode = dmenu_mode,
+        .launch_prefix = launch_prefix,
         .output_name = output_name != NULL ? strdup(output_name) : NULL,
         .render_options = render_options,
         .font_reloaded = {

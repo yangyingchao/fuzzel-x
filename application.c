@@ -1,6 +1,7 @@
 #include "application.h"
 
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
@@ -106,7 +107,7 @@ err:
 }
 
 bool
-application_execute(const struct application *app, const struct prompt *prompt)
+application_execute(const struct application *app, const struct prompt *prompt, const char *launch_prefix)
 {
     const wchar_t *ptext = prompt_text(prompt);
     const size_t clen = wcstombs(NULL, ptext, 0);
@@ -124,7 +125,13 @@ application_execute(const struct application *app, const struct prompt *prompt)
     }
 
     /* Tokenize the command */
-    char *copy = strdup(execute);
+    char *copy;
+    if (launch_prefix != NULL) {
+      copy = malloc(strlen(execute) + strlen(launch_prefix) + 2 /* whitespace + null terminator */);
+      sprintf(copy, "%s %s", launch_prefix, execute);
+    } else {
+      copy = strdup(execute);
+    }
     char **argv;
     if (!tokenize_cmdline(copy, &argv)) {
         free(copy);

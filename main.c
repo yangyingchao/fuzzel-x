@@ -203,6 +203,7 @@ print_usage(const char *prog_name)
            "                                 is empty (dmenu mode only)\n"
            "     --line-height=HEIGHT        override line height from font metrics\n"
            "     --letter-spacing=AMOUNT     additional letter spacing\n"
+           "     --launch-prefix=COMMAND     prefix to add before argv of executed program\n"
            "  -v,--version                   show the version number and quit\n");
     printf("\n");
     printf("All colors are RGBA - i.e. 8-digit hex values, without prefix.\n");
@@ -324,6 +325,7 @@ int
 main(int argc, char *const *argv)
 {
     #define OPT_LETTER_SPACING 256
+    #define OPT_LAUNCH_PREFIX  257
 
     static const struct option longopts[] = {
         {"output"  ,             required_argument, 0, 'o'},
@@ -350,6 +352,7 @@ main(int argc, char *const *argv)
         {"no-run-if-empty",      no_argument,       0, 'R'},
         {"line-height",          required_argument, 0, 'H'},
         {"letter-spacing",       required_argument, 0, OPT_LETTER_SPACING},
+        {"launch-prefix",        required_argument, 0, OPT_LAUNCH_PREFIX},
         {"version",              no_argument,       0, 'v'},
         {"help",                 no_argument,       0, 'h'},
         {NULL,                   no_argument,       0, 0},
@@ -365,6 +368,7 @@ main(int argc, char *const *argv)
     bool dmenu_mode = false;
     bool no_run_if_empty = false;
     bool icons_enabled = true;
+    const char *launch_prefix = NULL;
 
     struct render_options render_options = {
         .lines = 15,
@@ -574,6 +578,11 @@ main(int argc, char *const *argv)
             break;
         }
 
+        case OPT_LAUNCH_PREFIX: {
+            launch_prefix = optarg;
+            break;
+        }
+
         case 'v':
             printf("fuzzel version %s\n", FUZZEL_VERSION);
             return EXIT_SUCCESS;
@@ -652,7 +661,7 @@ main(int argc, char *const *argv)
 
     if ((wayl = wayl_init(
              fdm, render, prompt, matches, &render_options,
-             dmenu_mode, output_name, font_name, dpi_aware,
+             dmenu_mode, launch_prefix, output_name, font_name, dpi_aware,
              &font_reloaded, &font_reloaded_data)) == NULL)
         goto out;
 
