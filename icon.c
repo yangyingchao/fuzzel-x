@@ -34,9 +34,23 @@ typedef tll(char *) theme_names_t;
 static bool
 dir_is_usable(const char *path, const char *context, const char *type)
 {
-    return path != NULL &&
-        context != NULL &&
-        strcasecmp(context, "applications") == 0;
+    if (path == NULL || context == NULL) {
+        return false;
+    }
+
+    /*
+     * Valid names for application context: some icon themes use different
+     * names other than applications, for example, Faenza uses "apps".
+     */
+    static const char *const app_contex[] = { "applications", "apps" };
+
+    for (size_t i = 0; i < sizeof(app_contex)/sizeof(char*); i++) {
+        if (strcasecmp(context, app_contex[i]) == 0) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 static void
