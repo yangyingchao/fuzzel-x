@@ -47,7 +47,7 @@ struct application {
     char *exec;
     wchar_t *basename;
     wchar_t *title;
-    wchar_t *comment;
+    wchar_t *generic_name;
     struct icon icon;
     unsigned count;
     struct fcft_text_run *shaped;

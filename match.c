@@ -253,10 +253,10 @@ matches_update(struct matches *matches, const struct prompt *prompt)
         if (m != NULL)
             start_title = m - app->title;
 
-        if (app->comment != NULL) {
-            m = wcscasestr(app->comment, ptext);
+        if (app->generic_name != NULL) {
+            m = wcscasestr(app->generic_name, ptext);
             if (m != NULL)
-                start_comment = m - app->comment;
+                start_comment = m - app->generic_name;
         }
 
         if (app->basename != NULL) {

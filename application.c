@@ -235,7 +235,7 @@ applications_destroy(struct application_list *apps)
         free(app->path);
         free(app->exec);
         free(app->title);
-        free(app->comment);
+        free(app->generic_name);
         free(app->icon.name);
         switch (app->icon.type) {
         case ICON_NONE:

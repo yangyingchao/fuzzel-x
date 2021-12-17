@@ -152,7 +152,7 @@ parse_desktop_file(int fd, const wchar_t *file_basename, const char *terminal,
                 ((struct application){
                     .basename = wcsdup(file_basename),
                     .path = path, .exec = exec, .title = name,
-                    .comment = generic_name,
+                    .generic_name = generic_name,
                     .icon = {.name = icon != NULL ? strdup(icon) : NULL},
                     .count = 0}));
             free(icon);
