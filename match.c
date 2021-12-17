@@ -254,16 +254,37 @@ matches_update(struct matches *matches, const struct prompt *prompt)
             is_match = true;
         }
 
-        if (app->generic_name != NULL) {
-            m = wcscasestr(app->generic_name, ptext);
-            if (m != NULL)
+        if (!is_match && app->generic_name != NULL) {
+            if (wcscasestr(app->generic_name, ptext) != NULL)
                 is_match = true;
         }
 
-        if (app->basename != NULL) {
-            m = wcscasestr(app->basename, ptext);
-            if (m != NULL)
+        if (!is_match && app->basename != NULL) {
+            if (wcscasestr(app->basename, ptext) != NULL)
                 is_match = true;
+        }
+
+        if (!is_match && app->comment != NULL) {
+            if (wcscasestr(app->comment, ptext) != NULL)
+                is_match = true;
+        }
+
+        if (!is_match) {
+            tll_foreach(app->keywords, it) {
+                if (wcscasestr(it->item, ptext) != NULL) {
+                    is_match = true;
+                    break;
+                }
+            }
+        }
+
+        if (!is_match) {
+            tll_foreach(app->categories, it) {
+                if (wcscasestr(it->item, ptext) != NULL) {
+                    is_match = true;
+                    break;
+                }
+            }
         }
 
         if (!is_match)
