@@ -180,7 +180,7 @@ print_usage(const char *prog_name)
            "                                 (monospace)\n"
            "  -i,--icon-theme=NAME           icon theme name (\"hicolor\")\n"
            "  -I,--no-icons                  do not render any icons\n"
-           "  -F,--fields=FIELDS             comma separated list XDG desktop fields to match\n"
+           "  -F,--fields=FIELDS             comma separated list of XDG Desktop entry fields to match\n"
            "  -T,--terminal                  terminal command to use when launching\n"
            "                                 'terminal' programs, e.g. \"xterm -e\".\n"
            "                                 Not used in dmenu mode (not set)\n"
