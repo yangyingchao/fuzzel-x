@@ -225,7 +225,7 @@ matches_update(struct matches *matches, const struct prompt *prompt)
             matches->matches[i] = (struct match){
                 .application = &matches->applications->v[i],
                 .start_title = -1,
-                .start_generic_name = -1};
+            };
         }
 
         /* Sort */
@@ -245,34 +245,34 @@ matches_update(struct matches *matches, const struct prompt *prompt)
     matches->match_count = 0;
     for (size_t i = 0; i < matches->applications->count; i++) {
         struct application *app = &matches->applications->v[i];
+        bool is_match = false;
         ssize_t start_title = -1;
-        ssize_t start_generic_name = -1;
-        ssize_t start_basename = -1;
 
         const wchar_t *m = wcscasestr(app->title, ptext);
-        if (m != NULL)
+        if (m != NULL) {
             start_title = m - app->title;
+            is_match = true;
+        }
 
         if (app->generic_name != NULL) {
             m = wcscasestr(app->generic_name, ptext);
             if (m != NULL)
-                start_generic_name = m - app->generic_name;
+                is_match = true;
         }
 
         if (app->basename != NULL) {
             m = wcscasestr(app->basename, ptext);
             if (m != NULL)
-                start_basename = m - app->basename;
+                is_match = true;
         }
 
-        if (start_title < 0 && start_generic_name < 0 && start_basename < 0)
+        if (!is_match)
             continue;
 
         matches->matches[matches->match_count++] = (struct match){
             .application = app,
             .start_title = start_title,
-            .start_generic_name = start_generic_name,
-            .start_basename = start_basename};
+        };
     }
 
     /* Sort */
