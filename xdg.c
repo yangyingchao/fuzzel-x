@@ -43,6 +43,7 @@ parse_desktop_file(int fd, const wchar_t *file_basename, const char *terminal,
 
     bool is_desktop_entry = false;
 
+    wchar_t *wexec = NULL;
     wchar_t *name = NULL;
     wchar_t *generic_name = NULL;
     wchar_t *comment = NULL;
@@ -100,11 +101,17 @@ parse_desktop_file(int fd, const wchar_t *file_basename, const char *terminal,
                 name = strdup_to_wchar(value);
             }
 
-            else if (strcmp(key, "Exec") == 0)
+            else if (strcmp(key, "Exec") == 0) {
+                free(exec);
+                free(wexec);
                 exec = strdup(value);
+                wexec = strdup_to_wchar(value);
+            }
 
-            else if (strcmp(key, "Path") == 0)
+            else if (strcmp(key, "Path") == 0) {
+                free(path);
                 path = strdup(value);
+            }
 
             else if (strcmp(key, "GenericName") == 0) {
                 free(generic_name);
@@ -182,8 +189,11 @@ parse_desktop_file(int fd, const wchar_t *file_basename, const char *terminal,
             tll_push_back(
                 *applications,
                 ((struct application){
+                    .path = path,
+                    .exec = exec,
                     .basename = wcsdup(file_basename),
-                    .path = path, .exec = exec, .title = name,
+                    .wexec = wexec,
+                    .title = name,
                     .generic_name = generic_name,
                     .comment = comment,
                     .keywords = keywords,
@@ -198,6 +208,7 @@ parse_desktop_file(int fd, const wchar_t *file_basename, const char *terminal,
     free(path);
     free(name);
     free(exec);
+    free(wexec);
     free(generic_name);
     free(comment);
     free(icon);

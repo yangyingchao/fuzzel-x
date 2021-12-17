@@ -48,6 +48,7 @@ struct application {
     char *path;
     char *exec;
     wchar_t *basename;
+    wchar_t *wexec;  /* Same as ‘exec’, but for matching purposes */
     wchar_t *title;
     wchar_t *generic_name;
     wchar_t *comment;

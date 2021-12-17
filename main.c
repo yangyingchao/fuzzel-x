@@ -180,8 +180,9 @@ print_usage(const char *prog_name)
            "                                 (monospace)\n"
            "  -i,--icon-theme=NAME           icon theme name (\"hicolor\")\n"
            "  -I,--no-icons                  do not render any icons\n"
+           "  -F,--fields=FIELDS             comma separated list XDG desktop fields to match\n"
            "  -T,--terminal                  terminal command to use when launching\n"
-           "                                'terminal' programs, e.g. \"xterm -e\".\n"
+           "                                 'terminal' programs, e.g. \"xterm -e\".\n"
            "                                 Not used in dmenu mode (not set)\n"
            "  -l,--lines                     number of matches to show\n"
            "  -w,--width                     window width, in characters (margins and\n"
@@ -333,6 +334,7 @@ main(int argc, char *const *argv)
         {"dpi-aware",            required_argument, 0, 'D'},
         {"icon-theme",           required_argument, 0, 'i'},
         {"no-icons",             no_argument,       0, 'I'},
+        {"fields",               required_argument, 0, 'F'},
         {"lines",                required_argument, 0, 'l'},
         {"width",                required_argument, 0, 'w'},
         {"horizontal-pad",       required_argument, 0, 'x'},
@@ -370,6 +372,9 @@ main(int argc, char *const *argv)
     bool icons_enabled = true;
     const char *launch_prefix = NULL;
 
+    enum match_fields match_fields =
+        MATCH_FILENAME | MATCH_NAME | MATCH_GENERIC;
+
     struct render_options render_options = {
         .lines = 15,
         .chars = 30,
@@ -389,7 +394,7 @@ main(int argc, char *const *argv)
     setlocale(LC_CTYPE, "");
 
     while (true) {
-        int c = getopt_long(argc, argv, ":o:f:D:i:Il:w:x:y:p:P:b:t:m:s:S:B:r:C:T:dRvh", longopts, NULL);
+        int c = getopt_long(argc, argv, ":o:f:D:i:IF:l:w:x:y:p:P:b:t:m:s:S:B:r:C:T:dRvh", longopts, NULL);
         if (c == -1)
             break;
 
@@ -426,6 +431,57 @@ main(int argc, char *const *argv)
         case 'I':
             icons_enabled = false;
             break;
+
+        case 'F': {
+            static const struct {
+                const char *name;
+                enum match_fields value;
+            } map[] = {
+                {"filename", MATCH_FILENAME},
+                {"name", MATCH_NAME},
+                {"generic", MATCH_GENERIC},
+                {"exec", MATCH_EXEC},
+                {"categories", MATCH_CATEGORIES},
+                {"keywords", MATCH_KEYWORDS},
+                {"comment", MATCH_COMMENT},
+            };
+
+            match_fields = 0;
+            for (const char *f = strtok(optarg, ", ");
+                 f != NULL;
+                 f = strtok(NULL, ", "))
+            {
+                enum match_fields field = 0;
+
+                for (size_t i = 0; i < sizeof(map) / sizeof(map[0]); i++) {
+                    if (strcmp(f, map[i].name) == 0) {
+                        field = map[i].value;
+                        break;
+                    }
+                }
+
+                if (field > 0)
+                    match_fields |= field;
+                else {
+                    char valid_names[128] = {0};
+                    int idx = 0;
+                    for (size_t i = 0; i < sizeof(map) / sizeof(map[0]); i++) {
+                        idx += snprintf(
+                            &valid_names[idx], sizeof(valid_names) - idx,
+                            "'%s', ", map[i].name);
+                    }
+
+                    valid_names[idx - 2] = '\0';
+
+                    fprintf(
+                        stderr,
+                        "%s: invalid field name: must be one of %s\n",
+                        f, valid_names);
+                    return EXIT_FAILURE;
+                }
+            }
+            break;
+        }
 
         case 'T':
             terminal = optarg;
@@ -481,6 +537,7 @@ main(int argc, char *const *argv)
             prompt_content = prompt_allocated;
             break;
         }
+
         case 'b': {
             uint32_t background;
             if (sscanf(optarg, "%08x", &background) != 1) {
@@ -650,7 +707,7 @@ main(int argc, char *const *argv)
     if ((prompt = prompt_init(prompt_content)) == NULL)
         goto out;
 
-    if ((matches = matches_init(apps)) == NULL)
+    if ((matches = matches_init(apps, match_fields)) == NULL)
         goto out;
 
     struct font_reload_context font_reloaded_data = {
