@@ -236,7 +236,12 @@ applications_destroy(struct application_list *apps)
         free(app->exec);
         free(app->title);
         free(app->generic_name);
+        free(app->comment);
         free(app->icon.name);
+
+        tll_free_and_free(app->keywords, free);
+        tll_free_and_free(app->categories, free);
+
         switch (app->icon.type) {
         case ICON_NONE:
             break;
