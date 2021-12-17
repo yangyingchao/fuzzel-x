@@ -18,13 +18,19 @@
 
 ## Unreleased
 ### Added
+
+* `-F,--fields=FIELDS` command line option, allowing you to select
+  which XDG Desktop Entry fields to match against
+  (https://codeberg.org/dnkl/fuzzel/issues/63).
+
+
 ### Changed
 
 * Fuzzel now refuses to start if there is another fuzzel instance
   running (https://codeberg.org/dnkl/fuzzel/issues/57).
-
 * Treat "Apps" as valid context for applications to support more
   icon themes (for example, Faenza)
+
 
 ### Deprecated
 ### Removed
