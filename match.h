@@ -9,7 +9,7 @@
 struct match {
     struct application *application;
     ssize_t start_title;
-    ssize_t start_comment;
+    ssize_t start_generic_name;
     ssize_t start_basename;
 };
 
