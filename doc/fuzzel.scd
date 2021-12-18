@@ -153,6 +153,20 @@ options:
 	alternative actions some desktop entries have. Examples include
 	"New Window", "New Document", etc.
 
+*--no-fuzzy*
+	Disables fuzzy matching. When disabled, only exact (case
+	insensitive) substring matches are considered.
+
+*--fuzzy-max-length-discrepancy*=_VALUE_
+	Maximum allowed length difference between the search string, and a
+	fuzzy match. Larger values result in more fuzzy matches. Default:
+	_2_.
+
+*--fuzzy-max-distance*=_VALUE_
+	Maximum allowed levenshtein distance between the search string,
+	and a fuzzy match. Larger values result in more fuzzy
+	matches. Default: _1_.
+
 *--line-height*=_HEIGHT_
 	Override line height from font metrics. In points by default, but
 	can be specified as pixels by appending 'px'
