@@ -21,6 +21,18 @@
 
 typedef tll(struct application) application_llist_t;
 
+static wchar_t *
+strdup_to_wchar(const char *s)
+{
+    size_t wlen = mbstowcs(NULL, s, 0);
+    if (wlen == (size_t)-1)
+        return NULL;
+
+    wchar_t *ret = malloc((wlen + 1) * sizeof(wchar_t));
+    mbstowcs(ret, s, wlen + 1);
+    return ret;
+}
+
 static void
 parse_desktop_file(int fd, const wchar_t *file_basename, const char *terminal,
                    application_llist_t *applications)
@@ -31,8 +43,12 @@ parse_desktop_file(int fd, const wchar_t *file_basename, const char *terminal,
 
     bool is_desktop_entry = false;
 
+    wchar_t *wexec = NULL;
     wchar_t *name = NULL;
     wchar_t *generic_name = NULL;
+    wchar_t *comment = NULL;
+    wchar_list_t keywords = tll_init();
+    wchar_list_t categories = tll_init();
 
     char *exec = NULL;
     char *path = NULL;
@@ -81,28 +97,51 @@ parse_desktop_file(int fd, const wchar_t *file_basename, const char *terminal,
 
         if (key != NULL && value != NULL) {
             if (strcmp(key, "Name") == 0) {
-                assert(name == NULL);
+                free(name);
+                name = strdup_to_wchar(value);
+            }
 
-                size_t wlen = mbstowcs(NULL, value, 0);
-                if (wlen != (size_t)-1) {
-                    name = malloc((wlen + 1) * sizeof(wchar_t));
-                    mbstowcs(name, value, wlen + 1);
+            else if (strcmp(key, "Exec") == 0) {
+                free(exec);
+                free(wexec);
+                exec = strdup(value);
+                wexec = strdup_to_wchar(value);
+            }
+
+            else if (strcmp(key, "Path") == 0) {
+                free(path);
+                path = strdup(value);
+            }
+
+            else if (strcmp(key, "GenericName") == 0) {
+                free(generic_name);
+                generic_name = strdup_to_wchar(value);
+            }
+
+            else if (strcmp(key, "Comment") == 0) {
+                free(comment);
+                comment = strdup_to_wchar(value);
+            }
+
+            else if (strcmp(key, "Keywords") == 0) {
+                for (const char *kw = strtok(value, ";");
+                     kw != NULL;
+                     kw = strtok(NULL, ";"))
+                {
+                    wchar_t *wide_kw = strdup_to_wchar(kw);
+                    if (wide_kw != NULL)
+                        tll_push_back(keywords, wide_kw);
                 }
             }
 
-            else if (strcmp(key, "Exec") == 0)
-                exec = strdup(value);
-
-            else if (strcmp(key, "Path") == 0)
-                path = strdup(value);
-
-            else if (strcmp(key, "GenericName") == 0) {
-                assert(generic_name == NULL);
-
-                size_t wlen = mbstowcs(NULL, value, 0);
-                if (wlen != (size_t)-1) {
-                    generic_name = malloc((wlen + 1) * sizeof(wchar_t));
-                    mbstowcs(generic_name, value, wlen + 1);
+            else if (strcmp(key, "Categories") == 0) {
+                for (const char *category = strtok(value, ";");
+                     category != NULL;
+                     category = strtok(NULL, ";"))
+                {
+                    wchar_t *wide_category = strdup_to_wchar(category);
+                    if (wide_category != NULL)
+                        tll_push_back(categories, wide_category);
                 }
             }
 
@@ -150,9 +189,15 @@ parse_desktop_file(int fd, const wchar_t *file_basename, const char *terminal,
             tll_push_back(
                 *applications,
                 ((struct application){
+                    .path = path,
+                    .exec = exec,
                     .basename = wcsdup(file_basename),
-                    .path = path, .exec = exec, .title = name,
-                    .comment = generic_name,
+                    .wexec = wexec,
+                    .title = name,
+                    .generic_name = generic_name,
+                    .comment = comment,
+                    .keywords = keywords,
+                    .categories = categories,
                     .icon = {.name = icon != NULL ? strdup(icon) : NULL},
                     .count = 0}));
             free(icon);
@@ -163,8 +208,13 @@ parse_desktop_file(int fd, const wchar_t *file_basename, const char *terminal,
     free(path);
     free(name);
     free(exec);
+    free(wexec);
     free(generic_name);
+    free(comment);
     free(icon);
+
+    tll_free_and_free(keywords, free);
+    tll_free_and_free(categories, free);
 }
 
 static void

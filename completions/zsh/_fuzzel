@@ -9,6 +9,7 @@ _arguments \
     '(-D --dpi-aware)'{-D,--dpi-aware}"[scale fonts using the monitor's DPI (auto)]:dpi_aware:(no yes auto)" \
     '(-i --icon-theme)'{-i,--icon-theme}'[icon theme name (hicolor)]:theme:->icon_theme' \
     '(-I --no-icons)'{-I,--no-icons}'[do not render any icons]' \
+    '(-F --fields)'{-F,--fields}'[comma separated list of XDG Desktop entry fields to match ]:fields:->fields' \
     '(-T --terminal)'{-T,--terminal}'[terminal command, with arguments]:terminal:_command_names -e' \
     '(-l --lines)'{-l,--lines}'[maximum number of matches to display (15)]:()' \
     '(-w --width)'{-w,--width}'[window width, in characters (30)]:()' \
@@ -43,5 +44,9 @@ case "${state}" in
         if command -v swaymsg > /dev/null; then
             _values 'outputs' $(swaymsg -t get_outputs --raw|grep name|cut -d '"' -f 4)
         fi
+        ;;
+
+    fields)
+        _values -s , 'Desktop entry fields' filename name generic exec categories keywords comment
         ;;
 esac

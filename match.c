@@ -13,6 +13,7 @@
 
 struct matches {
     const struct application_list *applications;
+    enum match_fields fields;
     struct match *matches;
     size_t page_count;
     size_t match_count;
@@ -21,11 +22,13 @@ struct matches {
 };
 
 struct matches *
-matches_init(const struct application_list *applications)
+matches_init(const struct application_list *applications,
+             enum match_fields fields)
 {
     struct matches *matches = malloc(sizeof(*matches));
     *matches = (struct matches) {
         .applications = applications,
+        .fields = fields,
         .matches = malloc(applications->count * sizeof(matches->matches[0])),
         .page_count = 0,
         .match_count = 0,
@@ -225,7 +228,7 @@ matches_update(struct matches *matches, const struct prompt *prompt)
             matches->matches[i] = (struct match){
                 .application = &matches->applications->v[i],
                 .start_title = -1,
-                .start_comment = -1};
+            };
         }
 
         /* Sort */
@@ -242,37 +245,86 @@ matches_update(struct matches *matches, const struct prompt *prompt)
         return;
     }
 
+    const enum match_fields fields = matches->fields;
+    const bool match_filename = fields & MATCH_FILENAME;
+    const bool match_name = fields & MATCH_NAME;
+    const bool match_generic = fields & MATCH_GENERIC;
+    const bool match_exec = fields & MATCH_EXEC;
+    const bool match_categories = fields & MATCH_CATEGORIES;
+    const bool match_keywords = fields & MATCH_KEYWORDS;
+    const bool match_comment = fields & MATCH_COMMENT;
+
+    LOG_DBG(
+        "matching: filename=%s, name=%s, generic=%s, exec=%s, categories=%s, "
+        "keywords=%s, comment=%s",
+        match_filename ? "yes" : "no",
+        match_name ? "yes" : "no",
+        match_generic ? "yes" : "no",
+        match_exec ? "yes" : "no",
+        match_categories ? "yes" : "no",
+        match_keywords ? "yes" : "no",
+        match_comment ? "yes" : "no");
+
     matches->match_count = 0;
+
     for (size_t i = 0; i < matches->applications->count; i++) {
         struct application *app = &matches->applications->v[i];
+        bool is_match = false;
         ssize_t start_title = -1;
-        ssize_t start_comment = -1;
-        ssize_t start_basename = -1;
 
-        const wchar_t *m = wcscasestr(app->title, ptext);
-        if (m != NULL)
-            start_title = m - app->title;
-
-        if (app->comment != NULL) {
-            m = wcscasestr(app->comment, ptext);
-            if (m != NULL)
-                start_comment = m - app->comment;
+        if (!is_match && match_filename && app->basename != NULL) {
+            if (wcscasestr(app->basename, ptext) != NULL)
+                is_match = true;
         }
 
-        if (app->basename != NULL) {
-            m = wcscasestr(app->basename, ptext);
-            if (m != NULL)
-                start_basename = m - app->basename;
+        if (!is_match && match_name) {
+            const wchar_t *m = wcscasestr(app->title, ptext);
+            if (m != NULL) {
+                start_title = m - app->title;
+                is_match = true;
+            }
         }
 
-        if (start_title < 0 && start_comment < 0 && start_basename < 0)
+        if (!is_match && match_generic && app->generic_name != NULL) {
+            if (wcscasestr(app->generic_name, ptext) != NULL)
+                is_match = true;
+        }
+
+        if (!is_match && match_exec && app->wexec != NULL) {
+            if (wcscasestr(app->wexec, ptext) != NULL)
+                is_match = true;
+        }
+
+        if (!is_match && match_comment && app->comment != NULL) {
+            if (wcscasestr(app->comment, ptext) != NULL)
+                is_match = true;
+        }
+
+        if (!is_match && match_keywords) {
+            tll_foreach(app->keywords, it) {
+                if (wcscasestr(it->item, ptext) != NULL) {
+                    is_match = true;
+                    break;
+                }
+            }
+        }
+
+        if (!is_match && match_categories) {
+            tll_foreach(app->categories, it) {
+                if (wcscasestr(it->item, ptext) != NULL) {
+                    is_match = true;
+                    break;
+                }
+            }
+        }
+
+        if (!is_match)
             continue;
 
         matches->matches[matches->match_count++] = (struct match){
             .application = app,
             .start_title = start_title,
-            .start_comment = start_comment,
-            .start_basename = start_basename};
+        };
     }
 
     /* Sort */

@@ -70,6 +70,19 @@ options:
 *-I*,*--no-icons*
 	Do not render any icons.
 
+*-F*,*--fields*=FIELDS
+	Comma separated list of XDG Desktop entry fields to match against:
+	
+	- *filename*: the .desktop file's filename
+	- *name*: the application's name (title)
+	- *generic*: the application's generic name
+	- *exec*: the applications's executable, as specified in the desktop file. Note: may include command line options as well.
+	- *keywords*: the application's keywords
+	- *categories*: the application's categories
+	- *comment*: the application's comment
+	
+	Default: _filename,name,generic_
+
 *-T*,*--terminal*=_TERMINAL ARGS_
 	Command to launch XDG applications with the property
 	*Terminal=true* (_htop_, for example). Example: _xterm -e_.
