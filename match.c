@@ -421,28 +421,42 @@ matches_update(struct matches *matches, const struct prompt *prompt)
         }
 
         if (!is_match && match_filename && app->basename != NULL) {
-            if (wcscasestr(app->basename, ptext) != NULL)
+            if (wcscasestr(app->basename, ptext) != NULL ||
+                match_levenshtein(matches, app->basename, ptext) != NULL)
+            {
                 is_match = true;
+            }
         }
 
         if (!is_match && match_generic && app->generic_name != NULL) {
-            if (wcscasestr(app->generic_name, ptext) != NULL)
+            if (wcscasestr(app->generic_name, ptext) != NULL ||
+                match_levenshtein(matches, app->generic_name, ptext) != NULL)
+            {
                 is_match = true;
+            }
         }
 
         if (!is_match && match_exec && app->wexec != NULL) {
-            if (wcscasestr(app->wexec, ptext) != NULL)
+            if (wcscasestr(app->wexec, ptext) != NULL ||
+                match_levenshtein(matches, app->wexec, ptext) != NULL)
+            {
                 is_match = true;
+            }
         }
 
         if (!is_match && match_comment && app->comment != NULL) {
-            if (wcscasestr(app->comment, ptext) != NULL)
+            if (wcscasestr(app->comment, ptext) != NULL ||
+                match_levenshtein(matches, app->comment, ptext) != NULL)
+            {
                 is_match = true;
+            }
         }
 
         if (!is_match && match_keywords) {
             tll_foreach(app->keywords, it) {
-                if (wcscasestr(it->item, ptext) != NULL) {
+                if (wcscasestr(it->item, ptext) != NULL ||
+                    match_levenshtein(matches, it->item, ptext))
+                {
                     is_match = true;
                     break;
                 }
@@ -451,7 +465,9 @@ matches_update(struct matches *matches, const struct prompt *prompt)
 
         if (!is_match && match_categories) {
             tll_foreach(app->categories, it) {
-                if (wcscasestr(it->item, ptext) != NULL) {
+                if (wcscasestr(it->item, ptext) != NULL ||
+                    match_levenshtein(matches, it->item, ptext) != NULL)
+                {
                     is_match = true;
                     break;
                 }
