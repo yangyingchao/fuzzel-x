@@ -15,10 +15,13 @@ struct matches {
     const struct application_list *applications;
     enum match_fields fields;
     struct match *matches;
+    bool fuzzy;
     size_t page_count;
     size_t match_count;
     size_t selected;
     size_t max_matches_per_page;
+    size_t fuzzy_max_length_discrepancy;
+    size_t fuzzy_max_distance;
 };
 
 
@@ -57,21 +60,18 @@ levenshtein_distance(const wchar_t *a, size_t alen,
     }
 }
 
-struct levenshtein_match {
-    size_t start;
-    size_t len;
-    size_t distance;
-};
-
-static bool
-levenshtein_match(const wchar_t *src, const wchar_t *pat,
-                  struct levenshtein_match *match)
+static const wchar_t *
+match_levenshtein(struct matches *matches,
+                  const wchar_t *src, const wchar_t *pat)
 {
+    if (!matches->fuzzy)
+        return NULL;
+
     const size_t src_len = wcslen(src);
     const size_t pat_len = wcslen(pat);
 
     if (src_len < pat_len)
-        return false;
+        return NULL;
 
     struct levenshtein_matrix **m = calloc(pat_len + 1, sizeof(m[0]));
     for (size_t i = 0; i < pat_len + 1; i++)
@@ -123,36 +123,55 @@ levenshtein_match(const wchar_t *src, const wchar_t *pat,
         }
     }
 
+#if 0
     *match = (struct levenshtein_match){
         .start = c,
         .len = end - c,
         .distance = m[pat_len][end].distance,
     };
+#endif
+    const size_t match_ofs = c;
+    const size_t match_len = end - c;
+    const size_t match_distance = m[pat_len][end].distance;
 
     LOG_DBG("%s vs. %s: sub-string: %.*ls, (distance=%zu, row=%zu, col=%zu)",
-            src, pat, (int)match->len, &src[match->start], match->distance,
+            src, pat, (int)match_len, &src[match_ofs], match_distance,
             r, c);
 
     for (size_t i = 0; i < pat_len + 1; i++)
         free(m[i]);
     free(m);
 
-    return true;
+    const size_t len_diff = match_len > pat_len
+        ? match_len - pat_len
+        : pat_len - match_len;
+
+    if (len_diff <= matches->fuzzy_max_length_discrepancy &&
+        match_distance <= matches->fuzzy_max_distance)
+    {
+        return &src[match_ofs];
+    }
+
+    return NULL;
 }
 
 struct matches *
 matches_init(const struct application_list *applications,
-             enum match_fields fields)
+             enum match_fields fields, bool fuzzy,
+             size_t fuzzy_max_length_discrepancy, size_t fuzzy_max_distance)
 {
     struct matches *matches = malloc(sizeof(*matches));
     *matches = (struct matches) {
         .applications = applications,
         .fields = fields,
         .matches = malloc(applications->count * sizeof(matches->matches[0])),
+        .fuzzy = fuzzy,
         .page_count = 0,
         .match_count = 0,
         .selected = 0,
         .max_matches_per_page = 0,
+        .fuzzy_max_length_discrepancy = fuzzy_max_length_discrepancy,
+        .fuzzy_max_distance = fuzzy_max_distance,
     };
     return matches;
 }
@@ -393,21 +412,10 @@ matches_update(struct matches *matches, const struct prompt *prompt)
 
         if (!is_match && match_name) {
             const wchar_t *m = wcscasestr(app->title, ptext);
+            if (m == NULL)
+                m = match_levenshtein(matches, app->title, ptext);
             if (m != NULL) {
                 start_title = m - app->title;
-                is_match = true;
-            }
-        }
-
-        struct levenshtein_match lmatch;
-        if (!is_match && levenshtein_match(app->title, ptext, &lmatch)) {
-            const size_t len = wcslen(ptext);
-
-            /* This needs tweaking... */
-            if ((lmatch.len > len || len - lmatch.len <= 2) &&
-                lmatch.distance <= 1)
-            {
-                start_title = lmatch.start;
                 is_match = true;
             }
         }

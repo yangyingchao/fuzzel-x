@@ -374,6 +374,9 @@ main(int argc, char *const *argv)
     bool no_run_if_empty = false;
     bool icons_enabled = true;
     bool actions_enabled = false;
+    bool fuzzy = true;
+    size_t fuzzy_max_length_discrepancy = 2;
+    size_t fuzzy_max_distance = 1;
     const char *launch_prefix = NULL;
 
     enum match_fields match_fields =
@@ -715,7 +718,9 @@ main(int argc, char *const *argv)
     if ((prompt = prompt_init(prompt_content)) == NULL)
         goto out;
 
-    if ((matches = matches_init(apps, match_fields)) == NULL)
+    if ((matches = matches_init(
+             apps, match_fields, fuzzy,
+             fuzzy_max_length_discrepancy, fuzzy_max_distance)) == NULL)
         goto out;
 
     struct font_reload_context font_reloaded_data = {
