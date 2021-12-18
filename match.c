@@ -272,17 +272,17 @@ matches_update(struct matches *matches, const struct prompt *prompt)
         bool is_match = false;
         ssize_t start_title = -1;
 
-        if (!is_match && match_filename && app->basename != NULL) {
-            if (wcscasestr(app->basename, ptext) != NULL)
-                is_match = true;
-        }
-
         if (!is_match && match_name) {
             const wchar_t *m = wcscasestr(app->title, ptext);
             if (m != NULL) {
                 start_title = m - app->title;
                 is_match = true;
             }
+        }
+
+        if (!is_match && match_filename && app->basename != NULL) {
+            if (wcscasestr(app->basename, ptext) != NULL)
+                is_match = true;
         }
 
         if (!is_match && match_generic && app->generic_name != NULL) {
