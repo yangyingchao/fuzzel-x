@@ -21,6 +21,125 @@ struct matches {
     size_t max_matches_per_page;
 };
 
+
+struct levenshtein_matrix {
+    size_t distance;
+    enum choice { UNSET, FIRST, SECOND, THIRD } choice;
+};
+
+static void
+levenshtein_distance(const wchar_t *a, size_t alen,
+                     const wchar_t *b, size_t blen,
+                     struct levenshtein_matrix **m)
+{
+    for (size_t i = 1; i <= blen; i++) {
+        m[i][0].distance = i;
+        m[i][0].choice = FIRST;
+    }
+
+    for (size_t i = 1; i <= blen; i++) {
+        for (size_t j = 1; j <= alen; j++) {
+            const size_t cost = towlower(a[j - 1]) == towlower(b[i - 1]) ? 0 : 1;
+            const size_t first = m[i - 1][j].distance + 1;
+            const size_t second = m[i][j - 1].distance + 1;
+            const size_t third = m[i - 1][j - 1].distance + cost;
+
+            const size_t shortest = min(min(first, second), third);
+            m[i][j].distance = shortest;
+
+            if (shortest == first)
+                m[i][j].choice = FIRST;
+            else if (shortest == second)
+                m[i][j].choice = SECOND;
+            else
+                m[i][j].choice = THIRD;
+        }
+    }
+}
+
+struct levenshtein_match {
+    size_t start;
+    size_t len;
+    size_t distance;
+};
+
+static bool
+levenshtein_match(const wchar_t *src, const wchar_t *pat,
+                  struct levenshtein_match *match)
+{
+    const size_t src_len = wcslen(src);
+    const size_t pat_len = wcslen(pat);
+
+    if (src_len < pat_len)
+        return false;
+
+    struct levenshtein_matrix **m = calloc(pat_len + 1, sizeof(m[0]));
+    for (size_t i = 0; i < pat_len + 1; i++)
+        m[i] = calloc(src_len + 1, sizeof(m[0][0]));
+
+    levenshtein_distance(src, src_len, pat, pat_len, m);
+
+#if 0
+    /* Dump levenshtein table */
+    printf("     ");
+    for (size_t j = 0; j < src_len; j++)
+        printf("%lc  ", src[j]);
+    printf("\n");
+    for (size_t i = 0; i < pat_len + 1; i++) {
+        if (i > 0)
+            printf("%lc ", pat[i - 1]);
+        else
+            printf("  ");
+
+        for (size_t j = 0; j < src_len + 1; j++)
+            printf("%zu%c ", m[i][j].distance,
+                   m[i][j].choice == FIRST ? 'f' :
+                   m[i][j].choice == SECOND ? 's' :
+                   m[i][j].choice == THIRD ? 't' : 'u');
+        printf("\n");
+    }
+#endif
+
+    size_t c = 0;
+    size_t best = m[pat_len][0].distance;
+
+    for (ssize_t j = src_len; j >= 0; j--) {
+        if (m[pat_len][j].distance < best) {
+            best = m[pat_len][j].distance;
+            c = j;
+        }
+    }
+
+    const size_t end = c;
+    size_t r = pat_len;
+    // printf("starting at r=%zu, c=%zu\n", r, c);
+
+    while (r > 0) {
+        switch (m[r][c].choice) {
+        case UNSET: assert(false); break;
+        case FIRST: r--; break;
+        case SECOND: c--; break;
+        case THIRD: r--; c--; break;
+        }
+    }
+
+    *match = (struct levenshtein_match){
+        .start = c,
+        .len = end - c,
+        .distance = m[pat_len][end].distance,
+    };
+
+    LOG_DBG("%s vs. %s: sub-string: %.*ls, (distance=%zu, row=%zu, col=%zu)",
+            src, pat, (int)match->len, &src[match->start], match->distance,
+            r, c);
+
+    for (size_t i = 0; i < pat_len + 1; i++)
+        free(m[i]);
+    free(m);
+
+    return true;
+}
+
 struct matches *
 matches_init(const struct application_list *applications,
              enum match_fields fields)
@@ -276,6 +395,19 @@ matches_update(struct matches *matches, const struct prompt *prompt)
             const wchar_t *m = wcscasestr(app->title, ptext);
             if (m != NULL) {
                 start_title = m - app->title;
+                is_match = true;
+            }
+        }
+
+        struct levenshtein_match lmatch;
+        if (!is_match && levenshtein_match(app->title, ptext, &lmatch)) {
+            const size_t len = wcslen(ptext);
+
+            /* This needs tweaking... */
+            if ((lmatch.len > len || len - lmatch.len <= 2) &&
+                lmatch.distance <= 1)
+            {
+                start_title = lmatch.start;
                 is_match = true;
             }
         }
