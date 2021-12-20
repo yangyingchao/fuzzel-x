@@ -231,6 +231,7 @@ applications_destroy(struct application_list *apps)
     for (size_t i = 0; i < apps->count; i++) {
         struct application *app = &apps->v[i];
 
+        free(app->id);
         free(app->path);
         free(app->exec);
         free(app->basename);
