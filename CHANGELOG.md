@@ -34,6 +34,10 @@
   identifiers. Instead, we now generate the “desktop file ID”
   according to the XDG desktop entry specification, and use that as ID
   (https://codeberg.org/dnkl/fuzzel/issues/68).
+* All XDG data directories are now searched when loading an
+  icon. Previously, only XDG data directories where the theme
+  directory contained an `index.theme` file were searched
+  (https://codeberg.org/dnkl/fuzzel/issues/62).
 
 
 ### Deprecated
