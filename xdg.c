@@ -34,8 +34,8 @@ strdup_to_wchar(const char *s)
 }
 
 static void
-parse_desktop_file(int fd, const wchar_t *file_basename, const char *terminal,
-                   application_llist_t *applications)
+parse_desktop_file(int fd, char *id, const wchar_t *file_basename,
+                   const char *terminal, application_llist_t *applications)
 {
     FILE *f = fdopen(fd, "r");
     if (f == NULL)
@@ -169,7 +169,7 @@ parse_desktop_file(int fd, const wchar_t *file_basename, const char *terminal,
     if (is_desktop_entry && visible && name != NULL && exec != NULL) {
         bool already_added = false;
         tll_foreach(*applications, it) {
-            if (wcscmp(it->item.title, name) == 0) {
+            if (strcmp(it->item.id, id) == 0) {
                 already_added = true;
                 break;
             }
@@ -189,6 +189,7 @@ parse_desktop_file(int fd, const wchar_t *file_basename, const char *terminal,
             tll_push_back(
                 *applications,
                 ((struct application){
+                    .id = id,
                     .path = path,
                     .exec = exec,
                     .basename = wcsdup(file_basename),
@@ -205,6 +206,7 @@ parse_desktop_file(int fd, const wchar_t *file_basename, const char *terminal,
         }
     }
 
+    free(id);
     free(path);
     free(name);
     free(exec);
@@ -217,8 +219,25 @@ parse_desktop_file(int fd, const wchar_t *file_basename, const char *terminal,
     tll_free_and_free(categories, free);
 }
 
+static char *
+new_id(const char *base_id, const char *new_part)
+{
+    if (base_id == NULL)
+        return strdup(new_part);
+
+    size_t len = strlen(base_id) + 1 + strlen(new_part) + 1;
+    char *id = malloc(len);
+
+    strcpy(id, base_id);
+    strcat(id, "-");
+    strcat(id, new_part);
+
+    return id;
+}
+
 static void
-scan_dir(int base_fd, const char *terminal, application_llist_t *applications)
+scan_dir(int base_fd, const char *terminal, application_llist_t *applications,
+         const char *base_id)
 {
     DIR *d = fdopendir(base_fd);
     if (d == NULL) {
@@ -243,7 +262,9 @@ scan_dir(int base_fd, const char *terminal, application_llist_t *applications)
                 continue;
             }
 
-            scan_dir(dir_fd, terminal, applications);
+            char *nested_base_id = new_id(base_id, e->d_name);
+            scan_dir(dir_fd, terminal, applications, nested_base_id);
+            free(nested_base_id);
             close(dir_fd);
         } else if (S_ISREG(st.st_mode)) {
             /* Skip files not ending with ".desktop" */
@@ -281,7 +302,8 @@ scan_dir(int base_fd, const char *terminal, application_llist_t *applications)
                 mbsnrtowcs(wfile_basename, &src, extension - file_basename, chars, &ps);
                 wfile_basename[chars] = L'\0';
 
-                parse_desktop_file(fd, wfile_basename, terminal, applications);
+                char *id = new_id(base_id, e->d_name);
+                parse_desktop_file(fd, id, wfile_basename, terminal, applications);
                 close(fd);
             }
         }
@@ -311,7 +333,7 @@ xdg_find_programs(const char *terminal, struct application_list *applications)
 
         int fd = open(path, O_RDONLY);
         if (fd != -1) {
-            scan_dir(fd, terminal, &apps);
+            scan_dir(fd, terminal, &apps, NULL);
             close(fd);
         }
     }
@@ -330,6 +352,55 @@ xdg_find_programs(const char *terminal, struct application_list *applications)
           &sort_application_by_title);
 
     xdg_data_dirs_destroy(dirs);
+
+#if defined(_DEBUG) && LOG_ENABLE_DBG && 0
+    for (size_t i = 0; i < applications->count; i++) {
+        const struct application *app = &applications->v[i];
+
+        wchar_t keywords[1024];
+        wchar_t categories[1024];
+
+        int idx = 0;
+        tll_foreach(app->keywords, it) {
+            idx += swprintf(&keywords[idx],
+                            (sizeof(keywords) / sizeof(keywords[0])) - idx,
+                            L"%ls, ", it->item);
+        }
+
+        if (idx > 0)
+            keywords[idx - 2] = L'\0';
+
+        idx = 0;
+        tll_foreach(app->categories, it) {
+            idx += swprintf(&categories[idx],
+                            (sizeof(categories) / sizeof(categories[0])) - idx,
+                            L"%ls, ", it->item);
+        }
+
+        if (idx > 0)
+            categories[idx - 2] = L'\0';
+
+        LOG_DBG("%s:\n"
+                "  name/title:   %ls\n"
+                "  path:         %s\n"
+                "  exec:         %s\n"
+                "  basename:     %ls\n"
+                "  generic-name: %ls\n"
+                "  comment:      %ls\n"
+                "  keywords:     %ls\n"
+                "  categories:   %ls\n"
+                "  icon:\n"
+                "    name: %s\n"
+                "    type: %s",
+                app->id, app->title, app->path, app->exec, app->basename,
+                app->generic_name, app->comment, keywords, categories,
+                app->icon.name,
+                app->icon.type == ICON_PNG ? "PNG" :
+                app->icon.type == ICON_SVG ? "SVG" : "<none>");
+
+
+    }
+#endif
 }
 
 xdg_data_dirs_t

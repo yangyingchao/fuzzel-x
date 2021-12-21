@@ -45,6 +45,7 @@ struct icon {
 typedef tll(wchar_t *) wchar_list_t;
 
 struct application {
+    char *id;
     char *path;
     char *exec;
     wchar_t *basename;

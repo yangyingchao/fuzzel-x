@@ -30,6 +30,10 @@
   running (https://codeberg.org/dnkl/fuzzel/issues/57).
 * Treat "Apps" as valid context for applications to support more
   icon themes (for example, Faenza)
+* The `Name` entry of the desktop files are no longer used as unique
+  identifiers. Instead, we now generate the “desktop file ID”
+  according to the XDG desktop entry specification, and use that as ID
+  (https://codeberg.org/dnkl/fuzzel/issues/68).
 
 
 ### Deprecated
