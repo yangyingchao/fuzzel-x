@@ -352,6 +352,55 @@ xdg_find_programs(const char *terminal, struct application_list *applications)
           &sort_application_by_title);
 
     xdg_data_dirs_destroy(dirs);
+
+#if defined(_DEBUG) && LOG_ENABLE_DBG && 0
+    for (size_t i = 0; i < applications->count; i++) {
+        const struct application *app = &applications->v[i];
+
+        wchar_t keywords[1024];
+        wchar_t categories[1024];
+
+        int idx = 0;
+        tll_foreach(app->keywords, it) {
+            idx += swprintf(&keywords[idx],
+                            (sizeof(keywords) / sizeof(keywords[0])) - idx,
+                            L"%ls, ", it->item);
+        }
+
+        if (idx > 0)
+            keywords[idx - 2] = L'\0';
+
+        idx = 0;
+        tll_foreach(app->categories, it) {
+            idx += swprintf(&categories[idx],
+                            (sizeof(categories) / sizeof(categories[0])) - idx,
+                            L"%ls, ", it->item);
+        }
+
+        if (idx > 0)
+            categories[idx - 2] = L'\0';
+
+        LOG_DBG("%s:\n"
+                "  name/title:   %ls\n"
+                "  path:         %s\n"
+                "  exec:         %s\n"
+                "  basename:     %ls\n"
+                "  generic-name: %ls\n"
+                "  comment:      %ls\n"
+                "  keywords:     %ls\n"
+                "  categories:   %ls\n"
+                "  icon:\n"
+                "    name: %s\n"
+                "    type: %s",
+                app->id, app->title, app->path, app->exec, app->basename,
+                app->generic_name, app->comment, keywords, categories,
+                app->icon.name,
+                app->icon.type == ICON_PNG ? "PNG" :
+                app->icon.type == ICON_SVG ? "SVG" : "<none>");
+
+
+    }
+#endif
 }
 
 xdg_data_dirs_t
