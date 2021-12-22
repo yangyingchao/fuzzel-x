@@ -16,7 +16,6 @@ struct icon_dir {
 
 struct icon_theme {
     char *name;
-    char *path;
     tll(struct icon_dir) dirs;
 };
 
