@@ -120,6 +120,8 @@ parse_desktop_file(int fd, char *id, const wchar_t *file_basename,
                             ? wcsdup(default_action->comment) : NULL;
                         action->path = default_action->path != NULL
                             ? strdup(default_action->path) : NULL;
+                        action->icon = default_action->icon != NULL
+                            ? strdup(default_action->icon) : NULL;
                         action->visible = default_action->visible;
                         action->use_terminal = default_action->use_terminal;
 
