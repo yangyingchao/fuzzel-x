@@ -26,6 +26,7 @@ _arguments \
     '(-C --border-color)'{-C,--border-color}'[border color (002b36ff)]:border-color:()' \
     '(-d --dmenu)'{-d,--dmenu}'[dmenu compatibility mode; list entries are read from stdin]' \
     '(-R --no-run-if-empty)'{-R,--no-run-if-empty}'[exit immediately without showing the UI if stdin is empty (dmenu mode only)]' \
+    '--no-actions[do not display desktop actions (e.g "New Window")]' \
     '--line-height[override line height from font metrics, in points or pixels]:()' \
     '--letter-spacing[additional letter spacing, in points or pixels]:()'
 
