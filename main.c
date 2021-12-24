@@ -202,7 +202,7 @@ print_usage(const char *prog_name)
            "  -d,--dmenu                     dmenu compatibility mode\n"
            "  -R,--no-run-if-empty           exit immediately without showing UI if stdin\n"
            "                                 is empty (dmenu mode only)\n"
-           "     --no-actions                do not display desktop actions\n"
+           "     --show-actions              include desktop actions in the list\n"
            "     --line-height=HEIGHT        override line height from font metrics\n"
            "     --letter-spacing=AMOUNT     additional letter spacing\n"
            "     --launch-prefix=COMMAND     prefix to add before argv of executed program\n"
@@ -328,7 +328,7 @@ main(int argc, char *const *argv)
 {
     #define OPT_LETTER_SPACING 256
     #define OPT_LAUNCH_PREFIX  257
-    #define OPT_NO_ACTIONS     258
+    #define OPT_SHOW_ACTIONS   258
 
     static const struct option longopts[] = {
         {"output"  ,             required_argument, 0, 'o'},
@@ -354,7 +354,7 @@ main(int argc, char *const *argv)
         {"terminal",             required_argument, 0, 'T'},
         {"dmenu",                no_argument,       0, 'd'},
         {"no-run-if-empty",      no_argument,       0, 'R'},
-        {"no-actions",           no_argument,       0, OPT_NO_ACTIONS},
+        {"show-actions",         no_argument,       0, OPT_SHOW_ACTIONS},
         {"line-height",          required_argument, 0, 'H'},
         {"letter-spacing",       required_argument, 0, OPT_LETTER_SPACING},
         {"launch-prefix",        required_argument, 0, OPT_LAUNCH_PREFIX},
@@ -373,7 +373,7 @@ main(int argc, char *const *argv)
     bool dmenu_mode = false;
     bool no_run_if_empty = false;
     bool icons_enabled = true;
-    bool actions_enabled = true;
+    bool actions_enabled = false;
     const char *launch_prefix = NULL;
 
     enum match_fields match_fields =
@@ -627,8 +627,8 @@ main(int argc, char *const *argv)
             no_run_if_empty = true;
             break;
 
-        case OPT_NO_ACTIONS:
-            actions_enabled = false;
+        case OPT_SHOW_ACTIONS:
+            actions_enabled = true;
             break;
 
         case 'H': { /* line-height */

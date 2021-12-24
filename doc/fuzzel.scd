@@ -148,8 +148,8 @@ options:
 	Exit immediately, without showing the UI, if stdin is
 	empty. **dmenu** mode only.
 
-*--no-actions*
-	Do not include desktop actions in the list. Desktop actions are
+*--show-actions*
+	Include desktop actions in the list. Desktop actions are
 	alternative actions some desktop entries have. Examples include
 	"New Window", "New Document", etc.
 
