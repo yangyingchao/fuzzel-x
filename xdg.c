@@ -35,7 +35,8 @@ strdup_to_wchar(const char *s)
 
 static void
 parse_desktop_file(int fd, char *id, const wchar_t *file_basename,
-                   const char *terminal, application_llist_t *applications)
+                   const char *terminal, bool include_actions,
+                   application_llist_t *applications)
 {
     FILE *f = fdopen(fd, "r");
     if (f == NULL)
@@ -43,18 +44,28 @@ parse_desktop_file(int fd, char *id, const wchar_t *file_basename,
 
     bool is_desktop_entry = false;
 
-    wchar_t *wexec = NULL;
-    wchar_t *name = NULL;
-    wchar_t *generic_name = NULL;
-    wchar_t *comment = NULL;
-    wchar_list_t keywords = tll_init();
-    wchar_list_t categories = tll_init();
+    tll(char *) action_names = tll_init();
 
-    char *exec = NULL;
-    char *path = NULL;
-    char *icon = NULL;
-    bool visible = true;
-    bool use_terminal = false;
+    struct action {
+        wchar_t *name;
+        wchar_t *generic_name;
+        wchar_t *comment;
+        wchar_list_t keywords;
+        wchar_list_t categories;
+
+        char *icon;
+        char *exec;
+        wchar_t *wexec;
+
+        char *path;
+        bool visible;
+        bool use_terminal;
+    };
+
+    tll(struct action) actions = tll_init();
+    tll_push_back(actions, ((struct action){.visible = true}));
+    struct action *action = &tll_back(actions);
+    struct action *default_action = action;
 
     while (true) {
         char *line = NULL;
@@ -86,7 +97,52 @@ parse_desktop_file(int fd, char *id, const wchar_t *file_basename,
                 is_desktop_entry = true;
                 free(line);
                 continue;
-            } else {
+            }
+
+            else if (include_actions &&
+                     strncasecmp(&line[1], "desktop action ", 15) == 0)
+            {
+                const char *action_name = &line[16];
+                const size_t name_len = len - 1 - 16;
+
+                bool action_is_valid = false;
+                tll_foreach(action_names, it) {
+                    if (strlen(it->item) == name_len &&
+                        strncmp(it->item, action_name, name_len) == 0)
+                    {
+                        tll_push_back(actions, ((struct action){0}));
+                        action = &tll_back(actions);
+
+                        action->generic_name =
+                            default_action->generic_name != NULL
+                            ? wcsdup(default_action->generic_name) : NULL;
+                        action->comment = default_action->comment != NULL
+                            ? wcsdup(default_action->comment) : NULL;
+                        action->path = default_action->path != NULL
+                            ? strdup(default_action->path) : NULL;
+                        action->icon = default_action->icon != NULL
+                            ? strdup(default_action->icon) : NULL;
+                        action->visible = default_action->visible;
+                        action->use_terminal = default_action->use_terminal;
+
+                        tll_foreach(default_action->keywords, it)
+                            tll_push_back(action->keywords, wcsdup(it->item));
+                        tll_foreach(default_action->categories, it)
+                            tll_push_back(action->categories, wcsdup(it->item));
+
+                        action_is_valid = true;
+                        break;
+                    }
+                }
+
+                free(line);
+                if (action_is_valid)
+                    continue;
+                else
+                    break;
+            }
+
+            else {
                 free(line);
                 break;
             }
@@ -97,30 +153,30 @@ parse_desktop_file(int fd, char *id, const wchar_t *file_basename,
 
         if (key != NULL && value != NULL) {
             if (strcmp(key, "Name") == 0) {
-                free(name);
-                name = strdup_to_wchar(value);
+                free(action->name);
+                action->name = strdup_to_wchar(value);
             }
 
             else if (strcmp(key, "Exec") == 0) {
-                free(exec);
-                free(wexec);
-                exec = strdup(value);
-                wexec = strdup_to_wchar(value);
+                free(action->exec);
+                free(action->wexec);
+                action->exec = strdup(value);
+                action->wexec = strdup_to_wchar(value);
             }
 
             else if (strcmp(key, "Path") == 0) {
-                free(path);
-                path = strdup(value);
+                free(action->path);
+                action->path = strdup(value);
             }
 
             else if (strcmp(key, "GenericName") == 0) {
-                free(generic_name);
-                generic_name = strdup_to_wchar(value);
+                free(action->generic_name);
+                action->generic_name = strdup_to_wchar(value);
             }
 
             else if (strcmp(key, "Comment") == 0) {
-                free(comment);
-                comment = strdup_to_wchar(value);
+                free(action->comment);
+                action->comment = strdup_to_wchar(value);
             }
 
             else if (strcmp(key, "Keywords") == 0) {
@@ -130,7 +186,7 @@ parse_desktop_file(int fd, char *id, const wchar_t *file_basename,
                 {
                     wchar_t *wide_kw = strdup_to_wchar(kw);
                     if (wide_kw != NULL)
-                        tll_push_back(keywords, wide_kw);
+                        tll_push_back(action->keywords, wide_kw);
                 }
             }
 
@@ -141,23 +197,34 @@ parse_desktop_file(int fd, char *id, const wchar_t *file_basename,
                 {
                     wchar_t *wide_category = strdup_to_wchar(category);
                     if (wide_category != NULL)
-                        tll_push_back(categories, wide_category);
+                        tll_push_back(action->categories, wide_category);
                 }
             }
 
-            else if (strcmp(key, "Icon") == 0)
-                icon = strdup(value);
+            else if (strcmp(key, "Actions") == 0) {
+                for (const char *action = strtok(value, ";");
+                     action != NULL;
+                     action = strtok(NULL, ";"))
+                {
+                    tll_push_back(action_names, strdup(action));
+                }
+            }
+
+            else if (strcmp(key, "Icon") == 0) {
+                free(action->icon);
+                action->icon = strdup(value);
+            }
 
             else if (strcmp(key, "Hidden") == 0 ||
                      strcmp(key, "NoDisplay") == 0)
             {
                 if (strcmp(value, "true") == 0)
-                    visible = false;
+                    action->visible = false;
             }
 
             else if (strcmp(key, "Terminal") == 0) {
                 if (strcmp(value, "true") == 0)
-                    use_terminal = true;
+                    action->use_terminal = true;
             }
         }
 
@@ -166,57 +233,72 @@ parse_desktop_file(int fd, char *id, const wchar_t *file_basename,
 
     fclose(f);
 
-    if (is_desktop_entry && visible && name != NULL && exec != NULL) {
-        bool already_added = false;
-        tll_foreach(*applications, it) {
-            if (strcmp(it->item.id, id) == 0) {
-                already_added = true;
-                break;
-            }
+    tll_foreach(actions, it) {
+        struct action *a = &it->item;
+
+        if (!(is_desktop_entry &&
+              a->visible &&
+              a->name != NULL &&
+              a->exec != NULL))
+        {
+            free(a->name);
+            free(a->generic_name);
+            free(a->comment);
+            free(a->icon);
+            free(a->exec);
+            free(a->wexec);
+            free(a->path);
+
+            tll_free_and_free(a->keywords, free);
+            tll_free_and_free(a->categories, free);
+
+            continue;
         }
 
-        if (!already_added) {
-            if (use_terminal && terminal != NULL) {
-                char *exec_with_terminal = malloc(
-                    strlen(terminal) + 1 + strlen(exec) + 1);
-                strcpy(exec_with_terminal, terminal);
-                strcat(exec_with_terminal, " ");
-                strcat(exec_with_terminal, exec);
-                free(exec);
-                exec = exec_with_terminal;
-            }
-
-            tll_push_back(
-                *applications,
-                ((struct application){
-                    .id = id,
-                    .path = path,
-                    .exec = exec,
-                    .basename = wcsdup(file_basename),
-                    .wexec = wexec,
-                    .title = name,
-                    .generic_name = generic_name,
-                    .comment = comment,
-                    .keywords = keywords,
-                    .categories = categories,
-                    .icon = {.name = icon != NULL ? strdup(icon) : NULL},
-                    .count = 0}));
-            free(icon);
-            return;
+        if (a->use_terminal && terminal != NULL) {
+            char *exec_with_terminal = malloc(
+                strlen(terminal) + 1 + strlen(a->exec) + 1);
+            strcpy(exec_with_terminal, terminal);
+            strcat(exec_with_terminal, " ");
+            strcat(exec_with_terminal, a->exec);
+            free(a->exec);
+            a->exec = exec_with_terminal;
         }
+
+        wchar_t *title = a->name;
+        if (a != default_action) {
+            size_t title_len = wcslen(default_action->name) +
+                3 +  /* “ - “ */
+                wcslen(a->name) +
+                1;
+            title = malloc(title_len * sizeof(wchar_t));
+
+            wcscpy(title, default_action->name);
+            wcscat(title, L" - ");
+            wcscat(title, a->name);
+            free(a->name);
+        }
+
+        tll_push_back(
+            *applications,
+            ((struct application){
+                .id = strdup(id),
+                .path = a->path,
+                .exec = a->exec,
+                .basename = wcsdup(file_basename),
+                .wexec = a->wexec,
+                .title = title,
+                .generic_name = a->generic_name,
+                .comment = a->comment,
+                .keywords = a->keywords,
+                .categories = a->categories,
+                .icon = {.name = a->icon},
+                .count = 0}));
     }
 
     free(id);
-    free(path);
-    free(name);
-    free(exec);
-    free(wexec);
-    free(generic_name);
-    free(comment);
-    free(icon);
-
-    tll_free_and_free(keywords, free);
-    tll_free_and_free(categories, free);
+    tll_free(actions);
+    tll_free_and_free(action_names, free);
 }
 
 static char *
@@ -236,8 +318,8 @@ new_id(const char *base_id, const char *new_part)
 }
 
 static void
-scan_dir(int base_fd, const char *terminal, application_llist_t *applications,
-         const char *base_id)
+scan_dir(int base_fd, const char *terminal, bool include_actions,
+         application_llist_t *applications, const char *base_id)
 {
     DIR *d = fdopendir(base_fd);
     if (d == NULL) {
@@ -263,7 +345,8 @@ scan_dir(int base_fd, const char *terminal, application_llist_t *applications,
             }
 
             char *nested_base_id = new_id(base_id, e->d_name);
-            scan_dir(dir_fd, terminal, applications, nested_base_id);
+            scan_dir(dir_fd, terminal, include_actions,
+                     applications, nested_base_id);
             free(nested_base_id);
             close(dir_fd);
         } else if (S_ISREG(st.st_mode)) {
@@ -303,7 +386,21 @@ scan_dir(int base_fd, const char *terminal, application_llist_t *applications,
                 wfile_basename[chars] = L'\0';
 
                 char *id = new_id(base_id, e->d_name);
-                parse_desktop_file(fd, id, wfile_basename, terminal, applications);
+
+                bool already_added = false;
+                tll_foreach(*applications, it) {
+                    if (strcmp(it->item.id, id) == 0) {
+                        already_added = true;
+                        break;
+                    }
+                }
+
+                if (!already_added) {
+                    parse_desktop_file(
+                        fd, id, wfile_basename, terminal, include_actions,
+                        applications);
+                } else
+                    free(id);
                 close(fd);
             }
         }
@@ -322,7 +419,8 @@ sort_application_by_title(const void *_a, const void *_b)
 }
 
 void
-xdg_find_programs(const char *terminal, struct application_list *applications)
+xdg_find_programs(const char *terminal, bool include_actions,
+                  struct application_list *applications)
 {
     application_llist_t apps = tll_init();
 
@@ -333,7 +431,7 @@ xdg_find_programs(const char *terminal, struct application_list *applications)
 
         int fd = open(path, O_RDONLY);
         if (fd != -1) {
-            scan_dir(fd, terminal, &apps, NULL);
+            scan_dir(fd, terminal, include_actions, &apps, NULL);
             close(fd);
         }
     }

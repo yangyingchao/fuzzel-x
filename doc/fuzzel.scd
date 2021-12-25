@@ -148,6 +148,11 @@ options:
 	Exit immediately, without showing the UI, if stdin is
 	empty. **dmenu** mode only.
 
+*--show-actions*
+	Include desktop actions in the list. Desktop actions are
+	alternative actions some desktop entries have. Examples include
+	"New Window", "New Document", etc.
+
 *--line-height*=_HEIGHT_
 	Override line height from font metrics. In points by default, but
 	can be specified as pixels by appending 'px'

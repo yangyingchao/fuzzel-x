@@ -22,6 +22,8 @@
 * `-F,--fields=FIELDS` command line option, allowing you to select
   which XDG Desktop Entry fields to match against
   (https://codeberg.org/dnkl/fuzzel/issues/63).
+* Support for desktop entry actions
+  (https://codeberg.org/dnkl/fuzzel/issues/71).
 
 
 ### Changed
