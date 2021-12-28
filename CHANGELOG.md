@@ -24,6 +24,10 @@
   (https://codeberg.org/dnkl/fuzzel/issues/63).
 * Support for desktop entry actions
   (https://codeberg.org/dnkl/fuzzel/issues/71).
+* Fuzzy matching. This is enabled by default, but can be disabled with
+  `--no-fuzzy`. When enabled, the fuzziness can be adjusted with
+  `--fuzzy-max-length-discrepancy` and `--fuzzy-max-distance`
+  (https://codeberg.org/dnkl/fuzzel/issues/56).
 
 
 ### Changed

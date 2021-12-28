@@ -15,25 +15,168 @@ struct matches {
     const struct application_list *applications;
     enum match_fields fields;
     struct match *matches;
+    bool fuzzy;
     size_t page_count;
     size_t match_count;
     size_t selected;
     size_t max_matches_per_page;
+    size_t fuzzy_min_length;
+    size_t fuzzy_max_length_discrepancy;
+    size_t fuzzy_max_distance;
 };
+
+
+struct levenshtein_matrix {
+    size_t distance;
+    enum choice { UNSET, FIRST, SECOND, THIRD } choice;
+};
+
+static void
+levenshtein_distance(const wchar_t *a, size_t alen,
+                     const wchar_t *b, size_t blen,
+                     struct levenshtein_matrix **m)
+{
+    for (size_t i = 1; i <= blen; i++) {
+        m[i][0].distance = i;
+        m[i][0].choice = FIRST;
+    }
+
+    for (size_t i = 1; i <= blen; i++) {
+        for (size_t j = 1; j <= alen; j++) {
+            const size_t cost = towlower(a[j - 1]) == towlower(b[i - 1]) ? 0 : 1;
+            const size_t first = m[i - 1][j].distance + 1;
+            const size_t second = m[i][j - 1].distance + 1;
+            const size_t third = m[i - 1][j - 1].distance + cost;
+
+            const size_t shortest = min(min(first, second), third);
+            m[i][j].distance = shortest;
+
+            if (shortest == first)
+                m[i][j].choice = FIRST;
+            else if (shortest == second)
+                m[i][j].choice = SECOND;
+            else
+                m[i][j].choice = THIRD;
+        }
+    }
+}
+
+static const wchar_t *
+match_levenshtein(struct matches *matches,
+                  const wchar_t *src, const wchar_t *pat)
+{
+    if (!matches->fuzzy)
+        return NULL;
+
+    const size_t src_len = wcslen(src);
+    const size_t pat_len = wcslen(pat);
+
+    if (pat_len < matches->fuzzy_min_length)
+        return NULL;
+
+    if (src_len < pat_len)
+        return NULL;
+
+    struct levenshtein_matrix **m = calloc(pat_len + 1, sizeof(m[0]));
+    for (size_t i = 0; i < pat_len + 1; i++)
+        m[i] = calloc(src_len + 1, sizeof(m[0][0]));
+
+    levenshtein_distance(src, src_len, pat, pat_len, m);
+
+#if 0
+    /* Dump levenshtein table */
+    printf("     ");
+    for (size_t j = 0; j < src_len; j++)
+        printf("%lc  ", src[j]);
+    printf("\n");
+    for (size_t i = 0; i < pat_len + 1; i++) {
+        if (i > 0)
+            printf("%lc ", pat[i - 1]);
+        else
+            printf("  ");
+
+        for (size_t j = 0; j < src_len + 1; j++)
+            printf("%zu%c ", m[i][j].distance,
+                   m[i][j].choice == FIRST ? 'f' :
+                   m[i][j].choice == SECOND ? 's' :
+                   m[i][j].choice == THIRD ? 't' : 'u');
+        printf("\n");
+    }
+#endif
+
+    size_t c = 0;
+    size_t best = m[pat_len][0].distance;
+
+    for (ssize_t j = src_len; j >= 0; j--) {
+        if (m[pat_len][j].distance < best) {
+            best = m[pat_len][j].distance;
+            c = j;
+        }
+    }
+
+    const size_t end = c;
+    size_t r = pat_len;
+    // printf("starting at r=%zu, c=%zu\n", r, c);
+
+    while (r > 0) {
+        switch (m[r][c].choice) {
+        case UNSET: assert(false); break;
+        case FIRST: r--; break;
+        case SECOND: c--; break;
+        case THIRD: r--; c--; break;
+        }
+    }
+
+#if 0
+    *match = (struct levenshtein_match){
+        .start = c,
+        .len = end - c,
+        .distance = m[pat_len][end].distance,
+    };
+#endif
+    const size_t match_ofs = c;
+    const size_t match_len = end - c;
+    const size_t match_distance = m[pat_len][end].distance;
+
+    LOG_DBG("%s vs. %s: sub-string: %.*ls, (distance=%zu, row=%zu, col=%zu)",
+            src, pat, (int)match_len, &src[match_ofs], match_distance,
+            r, c);
+
+    for (size_t i = 0; i < pat_len + 1; i++)
+        free(m[i]);
+    free(m);
+
+    const size_t len_diff = match_len > pat_len
+        ? match_len - pat_len
+        : pat_len - match_len;
+
+    if (len_diff <= matches->fuzzy_max_length_discrepancy &&
+        match_distance <= matches->fuzzy_max_distance)
+    {
+        return &src[match_ofs];
+    }
+
+    return NULL;
+}
 
 struct matches *
 matches_init(const struct application_list *applications,
-             enum match_fields fields)
+             enum match_fields fields, bool fuzzy, size_t fuzzy_min_length,
+             size_t fuzzy_max_length_discrepancy, size_t fuzzy_max_distance)
 {
     struct matches *matches = malloc(sizeof(*matches));
     *matches = (struct matches) {
         .applications = applications,
         .fields = fields,
         .matches = malloc(applications->count * sizeof(matches->matches[0])),
+        .fuzzy = fuzzy,
         .page_count = 0,
         .match_count = 0,
         .selected = 0,
         .max_matches_per_page = 0,
+        .fuzzy_min_length = fuzzy_min_length,
+        .fuzzy_max_length_discrepancy = fuzzy_max_length_discrepancy,
+        .fuzzy_max_distance = fuzzy_max_distance,
     };
     return matches;
 }
@@ -274,6 +417,8 @@ matches_update(struct matches *matches, const struct prompt *prompt)
 
         if (!is_match && match_name) {
             const wchar_t *m = wcscasestr(app->title, ptext);
+            if (m == NULL)
+                m = match_levenshtein(matches, app->title, ptext);
             if (m != NULL) {
                 start_title = m - app->title;
                 is_match = true;
@@ -281,28 +426,42 @@ matches_update(struct matches *matches, const struct prompt *prompt)
         }
 
         if (!is_match && match_filename && app->basename != NULL) {
-            if (wcscasestr(app->basename, ptext) != NULL)
+            if (wcscasestr(app->basename, ptext) != NULL ||
+                match_levenshtein(matches, app->basename, ptext) != NULL)
+            {
                 is_match = true;
+            }
         }
 
         if (!is_match && match_generic && app->generic_name != NULL) {
-            if (wcscasestr(app->generic_name, ptext) != NULL)
+            if (wcscasestr(app->generic_name, ptext) != NULL ||
+                match_levenshtein(matches, app->generic_name, ptext) != NULL)
+            {
                 is_match = true;
+            }
         }
 
         if (!is_match && match_exec && app->wexec != NULL) {
-            if (wcscasestr(app->wexec, ptext) != NULL)
+            if (wcscasestr(app->wexec, ptext) != NULL ||
+                match_levenshtein(matches, app->wexec, ptext) != NULL)
+            {
                 is_match = true;
+            }
         }
 
         if (!is_match && match_comment && app->comment != NULL) {
-            if (wcscasestr(app->comment, ptext) != NULL)
+            if (wcscasestr(app->comment, ptext) != NULL ||
+                match_levenshtein(matches, app->comment, ptext) != NULL)
+            {
                 is_match = true;
+            }
         }
 
         if (!is_match && match_keywords) {
             tll_foreach(app->keywords, it) {
-                if (wcscasestr(it->item, ptext) != NULL) {
+                if (wcscasestr(it->item, ptext) != NULL ||
+                    match_levenshtein(matches, it->item, ptext))
+                {
                     is_match = true;
                     break;
                 }
@@ -311,7 +470,9 @@ matches_update(struct matches *matches, const struct prompt *prompt)
 
         if (!is_match && match_categories) {
             tll_foreach(app->categories, it) {
-                if (wcscasestr(it->item, ptext) != NULL) {
+                if (wcscasestr(it->item, ptext) != NULL ||
+                    match_levenshtein(matches, it->item, ptext) != NULL)
+                {
                     is_match = true;
                     break;
                 }

@@ -23,7 +23,10 @@ enum match_fields {
 
 struct matches;
 struct matches *matches_init(const struct application_list *applications,
-                             enum match_fields fields);
+                             enum match_fields fields, bool fuzzy,
+                             size_t fuzzy_min_length,
+                             size_t fuzzy_max_length_discrepancy,
+                             size_t fuzzy_max_distance);
 void matches_destroy(struct matches *matches);
 
 size_t matches_max_matches_per_page(const struct matches *matches);

@@ -180,7 +180,8 @@ print_usage(const char *prog_name)
            "                                 (monospace)\n"
            "  -i,--icon-theme=NAME           icon theme name (\"hicolor\")\n"
            "  -I,--no-icons                  do not render any icons\n"
-           "  -F,--fields=FIELDS             comma separated list of XDG Desktop entry fields to match\n"
+           "  -F,--fields=FIELDS             comma separated list of XDG Desktop entry\n"
+           "                                 fields to match\n"
            "  -T,--terminal                  terminal command to use when launching\n"
            "                                 'terminal' programs, e.g. \"xterm -e\".\n"
            "                                 Not used in dmenu mode (not set)\n"
@@ -203,6 +204,16 @@ print_usage(const char *prog_name)
            "  -R,--no-run-if-empty           exit immediately without showing UI if stdin\n"
            "                                 is empty (dmenu mode only)\n"
            "     --show-actions              include desktop actions in the list\n"
+           "     --no-fuzzy                  disable fuzzy matching\n"
+           "     --fuzzy-min-length=VALUE    search strings shorter than this will not be\n"
+           "                                 fuzzy matched (3)\n"
+           "     --fuzzy-max-length-discrepancy=VALUE  maximum allowed length discrepancy\n"
+           "                                           between a fuzzy match and the search\n"
+           "                                           criteria. Larger values mean more\n"
+           "                                           fuzzy matches (2)\n"
+           "     --fuzzy-max-distance=VALUE  maximum levenshtein distance between a fuzzy (1)\n"
+           "                                 match and the search criteria. Larger values\n"
+           "                                 mean more fuzzy matches\n"
            "     --line-height=HEIGHT        override line height from font metrics\n"
            "     --letter-spacing=AMOUNT     additional letter spacing\n"
            "     --launch-prefix=COMMAND     prefix to add before argv of executed program\n"
@@ -326,9 +337,13 @@ out:
 int
 main(int argc, char *const *argv)
 {
-    #define OPT_LETTER_SPACING 256
-    #define OPT_LAUNCH_PREFIX  257
-    #define OPT_SHOW_ACTIONS   258
+    #define OPT_LETTER_SPACING               256
+    #define OPT_LAUNCH_PREFIX                257
+    #define OPT_SHOW_ACTIONS                 258
+    #define OPT_NO_FUZZY                     259
+    #define OPT_FUZZY_MIN_LENGTH             260
+    #define OPT_FUZZY_MAX_LENGTH_DISCREPANCY 261
+    #define OPT_FUZZY_MAX_DISTANCE           262
 
     static const struct option longopts[] = {
         {"output"  ,             required_argument, 0, 'o'},
@@ -355,6 +370,10 @@ main(int argc, char *const *argv)
         {"dmenu",                no_argument,       0, 'd'},
         {"no-run-if-empty",      no_argument,       0, 'R'},
         {"show-actions",         no_argument,       0, OPT_SHOW_ACTIONS},
+        {"no-fuzzy",             no_argument,       0, OPT_NO_FUZZY},
+        {"fuzzy-min-length",     required_argument, 0, OPT_FUZZY_MIN_LENGTH},
+        {"fuzzy-max-length-discrepancy", required_argument, 0, OPT_FUZZY_MAX_LENGTH_DISCREPANCY},
+        {"fuzzy-max-distance",   required_argument, 0, OPT_FUZZY_MAX_DISTANCE},
         {"line-height",          required_argument, 0, 'H'},
         {"letter-spacing",       required_argument, 0, OPT_LETTER_SPACING},
         {"launch-prefix",        required_argument, 0, OPT_LAUNCH_PREFIX},
@@ -374,6 +393,10 @@ main(int argc, char *const *argv)
     bool no_run_if_empty = false;
     bool icons_enabled = true;
     bool actions_enabled = false;
+    bool fuzzy = true;
+    size_t fuzzy_min_length = 3;
+    size_t fuzzy_max_length_discrepancy = 2;
+    size_t fuzzy_max_distance = 1;
     const char *launch_prefix = NULL;
 
     enum match_fields match_fields =
@@ -631,6 +654,40 @@ main(int argc, char *const *argv)
             actions_enabled = true;
             break;
 
+        case OPT_NO_FUZZY:
+            fuzzy = false;
+            break;
+
+        case OPT_FUZZY_MIN_LENGTH:
+            if (sscanf(optarg, "%zu", &fuzzy_min_length) != 1) {
+                fprintf(
+                    stderr,
+                    "%s: invalid fuzzy min length (must be an integer)\n",
+                    optarg);
+                return EXIT_FAILURE;
+            }
+            break;
+
+        case OPT_FUZZY_MAX_LENGTH_DISCREPANCY:
+            if (sscanf(optarg, "%zu", &fuzzy_max_length_discrepancy) != 1) {
+                fprintf(
+                    stderr,
+                    "%s: invalid fuzzy max length discrepancy "
+                    "(must be an integer)\n", optarg);
+                return EXIT_FAILURE;
+            }
+            break;
+
+        case OPT_FUZZY_MAX_DISTANCE:
+            if (sscanf(optarg, "%zu", &fuzzy_max_distance) != 1) {
+                fprintf(
+                    stderr,
+                    "%s: invalid fuzzy max distance (must be an integer)\n",
+                    optarg);
+                return EXIT_FAILURE;
+            }
+            break;
+
         case 'H': { /* line-height */
             if (!pt_or_px_from_string(optarg, &render_options.line_height))
                 return EXIT_FAILURE;
@@ -715,7 +772,9 @@ main(int argc, char *const *argv)
     if ((prompt = prompt_init(prompt_content)) == NULL)
         goto out;
 
-    if ((matches = matches_init(apps, match_fields)) == NULL)
+    if ((matches = matches_init(
+             apps, match_fields, fuzzy, fuzzy_min_length,
+             fuzzy_max_length_discrepancy, fuzzy_max_distance)) == NULL)
         goto out;
 
     struct font_reload_context font_reloaded_data = {

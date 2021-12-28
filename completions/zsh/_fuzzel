@@ -27,6 +27,10 @@ _arguments \
     '(-d --dmenu)'{-d,--dmenu}'[dmenu compatibility mode; list entries are read from stdin]' \
     '(-R --no-run-if-empty)'{-R,--no-run-if-empty}'[exit immediately without showing the UI if stdin is empty (dmenu mode only)]' \
     '--show-actions[include desktop actions (e.g "New Window") in the list]' \
+    '--no-fuzzy[disable fuzzy matching]' \
+    '--fuzzy-min-length[search strings shorter than this will not be fuzzy matched (3)]:()' \
+    '--fuzzy-max-length-discrepancy[maximum allowed length difference between the search string and a fuzzy match (2)]:()' \
+    '--fuzzy-max-distance[maximum allowed levenshtein distance between the search string and a fuzzy match (1)]:()' \
     '--line-height[override line height from font metrics, in points or pixels]:()' \
     '--letter-spacing[additional letter spacing, in points or pixels]:()'
 
