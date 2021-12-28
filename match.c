@@ -20,6 +20,7 @@ struct matches {
     size_t match_count;
     size_t selected;
     size_t max_matches_per_page;
+    size_t fuzzy_min_length;
     size_t fuzzy_max_length_discrepancy;
     size_t fuzzy_max_distance;
 };
@@ -69,6 +70,9 @@ match_levenshtein(struct matches *matches,
 
     const size_t src_len = wcslen(src);
     const size_t pat_len = wcslen(pat);
+
+    if (pat_len < matches->fuzzy_min_length)
+        return NULL;
 
     if (src_len < pat_len)
         return NULL;
@@ -157,7 +161,7 @@ match_levenshtein(struct matches *matches,
 
 struct matches *
 matches_init(const struct application_list *applications,
-             enum match_fields fields, bool fuzzy,
+             enum match_fields fields, bool fuzzy, size_t fuzzy_min_length,
              size_t fuzzy_max_length_discrepancy, size_t fuzzy_max_distance)
 {
     struct matches *matches = malloc(sizeof(*matches));
@@ -170,6 +174,7 @@ matches_init(const struct application_list *applications,
         .match_count = 0,
         .selected = 0,
         .max_matches_per_page = 0,
+        .fuzzy_min_length = fuzzy_min_length,
         .fuzzy_max_length_discrepancy = fuzzy_max_length_discrepancy,
         .fuzzy_max_distance = fuzzy_max_distance,
     };

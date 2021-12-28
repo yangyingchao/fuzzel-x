@@ -205,11 +205,13 @@ print_usage(const char *prog_name)
            "                                 is empty (dmenu mode only)\n"
            "     --show-actions              include desktop actions in the list\n"
            "     --no-fuzzy                  disable fuzzy matching\n"
+           "     --fuzzy-min-length=VALUE    search strings shorter than this will not be\n"
+           "                                 fuzzy matched (3)\n"
            "     --fuzzy-max-length-discrepancy=VALUE  maximum allowed length discrepancy\n"
            "                                           between a fuzzy match and the search\n"
            "                                           criteria. Larger values mean more\n"
-           "                                           fuzzy matches\n"
-           "     --fuzzy-max-distance=VALUE  maximum levenshtein distance between a fuzzy\n"
+           "                                           fuzzy matches (2)\n"
+           "     --fuzzy-max-distance=VALUE  maximum levenshtein distance between a fuzzy (1)\n"
            "                                 match and the search criteria. Larger values\n"
            "                                 mean more fuzzy matches\n"
            "     --line-height=HEIGHT        override line height from font metrics\n"
@@ -335,12 +337,13 @@ out:
 int
 main(int argc, char *const *argv)
 {
-    #define OPT_LETTER_SPACING  256
-    #define OPT_LAUNCH_PREFIX   257
-    #define OPT_SHOW_ACTIONS    258
-    #define OPT_LETTER_NO_FUZZY 259
-    #define OPT_LETTER_FUZZY_MAX_LENGTH_DISCREPANCY 260
-    #define OPT_LETTER_FUZZY_MAX_DISTANCE 261
+    #define OPT_LETTER_SPACING               256
+    #define OPT_LAUNCH_PREFIX                257
+    #define OPT_SHOW_ACTIONS                 258
+    #define OPT_NO_FUZZY                     259
+    #define OPT_FUZZY_MIN_LENGTH             260
+    #define OPT_FUZZY_MAX_LENGTH_DISCREPANCY 261
+    #define OPT_FUZZY_MAX_DISTANCE           262
 
     static const struct option longopts[] = {
         {"output"  ,             required_argument, 0, 'o'},
@@ -367,9 +370,10 @@ main(int argc, char *const *argv)
         {"dmenu",                no_argument,       0, 'd'},
         {"no-run-if-empty",      no_argument,       0, 'R'},
         {"show-actions",         no_argument,       0, OPT_SHOW_ACTIONS},
-        {"no-fuzzy",             no_argument,       0, OPT_LETTER_NO_FUZZY},
-        {"fuzzy-max-length-discrepancy", required_argument, 0, OPT_LETTER_FUZZY_MAX_LENGTH_DISCREPANCY},
-        {"fuzzy-max-distance",   required_argument, 0, OPT_LETTER_FUZZY_MAX_DISTANCE},
+        {"no-fuzzy",             no_argument,       0, OPT_NO_FUZZY},
+        {"fuzzy-min-length",     required_argument, 0, OPT_FUZZY_MIN_LENGTH},
+        {"fuzzy-max-length-discrepancy", required_argument, 0, OPT_FUZZY_MAX_LENGTH_DISCREPANCY},
+        {"fuzzy-max-distance",   required_argument, 0, OPT_FUZZY_MAX_DISTANCE},
         {"line-height",          required_argument, 0, 'H'},
         {"letter-spacing",       required_argument, 0, OPT_LETTER_SPACING},
         {"launch-prefix",        required_argument, 0, OPT_LAUNCH_PREFIX},
@@ -390,6 +394,7 @@ main(int argc, char *const *argv)
     bool icons_enabled = true;
     bool actions_enabled = false;
     bool fuzzy = true;
+    size_t fuzzy_min_length = 3;
     size_t fuzzy_max_length_discrepancy = 2;
     size_t fuzzy_max_distance = 1;
     const char *launch_prefix = NULL;
@@ -649,11 +654,21 @@ main(int argc, char *const *argv)
             actions_enabled = true;
             break;
 
-        case OPT_LETTER_NO_FUZZY:
+        case OPT_NO_FUZZY:
             fuzzy = false;
             break;
 
-        case OPT_LETTER_FUZZY_MAX_LENGTH_DISCREPANCY:
+        case OPT_FUZZY_MIN_LENGTH:
+            if (sscanf(optarg, "%zu", &fuzzy_min_length) != 1) {
+                fprintf(
+                    stderr,
+                    "%s: invalid fuzzy min length (must be an integer)\n",
+                    optarg);
+                return EXIT_FAILURE;
+            }
+            break;
+
+        case OPT_FUZZY_MAX_LENGTH_DISCREPANCY:
             if (sscanf(optarg, "%zu", &fuzzy_max_length_discrepancy) != 1) {
                 fprintf(
                     stderr,
@@ -663,7 +678,7 @@ main(int argc, char *const *argv)
             }
             break;
 
-        case OPT_LETTER_FUZZY_MAX_DISTANCE:
+        case OPT_FUZZY_MAX_DISTANCE:
             if (sscanf(optarg, "%zu", &fuzzy_max_distance) != 1) {
                 fprintf(
                     stderr,
@@ -758,7 +773,7 @@ main(int argc, char *const *argv)
         goto out;
 
     if ((matches = matches_init(
-             apps, match_fields, fuzzy,
+             apps, match_fields, fuzzy, fuzzy_min_length,
              fuzzy_max_length_discrepancy, fuzzy_max_distance)) == NULL)
         goto out;
 

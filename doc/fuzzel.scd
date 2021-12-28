@@ -157,6 +157,10 @@ options:
 	Disables fuzzy matching. When disabled, only exact (case
 	insensitive) substring matches are considered.
 
+*--fuzzy-min-length*=_VALUE_
+	Search strings shorter than this will not by fuzzy
+	matched. Default: _3_.
+
 *--fuzzy-max-length-discrepancy*=_VALUE_
 	Maximum allowed length difference between the search string, and a
 	fuzzy match. Larger values result in more fuzzy matches. Default:
