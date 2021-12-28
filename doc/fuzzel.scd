@@ -121,7 +121,7 @@ options:
 
 *-s*,*--selection-color*=_HEX_
 	The color to use as background of the currently selected
-	application. See *COLORS*. Default: _eee8d5ff_.
+	application. See *COLORS*. Default: _eee8d5dd_.
 
 *-S*,*--selection-text-color*=_HEX_
 	The text color of the currently selected application. See
