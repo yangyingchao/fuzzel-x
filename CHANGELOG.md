@@ -29,7 +29,6 @@
   `--fuzzy-max-length-discrepancy` and `--fuzzy-max-distance`
   (https://codeberg.org/dnkl/fuzzel/issues/56).
 
-
 ### Changed
 
 * Fuzzel now refuses to start if there is another fuzzel instance
@@ -44,6 +43,8 @@
   icon. Previously, only XDG data directories where the theme
   directory contained an `index.theme` file were searched
   (https://codeberg.org/dnkl/fuzzel/issues/62).
+* Pressing Tab when there is a single match now executes it
+  (https://codeberg.org/dnkl/fuzzel/issues/77).
 
 
 ### Deprecated

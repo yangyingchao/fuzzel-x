@@ -434,6 +434,29 @@ keyboard_leave(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
 }
 
 static void
+execute_selected(struct wayland *wayl)
+{
+    wayl->status = EXIT;
+
+    const struct match *match = matches_get_match(wayl->matches);
+    struct application *app = match != NULL ? match->application : NULL;
+
+    if (wayl->dmenu_mode) {
+        dmenu_execute(app, wayl->prompt);
+        wayl->exit_code = EXIT_SUCCESS;
+    } else {
+        bool success = application_execute(app, wayl->prompt, wayl->launch_prefix);
+        wayl->exit_code = success ? EXIT_SUCCESS : EXIT_FAILURE;
+
+        if (success && match != NULL) {
+            wayl->status = EXIT_UPDATE_CACHE;
+            app->count++;
+        }
+    }
+}
+
+
+static void
 keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
              uint32_t time, uint32_t key, uint32_t state)
 {
@@ -533,7 +556,9 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
     }
 
     else if (sym == XKB_KEY_Tab && effective_mods == 0) {
-        if (matches_selected_next(wayl->matches, true))
+        if (matches_get_count(wayl->matches) == 1)
+            execute_selected(wayl);
+        else if (matches_selected_next(wayl->matches, true))
             wayl_refresh(wayl);
     }
 
@@ -602,25 +627,8 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
         }
     }
 
-    else if (sym == XKB_KEY_Return && effective_mods == 0) {
-        wayl->status = EXIT;
-
-        const struct match *match = matches_get_match(wayl->matches);
-        struct application *app = match != NULL ? match->application : NULL;
-
-        if (wayl->dmenu_mode) {
-            dmenu_execute(app, wayl->prompt);
-            wayl->exit_code = EXIT_SUCCESS;
-        } else {
-            bool success = application_execute(app, wayl->prompt, wayl->launch_prefix);
-            wayl->exit_code = success ? EXIT_SUCCESS : EXIT_FAILURE;
-
-            if (success && match != NULL) {
-                wayl->status = EXIT_UPDATE_CACHE;
-                app->count++;
-            }
-        }
-    }
+    else if (sym == XKB_KEY_Return && effective_mods == 0)
+        execute_selected(wayl);
 
     else if (effective_mods == 0) {
         /*
