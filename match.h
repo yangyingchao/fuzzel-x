@@ -6,7 +6,14 @@
 #include "application.h"
 #include "prompt.h"
 
+enum matched_type {
+    MATCHED_NONE,
+    MATCHED_EXACT,
+    MATCHED_FUZZY,
+};
+
 struct match {
+    enum matched_type matched_type;
     struct application *application;
     ssize_t start_title;
 };

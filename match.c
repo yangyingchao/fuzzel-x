@@ -325,11 +325,34 @@ matches_selected_next_page(struct matches *matches)
 }
 
 static int
-sort_match_by_count(const void *_a, const void *_b)
+match_compar(const void *_a, const void *_b)
 {
     const struct match *a = _a;
     const struct match *b = _b;
-    return b->application->count - a->application->count;
+
+    /*
+     * Exact matches are preferred over fuzzy matches. I.e. an exact
+     * match is considered to be “less” than a fuzzy match.
+     *
+     * If the two matches have the same match type, prefer the one
+     * with the highest launch count. That is, a *high* launch count
+     * is considered to be “less” than a low launch count.
+     */
+
+    if (a->matched_type == MATCHED_FUZZY && b->matched_type == MATCHED_EXACT)
+        return 1;
+
+    else if (a->matched_type == MATCHED_EXACT && b->matched_type == MATCHED_FUZZY)
+        return -1;
+
+    else if (a->application->count > b->application->count)
+        return -1;
+
+    else if (a->application->count < b->application->count)
+        return 1;
+
+    else
+        return 0;
 }
 
 static wchar_t *
@@ -369,6 +392,7 @@ matches_update(struct matches *matches, const struct prompt *prompt)
 
         for (size_t i = 0; i < matches->applications->count; i++) {
             matches->matches[i] = (struct match){
+                .matched_type = MATCHED_NONE,
                 .application = &matches->applications->v[i],
                 .start_title = -1,
             };
@@ -376,7 +400,7 @@ matches_update(struct matches *matches, const struct prompt *prompt)
 
         /* Sort */
         matches->match_count = matches->applications->count;
-        qsort(matches->matches, matches->match_count, sizeof(matches->matches[0]), &sort_match_by_count);
+        qsort(matches->matches, matches->match_count, sizeof(matches->matches[0]), &match_compar);
 
         if (matches->selected >= matches->match_count && matches->selected > 0)
             matches->selected = matches->match_count - 1;
@@ -410,86 +434,110 @@ matches_update(struct matches *matches, const struct prompt *prompt)
 
     matches->match_count = 0;
 
+    LOG_DBG("match update begin");
+
     for (size_t i = 0; i < matches->applications->count; i++) {
         struct application *app = &matches->applications->v[i];
-        bool is_match = false;
+        enum matched_type matched_type = MATCHED_NONE;
         ssize_t start_title = -1;
 
-        if (!is_match && match_name) {
+        if (matched_type == MATCHED_NONE && match_name) {
             const wchar_t *m = wcscasestr(app->title, ptext);
-            if (m == NULL)
-                m = match_levenshtein(matches, app->title, ptext);
             if (m != NULL) {
+                matched_type = MATCHED_EXACT;
                 start_title = m - app->title;
-                is_match = true;
+                LOG_DBG("%ls: exact title", app->title);
+            } else if ((m = match_levenshtein(matches, app->title, ptext)) != NULL) {
+                matched_type = MATCHED_FUZZY;
+                start_title = m - app->title;
+                LOG_DBG("%ls: fuzzy title", app->title);
             }
         }
 
-        if (!is_match && match_filename && app->basename != NULL) {
-            if (wcscasestr(app->basename, ptext) != NULL ||
-                match_levenshtein(matches, app->basename, ptext) != NULL)
-            {
-                is_match = true;
+        if (matched_type == MATCHED_NONE && match_filename && app->basename != NULL) {
+            if (wcscasestr(app->basename, ptext) != NULL) {
+                matched_type = MATCHED_EXACT;
+                LOG_DBG("%ls: exact filename", app->title);
+            }
+            else if (match_levenshtein(matches, app->basename, ptext) != NULL) {
+                matched_type = MATCHED_FUZZY;
+                LOG_DBG("%ls: fuzzy filename", app->title);
             }
         }
 
-        if (!is_match && match_generic && app->generic_name != NULL) {
-            if (wcscasestr(app->generic_name, ptext) != NULL ||
-                match_levenshtein(matches, app->generic_name, ptext) != NULL)
-            {
-                is_match = true;
+        if (matched_type == MATCHED_NONE && match_generic && app->generic_name != NULL) {
+            if (wcscasestr(app->generic_name, ptext) != NULL) {
+                matched_type = MATCHED_EXACT;
+                LOG_DBG("%ls: exact generic", app->title);
+            }
+            else if (match_levenshtein(matches, app->generic_name, ptext) != NULL) {
+                matched_type = MATCHED_FUZZY;
+                LOG_DBG("%ls: fuzzy generic", app->title);
             }
         }
 
-        if (!is_match && match_exec && app->wexec != NULL) {
-            if (wcscasestr(app->wexec, ptext) != NULL ||
-                match_levenshtein(matches, app->wexec, ptext) != NULL)
-            {
-                is_match = true;
+        if (matched_type == MATCHED_NONE && match_exec && app->wexec != NULL) {
+            if (wcscasestr(app->wexec, ptext) != NULL) {
+                matched_type = MATCHED_EXACT;
+                LOG_DBG("%ls: exact exec", app->title);
+            } else if (match_levenshtein(matches, app->wexec, ptext) != NULL) {
+                matched_type = MATCHED_FUZZY;
+                LOG_DBG("%ls: fuzzy exec", app->title);
             }
         }
 
-        if (!is_match && match_comment && app->comment != NULL) {
-            if (wcscasestr(app->comment, ptext) != NULL ||
-                match_levenshtein(matches, app->comment, ptext) != NULL)
-            {
-                is_match = true;
+        if (matched_type == MATCHED_NONE && match_comment && app->comment != NULL) {
+            if (wcscasestr(app->comment, ptext) != NULL) {
+                matched_type = MATCHED_EXACT;
+                LOG_DBG("%ls: exact comment", app->title);
+            } else if (match_levenshtein(matches, app->comment, ptext) != NULL) {
+                matched_type = MATCHED_FUZZY;
+                LOG_DBG("%ls: fuzzy comment", app->title);
             }
         }
 
-        if (!is_match && match_keywords) {
+        if (matched_type == MATCHED_NONE && match_keywords) {
             tll_foreach(app->keywords, it) {
-                if (wcscasestr(it->item, ptext) != NULL ||
-                    match_levenshtein(matches, it->item, ptext))
-                {
-                    is_match = true;
+                if (wcscasestr(it->item, ptext) != NULL) {
+                    matched_type = MATCHED_EXACT;
+                    LOG_DBG("%ls: exact keyword (%ls)", app->title, it->item);
+                    break;
+                } else if (match_levenshtein(matches, it->item, ptext) != NULL) {
+                    matched_type = MATCHED_FUZZY;
+                    LOG_DBG("%ls: fuzzy keyword (%ls)", app->title, it->item);
                     break;
                 }
             }
         }
 
-        if (!is_match && match_categories) {
+        if (matched_type == MATCHED_NONE && match_categories) {
             tll_foreach(app->categories, it) {
-                if (wcscasestr(it->item, ptext) != NULL ||
-                    match_levenshtein(matches, it->item, ptext) != NULL)
-                {
-                    is_match = true;
+                if (wcscasestr(it->item, ptext) != NULL) {
+                    matched_type = MATCHED_EXACT;
+                    LOG_DBG("%ls: exact category (%ls)", app->title, it->item);
+                    break;
+                } else if (match_levenshtein(matches, it->item, ptext) != NULL) {
+                    matched_type = MATCHED_FUZZY;
+                    LOG_DBG("%ls: fuzzy category (%ls)", app->title, it->item);
                     break;
                 }
             }
         }
 
-        if (!is_match)
+        if (matched_type == MATCHED_NONE)
             continue;
 
         matches->matches[matches->match_count++] = (struct match){
+            .matched_type = matched_type,
             .application = app,
             .start_title = start_title,
         };
     }
 
+    LOG_DBG("match update done");
+
     /* Sort */
-    qsort(matches->matches, matches->match_count, sizeof(matches->matches[0]), &sort_match_by_count);
+    qsort(matches->matches, matches->match_count, sizeof(matches->matches[0]), &match_compar);
 
     matches->page_count = (
         matches->match_count + (matches->max_matches_per_page - 1)) /
