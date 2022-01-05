@@ -53,6 +53,9 @@
 
 * Long entries overrunning the right side padding
   (https://codeberg.org/dnkl/fuzzel/issues/80).
+* Tab and Shift+Tab not wrapping around
+  (https://codeberg.org/dnkl/fuzzel/issues/78).
+
 ### Security
 ### Contributors
 

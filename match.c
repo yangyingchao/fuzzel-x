@@ -270,7 +270,7 @@ matches_selected_prev(struct matches *matches, bool wrap)
         matches->selected--;
         return true;
     } else if (wrap && matches->match_count > 1) {
-        matches->selected = 0;
+        matches->selected = matches->match_count - 1;
         return true;
     }
 
@@ -284,7 +284,7 @@ matches_selected_next(struct matches *matches, bool wrap)
         matches->selected++;
         return true;
     } else if (wrap && matches->match_count > 1) {
-        matches->selected = matches->match_count - 1;
+        matches->selected = 0;
         return true;
     }
 
