@@ -213,7 +213,7 @@ render_prompt(const struct render *render, struct buffer *buf,
 }
 
 static void
-render_match_text(struct buffer *buf, double *_x, double _y,
+render_match_text(struct buffer *buf, double *_x, double _y, double max_x,
                   const wchar_t *text, ssize_t start, size_t length,
                   struct fcft_font *font, enum fcft_subpixel subpixel,
                   int letter_spacing,
@@ -263,6 +263,17 @@ render_match_text(struct buffer *buf, double *_x, double _y,
 
     for (size_t i = 0; i < count; i++) {
         bool is_match = start >= 0 && clusters[i] >= start && clusters[i] < start + length;
+
+        if (x + (kern != NULL ? kern[i] : 0) + glyphs[i]->advance.x >= max_x) {
+            const struct fcft_glyph *ellipses =
+                fcft_glyph_rasterize(font, L'…', subpixel);
+
+            if (ellipses != NULL)
+                render_glyph(buf->pix, ellipses, x, y, &regular_color);
+
+            break;
+        }
+
         x += kern != NULL ? kern[i] : 0;
         render_glyph(buf->pix, glyphs[i], x, y, is_match ? &match_color : &regular_color);
         x += glyphs[i]->advance.x + letter_spacing;
@@ -505,6 +516,7 @@ render_match_list(const struct render *render, struct buffer *buf,
         (render->options.background_color.a == 1. &&
          render->options.selection_color.a == 1.)
         ? render->subpixel : FCFT_SUBPIXEL_NONE;
+    const struct fcft_glyph *ellipses = fcft_glyph_rasterize(font, L'…', subpixel);
 
     assert(match_count == 0 || selected < match_count);
 
@@ -549,6 +561,17 @@ render_match_list(const struct render *render, struct buffer *buf,
         }
 
         double cur_x = border_size + x_margin;
+        double max_x = buf->width - border_size - x_margin;
+
+#if 0 /* Render the icon+text bounding box */
+        pixman_color_t sc = rgba2pixman(render->options.match_color);
+        pixman_image_fill_rectangles(
+            PIXMAN_OP_SRC, buf->pix, &sc, 1,
+            &(pixman_rectangle16_t){
+                cur_x, first_row + i * row_height,
+                max_x - cur_x, row_height}
+            );
+#endif
 
         {
             struct icon *icon = &match->application->icon;
@@ -575,7 +598,7 @@ render_match_list(const struct render *render, struct buffer *buf,
 
         /* Application title */
         render_match_text(
-            buf, &cur_x, y,
+            buf, &cur_x, y, max_x - (ellipses != NULL ? ellipses->width : 0),
             match->application->title, match->start_title, wcslen(prompt_text(prompt)),
             font, subpixel,
             pt_or_px_as_pixels(render, &render->options.letter_spacing),

@@ -50,6 +50,9 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* Long entries overrunning the right side padding
+  (https://codeberg.org/dnkl/fuzzel/issues/80).
 ### Security
 ### Contributors
 
