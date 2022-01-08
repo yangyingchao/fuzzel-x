@@ -34,6 +34,8 @@ struct render {
     unsigned border_size;
     unsigned row_height;
     unsigned icon_height;
+
+    mtx_t *icon_lock;
 };
 
 static pixman_color_t
@@ -526,6 +528,8 @@ render_match_list(const struct render *render, struct buffer *buf,
 
     int y = first_row + (row_height + font->height) / 2 - font->descent;
 
+    bool render_icons = mtx_trylock(render->icon_lock) == thrd_success;
+
     for (size_t i = 0; i < match_count; i++) {
         if (y + font->descent > buf->height - y_margin - border_size) {
             /* Window too small - happens if the compositor doesn't
@@ -546,8 +550,12 @@ render_match_list(const struct render *render, struct buffer *buf,
 
             const double list_end = first_row + match_count * row_height;
 
-            if (match->application->icon.type == ICON_SVG && img_y > list_end)
+            if (render_icons &&
+                match->application->icon.type == ICON_SVG &&
+                img_y > list_end)
+            {
                 render_svg(&match->application->icon, img_x, img_y, size, buf);
+            }
 
             pixman_color_t sc = rgba2pixman(render->options.selection_color);
             pixman_image_fill_rectangles(
@@ -573,7 +581,7 @@ render_match_list(const struct render *render, struct buffer *buf,
             );
 #endif
 
-        {
+        if (render_icons) {
             struct icon *icon = &match->application->icon;
             const int size = render->icon_height;
             const int img_x = cur_x;
@@ -609,14 +617,18 @@ render_match_list(const struct render *render, struct buffer *buf,
 
         y += row_height;
     }
+
+    if (render_icons)
+        mtx_unlock(render->icon_lock);
 }
 
 struct render *
-render_init(const struct render_options *options)
+render_init(const struct render_options *options, mtx_t *icon_lock)
 {
     struct render *render = calloc(1, sizeof(*render));
     *render = (struct render){
         .options = *options,
+        .icon_lock = icon_lock,
     };
 
     /* TODO: the one providing the opti3Dons should calculate these */

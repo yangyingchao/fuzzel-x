@@ -52,7 +52,7 @@ struct context {
         bool dmenu_mode;
     } options;
 
-    int apps_loaded_fd;
+    int event_fd;
 };
 
 static struct rgba
@@ -258,7 +258,6 @@ font_reloaded(struct wayland *wayl, struct fcft_font *font, void *data)
     mtx_lock(ctx->icon_lock);
     {
         ctx->icon_size = font->height;
-
         if (ctx->options.icons_enabled) {
             icon_reload_application_icons(
                 *ctx->themes, ctx->icon_size, ctx->apps);
@@ -342,6 +341,8 @@ acquire_file_lock(const char *path, int *fd)
     return true;
 }
 
+enum { EVENT_APPS_LOADED = 1, EVENT_ICONS_LOADED = 2 };
+
 /* THREAD */
 static int
 populate_apps(void *_ctx)
@@ -359,6 +360,15 @@ populate_apps(void *_ctx)
 
     else {
         xdg_find_programs(terminal, actions_enabled, apps);
+        read_cache(apps);
+
+        ssize_t bytes = write(
+            ctx->event_fd, &(uint64_t){EVENT_APPS_LOADED}, sizeof(uint64_t));
+
+        if (bytes < 0)
+            return -errno;
+        else if (bytes != (ssize_t)sizeof(uint64_t))
+            return 1;
 
         if (icons_enabled) {
             *ctx->themes = icon_load_theme(icon_theme);
@@ -373,16 +383,17 @@ populate_apps(void *_ctx)
                     *ctx->themes, ctx->icon_size, apps);
             }
             mtx_unlock(ctx->icon_lock);
+
+            ssize_t bytes = write(
+                ctx->event_fd, &(uint64_t){EVENT_ICONS_LOADED}, sizeof(uint64_t));
+
+            if (bytes < 0)
+                return -errno;
+            else if (bytes != (ssize_t)sizeof(uint64_t))
+                return 1;
         }
     }
 
-    read_cache(apps);
-
-    ssize_t bytes = write(ctx->apps_loaded_fd, &(uint64_t){1}, sizeof(uint64_t));
-    if (bytes < 0)
-        return -errno;
-    else if (bytes != (ssize_t)sizeof(uint64_t))
-        return 1;
     return 0;
 }
 
@@ -390,20 +401,34 @@ populate_apps(void *_ctx)
  * Called when the application list has been populated
  */
 static bool
-fdm_apps_populated(struct fdm *fdm, int fd, int events, void *_data)
+fdm_apps_populated(struct fdm *fdm, int fd, int events, void *data)
 {
-    struct context *ctx = _data;
+    uint64_t event;
+    ssize_t bytes = read(fd, &event, sizeof(event));
+    if (bytes < 0) {
+        LOG_ERRNO("failed to read event FD");
+        return false;
+    }
+
+    struct context *ctx = data;
     struct wayland *wayl = ctx->wayl;
     struct application_list *apps = ctx->apps;
     struct matches *matches = ctx->matches;
     struct prompt *prompt = ctx->prompt;
 
-    /* Update matches list, then refresh the GUI */
-    matches_set_applications(matches, apps);
-    matches_update(matches, prompt);
-    wayl_refresh(wayl);
+    switch (event) {
+    case EVENT_APPS_LOADED:
+        /* Update matches list, then refresh the GUI */
+        matches_set_applications(matches, apps);
+        matches_update(matches, prompt);
+        break;
 
-    fdm_del_no_close(fdm, fd);
+    case EVENT_ICONS_LOADED:
+        /* Just need to refresh the GUI */
+        break;
+    }
+
+    wayl_refresh(wayl);
     return true;
 }
 
@@ -801,6 +826,12 @@ main(int argc, char *const *argv)
     log_init(LOG_COLORIZE_AUTO, true, LOG_FACILITY_USER, LOG_CLASS_INFO);
     fcft_log_init(FCFT_LOG_COLORIZE_AUTO, true, FCFT_LOG_CLASS_INFO);
 
+    mtx_t icon_lock;
+    if (mtx_init(&icon_lock, mtx_plain) != thrd_success) {
+        LOG_ERR("failed to create icon lock");
+        return EXIT_FAILURE;
+    }
+
     struct application_list *apps = NULL;
     struct fdm *fdm = NULL;
     struct prompt *prompt = NULL;
@@ -810,13 +841,7 @@ main(int argc, char *const *argv)
 
     thrd_t app_thread_id;
     bool join_app_thread = false;
-    int apps_loaded_fd = -1;
-    mtx_t icon_lock;
-
-    if (mtx_init(&icon_lock, mtx_plain) != thrd_success) {
-        LOG_ERR("failed to create lock");
-        return EXIT_FAILURE;
-    }
+    int event_fd = -1;
 
     char *lock_file = NULL;
     int file_lock_fd = -1;
@@ -836,7 +861,7 @@ main(int argc, char *const *argv)
     if ((fdm = fdm_init()) == NULL)
         goto out;
 
-    if ((render = render_init(&render_options)) == NULL)
+    if ((render = render_init(&render_options, &icon_lock)) == NULL)
         goto out;
 
     if ((prompt = prompt_init(prompt_content)) == NULL)
@@ -878,7 +903,7 @@ main(int argc, char *const *argv)
             .actions_enabled = actions_enabled,
             .dmenu_mode = dmenu_mode,
         },
-        .apps_loaded_fd = -1,
+        .event_fd = -1,
     };
 
     if ((wayl = wayl_init(
@@ -892,11 +917,9 @@ main(int argc, char *const *argv)
 
     /* Create thread that will populate the application list */
     if (!dmenu_mode || !no_run_if_empty) {
-        ctx.apps_loaded_fd = apps_loaded_fd =
-            eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
-
-        if (apps_loaded_fd < 0) {
-            LOG_ERRNO("failed to create event FD");
+        ctx.event_fd = event_fd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
+        if (event_fd < 0) {
+            LOG_ERRNO("failed to create event FDs");
             goto out;
         }
 
@@ -907,7 +930,7 @@ main(int argc, char *const *argv)
 
         join_app_thread = true;
 
-        if (!fdm_add(fdm, apps_loaded_fd, EPOLLIN, &fdm_apps_populated, &ctx))
+        if (!fdm_add(fdm, event_fd, EPOLLIN, &fdm_apps_populated, &ctx))
             goto out;
     }
 
@@ -936,8 +959,10 @@ out:
         }
     }
 
-    if (apps_loaded_fd >= 0)
-        close(apps_loaded_fd);
+    if (event_fd >= 0) {
+        fdm_del_no_close(fdm, event_fd);
+        close(event_fd);
+    }
 
     mtx_destroy(&icon_lock);
 
