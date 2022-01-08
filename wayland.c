@@ -416,6 +416,8 @@ keyboard_enter(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
 {
     struct seat *seat = data;
     seat->kbd.serial = serial;
+
+    LOG_DBG("keyboard enter");
 #if 0
     uint32_t *key;
     wl_array_for_each(key, keys)
