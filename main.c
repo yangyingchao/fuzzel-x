@@ -33,6 +33,28 @@
 #include "wayland.h"
 #include "xdg.h"
 
+struct context {
+    struct wayland *wayl;
+    struct render *render;
+    struct matches *matches;
+    struct prompt *prompt;
+    struct application_list *apps;
+
+    icon_theme_list_t *themes;
+    int icon_size;
+    mtx_t *icon_lock;
+
+    struct {
+        const char *icon_theme;
+        const char *terminal;
+        bool icons_enabled;
+        bool actions_enabled;
+        bool dmenu_mode;
+    } options;
+
+    int apps_loaded_fd;
+};
+
 static struct rgba
 hex_to_rgba(uint32_t color)
 {
@@ -226,19 +248,23 @@ print_usage(const char *prog_name)
     printf("All colors are RGBA - i.e. 8-digit hex values, without prefix.\n");
 }
 
-struct font_reload_context {
-    bool icons_enabled;
-    const icon_theme_list_t *themes;
-    struct application_list *apps;
-};
-
 static void
 font_reloaded(struct wayland *wayl, struct fcft_font *font, void *data)
 {
-    struct font_reload_context *ctx = data;
-    if (ctx->icons_enabled)
-        icon_reload_application_icons(*ctx->themes, font->height, ctx->apps);
+    struct context *ctx = data;
+
     applications_flush_text_run_cache(ctx->apps);
+
+    mtx_lock(ctx->icon_lock);
+    {
+        ctx->icon_size = font->height;
+
+        if (ctx->options.icons_enabled) {
+            icon_reload_application_icons(
+                *ctx->themes, ctx->icon_size, ctx->apps);
+        }
+    }
+    mtx_unlock(ctx->icon_lock);
 }
 
 static bool
@@ -316,35 +342,43 @@ acquire_file_lock(const char *path, int *fd)
     return true;
 }
 
-struct populate_apps_context {
-    struct application_list *apps;
-    const char *terminal;
-    bool actions_enabled;
-    bool dmenu_mode;
-    int event_fd;
-};
-
 /* THREAD */
 static int
 populate_apps(void *_ctx)
 {
-    struct populate_apps_context *ctx = _ctx;
+    struct context *ctx = _ctx;
     struct application_list *apps = ctx->apps;
-    const char *terminal = ctx->terminal;
-    bool actions_enabled = ctx->actions_enabled;
-    bool dmenu_mode = ctx->dmenu_mode;
-
-    LOG_DBG("populate application list: start");
+    const char *icon_theme = ctx->options.icon_theme;
+    const char *terminal = ctx->options.terminal;
+    bool actions_enabled = ctx->options.actions_enabled;
+    bool dmenu_mode = ctx->options.dmenu_mode;
+    bool icons_enabled = ctx->options.icons_enabled;
 
     if (dmenu_mode)
         dmenu_load_entries(apps);
-    else
+
+    else {
         xdg_find_programs(terminal, actions_enabled, apps);
+
+        if (icons_enabled) {
+            *ctx->themes = icon_load_theme(icon_theme);
+            if (tll_length(*ctx->themes) > 0)
+                LOG_INFO("theme: %s", tll_front(*ctx->themes).name);
+            else
+                LOG_WARN("%s: icon theme not found", icon_theme);
+
+            mtx_lock(ctx->icon_lock);
+            if (ctx->icon_size > 0) {
+                icon_reload_application_icons(
+                    *ctx->themes, ctx->icon_size, apps);
+            }
+            mtx_unlock(ctx->icon_lock);
+        }
+    }
+
     read_cache(apps);
 
-    LOG_DBG("populate application list: done");
-
-    ssize_t bytes = write(ctx->event_fd, &(uint64_t){1}, sizeof(uint64_t));
+    ssize_t bytes = write(ctx->apps_loaded_fd, &(uint64_t){1}, sizeof(uint64_t));
     if (bytes < 0)
         return -errno;
     else if (bytes != (ssize_t)sizeof(uint64_t))
@@ -352,24 +386,17 @@ populate_apps(void *_ctx)
     return 0;
 }
 
-struct fdm_data {
-    struct wayland *wayl;
-    struct application_list *apps;
-    struct matches *matches;
-    struct prompt *prompt;
-};
-
 /*
  * Called when the application list has been populated
  */
 static bool
 fdm_apps_populated(struct fdm *fdm, int fd, int events, void *_data)
 {
-    struct fdm_data *data = _data;
-    struct wayland *wayl = data->wayl;
-    struct application_list *apps = data->apps;
-    struct matches *matches = data->matches;
-    struct prompt *prompt = data->prompt;
+    struct context *ctx = _data;
+    struct wayland *wayl = ctx->wayl;
+    struct application_list *apps = ctx->apps;
+    struct matches *matches = ctx->matches;
+    struct prompt *prompt = ctx->prompt;
 
     /* Update matches list, then refresh the GUI */
     matches_set_applications(matches, apps);
@@ -774,7 +801,6 @@ main(int argc, char *const *argv)
     log_init(LOG_COLORIZE_AUTO, true, LOG_FACILITY_USER, LOG_CLASS_INFO);
     fcft_log_init(FCFT_LOG_COLORIZE_AUTO, true, FCFT_LOG_CLASS_INFO);
 
-    /* Load applications */
     struct application_list *apps = NULL;
     struct fdm *fdm = NULL;
     struct prompt *prompt = NULL;
@@ -783,8 +809,14 @@ main(int argc, char *const *argv)
     struct wayland *wayl = NULL;
 
     thrd_t app_thread_id;
-    bool join_thread = false;
-    int event_fd = -1;
+    bool join_app_thread = false;
+    int apps_loaded_fd = -1;
+    mtx_t icon_lock;
+
+    if (mtx_init(&icon_lock, mtx_plain) != thrd_success) {
+        LOG_ERR("failed to create lock");
+        return EXIT_FAILURE;
+    }
 
     char *lock_file = NULL;
     int file_lock_fd = -1;
@@ -799,14 +831,6 @@ main(int argc, char *const *argv)
             unlink_lock_file = false;
             goto out;
         }
-    }
-
-    if (icons_enabled) {
-        themes = icon_load_theme(icon_theme);
-        if (tll_length(themes) > 0)
-            LOG_INFO("theme: %s", tll_front(themes).name);
-        else
-            LOG_WARN("%s: icon theme not found", icon_theme);
     }
 
     if ((fdm = fdm_init()) == NULL)
@@ -840,53 +864,50 @@ main(int argc, char *const *argv)
         matches_update(matches, prompt);
     }
 
-    struct font_reload_context font_reloaded_data = {
-        .icons_enabled = icons_enabled,
-        .themes = &themes,
+    struct context ctx = {
+        .render = render,
+        .matches = matches,
+        .prompt = prompt,
         .apps = apps,
+        .themes = &themes,
+        .icon_lock = &icon_lock,
+        .options = {
+            .icon_theme = icon_theme,
+            .terminal = terminal,
+            .icons_enabled = icons_enabled,
+            .actions_enabled = actions_enabled,
+            .dmenu_mode = dmenu_mode,
+        },
+        .apps_loaded_fd = -1,
     };
 
     if ((wayl = wayl_init(
              fdm, render, prompt, matches, &render_options,
              dmenu_mode, launch_prefix, output_name, font_name, dpi_aware,
-             &font_reloaded, &font_reloaded_data)) == NULL)
+             &font_reloaded, &ctx)) == NULL)
         goto out;
+
+    ctx.wayl = wayl;
     wayl_refresh(wayl);
-
-    struct populate_apps_context populate_apps_context = {
-        .apps = apps,
-        .terminal = terminal,
-        .actions_enabled = actions_enabled,
-        .dmenu_mode = dmenu_mode,
-        .event_fd = -1,
-    };
-
-    struct fdm_data fdm_data = {
-        .wayl = wayl,
-        .apps = apps,
-        .matches = matches,
-        .prompt = prompt,
-    };
 
     /* Create thread that will populate the application list */
     if (!dmenu_mode || !no_run_if_empty) {
-        event_fd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
-        if (event_fd < 0) {
+        ctx.apps_loaded_fd = apps_loaded_fd =
+            eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
+
+        if (apps_loaded_fd < 0) {
             LOG_ERRNO("failed to create event FD");
             goto out;
         }
 
-        populate_apps_context.event_fd = event_fd;
-
-        if (thrd_create(&app_thread_id, &populate_apps,
-                        &populate_apps_context) != thrd_success)
-        {
+        if (thrd_create(&app_thread_id, &populate_apps, &ctx) != thrd_success) {
             LOG_ERR("failed to create thread");
             goto out;
         }
-        join_thread = true;
 
-        if (!fdm_add(fdm, event_fd, EPOLLIN, &fdm_apps_populated, &fdm_data))
+        join_app_thread = true;
+
+        if (!fdm_add(fdm, apps_loaded_fd, EPOLLIN, &fdm_apps_populated, &ctx))
             goto out;
     }
 
@@ -902,7 +923,7 @@ main(int argc, char *const *argv)
     ret = wayl_exit_code(wayl);
 
 out:
-    if (join_thread) {
+    if (join_app_thread) {
         int res;
         thrd_join(app_thread_id, &res);
 
@@ -915,8 +936,10 @@ out:
         }
     }
 
-    if (event_fd >= 0)
-        close(event_fd);
+    if (apps_loaded_fd >= 0)
+        close(apps_loaded_fd);
+
+    mtx_destroy(&icon_lock);
 
     shm_fini();
 
