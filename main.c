@@ -781,7 +781,9 @@ main(int argc, char *const *argv)
     struct matches *matches = NULL;
     struct render *render = NULL;
     struct wayland *wayl = NULL;
-    thrd_t app_thread_id = -1;
+
+    thrd_t app_thread_id;
+    bool join_thread = false;
     int event_fd = -1;
 
     char *lock_file = NULL;
@@ -882,6 +884,8 @@ main(int argc, char *const *argv)
             LOG_ERR("failed to create thread");
             goto out;
         }
+        join_thread = true;
+
         if (!fdm_add(fdm, event_fd, EPOLLIN, &fdm_apps_populated, &fdm_data))
             goto out;
     }
@@ -898,7 +902,7 @@ main(int argc, char *const *argv)
     ret = wayl_exit_code(wayl);
 
 out:
-    if (app_thread_id != (thrd_t)-1) {
+    if (join_thread) {
         int res;
         thrd_join(app_thread_id, &res);
 
