@@ -160,15 +160,15 @@ match_levenshtein(struct matches *matches,
 }
 
 struct matches *
-matches_init(const struct application_list *applications,
+matches_init(/*const struct application_list *applications,*/
              enum match_fields fields, bool fuzzy, size_t fuzzy_min_length,
              size_t fuzzy_max_length_discrepancy, size_t fuzzy_max_distance)
 {
     struct matches *matches = malloc(sizeof(*matches));
     *matches = (struct matches) {
-        .applications = applications,
+        .applications = NULL,
         .fields = fields,
-        .matches = malloc(applications->count * sizeof(matches->matches[0])),
+        .matches = NULL, //malloc(applications->count * sizeof(matches->matches[0])),
         .fuzzy = fuzzy,
         .page_count = 0,
         .match_count = 0,
@@ -191,6 +191,18 @@ matches_destroy(struct matches *matches)
     free(matches);
 }
 
+void
+matches_set_applications(struct matches *matches,
+                         const struct application_list *applications)
+{
+    assert(matches->applications == NULL);
+    assert(matches->matches == NULL);
+
+    matches->applications = applications;
+    matches->matches = malloc(
+        applications->count * sizeof(matches->matches[0]));
+}
+
 size_t
 matches_max_matches_per_page(const struct matches *matches)
 {
@@ -206,13 +218,17 @@ matches_max_matches_per_page_set(struct matches *matches, size_t max_matches)
 size_t
 matches_get_page_count(const struct matches *matches)
 {
-    return matches->match_count / matches->max_matches_per_page;
+    return matches->max_matches_per_page != 0
+        ? matches->match_count / matches->max_matches_per_page
+        : 0;
 }
 
 size_t
 matches_get_page(const struct matches *matches)
 {
-    return matches->selected / matches->max_matches_per_page;
+    return matches->max_matches_per_page != 0
+        ? matches->selected / matches->max_matches_per_page
+        : 0;
 }
 
 const struct match *
@@ -260,7 +276,9 @@ matches_get_count(const struct matches *matches)
 size_t
 matches_get_match_index(const struct matches *matches)
 {
-    return matches->selected % matches->max_matches_per_page;
+    return matches->max_matches_per_page != 0
+        ? matches->selected % matches->max_matches_per_page
+        : 0;
 }
 
 bool
@@ -384,6 +402,9 @@ void
 matches_update(struct matches *matches, const struct prompt *prompt)
 {
     assert(matches->max_matches_per_page > 0);
+
+    if (matches->applications == NULL)
+        return;
 
     const wchar_t *ptext = prompt_text(prompt);
 

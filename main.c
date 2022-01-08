@@ -4,6 +4,7 @@
 #include <string.h>
 #include <getopt.h>
 #include <errno.h>
+#include <threads.h>
 
 #include <locale.h>
 
@@ -11,6 +12,8 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/file.h>
+#include <sys/eventfd.h>
+#include <sys/epoll.h>
 #include <fcntl.h>
 #include <dirent.h>
 
@@ -310,6 +313,66 @@ acquire_file_lock(const char *path, int *fd)
         }
     }
 
+    return true;
+}
+
+struct populate_apps_context {
+    struct application_list *apps;
+    const char *terminal;
+    bool actions_enabled;
+    bool dmenu_mode;
+    int event_fd;
+};
+
+/* THREAD */
+static int
+populate_apps(void *_ctx)
+{
+    struct populate_apps_context *ctx = _ctx;
+    struct application_list *apps = ctx->apps;
+    const char *terminal = ctx->terminal;
+    bool actions_enabled = ctx->actions_enabled;
+    bool dmenu_mode = ctx->dmenu_mode;
+
+    LOG_DBG("populate application list: start");
+
+    if (dmenu_mode)
+        dmenu_load_entries(apps);
+    else
+        xdg_find_programs(terminal, actions_enabled, apps);
+    read_cache(apps);
+
+    LOG_DBG("populate application list: done");
+
+    ssize_t bytes = write(ctx->event_fd, &(uint64_t){1}, sizeof(uint64_t));
+    return !(bytes == (ssize_t)sizeof(uint64_t));
+}
+
+struct fdm_data {
+    struct wayland *wayl;
+    struct application_list *apps;
+    struct matches *matches;
+    struct prompt *prompt;
+};
+
+/*
+ * Called when the application list has been populated
+ */
+static bool
+fdm_apps_populated(struct fdm *fdm, int fd, int events, void *_data)
+{
+    struct fdm_data *data = _data;
+    struct wayland *wayl = data->wayl;
+    struct application_list *apps = data->apps;
+    struct matches *matches = data->matches;
+    struct prompt *prompt = data->prompt;
+
+    /* Update matches list, then refresh the GUI */
+    matches_set_applications(matches, apps);
+    matches_update(matches, prompt);
+    wayl_refresh(wayl);
+
+    fdm_del_no_close(fdm, fd);
     return true;
 }
 
@@ -714,6 +777,8 @@ main(int argc, char *const *argv)
     struct matches *matches = NULL;
     struct render *render = NULL;
     struct wayland *wayl = NULL;
+    thrd_t app_thread_id = -1;
+    int event_fd = -1;
 
     char *lock_file = NULL;
     int file_lock_fd = -1;
@@ -741,18 +806,6 @@ main(int argc, char *const *argv)
     if ((fdm = fdm_init()) == NULL)
         goto out;
 
-
-    /* Load applications */
-    if ((apps = applications_init()) == NULL)
-        goto out;
-    if (dmenu_mode) {
-        dmenu_load_entries(apps);
-        if (no_run_if_empty && apps->count == 0)
-            goto out;
-    } else
-        xdg_find_programs(terminal, actions_enabled, apps);
-    read_cache(apps);
-
     if ((render = render_init(&render_options)) == NULL)
         goto out;
 
@@ -760,9 +813,26 @@ main(int argc, char *const *argv)
         goto out;
 
     if ((matches = matches_init(
-             apps, match_fields, fuzzy, fuzzy_min_length,
+             match_fields, fuzzy, fuzzy_min_length,
              fuzzy_max_length_discrepancy, fuzzy_max_distance)) == NULL)
         goto out;
+    matches_max_matches_per_page_set(matches, render_options.lines);
+
+    if ((apps = applications_init()) == NULL)
+        goto out;
+
+    if (dmenu_mode && no_run_if_empty) {
+        /*
+         * If no_run_if_empty is set, we *must* load the entries
+         * *before displaying the window.
+         */
+        dmenu_load_entries(apps);
+        if (apps->count == 0)
+            goto out;
+
+        matches_set_applications(matches, apps);
+        matches_update(matches, prompt);
+    }
 
     struct font_reload_context font_reloaded_data = {
         .icons_enabled = icons_enabled,
@@ -775,10 +845,42 @@ main(int argc, char *const *argv)
              dmenu_mode, launch_prefix, output_name, font_name, dpi_aware,
              &font_reloaded, &font_reloaded_data)) == NULL)
         goto out;
-
-    matches_max_matches_per_page_set(matches, render_options.lines);
-    matches_update(matches, prompt);
     wayl_refresh(wayl);
+
+    struct populate_apps_context populate_apps_context = {
+        .apps = apps,
+        .terminal = terminal,
+        .actions_enabled = actions_enabled,
+        .dmenu_mode = dmenu_mode,
+        .event_fd = -1,
+    };
+
+    struct fdm_data fdm_data = {
+        .wayl = wayl,
+        .apps = apps,
+        .matches = matches,
+        .prompt = prompt,
+    };
+
+    /* Create thread that will populate the application list */
+    if (!dmenu_mode || !no_run_if_empty) {
+        event_fd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
+        if (event_fd < 0) {
+            LOG_ERRNO("failed to create event FD");
+            goto out;
+        }
+
+        populate_apps_context.event_fd = event_fd;
+
+        if (thrd_create(&app_thread_id, &populate_apps,
+                        &populate_apps_context) != thrd_success)
+        {
+            LOG_ERR("failed to create thread");
+            goto out;
+        }
+        if (!fdm_add(fdm, event_fd, EPOLLIN, &fdm_apps_populated, &fdm_data))
+            goto out;
+    }
 
     while (true) {
         wayl_flush(wayl);
@@ -792,6 +894,15 @@ main(int argc, char *const *argv)
     ret = wayl_exit_code(wayl);
 
 out:
+    if (app_thread_id != (thrd_t)-1) {
+        int res;
+        thrd_join(app_thread_id, &res);
+        LOG_WARN("populate app thread return value: %d", res);
+    }
+
+    if (event_fd >= 0)
+        close(event_fd);
+
     shm_fini();
 
     wayl_destroy(wayl);

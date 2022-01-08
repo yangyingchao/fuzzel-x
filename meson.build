@@ -51,6 +51,7 @@ if cc.has_argument('-fmacro-prefix-map=/foo=')
 endif
 
 math = cc.find_library('m')
+threads = [dependency('threads'), cc.find_library('stdthreads', required: false)]
 fontconfig = dependency('fontconfig')
 pixman = dependency('pixman-1')
 cairo = dependency('cairo', required: get_option('enable-cairo'))
@@ -146,6 +147,7 @@ executable(
   'xdg.c', 'xdg.h',
   wl_proto_src + wl_proto_headers, version,
   dependencies: [math,
+                 threads,
                  pixman,
                  fontconfig,
                  cairo,
