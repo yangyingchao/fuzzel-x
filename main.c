@@ -341,7 +341,20 @@ acquire_file_lock(const char *path, int *fd)
     return true;
 }
 
-enum { EVENT_APPS_LOADED = 1, EVENT_ICONS_LOADED = 2 };
+enum event_type { EVENT_APPS_LOADED = 1, EVENT_ICONS_LOADED = 2 };
+
+static int
+send_event(int fd, enum event_type event)
+{
+    ssize_t bytes = write(fd, &(uint64_t){event}, sizeof(uint64_t));
+
+    if (bytes < 0)
+        return -errno;
+    else if (bytes != (ssize_t)sizeof(uint64_t))
+        return 1;
+    return 0;
+}
+
 
 /* THREAD */
 static int
@@ -355,43 +368,36 @@ populate_apps(void *_ctx)
     bool dmenu_mode = ctx->options.dmenu_mode;
     bool icons_enabled = ctx->options.icons_enabled;
 
-    if (dmenu_mode)
+    if (dmenu_mode) {
         dmenu_load_entries(apps);
+        return send_event(ctx->event_fd, EVENT_APPS_LOADED);
+    }
 
-    else {
-        xdg_find_programs(terminal, actions_enabled, apps);
-        read_cache(apps);
 
-        ssize_t bytes = write(
-            ctx->event_fd, &(uint64_t){EVENT_APPS_LOADED}, sizeof(uint64_t));
+    xdg_find_programs(terminal, actions_enabled, apps);
+    read_cache(apps);
 
-        if (bytes < 0)
-            return -errno;
-        else if (bytes != (ssize_t)sizeof(uint64_t))
-            return 1;
+    int r = send_event(ctx->event_fd, EVENT_APPS_LOADED);
+    if (r != 0)
+        return r;
 
-        if (icons_enabled) {
-            *ctx->themes = icon_load_theme(icon_theme);
-            if (tll_length(*ctx->themes) > 0)
-                LOG_INFO("theme: %s", tll_front(*ctx->themes).name);
-            else
-                LOG_WARN("%s: icon theme not found", icon_theme);
+    if (icons_enabled) {
+        *ctx->themes = icon_load_theme(icon_theme);
+        if (tll_length(*ctx->themes) > 0)
+            LOG_INFO("theme: %s", tll_front(*ctx->themes).name);
+        else
+            LOG_WARN("%s: icon theme not found", icon_theme);
 
-            mtx_lock(ctx->icon_lock);
-            if (ctx->icon_size > 0) {
-                icon_reload_application_icons(
-                    *ctx->themes, ctx->icon_size, apps);
-            }
-            mtx_unlock(ctx->icon_lock);
-
-            ssize_t bytes = write(
-                ctx->event_fd, &(uint64_t){EVENT_ICONS_LOADED}, sizeof(uint64_t));
-
-            if (bytes < 0)
-                return -errno;
-            else if (bytes != (ssize_t)sizeof(uint64_t))
-                return 1;
+        mtx_lock(ctx->icon_lock);
+        if (ctx->icon_size > 0) {
+            icon_reload_application_icons(
+                *ctx->themes, ctx->icon_size, apps);
         }
+        mtx_unlock(ctx->icon_lock);
+
+        r = send_event(ctx->event_fd, EVENT_ICONS_LOADED);
+        if (r != 0)
+            return r;
     }
 
     return 0;
