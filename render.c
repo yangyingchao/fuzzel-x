@@ -631,7 +631,7 @@ render_init(const struct render_options *options, mtx_t *icon_lock)
         .icon_lock = icon_lock,
     };
 
-    /* TODO: the one providing the opti3Dons should calculate these */
+    /* TODO: the one providing the options should calculate these */
     render->options.pix_background_color = rgba2pixman(render->options.background_color);
     render->options.pix_border_color = rgba2pixman(render->options.border_color);
     render->options.pix_text_color = rgba2pixman(render->options.text_color);
