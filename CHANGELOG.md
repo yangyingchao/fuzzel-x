@@ -51,6 +51,9 @@
 * The application list is now populated in a separate thread, in
   parallel to initializing the GUI. This reduces the risk of missing
   keyboard input (https://codeberg.org/dnkl/fuzzel/issues/82).
+* Icons are now loaded in a thread. This allows us to display the
+  application list quickly (initially without icons, if loading them
+  takes “too” long).
 
 
 ### Deprecated
