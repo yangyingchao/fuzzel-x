@@ -905,8 +905,8 @@ reload_font(struct wayland *wayl, float new_dpi, unsigned new_scale)
     LOG_DBG(
         "font reload: scale: %u -> %u, dpi: %.2f -> %.2f size method: %s -> %s",
         wayl->scale, new_scale, wayl->dpi, new_dpi,
-        was_scaled_using_dpi ? "DPI" : "scaling factor",
-        will_scale_using_dpi ? "DPI" : "scaling factor");
+        was_sized_using_dpi ? "DPI" : "scaling factor",
+        will_size_using_dpi ? "DPI" : "scaling factor");
 
     wayl->font_is_sized_by_dpi = will_size_using_dpi;
 
