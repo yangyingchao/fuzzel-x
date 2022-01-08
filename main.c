@@ -345,7 +345,11 @@ populate_apps(void *_ctx)
     LOG_DBG("populate application list: done");
 
     ssize_t bytes = write(ctx->event_fd, &(uint64_t){1}, sizeof(uint64_t));
-    return !(bytes == (ssize_t)sizeof(uint64_t));
+    if (bytes < 0)
+        return -errno;
+    else if (bytes != (ssize_t)sizeof(uint64_t))
+        return 1;
+    return 0;
 }
 
 struct fdm_data {
@@ -897,7 +901,14 @@ out:
     if (app_thread_id != (thrd_t)-1) {
         int res;
         thrd_join(app_thread_id, &res);
-        LOG_WARN("populate app thread return value: %d", res);
+
+        if (res != 0) {
+            if (res < 0)
+                LOG_ERRNO_P("populate application list thread failed", res);
+            else
+                LOG_ERRNO("populate application list thread failed: "
+                          "failed to signal done event");
+        }
     }
 
     if (event_fd >= 0)
