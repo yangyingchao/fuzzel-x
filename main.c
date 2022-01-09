@@ -410,6 +410,9 @@ populate_apps(void *_ctx)
 static bool
 fdm_apps_populated(struct fdm *fdm, int fd, int events, void *data)
 {
+    if (events & EPOLLHUP)
+        return false;
+
     uint64_t event;
     ssize_t bytes = read(fd, &event, sizeof(event));
     if (bytes != (ssize_t)sizeof(event)) {
