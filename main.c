@@ -380,16 +380,19 @@ populate_apps(void *_ctx)
         return r;
 
     if (icons_enabled) {
-        *ctx->themes = icon_load_theme(icon_theme);
-        if (tll_length(*ctx->themes) > 0)
-            LOG_INFO("theme: %s", tll_front(*ctx->themes).name);
+        icon_theme_list_t icon_themes = icon_load_theme(icon_theme);
+        if (tll_length(icon_themes) > 0)
+            LOG_INFO("theme: %s", tll_front(icon_themes).name);
         else
             LOG_WARN("%s: icon theme not found", icon_theme);
 
         mtx_lock(ctx->icon_lock);
-        if (ctx->icon_size > 0) {
-            icon_reload_application_icons(
-                *ctx->themes, ctx->icon_size, apps);
+        {
+            *ctx->themes = icon_themes;
+            if (ctx->icon_size > 0) {
+                icon_reload_application_icons(
+                    *ctx->themes, ctx->icon_size, apps);
+            }
         }
         mtx_unlock(ctx->icon_lock);
 
