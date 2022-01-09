@@ -12,7 +12,6 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/file.h>
-#include <sys/eventfd.h>
 #include <sys/epoll.h>
 #include <fcntl.h>
 #include <dirent.h>
@@ -846,7 +845,7 @@ main(int argc, char *const *argv)
 
     thrd_t app_thread_id;
     bool join_app_thread = false;
-    int event_fd = -1;
+    int event_pipe[2] = {-1, -1};
 
     char *lock_file = NULL;
     int file_lock_fd = -1;
@@ -921,13 +920,14 @@ main(int argc, char *const *argv)
 
     /* Create thread that will populate the application list */
     if (!dmenu_mode || !no_run_if_empty) {
-        ctx.event_fd = event_fd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
-        if (event_fd < 0) {
-            LOG_ERRNO("failed to create event FDs");
+        if (pipe2(event_pipe, O_CLOEXEC | O_NONBLOCK) < 0) {
+            LOG_ERRNO("failed to create event pipe");
             goto out;
         }
 
-        if (!fdm_add(fdm, event_fd, EPOLLIN, &fdm_apps_populated, &ctx))
+        ctx.event_fd = event_pipe[1];
+
+        if (!fdm_add(fdm, event_pipe[0], EPOLLIN, &fdm_apps_populated, &ctx))
             goto out;
 
         if (thrd_create(&app_thread_id, &populate_apps, &ctx) != thrd_success) {
@@ -965,10 +965,12 @@ out:
         }
     }
 
-    if (event_fd >= 0) {
-        fdm_del_no_close(fdm, event_fd);
-        close(event_fd);
+    if (event_pipe[0] >= 0) {
+        fdm_del_no_close(fdm, event_pipe[0]);
+        close(event_pipe[0]);
     }
+    if (event_pipe[1] >= 0)
+        close(event_pipe[1]);
 
     mtx_destroy(&icon_lock);
 
