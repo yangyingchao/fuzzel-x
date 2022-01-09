@@ -439,6 +439,10 @@ fdm_apps_populated(struct fdm *fdm, int fd, int events, void *data)
     case EVENT_ICONS_LOADED:
         /* Just need to refresh the GUI */
         break;
+
+    default:
+        LOG_ERR("unknown event: %llx", (long long)event);
+        return false;
     }
 
     wayl_refresh(wayl);
