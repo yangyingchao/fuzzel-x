@@ -919,7 +919,6 @@ main(int argc, char *const *argv)
         goto out;
 
     ctx.wayl = wayl;
-    wayl_refresh(wayl);
 
     /* Create thread that will populate the application list */
     if (!dmenu_mode || !no_run_if_empty) {
@@ -939,6 +938,8 @@ main(int argc, char *const *argv)
         if (!fdm_add(fdm, event_fd, EPOLLIN, &fdm_apps_populated, &ctx))
             goto out;
     }
+
+    wayl_refresh(wayl);
 
     while (true) {
         wayl_flush(wayl);
