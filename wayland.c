@@ -1508,15 +1508,22 @@ fdm_handler(struct fdm *fdm, int fd, int events, void *data)
     struct wayland *wayl = data;
     int event_count = 0;
 
-    if (events & EPOLLIN)
-        wl_display_read_events(wayl->display);
+    if (events & EPOLLIN) {
+        if (wl_display_read_events(wayl->display) < 0) {
+            LOG_ERRNO("failed to read events from the Wayland socket");
+            return false;
+        }
 
-    while (wl_display_prepare_read(wayl->display) != 0)
-        wl_display_dispatch_pending(wayl->display);
+        while (wl_display_prepare_read(wayl->display) != 0)
+            if (wl_display_dispatch_pending(wayl->display) < 0) {
+                LOG_ERRNO("failed to dispatch pending Wayland events");
+                return false;
+            }
+    }
 
     if (events & EPOLLHUP) {
         LOG_WARN("disconnected from Wayland");
-        wl_display_cancel_read(wayl->display);
+        // wl_display_cancel_read(wayl->display);
         return false;
     }
 
