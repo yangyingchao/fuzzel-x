@@ -373,7 +373,6 @@ populate_apps(void *_ctx)
         return send_event(ctx->event_fd, EVENT_APPS_LOADED);
     }
 
-
     xdg_find_programs(terminal, actions_enabled, apps);
     read_cache(apps);
 
@@ -928,15 +927,15 @@ main(int argc, char *const *argv)
             goto out;
         }
 
+        if (!fdm_add(fdm, event_fd, EPOLLIN, &fdm_apps_populated, &ctx))
+            goto out;
+
         if (thrd_create(&app_thread_id, &populate_apps, &ctx) != thrd_success) {
             LOG_ERR("failed to create thread");
             goto out;
         }
 
         join_app_thread = true;
-
-        if (!fdm_add(fdm, event_fd, EPOLLIN, &fdm_apps_populated, &ctx))
-            goto out;
     }
 
     wayl_refresh(wayl);
