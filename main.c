@@ -412,8 +412,11 @@ fdm_apps_populated(struct fdm *fdm, int fd, int events, void *data)
 {
     uint64_t event;
     ssize_t bytes = read(fd, &event, sizeof(event));
-    if (bytes < 0) {
-        LOG_ERRNO("failed to read event FD");
+    if (bytes != (ssize_t)sizeof(event)) {
+        if (bytes < 0)
+            LOG_ERRNO("failed to read event FD");
+        else
+            LOG_ERR("partial read from event FD");
         return false;
     }
 
