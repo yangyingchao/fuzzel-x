@@ -45,6 +45,9 @@
   (https://codeberg.org/dnkl/fuzzel/issues/62).
 * Pressing Tab when there is a single match now executes it
   (https://codeberg.org/dnkl/fuzzel/issues/77).
+* Use a lock file instead of parsing `/proc` to prevent multiple
+  fuzzel instances from running at the same time
+  (https://codeberg.org/dnkl/fuzzel/issues/84).
 
 
 ### Deprecated
