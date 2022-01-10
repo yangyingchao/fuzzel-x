@@ -903,7 +903,12 @@ main(int argc, char *const *argv)
 
     log_init(log_colorize, log_syslog, LOG_FACILITY_USER, log_level);
     fcft_init((enum fcft_log_colorize)log_colorize, log_syslog, (enum fcft_log_class)log_level);
+
+#if !defined(FUZZEL_ENABLE_SVG_LIBRSVG)
+    /* Skip fcft cleanup if we’re using the librsvg backend
+     * (https://codeberg.org/dnkl/fuzzel/issues/87) */
     atexit(&fcft_fini);
+#endif
 
     mtx_t icon_lock;
     if (mtx_init(&icon_lock, mtx_plain) != thrd_success) {
