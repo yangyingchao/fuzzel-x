@@ -160,15 +160,14 @@ match_levenshtein(struct matches *matches,
 }
 
 struct matches *
-matches_init(/*const struct application_list *applications,*/
-             enum match_fields fields, bool fuzzy, size_t fuzzy_min_length,
+matches_init(enum match_fields fields, bool fuzzy, size_t fuzzy_min_length,
              size_t fuzzy_max_length_discrepancy, size_t fuzzy_max_distance)
 {
     struct matches *matches = malloc(sizeof(*matches));
     *matches = (struct matches) {
         .applications = NULL,
         .fields = fields,
-        .matches = NULL, //malloc(applications->count * sizeof(matches->matches[0])),
+        .matches = NULL,
         .fuzzy = fuzzy,
         .page_count = 0,
         .match_count = 0,
