@@ -1523,7 +1523,6 @@ fdm_handler(struct fdm *fdm, int fd, int events, void *data)
 
     if (events & EPOLLHUP) {
         LOG_WARN("disconnected from Wayland");
-        // wl_display_cancel_read(wayl->display);
         return false;
     }
 
