@@ -211,3 +211,13 @@ _EXAMPLES_:
 - red: *ff0000ff* (no transparency)
 
 The default color scheme is _Solarized_.
+
+# FILES
+
+_$XDG_CACHE_HOME/fuzzel_
+	Stores a list of applications and their launch count. This allows
+	fuzzel to sort frequently launched applications at the top.
+
+_$XDG_RUNTIME_DIR/fuzzel-$WAYLAND_DISPLAY.lock_
+	Lock file, used to prevent multiple fuzzel instances from running
+	at the same time.

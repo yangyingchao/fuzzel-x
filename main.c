@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <sys/file.h>
 #include <fcntl.h>
 #include <dirent.h>
 
@@ -269,69 +270,47 @@ pt_or_px_from_string(const char  *s, struct pt_or_px *res)
     return true;
 }
 
-static bool
-have_another_fuzzel_instance(void)
+static char *
+lock_file_name(void)
 {
-    bool ret = false;
+    const char *xdg_runtime_dir = getenv("XDG_RUNTIME_DIR");
+    if (xdg_runtime_dir == NULL)
+        xdg_runtime_dir = "/tmp";
 
-    pid_t my_pid = getpid();
-    int proc_fd = -1;
-    DIR *proc_dir = NULL;
+    const char *wayland_display = getenv("WAYLAND_DISPLAY");
+    if (wayland_display == NULL)
+        return NULL;
 
-    if ((proc_fd = open("/proc", O_RDONLY)) < 0) {
-        LOG_ERRNO("/proc: failed to open");
-        goto out;
+    #define path_fmt "%s/fuzzel-%s.lock"
+    int chars = snprintf(NULL, 0, path_fmt, xdg_runtime_dir, wayland_display);
+
+    char *path = malloc(chars + 1);
+    snprintf(path, chars + 1, path_fmt, xdg_runtime_dir, wayland_display);
+    #undef path_fmt
+
+    LOG_DBG("lock file: %s", path);
+    return path;
+}
+
+static bool
+acquire_file_lock(const char *path, int *fd)
+{
+    *fd = open(path, O_WRONLY | O_CREAT | O_CLOEXEC, 0644);
+    if (*fd < 0) {
+        /* Warn, but allow running anyway */
+        LOG_WARN("%s: failed to create lock file", path);
+        return true;
     }
 
-    if ((proc_dir = opendir("/proc")) == NULL) {
-        LOG_ERRNO("/proc: failed to open");
-        goto out;
-    }
-
-    for (struct dirent *e = readdir(proc_dir);
-         e != NULL && !ret;
-         e = readdir(proc_dir))
-    {
-        if (e->d_type != DT_DIR)
-            continue;
-
-        errno = 0;
-        char *end = NULL;
-
-        unsigned long pid = strtoul(e->d_name, &end, 10);
-        if (errno != 0 || *end != '\0')
-            continue;
-
-        if (pid == my_pid)
-            continue;
-
-        int pid_fd = openat(proc_fd, e->d_name, O_RDONLY);
-        if (pid_fd < 0)
-            continue;
-
-        int comm_fd = openat(pid_fd, "comm", O_RDONLY);
-        if (comm_fd >= 0) {
-            char comm[64] = {};
-            ssize_t r = read(comm_fd, comm, sizeof(comm) - 1);
-
-            for (; r > 0 && comm[r - 1] == '\n'; r--)
-                comm[r - 1] = '\0';
-
-            if (strcmp(comm, "fuzzel") == 0)
-                ret = true;
-
-            close(comm_fd);
+    if (flock(*fd, LOCK_EX | LOCK_NB) < 0) {
+        if (errno == EWOULDBLOCK) {
+            /* The file is locked and the LOCK_NB flag was selected */
+            LOG_ERR("%s: failed to acquire lock: fuzzel already running?", path);
+            return false;
         }
-
-        close(pid_fd);
     }
 
-out:
-    if (proc_dir != NULL)
-        closedir(proc_dir);
-    if (proc_fd >= 0)
-        close(proc_fd);
-    return ret;
+    return true;
 }
 
 int
@@ -736,11 +715,16 @@ main(int argc, char *const *argv)
     struct render *render = NULL;
     struct wayland *wayl = NULL;
 
+    char *lock_file = NULL;
+    int file_lock_fd = -1;
+
     icon_theme_list_t themes = tll_init();
 
-    if (have_another_fuzzel_instance()) {
-        LOG_ERR("fuzzel is already running");
-        goto out;
+    /* Don’t allow multiple instances (in the same Wayland session) */
+    lock_file = lock_file_name();
+    if (lock_file != NULL) {
+        if (!acquire_file_lock(lock_file, &file_lock_fd))
+            goto out;
     }
 
     if (icons_enabled) {
@@ -820,5 +804,12 @@ out:
     cairo_debug_reset_static_data();
 #endif
     log_deinit();
+
+    if (file_lock_fd >= 0)
+        close(file_lock_fd);
+    if (lock_file != NULL) {
+        unlink(lock_file);
+        free(lock_file);
+    }
     return ret;
 }
