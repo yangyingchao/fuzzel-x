@@ -34,5 +34,4 @@ void wayl_flush(struct wayland *wayl);
 bool wayl_exit_code(const struct wayland *wayl);
 bool wayl_update_cache(const struct wayland *wayl);
 
-
 bool wayl_size_font_by_dpi(const struct wayland *wayl);
