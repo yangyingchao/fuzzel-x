@@ -63,11 +63,25 @@ dmenu_load_entries(struct application_list *applications)
 }
 
 bool
-dmenu_execute(const struct application *app, const struct prompt *prompt)
+dmenu_execute(const struct application *app, ssize_t index,
+              const struct prompt *prompt, enum dmenu_mode format)
 {
-    if (app != NULL)
-        printf("%ls\n", app->title);
-    else
-        printf("%ls\n", prompt_text(prompt));
+    switch (format) {
+    case DMENU_MODE_NONE:
+        assert(false);
+        return false;
+
+    case DMENU_MODE_TEXT:
+        if (app != NULL)
+            printf("%ls\n", app->title);
+        else
+            printf("%ls\n", prompt_text(prompt));
+        break;
+
+    case DMENU_MODE_INDEX:
+        printf("%zd\n", index);
+        break;
+    }
+
     return true;
 }

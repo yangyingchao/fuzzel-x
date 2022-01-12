@@ -415,6 +415,7 @@ matches_update(struct matches *matches, const struct prompt *prompt)
                 .matched_type = MATCHED_NONE,
                 .application = &matches->applications->v[i],
                 .start_title = -1,
+                .index = i,
             };
         }
 
@@ -551,6 +552,7 @@ matches_update(struct matches *matches, const struct prompt *prompt)
             .matched_type = matched_type,
             .application = app,
             .start_title = start_title,
+            .index = i,
         };
     }
 

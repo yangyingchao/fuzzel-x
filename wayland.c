@@ -169,7 +169,7 @@ struct wayland {
 
     enum { KEEP_RUNNING, EXIT_UPDATE_CACHE, EXIT} status;
     int exit_code;
-    bool dmenu_mode;
+    enum dmenu_mode dmenu_mode;
     const char *launch_prefix;
 
     bool frame_is_scheduled;
@@ -442,9 +442,10 @@ execute_selected(struct wayland *wayl)
 
     const struct match *match = matches_get_match(wayl->matches);
     struct application *app = match != NULL ? match->application : NULL;
+    ssize_t index = match != NULL ? match->index : -1;
 
-    if (wayl->dmenu_mode) {
-        dmenu_execute(app, wayl->prompt);
+    if (wayl->dmenu_mode != DMENU_MODE_NONE) {
+        dmenu_execute(app, index, wayl->prompt, wayl->dmenu_mode);
         wayl->exit_code = EXIT_SUCCESS;
     } else {
         bool success = application_execute(app, wayl->prompt, wayl->launch_prefix);
@@ -1641,9 +1642,9 @@ parse_font_spec(const char *font_spec, size_t *count, struct font_spec **specs)
 struct wayland *
 wayl_init(struct fdm *fdm,
           struct render *render, struct prompt *prompt, struct matches *matches,
-          const struct render_options *render_options, bool dmenu_mode, const char *launch_prefix,
-          const char *output_name, const char *font_spec,
-          enum dpi_aware dpi_aware,
+          const struct render_options *render_options, enum dmenu_mode dmenu_mode,
+          const char *launch_prefix, const char *output_name,
+          const char *font_spec, enum dpi_aware dpi_aware,
           font_reloaded_t font_reloaded_cb, void *data)
 {
     struct wayland *wayl = malloc(sizeof(*wayl));

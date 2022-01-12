@@ -16,6 +16,7 @@ struct match {
     enum matched_type matched_type;
     struct application *application;
     ssize_t start_title;
+    size_t index;
 };
 
 enum match_fields {
