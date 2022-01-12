@@ -717,14 +717,17 @@ main(int argc, char *const *argv)
 
     char *lock_file = NULL;
     int file_lock_fd = -1;
+    bool unlink_lock_file = true;
 
     icon_theme_list_t themes = tll_init();
 
     /* Don’t allow multiple instances (in the same Wayland session) */
     lock_file = lock_file_name();
     if (lock_file != NULL) {
-        if (!acquire_file_lock(lock_file, &file_lock_fd))
+        if (!acquire_file_lock(lock_file, &file_lock_fd)) {
+            unlink_lock_file = false;
             goto out;
+        }
     }
 
     if (icons_enabled) {
@@ -808,7 +811,8 @@ out:
     if (file_lock_fd >= 0)
         close(file_lock_fd);
     if (lock_file != NULL) {
-        unlink(lock_file);
+        if (unlink_lock_file)
+            unlink(lock_file);
         free(lock_file);
     }
     return ret;
