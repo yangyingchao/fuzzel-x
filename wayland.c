@@ -416,6 +416,8 @@ keyboard_enter(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
 {
     struct seat *seat = data;
     seat->kbd.serial = serial;
+
+    LOG_DBG("keyboard enter");
 #if 0
     uint32_t *key;
     wl_array_for_each(key, keys)
@@ -905,8 +907,8 @@ reload_font(struct wayland *wayl, float new_dpi, unsigned new_scale)
     LOG_DBG(
         "font reload: scale: %u -> %u, dpi: %.2f -> %.2f size method: %s -> %s",
         wayl->scale, new_scale, wayl->dpi, new_dpi,
-        was_scaled_using_dpi ? "DPI" : "scaling factor",
-        will_scale_using_dpi ? "DPI" : "scaling factor");
+        was_sized_using_dpi ? "DPI" : "scaling factor",
+        will_size_using_dpi ? "DPI" : "scaling factor");
 
     wayl->font_is_sized_by_dpi = will_size_using_dpi;
 
@@ -1506,15 +1508,21 @@ fdm_handler(struct fdm *fdm, int fd, int events, void *data)
     struct wayland *wayl = data;
     int event_count = 0;
 
-    if (events & EPOLLIN)
-        wl_display_read_events(wayl->display);
+    if (events & EPOLLIN) {
+        if (wl_display_read_events(wayl->display) < 0) {
+            LOG_ERRNO("failed to read events from the Wayland socket");
+            return false;
+        }
 
-    while (wl_display_prepare_read(wayl->display) != 0)
-        wl_display_dispatch_pending(wayl->display);
+        while (wl_display_prepare_read(wayl->display) != 0)
+            if (wl_display_dispatch_pending(wayl->display) < 0) {
+                LOG_ERRNO("failed to dispatch pending Wayland events");
+                return false;
+            }
+    }
 
     if (events & EPOLLHUP) {
         LOG_WARN("disconnected from Wayland");
-        wl_display_cancel_read(wayl->display);
         return false;
     }
 

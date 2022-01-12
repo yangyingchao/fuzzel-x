@@ -1,5 +1,6 @@
 #pragma once
 
+#include <threads.h>
 #include <pixman.h>
 
 #include <fcft/fcft.h>
@@ -42,7 +43,8 @@ struct render_options {
 };
 
 struct render;
-struct render *render_init(const struct render_options *options);
+struct render *render_init(
+    const struct render_options *options, mtx_t *icon_lock);
 void render_destroy(struct render *render);
 
 void render_set_subpixel(struct render *render, enum fcft_subpixel subpixel);
