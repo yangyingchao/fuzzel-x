@@ -225,9 +225,6 @@ print_usage(const char *prog_name)
            "  -B,--border-width=INT          width of border, in pixels (1)\n"
            "  -r,--border-radius=INT         amount of corner \"roundness\" (10)\n"
            "  -C,--border-color=HEX          border color (ffffffff)\n"
-           "  -d,--dmenu                     dmenu compatibility mode\n"
-           "  -R,--no-run-if-empty           exit immediately without showing UI if stdin\n"
-           "                                 is empty (dmenu mode only)\n"
            "     --show-actions              include desktop actions in the list\n"
            "     --no-fuzzy                  disable fuzzy matching\n"
            "     --fuzzy-min-length=VALUE    search strings shorter than this will not be\n"
@@ -242,6 +239,11 @@ print_usage(const char *prog_name)
            "     --line-height=HEIGHT        override line height from font metrics\n"
            "     --letter-spacing=AMOUNT     additional letter spacing\n"
            "     --launch-prefix=COMMAND     prefix to add before argv of executed program\n"
+           "  -d,--dmenu                     dmenu compatibility mode\n"
+           "     --index                     print selected entry's index instead of of the \n"
+           "                                 entry's text (dmenu mode only)\n"
+           "  -R,--no-run-if-empty           exit immediately without showing UI if stdin\n"
+           "                                 is empty (dmenu mode only)\n"
            "  -v,--version                   show the version number and quit\n");
     printf("\n");
     printf("All colors are RGBA - i.e. 8-digit hex values, without prefix.\n");
@@ -459,6 +461,7 @@ main(int argc, char *const *argv)
     #define OPT_FUZZY_MIN_LENGTH             260
     #define OPT_FUZZY_MAX_LENGTH_DISCREPANCY 261
     #define OPT_FUZZY_MAX_DISTANCE           262
+    #define OPT_DMENU_INDEX                  263
 
     static const struct option longopts[] = {
         {"output"  ,             required_argument, 0, 'o'},
@@ -482,8 +485,6 @@ main(int argc, char *const *argv)
         {"border-color",         required_argument, 0, 'C'},
         {"prompt",               required_argument, 0, 'P'},
         {"terminal",             required_argument, 0, 'T'},
-        {"dmenu",                no_argument,       0, 'd'},
-        {"no-run-if-empty",      no_argument,       0, 'R'},
         {"show-actions",         no_argument,       0, OPT_SHOW_ACTIONS},
         {"no-fuzzy",             no_argument,       0, OPT_NO_FUZZY},
         {"fuzzy-min-length",     required_argument, 0, OPT_FUZZY_MIN_LENGTH},
@@ -492,6 +493,13 @@ main(int argc, char *const *argv)
         {"line-height",          required_argument, 0, 'H'},
         {"letter-spacing",       required_argument, 0, OPT_LETTER_SPACING},
         {"launch-prefix",        required_argument, 0, OPT_LAUNCH_PREFIX},
+
+        /* dmenu mode */
+        {"dmenu",                no_argument,       0, 'd'},
+        {"no-run-if-empty",      no_argument,       0, 'R'},
+        {"index",                no_argument,       0, OPT_DMENU_INDEX},
+
+        /* Misc */
         {"version",              no_argument,       0, 'v'},
         {"help",                 no_argument,       0, 'h'},
         {NULL,                   no_argument,       0, 0},
@@ -504,8 +512,6 @@ main(int argc, char *const *argv)
     const char *terminal = NULL;
     const wchar_t *prompt_content = L"> ";
     wchar_t *prompt_allocated = NULL;
-    bool dmenu_mode = false;
-    bool no_run_if_empty = false;
     bool icons_enabled = true;
     bool actions_enabled = false;
     bool fuzzy = true;
@@ -513,6 +519,10 @@ main(int argc, char *const *argv)
     size_t fuzzy_max_length_discrepancy = 2;
     size_t fuzzy_max_distance = 1;
     const char *launch_prefix = NULL;
+
+    bool dmenu_mode = false;
+    enum dmenu_mode dmenu_format = DMENU_MODE_TEXT;
+    bool no_run_if_empty = false;
 
     enum match_fields match_fields =
         MATCH_FILENAME | MATCH_NAME | MATCH_GENERIC;
@@ -757,14 +767,6 @@ main(int argc, char *const *argv)
             break;
         }
 
-        case 'd':
-            dmenu_mode = true;
-            break;
-
-        case 'R':
-            no_run_if_empty = true;
-            break;
-
         case OPT_SHOW_ACTIONS:
             actions_enabled = true;
             break;
@@ -819,6 +821,18 @@ main(int argc, char *const *argv)
             launch_prefix = optarg;
             break;
         }
+
+        case 'd':
+            dmenu_mode = true;
+            break;
+
+        case 'R':
+            no_run_if_empty = true;
+            break;
+
+        case OPT_DMENU_INDEX:
+            dmenu_format = DMENU_MODE_INDEX;
+            break;
 
         case 'v':
             printf("fuzzel version %s\n", FUZZEL_VERSION);
@@ -925,7 +939,8 @@ main(int argc, char *const *argv)
 
     if ((wayl = wayl_init(
              fdm, render, prompt, matches, &render_options,
-             dmenu_mode, launch_prefix, output_name, font_name, dpi_aware,
+             dmenu_mode ? dmenu_format : DMENU_MODE_NONE,
+             launch_prefix, output_name, font_name, dpi_aware,
              &font_reloaded, &ctx)) == NULL)
         goto out;
 

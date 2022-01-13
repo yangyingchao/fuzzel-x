@@ -138,16 +138,6 @@ options:
 *-C*,*--border-color*=_HEX_
 	The color of the border. See *COLORS*. Default: _002b36ff_.
 
-*-d*,*--dmenu*
-	dmenu compatibility mode. In this mode, the list entries are read
-	from stdin (newline separated). The selected entry is printed to
-	stdout. If the input string does not match any of the entries, the
-	input string is printed as is on stdout.
-
-*-R*,*--no-run-if-empty*
-	Exit immediately, without showing the UI, if stdin is
-	empty. **dmenu** mode only.
-
 *--show-actions*
 	Include desktop actions in the list. Desktop actions are
 	alternative actions some desktop entries have. Examples include
@@ -185,6 +175,20 @@ options:
 *--launch-prefix*=_COMMAND_
 	Command to launch XDG applications with. Example: _swaymsg exec --_.
 	Default: _not set_.
+
+*-d*,*--dmenu*
+	dmenu compatibility mode. In this mode, the list entries are read
+	from stdin (newline separated). The selected entry is printed to
+	stdout. If the input string does not match any of the entries, the
+	input string is printed as is on stdout.
+
+*--index*
+	Print selected entry's index instead of its text. **dmenu** mode
+	only.
+
+*-R*,*--no-run-if-empty*
+	Exit immediately, without showing the UI, if stdin is
+	empty. **dmenu** mode only.
 
 *-v*,*--version*
 	Show the version number and quit

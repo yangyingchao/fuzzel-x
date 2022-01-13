@@ -28,6 +28,9 @@
   `--no-fuzzy`. When enabled, the fuzziness can be adjusted with
   `--fuzzy-max-length-discrepancy` and `--fuzzy-max-distance`
   (https://codeberg.org/dnkl/fuzzel/issues/56).
+* `--index` (dmenu mode only): print selected entry’s index instead of
+  its text (https://codeberg.org/dnkl/fuzzel/issues/88).
+
 
 ### Changed
 
