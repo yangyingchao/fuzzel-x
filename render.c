@@ -96,6 +96,11 @@ render_background(const struct render *render, struct buffer *buf)
             });
     } else {
 #if defined(FUZZEL_ENABLE_CAIRO)
+        /* Erase */
+        cairo_set_operator(buf->cairo, CAIRO_OPERATOR_CLEAR);
+        cairo_rectangle(buf->cairo, 0, 0, buf->width, buf->height);
+        cairo_fill(buf->cairo);
+
         /*
          * Lines in cairo are *between* pixels.
          *

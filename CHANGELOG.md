@@ -67,6 +67,9 @@
   (https://codeberg.org/dnkl/fuzzel/issues/80).
 * Tab and Shift+Tab not wrapping around
   (https://codeberg.org/dnkl/fuzzel/issues/78).
+* Visual glitches in the corners, when using rounded corners
+  (https://codeberg.org/dnkl/fuzzel/issues/90).
+
 
 ### Security
 ### Contributors
