@@ -551,13 +551,16 @@ render_match_list(const struct render *render, struct buffer *buf,
 
             const double size = min(buf->height * 0.618, buf->width * 0.618);
             const double img_x = (buf->width - size) / 2.;
-            const double img_y = first_row + (buf->height - size) / 2.;
+            const double img_y_bottom = max(buf->height - first_row, 0.);
+            const double img_y = max(img_y_bottom - size, 0.);
 
             const double list_end = first_row + match_count * row_height;
 
+            LOG_DBG("img_y=%f, list_end=%f", img_y, list_end);
+
             if (render_icons &&
                 match->application->icon.type == ICON_SVG &&
-                img_y > list_end)
+                img_y > list_end + row_height)
             {
                 render_svg(&match->application->icon, img_x, img_y, size, buf);
             }
