@@ -400,8 +400,6 @@ wcscasestr(const wchar_t *haystack, const wchar_t *needle)
 void
 matches_update(struct matches *matches, const struct prompt *prompt)
 {
-    assert(matches->max_matches_per_page > 0);
-
     if (matches->applications == NULL)
         return;
 
@@ -426,10 +424,10 @@ matches_update(struct matches *matches, const struct prompt *prompt)
         if (matches->selected >= matches->match_count && matches->selected > 0)
             matches->selected = matches->match_count - 1;
 
-        matches->page_count = (
-            matches->match_count + (matches->max_matches_per_page - 1)) /
-            matches->max_matches_per_page;
-
+        matches->page_count = matches->max_matches_per_page > 0
+            ? ((matches->match_count + (matches->max_matches_per_page - 1)) /
+               matches->max_matches_per_page)
+            : 1;
         return;
     }
 
@@ -561,9 +559,10 @@ matches_update(struct matches *matches, const struct prompt *prompt)
     /* Sort */
     qsort(matches->matches, matches->match_count, sizeof(matches->matches[0]), &match_compar);
 
-    matches->page_count = (
-        matches->match_count + (matches->max_matches_per_page - 1)) /
-        matches->max_matches_per_page;
+    matches->page_count = matches->max_matches_per_page
+        ? ((matches->match_count + (matches->max_matches_per_page - 1)) /
+           matches->max_matches_per_page)
+        : 1;
 
     if (matches->selected >= matches->match_count && matches->selected > 0)
         matches->selected = matches->match_count - 1;
