@@ -227,7 +227,7 @@ matches_get_page(const struct matches *matches)
 {
     return matches->max_matches_per_page != 0
         ? matches->selected / matches->max_matches_per_page
-        : 0;
+        : matches->selected;
 }
 
 const struct match *
