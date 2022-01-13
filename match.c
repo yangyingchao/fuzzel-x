@@ -219,7 +219,7 @@ matches_get_page_count(const struct matches *matches)
 {
     return matches->max_matches_per_page != 0
         ? matches->match_count / matches->max_matches_per_page
-        : 0;
+        : matches->match_count;
 }
 
 size_t
