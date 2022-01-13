@@ -263,6 +263,9 @@ matches_get_count(const struct matches *matches)
     const size_t total = matches->match_count;
     const size_t page_no = matches_get_page(matches);
 
+    if (matches->max_matches_per_page == 0)
+        return 0;
+
     if (total == 0)
         return 0;
     else if (page_no + 1 >= matches->page_count) {
