@@ -69,6 +69,8 @@
   (https://codeberg.org/dnkl/fuzzel/issues/78).
 * Visual glitches in the corners, when using rounded corners
   (https://codeberg.org/dnkl/fuzzel/issues/90).
+* Regression: `--dmenu --lines=0` crashing
+  (https://codeberg.org/dnkl/fuzzel/issues/92).
 
 
 ### Security

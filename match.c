@@ -219,7 +219,7 @@ matches_get_page_count(const struct matches *matches)
 {
     return matches->max_matches_per_page != 0
         ? matches->match_count / matches->max_matches_per_page
-        : 0;
+        : matches->match_count;
 }
 
 size_t
@@ -227,7 +227,7 @@ matches_get_page(const struct matches *matches)
 {
     return matches->max_matches_per_page != 0
         ? matches->selected / matches->max_matches_per_page
-        : 0;
+        : matches->selected;
 }
 
 const struct match *
@@ -262,6 +262,9 @@ matches_get_count(const struct matches *matches)
 {
     const size_t total = matches->match_count;
     const size_t page_no = matches_get_page(matches);
+
+    if (matches->max_matches_per_page == 0)
+        return 0;
 
     if (total == 0)
         return 0;
@@ -400,8 +403,6 @@ wcscasestr(const wchar_t *haystack, const wchar_t *needle)
 void
 matches_update(struct matches *matches, const struct prompt *prompt)
 {
-    assert(matches->max_matches_per_page > 0);
-
     if (matches->applications == NULL)
         return;
 
@@ -426,10 +427,10 @@ matches_update(struct matches *matches, const struct prompt *prompt)
         if (matches->selected >= matches->match_count && matches->selected > 0)
             matches->selected = matches->match_count - 1;
 
-        matches->page_count = (
-            matches->match_count + (matches->max_matches_per_page - 1)) /
-            matches->max_matches_per_page;
-
+        matches->page_count = matches->max_matches_per_page > 0
+            ? ((matches->match_count + (matches->max_matches_per_page - 1)) /
+               matches->max_matches_per_page)
+            : 1;
         return;
     }
 
@@ -561,9 +562,10 @@ matches_update(struct matches *matches, const struct prompt *prompt)
     /* Sort */
     qsort(matches->matches, matches->match_count, sizeof(matches->matches[0]), &match_compar);
 
-    matches->page_count = (
-        matches->match_count + (matches->max_matches_per_page - 1)) /
-        matches->max_matches_per_page;
+    matches->page_count = matches->max_matches_per_page
+        ? ((matches->match_count + (matches->max_matches_per_page - 1)) /
+           matches->max_matches_per_page)
+        : 1;
 
     if (matches->selected >= matches->match_count && matches->selected > 0)
         matches->selected = matches->match_count - 1;
