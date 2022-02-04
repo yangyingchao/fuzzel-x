@@ -244,6 +244,8 @@ print_usage(const char *prog_name)
            "                                 entry's text (dmenu mode only)\n"
            "  -R,--no-run-if-empty           exit immediately without showing UI if stdin\n"
            "                                 is empty (dmenu mode only)\n"
+           "     --log-level={info|warning|error|none}\n"
+           "                                 log level (info)\n"
            "  -v,--version                   show the version number and quit\n");
     printf("\n");
     printf("All colors are RGBA - i.e. 8-digit hex values, without prefix.\n");
@@ -462,6 +464,7 @@ main(int argc, char *const *argv)
     #define OPT_FUZZY_MAX_LENGTH_DISCREPANCY 261
     #define OPT_FUZZY_MAX_DISTANCE           262
     #define OPT_DMENU_INDEX                  263
+    #define OPT_LOG_LEVEL                    264
 
     static const struct option longopts[] = {
         {"output"  ,             required_argument, 0, 'o'},
@@ -500,6 +503,7 @@ main(int argc, char *const *argv)
         {"index",                no_argument,       0, OPT_DMENU_INDEX},
 
         /* Misc */
+        {"log-level",            required_argument, 0, OPT_LOG_LEVEL},
         {"version",              no_argument,       0, 'v'},
         {"help",                 no_argument,       0, 'h'},
         {NULL,                   no_argument,       0, 0},
@@ -519,6 +523,7 @@ main(int argc, char *const *argv)
     size_t fuzzy_max_length_discrepancy = 2;
     size_t fuzzy_max_distance = 1;
     const char *launch_prefix = NULL;
+    enum log_class log_level = LOG_CLASS_INFO;
 
     bool dmenu_mode = false;
     enum dmenu_mode dmenu_format = DMENU_MODE_TEXT;
@@ -834,6 +839,19 @@ main(int argc, char *const *argv)
             dmenu_format = DMENU_MODE_INDEX;
             break;
 
+        case OPT_LOG_LEVEL: {
+            int lvl = log_level_from_string(optarg);
+            if (lvl < 0) {
+                fprintf(
+                    stderr,
+                    "--log-level: %s: argument must be one of %s\n",
+                    optarg, log_level_string_hint());
+                return EXIT_FAILURE;
+            }
+            log_level = lvl;
+            break;
+        }
+
         case 'v':
             printf("fuzzel version %s\n", FUZZEL_VERSION);
             return EXIT_SUCCESS;
@@ -854,8 +872,11 @@ main(int argc, char *const *argv)
 
     int ret = EXIT_FAILURE;
 
-    log_init(LOG_COLORIZE_AUTO, true, LOG_FACILITY_USER, LOG_CLASS_INFO);
-    fcft_log_init(FCFT_LOG_COLORIZE_AUTO, true, FCFT_LOG_CLASS_INFO);
+    _Static_assert((int)LOG_CLASS_ERROR == (int)FCFT_LOG_CLASS_ERROR,
+                   "fcft log level enum offset");
+
+    log_init(LOG_COLORIZE_AUTO, true, LOG_FACILITY_USER, log_level);
+    fcft_log_init(FCFT_LOG_COLORIZE_AUTO, true, (enum fcft_log_class)log_level);
 
     mtx_t icon_lock;
     if (mtx_init(&icon_lock, mtx_plain) != thrd_success) {
