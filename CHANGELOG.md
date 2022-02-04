@@ -30,6 +30,8 @@
   (https://codeberg.org/dnkl/fuzzel/issues/56).
 * `--index` (dmenu mode only): print selected entry’s index instead of
   its text (https://codeberg.org/dnkl/fuzzel/issues/88).
+* `--log-level=info|warning|error|none` command line option
+  (https://codeberg.org/dnkl/fuzzel/issues/34).
 
 
 ### Changed
