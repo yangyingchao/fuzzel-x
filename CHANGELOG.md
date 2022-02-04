@@ -59,7 +59,9 @@
 * Icons are now loaded in a thread. This allows us to display the
   application list quickly (initially without icons, if loading them
   takes “too” long).
-
+* Fuzzel now exits with exit code 0 when the non-dmenu launcher is
+  aborted (no application has been launched) by the user
+  (https://codeberg.org/dnkl/fuzzel/issues/98).
 
 ### Deprecated
 ### Removed
