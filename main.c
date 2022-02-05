@@ -246,6 +246,7 @@ print_usage(const char *prog_name)
            "                                 is empty (dmenu mode only)\n"
            "     --log-level={info|warning|error|none}\n"
            "                                 log level (info)\n"
+           "     --log-no-syslog             disable syslog logging\n"
            "  -v,--version                   show the version number and quit\n");
     printf("\n");
     printf("All colors are RGBA - i.e. 8-digit hex values, without prefix.\n");
@@ -465,6 +466,7 @@ main(int argc, char *const *argv)
     #define OPT_FUZZY_MAX_DISTANCE           262
     #define OPT_DMENU_INDEX                  263
     #define OPT_LOG_LEVEL                    264
+    #define OPT_LOG_NO_SYSLOG                265
 
     static const struct option longopts[] = {
         {"output"  ,             required_argument, 0, 'o'},
@@ -504,6 +506,7 @@ main(int argc, char *const *argv)
 
         /* Misc */
         {"log-level",            required_argument, 0, OPT_LOG_LEVEL},
+        {"log-no-syslog",        no_argument,       0, OPT_LOG_NO_SYSLOG},
         {"version",              no_argument,       0, 'v'},
         {"help",                 no_argument,       0, 'h'},
         {NULL,                   no_argument,       0, 0},
@@ -524,6 +527,7 @@ main(int argc, char *const *argv)
     size_t fuzzy_max_distance = 1;
     const char *launch_prefix = NULL;
     enum log_class log_level = LOG_CLASS_INFO;
+    bool log_syslog = true;
 
     bool dmenu_mode = false;
     enum dmenu_mode dmenu_format = DMENU_MODE_TEXT;
@@ -852,6 +856,10 @@ main(int argc, char *const *argv)
             break;
         }
 
+        case OPT_LOG_NO_SYSLOG:
+            log_syslog = false;
+            break;
+
         case 'v':
             printf("fuzzel version %s\n", FUZZEL_VERSION);
             return EXIT_SUCCESS;
@@ -875,8 +883,8 @@ main(int argc, char *const *argv)
     _Static_assert((int)LOG_CLASS_ERROR == (int)FCFT_LOG_CLASS_ERROR,
                    "fcft log level enum offset");
 
-    log_init(LOG_COLORIZE_AUTO, true, LOG_FACILITY_USER, log_level);
-    fcft_log_init(FCFT_LOG_COLORIZE_AUTO, true, (enum fcft_log_class)log_level);
+    log_init(LOG_COLORIZE_AUTO, log_syslog, LOG_FACILITY_USER, log_level);
+    fcft_log_init(FCFT_LOG_COLORIZE_AUTO, log_syslog, (enum fcft_log_class)log_level);
 
     mtx_t icon_lock;
     if (mtx_init(&icon_lock, mtx_plain) != thrd_success) {

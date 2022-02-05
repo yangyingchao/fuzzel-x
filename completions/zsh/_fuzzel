@@ -34,7 +34,8 @@ _arguments \
     '(-d --dmenu)'{-d,--dmenu}'[dmenu compatibility mode; list entries are read from stdin]' \
     "--index[print selected entry's index instead of its text (dmenu mode only)]" \
     '(-R --no-run-if-empty)'{-R,--no-run-if-empty}'[exit immediately without showing the UI if stdin is empty (dmenu mode only)]' \
-    '--log-level[log level (info)]:loglevel:(info warning error none)'
+    '--log-level[log level (info)]:loglevel:(info warning error none)' \
+    '--log-no-syslog[disable syslog logging]'
 
 case "${state}" in
     fonts)

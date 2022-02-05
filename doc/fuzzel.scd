@@ -194,6 +194,9 @@ options:
 	Log level, used both for log output on stderr as well as
 	syslog. Default: _info_.
 
+*--log-no-syslog*
+	Disables syslog logging. Logging is only done on stderr.
+
 *-v*,*--version*
 	Show the version number and quit
 
