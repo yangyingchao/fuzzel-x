@@ -246,6 +246,9 @@ print_usage(const char *prog_name)
            "                                 is empty (dmenu mode only)\n"
            "     --log-level={info|warning|error|none}\n"
            "                                 log level (info)\n"
+           "     --log-colorize=[never|always|auto]\n"
+           "                                 enable/disable colorization of log output on\n"
+           "                                 stderr\n"
            "     --log-no-syslog             disable syslog logging\n"
            "  -v,--version                   show the version number and quit\n");
     printf("\n");
@@ -466,7 +469,8 @@ main(int argc, char *const *argv)
     #define OPT_FUZZY_MAX_DISTANCE           262
     #define OPT_DMENU_INDEX                  263
     #define OPT_LOG_LEVEL                    264
-    #define OPT_LOG_NO_SYSLOG                265
+    #define OPT_LOG_COLORIZE                 265
+    #define OPT_LOG_NO_SYSLOG                266
 
     static const struct option longopts[] = {
         {"output"  ,             required_argument, 0, 'o'},
@@ -506,6 +510,7 @@ main(int argc, char *const *argv)
 
         /* Misc */
         {"log-level",            required_argument, 0, OPT_LOG_LEVEL},
+        {"log-colorize",         optional_argument, 0, OPT_LOG_COLORIZE},
         {"log-no-syslog",        no_argument,       0, OPT_LOG_NO_SYSLOG},
         {"version",              no_argument,       0, 'v'},
         {"help",                 no_argument,       0, 'h'},
@@ -526,7 +531,9 @@ main(int argc, char *const *argv)
     size_t fuzzy_max_length_discrepancy = 2;
     size_t fuzzy_max_distance = 1;
     const char *launch_prefix = NULL;
+
     enum log_class log_level = LOG_CLASS_INFO;
+    enum log_colorize log_colorize = LOG_COLORIZE_AUTO;
     bool log_syslog = true;
 
     bool dmenu_mode = false;
@@ -856,6 +863,19 @@ main(int argc, char *const *argv)
             break;
         }
 
+        case OPT_LOG_COLORIZE:
+            if (optarg == NULL || strcmp(optarg, "auto") == 0)
+                log_colorize = LOG_COLORIZE_AUTO;
+            else if (strcmp(optarg, "never") == 0)
+                log_colorize = LOG_COLORIZE_NEVER;
+            else if (strcmp(optarg, "always") == 0)
+                log_colorize = LOG_COLORIZE_ALWAYS;
+            else {
+                fprintf(stderr, "--log-colorize: %s: argument must be one of 'never', 'always' or 'auto'\n", optarg);
+                return EXIT_FAILURE;
+            }
+            break;
+
         case OPT_LOG_NO_SYSLOG:
             log_syslog = false;
             break;
@@ -882,9 +902,11 @@ main(int argc, char *const *argv)
 
     _Static_assert((int)LOG_CLASS_ERROR == (int)FCFT_LOG_CLASS_ERROR,
                    "fcft log level enum offset");
+    _Static_assert((int)LOG_COLORIZE_ALWAYS == (int)FCFT_LOG_COLORIZE_ALWAYS,
+                   "fcft colorize enum mismatch");
 
-    log_init(LOG_COLORIZE_AUTO, log_syslog, LOG_FACILITY_USER, log_level);
-    fcft_log_init(FCFT_LOG_COLORIZE_AUTO, log_syslog, (enum fcft_log_class)log_level);
+    log_init(log_colorize, log_syslog, LOG_FACILITY_USER, log_level);
+    fcft_log_init((enum fcft_log_colorize)log_colorize, log_syslog, (enum fcft_log_class)log_level);
 
     mtx_t icon_lock;
     if (mtx_init(&icon_lock, mtx_plain) != thrd_success) {

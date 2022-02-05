@@ -33,6 +33,7 @@
 * `--log-level=info|warning|error|none` command line option
   (https://codeberg.org/dnkl/fuzzel/issues/34).
 * `--log-no-syslog` command line option.
+* `--log-colorize=auto|never|always` command line option.
 
 
 ### Changed
