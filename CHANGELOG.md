@@ -1,6 +1,6 @@
 # Changelog
 
-[Unreleased](#unreleased)
+* [1.7.0](#1-7-0)
 * [1.6.5](#1-6-5)
 * [1.6.4](#1-6-4)
 * [1.6.3](#1-6-3)
@@ -16,7 +16,8 @@
 * [1.4.1](#1-4-1)
 
 
-## Unreleased
+## 1.7.0
+
 ### Added
 
 * `-F,--fields=FIELDS` command line option, allowing you to select
@@ -65,8 +66,7 @@
   aborted (no application has been launched) by the user
   (https://codeberg.org/dnkl/fuzzel/issues/98).
 
-### Deprecated
-### Removed
+
 ### Fixed
 
 * Long entries overrunning the right side padding
@@ -79,8 +79,10 @@
   (https://codeberg.org/dnkl/fuzzel/issues/92).
 
 
-### Security
 ### Contributors
+
+* yangyingchao
+* ReplayCoding
 
 
 ## 1.6.5
