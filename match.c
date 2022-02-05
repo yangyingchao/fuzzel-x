@@ -7,6 +7,7 @@
 #define LOG_MODULE "match"
 #define LOG_ENABLE_DBG 0
 #include "log.h"
+#include "char32.h"
 
 #define min(x, y) ((x < y) ? (x) : (y))
 #define max(x, y) ((x > y) ? (x) : (y))
@@ -32,8 +33,8 @@ struct levenshtein_matrix {
 };
 
 static void
-levenshtein_distance(const wchar_t *a, size_t alen,
-                     const wchar_t *b, size_t blen,
+levenshtein_distance(const char32_t *a, size_t alen,
+                     const char32_t *b, size_t blen,
                      struct levenshtein_matrix **m)
 {
     for (size_t i = 1; i <= blen; i++) {
@@ -61,15 +62,15 @@ levenshtein_distance(const wchar_t *a, size_t alen,
     }
 }
 
-static const wchar_t *
+static const char32_t *
 match_levenshtein(struct matches *matches,
-                  const wchar_t *src, const wchar_t *pat)
+                  const char32_t *src, const char32_t *pat)
 {
     if (!matches->fuzzy)
         return NULL;
 
-    const size_t src_len = wcslen(src);
-    const size_t pat_len = wcslen(pat);
+    const size_t src_len = c32len(src);
+    const size_t pat_len = c32len(pat);
 
     if (pat_len < matches->fuzzy_min_length)
         return NULL;
@@ -375,11 +376,11 @@ match_compar(const void *_a, const void *_b)
         return 0;
 }
 
-static wchar_t *
-wcscasestr(const wchar_t *haystack, const wchar_t *needle)
+static char32_t *
+c32casestr(const char32_t *haystack, const char32_t *needle)
 {
-    const size_t hay_len = wcslen(haystack);
-    const size_t needle_len = wcslen(needle);
+    const size_t hay_len = c32len(haystack);
+    const size_t needle_len = c32len(needle);
 
     if (needle_len > hay_len)
         return NULL;
@@ -387,14 +388,14 @@ wcscasestr(const wchar_t *haystack, const wchar_t *needle)
     for (size_t i = 0; i < hay_len - needle_len + 1; i++) {
         bool matched = true;
         for (size_t j = 0; j < needle_len; j++) {
-            if (towlower(haystack[i + j]) != towlower(needle[j])) {
+            if (toc32lower(haystack[i + j]) != toc32lower(needle[j])) {
                 matched = false;
                 break;
             }
         }
 
         if (matched)
-            return (wchar_t *)&haystack[i];
+            return (char32_t *)&haystack[i];
     }
 
     return NULL;
@@ -406,10 +407,10 @@ matches_update(struct matches *matches, const struct prompt *prompt)
     if (matches->applications == NULL)
         return;
 
-    const wchar_t *ptext = prompt_text(prompt);
+    const char32_t *ptext = prompt_text(prompt);
 
     /* Nothing entered; all programs found matches */
-    if (wcslen(ptext) == 0) {
+    if (c32len(ptext) == 0) {
 
         for (size_t i = 0; i < matches->applications->count; i++) {
             matches->matches[i] = (struct match){
@@ -464,69 +465,71 @@ matches_update(struct matches *matches, const struct prompt *prompt)
         ssize_t start_title = -1;
 
         if (matched_type == MATCHED_NONE && match_name) {
-            const wchar_t *m = wcscasestr(app->title, ptext);
+            const char32_t *m = c32casestr(app->title, ptext);
             if (m != NULL) {
                 matched_type = MATCHED_EXACT;
                 start_title = m - app->title;
-                LOG_DBG("%ls: exact title", app->title);
+                LOG_DBG("%ls: exact title", (const wchar_t *)app->title);
             } else if ((m = match_levenshtein(matches, app->title, ptext)) != NULL) {
                 matched_type = MATCHED_FUZZY;
                 start_title = m - app->title;
-                LOG_DBG("%ls: fuzzy title", app->title);
+                LOG_DBG("%ls: fuzzy title", (const wchar_t *)app->title);
             }
         }
 
         if (matched_type == MATCHED_NONE && match_filename && app->basename != NULL) {
-            if (wcscasestr(app->basename, ptext) != NULL) {
+            if (c32casestr(app->basename, ptext) != NULL) {
                 matched_type = MATCHED_EXACT;
-                LOG_DBG("%ls: exact filename", app->title);
+                LOG_DBG("%ls: exact filename", (const wchar_t *)app->title);
             }
             else if (match_levenshtein(matches, app->basename, ptext) != NULL) {
                 matched_type = MATCHED_FUZZY;
-                LOG_DBG("%ls: fuzzy filename", app->title);
+                LOG_DBG("%ls: fuzzy filename", (const wchar_t *)app->title);
             }
         }
 
         if (matched_type == MATCHED_NONE && match_generic && app->generic_name != NULL) {
-            if (wcscasestr(app->generic_name, ptext) != NULL) {
+            if (c32casestr(app->generic_name, ptext) != NULL) {
                 matched_type = MATCHED_EXACT;
-                LOG_DBG("%ls: exact generic", app->title);
+                LOG_DBG("%ls: exact generic", (const wchar_t *)app->title);
             }
             else if (match_levenshtein(matches, app->generic_name, ptext) != NULL) {
                 matched_type = MATCHED_FUZZY;
-                LOG_DBG("%ls: fuzzy generic", app->title);
+                LOG_DBG("%ls: fuzzy generic", (const wchar_t *)app->title);
             }
         }
 
         if (matched_type == MATCHED_NONE && match_exec && app->wexec != NULL) {
-            if (wcscasestr(app->wexec, ptext) != NULL) {
+            if (c32casestr(app->wexec, ptext) != NULL) {
                 matched_type = MATCHED_EXACT;
-                LOG_DBG("%ls: exact exec", app->title);
+                LOG_DBG("%ls: exact exec", (const wchar_t *)app->title);
             } else if (match_levenshtein(matches, app->wexec, ptext) != NULL) {
                 matched_type = MATCHED_FUZZY;
-                LOG_DBG("%ls: fuzzy exec", app->title);
+                LOG_DBG("%ls: fuzzy exec", (const wchar_t *)app->title);
             }
         }
 
         if (matched_type == MATCHED_NONE && match_comment && app->comment != NULL) {
-            if (wcscasestr(app->comment, ptext) != NULL) {
+            if (c32casestr(app->comment, ptext) != NULL) {
                 matched_type = MATCHED_EXACT;
-                LOG_DBG("%ls: exact comment", app->title);
+                LOG_DBG("%ls: exact comment", (const wchar_t *)app->title);
             } else if (match_levenshtein(matches, app->comment, ptext) != NULL) {
                 matched_type = MATCHED_FUZZY;
-                LOG_DBG("%ls: fuzzy comment", app->title);
+                LOG_DBG("%ls: fuzzy comment", (const wchar_t *)app->title);
             }
         }
 
         if (matched_type == MATCHED_NONE && match_keywords) {
             tll_foreach(app->keywords, it) {
-                if (wcscasestr(it->item, ptext) != NULL) {
+                if (c32casestr(it->item, ptext) != NULL) {
                     matched_type = MATCHED_EXACT;
-                    LOG_DBG("%ls: exact keyword (%ls)", app->title, it->item);
+                    LOG_DBG("%ls: exact keyword (%ls)",
+                            (const wchar_t *)app->title, (const wchar_t *)it->item);
                     break;
                 } else if (match_levenshtein(matches, it->item, ptext) != NULL) {
                     matched_type = MATCHED_FUZZY;
-                    LOG_DBG("%ls: fuzzy keyword (%ls)", app->title, it->item);
+                    LOG_DBG("%ls: fuzzy keyword (%ls)",
+                            (const wchar_t *)app->title, (const wchar_t *)it->item);
                     break;
                 }
             }
@@ -534,13 +537,15 @@ matches_update(struct matches *matches, const struct prompt *prompt)
 
         if (matched_type == MATCHED_NONE && match_categories) {
             tll_foreach(app->categories, it) {
-                if (wcscasestr(it->item, ptext) != NULL) {
+                if (c32casestr(it->item, ptext) != NULL) {
                     matched_type = MATCHED_EXACT;
-                    LOG_DBG("%ls: exact category (%ls)", app->title, it->item);
+                    LOG_DBG("%ls: exact category (%ls)",
+                            (const wchar_t *)app->title, (const wchar_t *)it->item);
                     break;
                 } else if (match_levenshtein(matches, it->item, ptext) != NULL) {
                     matched_type = MATCHED_FUZZY;
-                    LOG_DBG("%ls: fuzzy category (%ls)", app->title, it->item);
+                    LOG_DBG("%ls: fuzzy category (%ls)",
+                            (const wchar_t *)app->title, (const wchar_t *)it->item);
                     break;
                 }
             }

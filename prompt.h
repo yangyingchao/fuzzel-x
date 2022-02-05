@@ -2,16 +2,16 @@
 
 #include <stddef.h>
 #include <stdbool.h>
-#include <wchar.h>
+#include <uchar.h>
 
 struct prompt;
-struct prompt *prompt_init(const wchar_t *prompt_text);
+struct prompt *prompt_init(const char32_t *prompt_text);
 void prompt_destroy(struct prompt *prompt);
 
 bool prompt_insert_chars(struct prompt *prompt, const char *text, size_t len);
 
-const wchar_t *prompt_prompt(const struct prompt *prompt);
-const wchar_t *prompt_text(const struct prompt *prompt);
+const char32_t *prompt_prompt(const struct prompt *prompt);
+const char32_t *prompt_text(const struct prompt *prompt);
 size_t prompt_cursor(const struct prompt *prompt);
 
 bool prompt_cursor_home(struct prompt *prompt);

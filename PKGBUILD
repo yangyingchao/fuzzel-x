@@ -10,7 +10,7 @@ arch=('x86_64' 'aarch64')
 url=https://codeberg.org/dnkl/fuzzel
 license=(mit)
 makedepends=('meson' 'ninja' 'scdoc' 'wayland-protocols' 'tllist>=1.0.1')
-depends=('libxkbcommon' 'wayland' 'pixman' 'fcft>=2.4.0')
+depends=('libxkbcommon' 'wayland' 'pixman' 'fcft>=3.0.0' 'fcft<4.0.0')
 source=()
 
 if [[ ${PNG_BACKEND} == libpng ]]; then

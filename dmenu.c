@@ -12,11 +12,12 @@
 #define LOG_MODULE "dmenu"
 #define LOG_ENABLE_DBG 0
 #include "log.h"
+#include "char32.h"
 
 void
 dmenu_load_entries(struct application_list *applications)
 {
-    tll(wchar_t *) entries = tll_init();
+    tll(char32_t *) entries = tll_init();
 
     char *line = NULL;
     size_t alloc_size = 0;
@@ -36,12 +37,10 @@ dmenu_load_entries(struct application_list *applications)
 
         LOG_DBG("%s", line);
 
-        size_t wlen = mbstowcs(NULL, line, 0);
-        if (wlen == (size_t) -1)
+        char32_t *wline = ambstoc32(line);
+        if (wline == NULL)
             continue;
 
-        wchar_t *wline = malloc((wlen + 1) * sizeof(wchar_t));
-        mbstowcs(wline, line, wlen + 1);
         tll_push_back(entries, wline);
     }
 
@@ -71,12 +70,13 @@ dmenu_execute(const struct application *app, ssize_t index,
         assert(false);
         return false;
 
-    case DMENU_MODE_TEXT:
-        if (app != NULL)
-            printf("%ls\n", app->title);
-        else
-            printf("%ls\n", prompt_text(prompt));
+    case DMENU_MODE_TEXT: {
+        char *text = ac32tombs(app != NULL ? app->title : prompt_text(prompt));
+        if (text != NULL)
+            printf("%s\n", text);
+        free(text);
         break;
+    }
 
     case DMENU_MODE_INDEX:
         printf("%zd\n", index);

@@ -15,6 +15,7 @@
 #define LOG_MODULE "application"
 #define LOG_ENABLE_DBG 0
 #include "log.h"
+#include "char32.h"
 
 static bool
 push_argv(char ***argv, size_t *size, char *arg, size_t *argc)
@@ -109,10 +110,10 @@ err:
 bool
 application_execute(const struct application *app, const struct prompt *prompt, const char *launch_prefix)
 {
-    const wchar_t *ptext = prompt_text(prompt);
-    const size_t clen = wcstombs(NULL, ptext, 0);
+    const char32_t *ptext = prompt_text(prompt);
+    const size_t clen = c32tombs(NULL, ptext, 0);
     char cprompt[clen + 1];
-    wcstombs(cprompt, ptext, clen + 1);
+    c32tombs(cprompt, ptext, clen + 1);
 
     const char *execute = app != NULL ? app->exec : cprompt;
     const char *path = app != NULL ? app->path : NULL;

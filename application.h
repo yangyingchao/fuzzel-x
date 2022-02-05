@@ -42,19 +42,19 @@ struct icon {
     rasterized_list_t rasterized;
 };
 
-typedef tll(wchar_t *) wchar_list_t;
+typedef tll(char32_t *) char32_list_t;
 
 struct application {
     char *id;
     char *path;
     char *exec;
-    wchar_t *basename;
-    wchar_t *wexec;  /* Same as ‘exec’, but for matching purposes */
-    wchar_t *title;
-    wchar_t *generic_name;
-    wchar_t *comment;
-    wchar_list_t keywords;
-    wchar_list_t categories;
+    char32_t *basename;
+    char32_t *wexec;  /* Same as ‘exec’, but for matching purposes */
+    char32_t *title;
+    char32_t *generic_name;
+    char32_t *comment;
+    char32_list_t keywords;
+    char32_list_t categories;
     struct icon icon;
     unsigned count;
     struct fcft_text_run *shaped;
