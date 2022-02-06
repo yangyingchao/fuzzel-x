@@ -19,7 +19,13 @@
 
 ## Unreleased
 ### Added
+
 ### Changed
+
+* libpng warnings are now routed through fuzzel’s logging
+  (https://codeberg.org/dnkl/fuzzel/issues/101).
+
+
 ### Deprecated
 ### Removed
 ### Fixed

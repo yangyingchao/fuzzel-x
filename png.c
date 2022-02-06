@@ -16,6 +16,12 @@
 #include "log.h"
 #include "stride.h"
 
+static void
+png_warning_cb(png_structp png_ptr, png_const_charp warning_msg)
+{
+    LOG_WARN("libpng: %s", warning_msg);
+}
+
 pixman_image_t *
 png_load(const char *path)
 {
@@ -53,6 +59,10 @@ png_load(const char *path)
         LOG_ERR("%s: libpng error", path);
         goto err;
     }
+
+    /* Set custom “warning” function */
+    png_set_error_fn(
+        png_ptr, png_get_error_ptr(png_ptr), NULL, &png_warning_cb);
 
     png_init_io(png_ptr, fp);
     png_set_sig_bytes(png_ptr, 8);
