@@ -7,6 +7,7 @@
 #include <threads.h>
 
 #include <locale.h>
+#include <libgen.h>
 
 #include <sys/types.h>
 #include <sys/mman.h>
