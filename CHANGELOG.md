@@ -18,7 +18,12 @@
 
 
 ## Unreleased
+
 ### Added
+
+* If `argv[0]` is _dmenu_, fuzzel now starts in dmenu mode
+  (https://codeberg.org/dnkl/fuzzel/issues/107).
+
 
 ### Changed
 

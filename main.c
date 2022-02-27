@@ -561,6 +561,18 @@ main(int argc, char *const *argv)
 
     setlocale(LC_CTYPE, "");
 
+    /* Auto-enable dmenu mode if invoked through a ‘dmenu’ symlink */
+    if (argv[0] != NULL) {
+        char *copy = strdup(argv[0]);
+        if (copy != NULL) {
+            const char *name = basename(copy);
+            if (name != NULL && strcmp(name, "dmenu") == 0)
+                dmenu_mode = true;
+
+            free(copy);
+        }
+    }
+
     while (true) {
         int c = getopt_long(argc, argv, ":o:f:D:i:IF:l:w:x:y:p:P:b:t:m:s:S:B:r:C:T:dRvh", longopts, NULL);
         if (c == -1)

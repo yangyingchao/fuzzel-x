@@ -181,6 +181,10 @@ options:
 	from stdin (newline separated). The selected entry is printed to
 	stdout. If the input string does not match any of the entries, the
 	input string is printed as is on stdout.
+	
+	Alternatively, you can symlink the fuzzel binary to
+	*dmenu*. Fuzzel will then start in dmenu mode, without the
+	*--dmenu* argument.
 
 *--index*
 	Print selected entry's index instead of its text. **dmenu** mode
