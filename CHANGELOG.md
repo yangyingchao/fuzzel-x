@@ -22,6 +22,7 @@
 
 ### Changed
 
+* Minimum required meson version is now 0.58.
 * libpng warnings are now routed through fuzzel’s logging
   (https://codeberg.org/dnkl/fuzzel/issues/101).
 * Nanosvg is now the default SVG backend. librsvg is still supported,
