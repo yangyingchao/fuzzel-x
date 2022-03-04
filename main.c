@@ -14,6 +14,7 @@
 #include <sys/stat.h>
 #include <sys/file.h>
 #include <sys/epoll.h>
+#include <sys/eventfd.h>
 #include <fcntl.h>
 #include <dirent.h>
 
@@ -54,6 +55,7 @@ struct context {
     } options;
 
     int event_fd;
+    int dmenu_abort_fd;
 };
 
 static struct rgba
@@ -377,7 +379,7 @@ populate_apps(void *_ctx)
     bool icons_enabled = ctx->options.icons_enabled;
 
     if (dmenu_mode) {
-        dmenu_load_entries(apps);
+        dmenu_load_entries(apps, ctx->dmenu_abort_fd);
         return send_event(ctx->event_fd, EVENT_APPS_LOADED);
     }
 
@@ -939,6 +941,7 @@ main(int argc, char *const *argv)
     thrd_t app_thread_id;
     bool join_app_thread = false;
     int event_pipe[2] = {-1, -1};
+    int dmenu_abort_fd = -1;
 
     char *lock_file = NULL;
     int file_lock_fd = -1;
@@ -978,12 +981,18 @@ main(int argc, char *const *argv)
          * If no_run_if_empty is set, we *must* load the entries
          * *before displaying the window.
          */
-        dmenu_load_entries(apps);
+        dmenu_load_entries(apps, -1);
         if (apps->count == 0)
             goto out;
 
         matches_set_applications(matches, apps);
         matches_update(matches, prompt);
+    } else if (dmenu_mode) {
+        dmenu_abort_fd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
+        if (dmenu_abort_fd < 0) {
+            LOG_ERRNO("failed to create event FD for dmenu mode");
+            goto out;
+        }
     }
 
     struct context ctx = {
@@ -1001,6 +1010,7 @@ main(int argc, char *const *argv)
             .dmenu_mode = dmenu_mode,
         },
         .event_fd = -1,
+        .dmenu_abort_fd = dmenu_abort_fd,
     };
 
     if ((wayl = wayl_init(
@@ -1047,6 +1057,11 @@ main(int argc, char *const *argv)
 
 out:
     if (join_app_thread) {
+        if (dmenu_abort_fd >= 0) {
+            if (write(dmenu_abort_fd, &(uint64_t){1}, sizeof(uint64_t)) < 0)
+                LOG_ERRNO("failed to signal abort");
+        }
+
         int res;
         thrd_join(app_thread_id, &res);
 
@@ -1065,6 +1080,9 @@ out:
     }
     if (event_pipe[1] >= 0)
         close(event_pipe[1]);
+
+    if (dmenu_abort_fd >= 0)
+        close(dmenu_abort_fd);
 
     mtx_destroy(&icon_lock);
 

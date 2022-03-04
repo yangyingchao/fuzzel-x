@@ -32,6 +32,9 @@
   (https://codeberg.org/dnkl/fuzzel/issues/101).
 * Nanosvg is now the default SVG backend. librsvg is still supported,
   and can be used by setting the `-Dsvg-backend=librsvg` meson option.
+* It is no longer necessary to close stdin when using fuzzel in dmenu
+  mode, as long as `--no-run-if-empty` is **not** being used
+  (https://codeberg.org/dnkl/fuzzel/issues/106).
 
 
 ### Deprecated
