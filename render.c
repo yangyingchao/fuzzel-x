@@ -174,6 +174,8 @@ render_prompt(const struct render *render, struct buffer *buf,
     struct fcft_font *font = render->font;
     assert(font != NULL);
 
+    const struct render_options *opts = &render->options;
+
     const char32_t *pprompt = prompt_prompt(prompt);
     const size_t prompt_len = c32len(pprompt);
 
@@ -191,9 +193,15 @@ render_prompt(const struct render *render, struct buffer *buf,
     char32_t prev = 0;
 
     for (size_t i = 0; i < prompt_len + text_len; i++) {
-        char32_t wc = i < prompt_len ? pprompt[i] : ptext[i - prompt_len];
+        char32_t wc = i < prompt_len
+            ? pprompt[i]
+            : (opts->password != 0
+               ? opts->password
+               : ptext[i - prompt_len]);
+
         const struct fcft_glyph *glyph = fcft_rasterize_char_utf32(
             font, wc, subpixel);
+
         if (glyph == NULL) {
             prev = wc;
             continue;

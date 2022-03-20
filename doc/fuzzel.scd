@@ -70,7 +70,7 @@ options:
 *-I*,*--no-icons*
 	Do not render any icons.
 
-*-F*,*--fields*=FIELDS
+*-F*,*--fields*=_FIELDS_
 	Comma separated list of XDG Desktop entry fields to match against:
 	
 	- *filename*: the .desktop file's filename
@@ -82,6 +82,10 @@ options:
 	- *comment*: the application's comment
 	
 	Default: _filename,name,generic_
+
+*--password*=[_CHARACTER_]
+	Password input. Render all typed text as _CHARACTER_. If
+	_CHARACTER_ is omitted, a *\** will be used.
 
 *-T*,*--terminal*=_TERMINAL ARGS_
 	Command to launch XDG applications with the property

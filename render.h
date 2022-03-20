@@ -22,6 +22,7 @@ struct render_options {
         unsigned y;
         unsigned inner;
     } pad;
+    char32_t password;
 
     struct rgba background_color;
     struct rgba border_color;

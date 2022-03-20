@@ -23,6 +23,10 @@
 
 * If `argv[0]` is _dmenu_, fuzzel now starts in dmenu mode
   (https://codeberg.org/dnkl/fuzzel/issues/107).
+* `--password=[CHARACTER]` command line option. Intended to be used
+  with “password input”; all typed text is rendered as _CHARACTER_,
+  defaulting to `*` if _CHARACTER_ is omitted
+  (https://codeberg.org/dnkl/fuzzel/issues/108).
 
 
 ### Changed

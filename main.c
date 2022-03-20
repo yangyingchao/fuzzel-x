@@ -210,6 +210,7 @@ print_usage(const char *prog_name)
            "  -I,--no-icons                  do not render any icons\n"
            "  -F,--fields=FIELDS             comma separated list of XDG Desktop entry\n"
            "                                 fields to match\n"
+           "     --password=[CHARACTER]      render all input as CHARACTER ('*' by default)\n"
            "  -T,--terminal                  terminal command to use when launching\n"
            "                                 'terminal' programs, e.g. \"xterm -e\".\n"
            "                                 Not used in dmenu mode (not set)\n"
@@ -474,6 +475,7 @@ main(int argc, char *const *argv)
     #define OPT_LOG_LEVEL                    264
     #define OPT_LOG_COLORIZE                 265
     #define OPT_LOG_NO_SYSLOG                266
+    #define OPT_PASSWORD                     267
 
     static const struct option longopts[] = {
         {"output"  ,             required_argument, 0, 'o'},
@@ -482,6 +484,7 @@ main(int argc, char *const *argv)
         {"icon-theme",           required_argument, 0, 'i'},
         {"no-icons",             no_argument,       0, 'I'},
         {"fields",               required_argument, 0, 'F'},
+        {"password",             optional_argument, 0, OPT_PASSWORD},
         {"lines",                required_argument, 0, 'l'},
         {"width",                required_argument, 0, 'w'},
         {"horizontal-pad",       required_argument, 0, 'x'},
@@ -552,6 +555,7 @@ main(int argc, char *const *argv)
         .border_size = 1u,
         .border_radius = 10u,
         .pad = {.x = 40, .y = 8, .inner = 0},
+        .password = false,
         .background_color = hex_to_rgba(0xfdf6e3dd),
         .border_color = hex_to_rgba(0x002b36ff),
         .text_color = hex_to_rgba(0x657b83ff),
@@ -663,6 +667,25 @@ main(int argc, char *const *argv)
                     return EXIT_FAILURE;
                 }
             }
+            break;
+        }
+
+        case OPT_PASSWORD: {
+            char32_t password_char = U'*';
+            if (optarg != NULL) {
+                char32_t *wide_optarg = ambstoc32(optarg);
+                if (c32len(wide_optarg) != 1) {
+                    fprintf(
+                        stderr,
+                        "%s: password character must be a single character\n",
+                        optarg);
+                    free(wide_optarg);
+                    return EXIT_FAILURE;
+                }
+                password_char = wide_optarg[0];
+                free(wide_optarg);
+            }
+            render_options.password = password_char;
             break;
         }
 
