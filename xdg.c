@@ -225,7 +225,6 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename,
         struct action *a = &it->item;
 
         if (!(is_desktop_entry &&
-              a->visible &&
               a->name != NULL &&
               a->exec != NULL))
         {
@@ -281,6 +280,7 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename,
                 .keywords = a->keywords,
                 .categories = a->categories,
                 .icon = {.name = a->icon},
+                .visible = a->visible,
                 .count = 0}));
     }
 

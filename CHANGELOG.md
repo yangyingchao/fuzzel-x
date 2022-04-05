@@ -44,6 +44,11 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* User `.desktop` entries with `NoDisplay=true` not overriding system
+  entries (https://codeberg.org/dnkl/fuzzel/issues/114).
+
+
 ### Security
 ### Contributors
 

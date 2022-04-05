@@ -412,8 +412,12 @@ matches_update(struct matches *matches, const struct prompt *prompt)
     /* Nothing entered; all programs found matches */
     if (c32len(ptext) == 0) {
 
+        matches->match_count = 0;
         for (size_t i = 0; i < matches->applications->count; i++) {
-            matches->matches[i] = (struct match){
+            if (!matches->applications->v[i].visible)
+                continue;
+
+            matches->matches[matches->match_count++] = (struct match){
                 .matched_type = MATCHED_NONE,
                 .application = &matches->applications->v[i],
                 .start_title = -1,
@@ -422,7 +426,6 @@ matches_update(struct matches *matches, const struct prompt *prompt)
         }
 
         /* Sort */
-        matches->match_count = matches->applications->count;
         qsort(matches->matches, matches->match_count, sizeof(matches->matches[0]), &match_compar);
 
         if (matches->selected >= matches->match_count && matches->selected > 0)
@@ -463,6 +466,9 @@ matches_update(struct matches *matches, const struct prompt *prompt)
         struct application *app = &matches->applications->v[i];
         enum matched_type matched_type = MATCHED_NONE;
         ssize_t start_title = -1;
+
+        if (!app->visible)
+            continue;
 
         if (matched_type == MATCHED_NONE && match_name) {
             const char32_t *m = c32casestr(app->title, ptext);

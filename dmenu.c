@@ -87,6 +87,7 @@ out:
         struct application *app = &applications->v[i++];
         app->title = it->item;
         app->icon.type = ICON_NONE;
+        app->visible = true;
 
         tll_remove(entries, it);
     }

@@ -56,6 +56,7 @@ struct application {
     char32_list_t keywords;
     char32_list_t categories;
     struct icon icon;
+    bool visible;
     unsigned count;
     struct fcft_text_run *shaped;
 };
