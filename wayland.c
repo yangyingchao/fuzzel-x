@@ -630,7 +630,8 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
         }
     }
 
-    else if (sym == XKB_KEY_Return && effective_mods == 0)
+    else if ((sym == XKB_KEY_Return && effective_mods == 0) ||
+             (sym == XKB_KEY_y && effective_mods == ctrl))
         execute_selected(wayl);
 
     else if (effective_mods == 0) {
