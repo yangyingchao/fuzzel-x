@@ -28,7 +28,7 @@
   defaulting to `*` if _CHARACTER_ is omitted
   (https://codeberg.org/dnkl/fuzzel/issues/108).
 * `Ctrl+y` binding to execute selected entry.
-* `Ctrl+j`/`Ctrl+k` binding to move to the previous/next item
+* `Ctrl+j`/`Ctrl+k` binding to move to the next/previous item
   (https://codeberg.org/dnkl/fuzzel/issues/120).
 
 
