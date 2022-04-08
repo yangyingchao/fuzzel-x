@@ -547,12 +547,14 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
     }
 
     else if ((sym == XKB_KEY_p && effective_mods == ctrl) ||
+             (sym == XKB_KEY_j && effective_mods == ctrl) ||
              (sym == XKB_KEY_Up && effective_mods == 0)) {
         if (matches_selected_prev(wayl->matches, false))
             wayl_refresh(wayl);
     }
 
     else if ((sym == XKB_KEY_n && effective_mods == ctrl) ||
+             (sym == XKB_KEY_k && effective_mods == ctrl) ||
              (sym == XKB_KEY_Down && effective_mods == 0)) {
         if (matches_selected_next(wayl->matches, false))
             wayl_refresh(wayl);
