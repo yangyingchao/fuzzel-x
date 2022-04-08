@@ -27,8 +27,9 @@
   with “password input”; all typed text is rendered as _CHARACTER_,
   defaulting to `*` if _CHARACTER_ is omitted
   (https://codeberg.org/dnkl/fuzzel/issues/108).
-* `Ctrl+y` as an alternative key binding to `Return`, to execute the
-  selected entry.
+* `Ctrl+y` binding to execute selected entry.
+* `Ctrl+j`/`Ctrl+k` binding to move to the previous/next item
+  (https://codeberg.org/dnkl/fuzzel/issues/120).
 
 
 ### Changed
