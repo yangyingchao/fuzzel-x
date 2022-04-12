@@ -132,6 +132,7 @@ version = custom_target(
 executable(
   'fuzzel',
   'application.c', 'application.h',
+  'config.c', 'config.h',
   'char32.c', 'char32.h',
   'dmenu.c', 'dmenu.h',
   'fdm.c', 'fdm.h',

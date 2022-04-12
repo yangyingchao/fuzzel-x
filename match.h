@@ -4,6 +4,7 @@
 #include <unistd.h>
 
 #include "application.h"
+#include "config.h"
 #include "prompt.h"
 
 enum matched_type {
@@ -17,16 +18,6 @@ struct match {
     struct application *application;
     ssize_t start_title;
     size_t index;
-};
-
-enum match_fields {
-    MATCH_FILENAME =   0x01,
-    MATCH_NAME =       0x02,
-    MATCH_GENERIC =    0x04,
-    MATCH_EXEC =       0x08,
-    MATCH_CATEGORIES = 0x10,
-    MATCH_KEYWORDS =   0x20,
-    MATCH_COMMENT =    0x40,
 };
 
 struct matches;

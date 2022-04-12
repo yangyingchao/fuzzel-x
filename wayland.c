@@ -149,8 +149,6 @@ struct wayland {
     struct prompt *prompt;
     struct matches *matches;
 
-    const struct render_options *render_options;
-
     struct font_spec *fonts;
     size_t font_count;
     struct {
@@ -1646,9 +1644,9 @@ parse_font_spec(const char *font_spec, size_t *count, struct font_spec **specs)
 struct wayland *
 wayl_init(struct fdm *fdm,
           struct render *render, struct prompt *prompt, struct matches *matches,
-          const struct render_options *render_options, enum dmenu_mode dmenu_mode,
-          const char *launch_prefix, const char *output_name,
-          const char *font_spec, enum dpi_aware dpi_aware,
+          enum dmenu_mode dmenu_mode, const char *launch_prefix,
+          const char *output_name, const char *font_spec,
+          enum dpi_aware dpi_aware,
           font_reloaded_t font_reloaded_cb, void *data)
 {
     struct wayland *wayl = malloc(sizeof(*wayl));
@@ -1663,7 +1661,6 @@ wayl_init(struct fdm *fdm,
         .dmenu_mode = dmenu_mode,
         .launch_prefix = launch_prefix,
         .output_name = output_name != NULL ? strdup(output_name) : NULL,
-        .render_options = render_options,
         .font_reloaded = {
             .cb = font_reloaded_cb,
             .data = data,

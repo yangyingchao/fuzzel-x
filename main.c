@@ -25,6 +25,7 @@
 #define LOG_ENABLE_DBG 0
 #include "log.h"
 #include "application.h"
+#include "config.h"
 #include "char32.h"
 #include "dmenu.h"
 #include "fdm.h"
@@ -46,6 +47,7 @@ struct context {
     int icon_size;
     mtx_t *icon_lock;
 
+    /* TODO: can we use a struct config ptr instead? */
     struct {
         const char *icon_theme;
         const char *terminal;
@@ -57,17 +59,6 @@ struct context {
     int event_fd;
     int dmenu_abort_fd;
 };
-
-static struct rgba
-hex_to_rgba(uint32_t color)
-{
-    return (struct rgba){
-        .r = (double)((color >> 24) & 0xff) / 255.0,
-        .g = (double)((color >> 16) & 0xff) / 255.0,
-        .b = (double)((color >>  8) & 0xff) / 255.0,
-        .a = (double)((color >>  0) & 0xff) / 255.0,
-    };
-}
 
 static void
 read_cache(struct application_list *apps)
@@ -523,48 +514,43 @@ main(int argc, char *const *argv)
         {NULL,                   no_argument,       0, 0},
     };
 
-    enum dpi_aware dpi_aware = DPI_AWARE_AUTO;
-    const char *output_name = NULL;
-    const char *font_name = "monospace";
-    const char *icon_theme = "hicolor";
-    const char *terminal = NULL;
-    const char32_t *prompt_content = U"> ";
-    char32_t *prompt_allocated = NULL;
-    bool icons_enabled = true;
-    bool actions_enabled = false;
-    bool fuzzy = true;
-    size_t fuzzy_min_length = 3;
-    size_t fuzzy_max_length_discrepancy = 2;
-    size_t fuzzy_max_distance = 1;
-    const char *launch_prefix = NULL;
-
     enum log_class log_level = LOG_CLASS_INFO;
     enum log_colorize log_colorize = LOG_COLORIZE_AUTO;
     bool log_syslog = true;
 
-    bool dmenu_mode = false;
-    enum dmenu_mode dmenu_format = DMENU_MODE_TEXT;
-    bool no_run_if_empty = false;
+    struct {
+        struct config conf;
 
-    enum match_fields match_fields =
-        MATCH_FILENAME | MATCH_NAME | MATCH_GENERIC;
+        bool dmenu_enabled;
+        enum dmenu_mode dmenu_mode;
 
-    struct render_options render_options = {
-        .lines = 15,
-        .chars = 30,
-        .border_size = 1u,
-        .border_radius = 10u,
-        .pad = {.x = 40, .y = 8, .inner = 0},
-        .password = false,
-        .background_color = hex_to_rgba(0xfdf6e3dd),
-        .border_color = hex_to_rgba(0x002b36ff),
-        .text_color = hex_to_rgba(0x657b83ff),
-        .match_color = hex_to_rgba(0xcb4b16ff),
-        .selection_color = hex_to_rgba(0xeee8d5dd),
-        .selection_text_color = hex_to_rgba(0x657b83ff),
-        .line_height = {-1, 0.0},  /* Use font metrics */
-        .letter_spacing = {0},
-    };
+        bool dpi_aware_set:1;
+        bool match_fields_set:1;
+        bool icons_disabled_set:1;
+        bool lines_set:1;
+        bool chars_set:1;
+        bool pad_x_set:1;
+        bool pad_y_set:1;
+        bool pad_inner_set:1;
+        bool background_color_set:1;
+        bool text_color_set:1;
+        bool match_color_set:1;
+        bool selection_color_set:1;
+        bool selection_text_color_set:1;
+        bool border_color_set:1;
+        bool border_size_set:1;
+        bool border_radius_set:1;
+        bool actions_enabled_set:1;
+        bool fuzzy_set:1;
+        bool fuzzy_min_length_set:1;
+        bool fuzzy_max_length_discrepancy_set:1;
+        bool fuzzy_max_distance_set:1;
+        bool line_height_set:1;
+        bool letter_spacing_set:1;
+        bool dmenu_enabled_set:1;
+        bool dmenu_mode_set:1;
+        bool dmenu_exit_immediately_if_empty_set:1;
+    } cmdline_overrides = {{0}};
 
     setlocale(LC_CTYPE, "");
 
@@ -573,8 +559,10 @@ main(int argc, char *const *argv)
         char *copy = strdup(argv[0]);
         if (copy != NULL) {
             const char *name = basename(copy);
-            if (name != NULL && strcmp(name, "dmenu") == 0)
-                dmenu_mode = true;
+            if (name != NULL && strcmp(name, "dmenu") == 0) {
+                cmdline_overrides.dmenu_enabled = true;
+                cmdline_overrides.dmenu_enabled_set = true;
+            }
 
             free(copy);
         }
@@ -587,20 +575,20 @@ main(int argc, char *const *argv)
 
         switch (c) {
         case 'o':
-            output_name = optarg;
+            cmdline_overrides.conf.output = optarg;
             break;
 
         case 'f':
-            font_name = optarg;
+            cmdline_overrides.conf.font = optarg;
             break;
 
         case 'D':
             if (strcmp(optarg, "auto") == 0)
-                dpi_aware = DPI_AWARE_AUTO;
+                cmdline_overrides.conf.dpi_aware = DPI_AWARE_AUTO;
             else if (strcmp(optarg, "no") == 0)
-                dpi_aware = DPI_AWARE_NO;
+                cmdline_overrides.conf.dpi_aware = DPI_AWARE_NO;
             else if (strcmp(optarg, "yes") == 0)
-                dpi_aware = DPI_AWARE_YES;
+                cmdline_overrides.conf.dpi_aware = DPI_AWARE_YES;
             else {
                 fprintf(
                     stderr,
@@ -609,14 +597,16 @@ main(int argc, char *const *argv)
                     optarg);
                 return EXIT_FAILURE;
             }
+            cmdline_overrides.dpi_aware_set = true;
             break;
 
         case 'i':
-            icon_theme = optarg;
+            cmdline_overrides.conf.icon_theme = optarg;
             break;
 
         case 'I':
-            icons_enabled = false;
+            cmdline_overrides.conf.icons_enabled = false;
+            cmdline_overrides.icons_disabled_set = true;
             break;
 
         case 'F': {
@@ -633,7 +623,7 @@ main(int argc, char *const *argv)
                 {"comment", MATCH_COMMENT},
             };
 
-            match_fields = 0;
+            cmdline_overrides.conf.match_fields = 0;
             for (const char *f = strtok(optarg, ", ");
                  f != NULL;
                  f = strtok(NULL, ", "))
@@ -648,7 +638,7 @@ main(int argc, char *const *argv)
                 }
 
                 if (field > 0)
-                    match_fields |= field;
+                    cmdline_overrides.conf.match_fields |= field;
                 else {
                     char valid_names[128] = {0};
                     int idx = 0;
@@ -667,6 +657,7 @@ main(int argc, char *const *argv)
                     return EXIT_FAILURE;
                 }
             }
+            cmdline_overrides.match_fields_set = true;
             break;
         }
 
@@ -685,59 +676,63 @@ main(int argc, char *const *argv)
                 password_char = wide_optarg[0];
                 free(wide_optarg);
             }
-            render_options.password = password_char;
+            cmdline_overrides.conf.password = password_char;
             break;
         }
 
         case 'T':
-            terminal = optarg;
+            cmdline_overrides.conf.terminal = optarg;
             break;
 
         case 'l':
-            if (sscanf(optarg, "%u", &render_options.lines) != 1) {
+            if (sscanf(optarg, "%u", &cmdline_overrides.conf.lines) != 1) {
                 fprintf(stderr, "%s: invalid line count\n", optarg);
                 return EXIT_FAILURE;
             }
+            cmdline_overrides.lines_set = true;
             break;
 
         case 'w':
-            if (sscanf(optarg, "%u", &render_options.chars) != 1) {
+            if (sscanf(optarg, "%u", &cmdline_overrides.conf.chars) != 1) {
                 fprintf(stderr, "%s: invalid width\n", optarg);
                 return EXIT_FAILURE;
             }
+            cmdline_overrides.chars_set = true;
             break;
 
         case 'x':
-            if (sscanf(optarg, "%u", &render_options.pad.x) != 1) {
+            if (sscanf(optarg, "%u", &cmdline_overrides.conf.pad.x) != 1) {
                 fprintf(stderr, "%s: invalid padding\n", optarg);
                 return EXIT_FAILURE;
             }
+            cmdline_overrides.pad_x_set = true;
             break;
 
         case 'y':
-            if (sscanf(optarg, "%u", &render_options.pad.y) != 1) {
+            if (sscanf(optarg, "%u", &cmdline_overrides.conf.pad.y) != 1) {
                 fprintf(stderr, "%s: invalid padding\n", optarg);
                 return EXIT_FAILURE;
             }
+            cmdline_overrides.pad_y_set = true;
             break;
 
         case 'p':
-            if (sscanf(optarg, "%u", &render_options.pad.inner) != 1) {
+            if (sscanf(optarg, "%u", &cmdline_overrides.conf.pad.inner) != 1) {
                 fprintf(stderr, "%s: invalid padding\n", optarg);
                 return EXIT_FAILURE;
             }
+            cmdline_overrides.pad_inner_set = true;
             break;
 
         case 'P':
-            free(prompt_allocated);
-            prompt_allocated = ambstoc32(optarg);
+            free(cmdline_overrides.conf.prompt);
+            cmdline_overrides.conf.prompt = ambstoc32(optarg);
 
-            if (prompt_allocated == NULL) {
+            if (cmdline_overrides.conf.prompt == NULL) {
                 fprintf(stderr, "%s: invalid prompt\n", optarg);
                 return EXIT_FAILURE;
             }
 
-            prompt_content = prompt_allocated;
             break;
 
         case 'b': {
@@ -746,7 +741,9 @@ main(int argc, char *const *argv)
                 fprintf(stderr, "%s: invalid color\n", optarg);
                 return EXIT_FAILURE;
             }
-            render_options.background_color = hex_to_rgba(background);
+            cmdline_overrides.conf.colors.background =
+                conf_hex_to_rgba(background);
+            cmdline_overrides.background_color_set = true;
             break;
         }
 
@@ -756,7 +753,8 @@ main(int argc, char *const *argv)
                 fprintf(stderr, "%s: invalid color\n", optarg);
                 return EXIT_FAILURE;
             }
-            render_options.text_color = hex_to_rgba(text_color);
+            cmdline_overrides.conf.colors.text = conf_hex_to_rgba(text_color);
+            cmdline_overrides.text_color_set = true;
             break;
         }
 
@@ -766,7 +764,9 @@ main(int argc, char *const *argv)
                 fprintf(stderr, "%s: invalid color\n", optarg);
                 return EXIT_FAILURE;
             }
-            render_options.match_color = hex_to_rgba(match_color);
+            cmdline_overrides.conf.colors.match =
+                conf_hex_to_rgba(match_color);
+            cmdline_overrides.match_color_set = true;
             break;
         }
 
@@ -776,7 +776,9 @@ main(int argc, char *const *argv)
                 fprintf(stderr, "%s: invalid color\n", optarg);
                 return EXIT_FAILURE;
             }
-            render_options.selection_color = hex_to_rgba(selection_color);
+            cmdline_overrides.conf.colors.selection =
+                conf_hex_to_rgba(selection_color);
+            cmdline_overrides.selection_color_set = true;
             break;
         }
 
@@ -786,25 +788,29 @@ main(int argc, char *const *argv)
                 fprintf(stderr, "%s: invalid color\n", optarg);
                 return EXIT_FAILURE;
             }
-            render_options.selection_text_color = hex_to_rgba(selection_text_color);
+            cmdline_overrides.conf.colors.selection_text =
+                conf_hex_to_rgba(selection_text_color);
+            cmdline_overrides.selection_text_color_set = true;
             break;
         }
 
         case 'B':
-            if (sscanf(optarg, "%u", &render_options.border_size) != 1) {
+            if (sscanf(optarg, "%u", &cmdline_overrides.conf.border.size) != 1) {
                 fprintf(
                     stderr,
                     "%s: invalid border width (must be an integer)\n", optarg);
                 return EXIT_FAILURE;
             }
+            cmdline_overrides.border_size_set = true;
             break;
 
         case 'r':
-            if (sscanf(optarg, "%u", &render_options.border_radius) != 1) {
+            if (sscanf(optarg, "%u", &cmdline_overrides.conf.border.radius) != 1) {
                 fprintf(stderr, "%s: invalid border radius (must be an integer)\n",
                         optarg);
                 return EXIT_FAILURE;
             }
+            cmdline_overrides.border_radius_set = true;
             break;
 
         case 'C': {
@@ -813,75 +819,86 @@ main(int argc, char *const *argv)
                 fprintf(stderr, "%s: invalid color\n", optarg);
                 return EXIT_FAILURE;
             }
-            render_options.border_color = hex_to_rgba(border_color);
+            cmdline_overrides.conf.colors.border =
+                conf_hex_to_rgba(border_color);
+            cmdline_overrides.border_color_set = true;
             break;
         }
 
         case OPT_SHOW_ACTIONS:
-            actions_enabled = true;
+            cmdline_overrides.conf.actions_enabled = true;
             break;
 
         case OPT_NO_FUZZY:
-            fuzzy = false;
+            cmdline_overrides.conf.fuzzy.enabled = false;
+            cmdline_overrides.fuzzy_set = true;
             break;
 
         case OPT_FUZZY_MIN_LENGTH:
-            if (sscanf(optarg, "%zu", &fuzzy_min_length) != 1) {
+            if (sscanf(optarg, "%zu", &cmdline_overrides.conf.fuzzy.min_length) != 1) {
                 fprintf(
                     stderr,
                     "%s: invalid fuzzy min length (must be an integer)\n",
                     optarg);
                 return EXIT_FAILURE;
             }
+            cmdline_overrides.fuzzy_min_length_set = true;
             break;
 
         case OPT_FUZZY_MAX_LENGTH_DISCREPANCY:
-            if (sscanf(optarg, "%zu", &fuzzy_max_length_discrepancy) != 1) {
+            if (sscanf(optarg, "%zu", &cmdline_overrides.conf.fuzzy.max_length_discrepancy) != 1) {
                 fprintf(
                     stderr,
                     "%s: invalid fuzzy max length discrepancy "
                     "(must be an integer)\n", optarg);
                 return EXIT_FAILURE;
             }
+            cmdline_overrides.fuzzy_max_length_discrepancy_set = true;
             break;
 
         case OPT_FUZZY_MAX_DISTANCE:
-            if (sscanf(optarg, "%zu", &fuzzy_max_distance) != 1) {
+            if (sscanf(optarg, "%zu", &cmdline_overrides.conf.fuzzy.max_distance) != 1) {
                 fprintf(
                     stderr,
                     "%s: invalid fuzzy max distance (must be an integer)\n",
                     optarg);
                 return EXIT_FAILURE;
             }
+            cmdline_overrides.fuzzy_max_distance_set = true;
             break;
 
         case 'H': { /* line-height */
-            if (!pt_or_px_from_string(optarg, &render_options.line_height))
+            if (!pt_or_px_from_string(optarg, &cmdline_overrides.conf.line_height))
                 return EXIT_FAILURE;
+            cmdline_overrides.line_height_set = true;
             break;
         }
 
         case OPT_LETTER_SPACING: {
-            if (!pt_or_px_from_string(optarg, &render_options.letter_spacing))
+            if (!pt_or_px_from_string(optarg, &cmdline_overrides.conf.letter_spacing))
                 return EXIT_FAILURE;
+            cmdline_overrides.letter_spacing_set = true;
             break;
         }
 
         case OPT_LAUNCH_PREFIX: {
-            launch_prefix = optarg;
+            cmdline_overrides.conf.launch_prefix = optarg;
             break;
         }
 
         case 'd':
-            dmenu_mode = true;
+            cmdline_overrides.dmenu_enabled = true;
+            cmdline_overrides.dmenu_enabled_set = true;
             break;
 
         case 'R':
-            no_run_if_empty = true;
+            cmdline_overrides.conf.dmenu.exit_immediately_if_empty = true;
+            cmdline_overrides.dmenu_exit_immediately_if_empty_set = true;
             break;
 
         case OPT_DMENU_INDEX:
-            dmenu_format = DMENU_MODE_INDEX;
+            cmdline_overrides.dmenu_mode = DMENU_MODE_INDEX;
+            cmdline_overrides.dmenu_mode_set = true;
             break;
 
         case OPT_LOG_LEVEL: {
@@ -932,14 +949,103 @@ main(int argc, char *const *argv)
         }
     }
 
+    log_init(log_colorize, log_syslog, LOG_FACILITY_USER, log_level);
+
     int ret = EXIT_FAILURE;
+
+    struct config conf = {0};
+    bool conf_successful = config_load(&conf, NULL, NULL, false);
+    if (!conf_successful) {
+        config_free(&conf);
+        return ret;
+    }
+
+    /* Apply command line overrides */
+    if (cmdline_overrides.conf.output != NULL) {
+        free(conf.output);
+        conf.output = strdup(cmdline_overrides.conf.output);
+    }
+    if (cmdline_overrides.conf.prompt != NULL) {
+        free(conf.prompt);
+        conf.prompt = cmdline_overrides.conf.prompt;
+    }
+    if (cmdline_overrides.conf.password != U'\0')
+        conf.password = cmdline_overrides.conf.password;
+    if (cmdline_overrides.conf.terminal != NULL) {
+        free(conf.terminal);
+        conf.terminal = strdup(cmdline_overrides.conf.terminal);
+    }
+    if (cmdline_overrides.conf.launch_prefix != NULL) {
+        free(conf.launch_prefix);
+        conf.launch_prefix = strdup(cmdline_overrides.conf.launch_prefix);
+    }
+    if (cmdline_overrides.conf.font != NULL) {
+        free(conf.font);
+        conf.font = strdup(cmdline_overrides.conf.font);
+    }
+    if (cmdline_overrides.conf.icon_theme != NULL) {
+        free(conf.icon_theme);
+        conf.icon_theme = strdup(cmdline_overrides.conf.icon_theme);
+    }
+    if (cmdline_overrides.dpi_aware_set)
+        conf.dpi_aware = cmdline_overrides.conf.dpi_aware;
+    if (cmdline_overrides.match_fields_set)
+        conf.match_fields = cmdline_overrides.conf.match_fields;
+    if (cmdline_overrides.icons_disabled_set)
+        conf.icons_enabled = cmdline_overrides.conf.icons_enabled;
+    if (cmdline_overrides.lines_set)
+        conf.lines = cmdline_overrides.conf.lines;
+    if (cmdline_overrides.chars_set)
+        conf.chars = cmdline_overrides.conf.chars;
+    if (cmdline_overrides.pad_x_set)
+        conf.pad.x = cmdline_overrides.conf.pad.x;
+    if (cmdline_overrides.pad_y_set)
+        conf.pad.y = cmdline_overrides.conf.pad.y;
+    if (cmdline_overrides.pad_inner_set)
+        conf.pad.inner = cmdline_overrides.conf.pad.inner;
+    if (cmdline_overrides.background_color_set)
+        conf.colors.background = cmdline_overrides.conf.colors.background;
+    if (cmdline_overrides.text_color_set)
+        conf.colors.text = cmdline_overrides.conf.colors.text;
+    if (cmdline_overrides.match_color_set)
+        conf.colors.match = cmdline_overrides.conf.colors.match;
+    if (cmdline_overrides.selection_color_set)
+        conf.colors.selection = cmdline_overrides.conf.colors.selection;
+    if (cmdline_overrides.selection_text_color_set)
+        conf.colors.selection_text = cmdline_overrides.conf.colors.selection_text;
+    if (cmdline_overrides.border_color_set)
+        conf.colors.border = cmdline_overrides.conf.colors.border;
+    if (cmdline_overrides.border_size_set)
+        conf.border.size = cmdline_overrides.conf.border.size;
+    if (cmdline_overrides.border_radius_set)
+        conf.border.radius = cmdline_overrides.conf.border.radius;
+    if (cmdline_overrides.actions_enabled_set)
+        conf.actions_enabled = cmdline_overrides.conf.actions_enabled;
+    if (cmdline_overrides.fuzzy_set)
+        conf.fuzzy.enabled = cmdline_overrides.conf.fuzzy.enabled;
+    if (cmdline_overrides.fuzzy_min_length_set)
+        conf.fuzzy.min_length = cmdline_overrides.conf.fuzzy.min_length;
+    if (cmdline_overrides.fuzzy_max_length_discrepancy_set)
+        conf.fuzzy.max_length_discrepancy = cmdline_overrides.conf.fuzzy.max_length_discrepancy;
+    if (cmdline_overrides.fuzzy_max_distance_set)
+        conf.fuzzy.max_distance = cmdline_overrides.conf.fuzzy.max_distance;
+    if (cmdline_overrides.line_height_set)
+        conf.line_height = cmdline_overrides.conf.line_height;
+    if (cmdline_overrides.letter_spacing_set)
+        conf.letter_spacing = cmdline_overrides.conf.letter_spacing;
+    if (cmdline_overrides.dmenu_enabled_set) {
+        enum dmenu_mode mode = cmdline_overrides.dmenu_mode_set
+            ? cmdline_overrides.dmenu_mode
+            : DMENU_MODE_TEXT;
+        conf.dmenu.mode = mode;
+    }
+    if (cmdline_overrides.dmenu_exit_immediately_if_empty_set)
+        conf.dmenu.exit_immediately_if_empty = cmdline_overrides.conf.dmenu.exit_immediately_if_empty;
 
     _Static_assert((int)LOG_CLASS_ERROR == (int)FCFT_LOG_CLASS_ERROR,
                    "fcft log level enum offset");
     _Static_assert((int)LOG_COLORIZE_ALWAYS == (int)FCFT_LOG_COLORIZE_ALWAYS,
                    "fcft colorize enum mismatch");
-
-    log_init(log_colorize, log_syslog, LOG_FACILITY_USER, log_level);
     fcft_init((enum fcft_log_colorize)log_colorize, log_syslog, (enum fcft_log_class)log_level);
 
 #if !defined(FUZZEL_ENABLE_SVG_LIBRSVG)
@@ -984,37 +1090,41 @@ main(int argc, char *const *argv)
     if ((fdm = fdm_init()) == NULL)
         goto out;
 
-    if ((render = render_init(&render_options, &icon_lock)) == NULL)
+    if ((render = render_init(&conf, &icon_lock)) == NULL)
         goto out;
 
-    if ((prompt = prompt_init(prompt_content)) == NULL)
+    if ((prompt = prompt_init(conf.prompt)) == NULL)
         goto out;
 
     if ((matches = matches_init(
-             match_fields, fuzzy, fuzzy_min_length,
-             fuzzy_max_length_discrepancy, fuzzy_max_distance)) == NULL)
+             conf.match_fields, conf.fuzzy.enabled, conf.fuzzy.min_length,
+             conf.fuzzy.max_length_discrepancy, conf.fuzzy.max_distance)) == NULL)
         goto out;
-    matches_max_matches_per_page_set(matches, render_options.lines);
+    matches_max_matches_per_page_set(matches, conf.lines);
 
     if ((apps = applications_init()) == NULL)
         goto out;
 
-    if (dmenu_mode && no_run_if_empty) {
-        /*
-         * If no_run_if_empty is set, we *must* load the entries
-         * *before displaying the window.
-         */
-        dmenu_load_entries(apps, -1);
-        if (apps->count == 0)
-            goto out;
+    if (conf.dmenu.mode != DMENU_MODE_NONE) {
+        if (conf.dmenu.exit_immediately_if_empty) {
+            /*
+             * If no_run_if_empty is set, we *must* load the entries
+             * *before displaying the window.
+             */
+            dmenu_load_entries(apps, -1);
+            if (apps->count == 0)
+                goto out;
 
-        matches_set_applications(matches, apps);
-        matches_update(matches, prompt);
-    } else if (dmenu_mode) {
-        dmenu_abort_fd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
-        if (dmenu_abort_fd < 0) {
-            LOG_ERRNO("failed to create event FD for dmenu mode");
-            goto out;
+            matches_set_applications(matches, apps);
+            matches_update(matches, prompt);
+        }
+
+        else {
+            dmenu_abort_fd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
+            if (dmenu_abort_fd < 0) {
+                LOG_ERRNO("failed to create event FD for dmenu mode");
+                goto out;
+            }
         }
     }
 
@@ -1026,27 +1136,28 @@ main(int argc, char *const *argv)
         .themes = &themes,
         .icon_lock = &icon_lock,
         .options = {
-            .icon_theme = icon_theme,
-            .terminal = terminal,
-            .icons_enabled = icons_enabled,
-            .actions_enabled = actions_enabled,
-            .dmenu_mode = dmenu_mode,
+            .icon_theme = conf.icon_theme,
+            .terminal = conf.terminal,
+            .icons_enabled = conf.icons_enabled,
+            .actions_enabled = conf.actions_enabled,
+            .dmenu_mode = conf.dmenu.mode != DMENU_MODE_NONE,
         },
         .event_fd = -1,
         .dmenu_abort_fd = dmenu_abort_fd,
     };
 
     if ((wayl = wayl_init(
-             fdm, render, prompt, matches, &render_options,
-             dmenu_mode ? dmenu_format : DMENU_MODE_NONE,
-             launch_prefix, output_name, font_name, dpi_aware,
-             &font_reloaded, &ctx)) == NULL)
+             fdm, render, prompt, matches,
+             conf.dmenu.mode, conf.launch_prefix, conf.output, conf.font,
+             conf.dpi_aware, &font_reloaded, &ctx)) == NULL)
         goto out;
 
     ctx.wayl = wayl;
 
     /* Create thread that will populate the application list */
-    if (!dmenu_mode || !no_run_if_empty) {
+    if (conf.dmenu.mode == DMENU_MODE_NONE ||
+        !conf.dmenu.exit_immediately_if_empty)
+    {
         if (pipe2(event_pipe, O_CLOEXEC | O_NONBLOCK) < 0) {
             LOG_ERRNO("failed to create event pipe");
             goto out;
@@ -1118,7 +1229,8 @@ out:
     fdm_destroy(fdm);
     applications_destroy(apps);
     icon_themes_destroy(themes);
-    free(prompt_allocated);
+    //free(prompt_allocated);
+    config_free(&conf);
 
 #if defined(FUZZEL_ENABLE_CAIRO) && defined(_DEBUG)
     cairo_debug_reset_static_data();

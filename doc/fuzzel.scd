@@ -129,7 +129,7 @@ options:
 
 *-S*,*--selection-text-color*=_HEX_
 	The text color of the currently selected application. See
-	*COLORS*. Default: _0x657b83ff_.
+	*COLORS*. Default: _657b83ff_.
 
 *-B*,*--border-width*=_INT_
 	The width of the surrounding border, in pixels (subject to output
