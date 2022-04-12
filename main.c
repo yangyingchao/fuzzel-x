@@ -37,6 +37,7 @@
 #include "xdg.h"
 
 struct context {
+    const struct config *conf;
     struct wayland *wayl;
     struct render *render;
     struct matches *matches;
@@ -47,6 +48,7 @@ struct context {
     int icon_size;
     mtx_t *icon_lock;
 
+#if 0
     /* TODO: can we use a struct config ptr instead? */
     struct {
         const char *icon_theme;
@@ -55,7 +57,7 @@ struct context {
         bool actions_enabled;
         bool dmenu_mode;
     } options;
-
+#endif
     int event_fd;
     int dmenu_abort_fd;
 };
@@ -260,7 +262,7 @@ font_reloaded(struct wayland *wayl, struct fcft_font *font, void *data)
     mtx_lock(ctx->icon_lock);
     {
         ctx->icon_size = font->height;
-        if (ctx->options.icons_enabled) {
+        if (ctx->conf->icons_enabled) {
             icon_lookup_application_icons(
                 *ctx->themes, ctx->icon_size, ctx->apps);
         }
@@ -364,11 +366,12 @@ populate_apps(void *_ctx)
 {
     struct context *ctx = _ctx;
     struct application_list *apps = ctx->apps;
-    const char *icon_theme = ctx->options.icon_theme;
-    const char *terminal = ctx->options.terminal;
-    bool actions_enabled = ctx->options.actions_enabled;
-    bool dmenu_mode = ctx->options.dmenu_mode;
-    bool icons_enabled = ctx->options.icons_enabled;
+    const char *icon_theme = ctx->conf->icon_theme;
+    const char *terminal = ctx->conf->terminal;
+    bool actions_enabled = ctx->conf->actions_enabled;
+    bool dmenu_mode = ctx->conf->dmenu.enabled
+        ? ctx->conf->dmenu.mode : DMENU_MODE_NONE;
+    bool icons_enabled = ctx->conf->icons_enabled;
 
     if (dmenu_mode) {
         dmenu_load_entries(apps, ctx->dmenu_abort_fd);
@@ -1049,8 +1052,6 @@ main(int argc, char *const *argv)
     atexit(&fcft_fini);
 #endif
 
-    LOG_WARN("dmenu: enabled=%d, mode=%d", conf.dmenu.enabled, conf.dmenu.mode);
-
     mtx_t icon_lock;
     if (mtx_init(&icon_lock, mtx_plain) != thrd_success) {
         LOG_ERR("failed to create icon lock");
@@ -1095,7 +1096,8 @@ main(int argc, char *const *argv)
 
     if ((matches = matches_init(
              conf.match_fields, conf.fuzzy.enabled, conf.fuzzy.min_length,
-             conf.fuzzy.max_length_discrepancy, conf.fuzzy.max_distance)) == NULL)
+             conf.fuzzy.max_length_discrepancy,
+             conf.fuzzy.max_distance)) == NULL)
         goto out;
     matches_max_matches_per_page_set(matches, conf.lines);
 
@@ -1126,19 +1128,13 @@ main(int argc, char *const *argv)
     }
 
     struct context ctx = {
+        .conf = &conf,
         .render = render,
         .matches = matches,
         .prompt = prompt,
         .apps = apps,
         .themes = &themes,
         .icon_lock = &icon_lock,
-        .options = {
-            .icon_theme = conf.icon_theme,
-            .terminal = conf.terminal,
-            .icons_enabled = conf.icons_enabled,
-            .actions_enabled = conf.actions_enabled,
-            .dmenu_mode = conf.dmenu.enabled,
-        },
         .event_fd = -1,
         .dmenu_abort_fd = dmenu_abort_fd,
     };
