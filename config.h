@@ -16,7 +16,6 @@ enum dpi_aware {
 };
 
 enum dmenu_mode {
-    DMENU_MODE_NONE,
     DMENU_MODE_TEXT,
     DMENU_MODE_INDEX,
 };

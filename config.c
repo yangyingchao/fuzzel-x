@@ -461,12 +461,14 @@ parse_section_dmenu(struct context *ctx)
     struct config *conf = ctx->conf;
     const char *key = ctx->key;
 
-    if (strcmp(key, "print-index") == 0) {
-        bool enabled;
-        if (!value_to_bool(ctx, &enabled))
-            return false;
-        conf->dmenu.mode = enabled ? DMENU_MODE_INDEX : DMENU_MODE_TEXT;
-        return true;
+    if (strcmp(key, "mode") == 0) {
+        _Static_assert(sizeof(conf->dmenu.mode) == sizeof(int),
+            "enum is not 32-bit");
+
+        return value_to_enum(
+            ctx,
+            (const char *[]){"text", "index", NULL},
+            (int *)&conf->dmenu.mode);
     }
 
     else if (strcmp(key, "exit-immediately-if-empty") == 0)

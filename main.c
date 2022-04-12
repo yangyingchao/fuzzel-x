@@ -369,11 +369,10 @@ populate_apps(void *_ctx)
     const char *icon_theme = ctx->conf->icon_theme;
     const char *terminal = ctx->conf->terminal;
     bool actions_enabled = ctx->conf->actions_enabled;
-    bool dmenu_mode = ctx->conf->dmenu.enabled
-        ? ctx->conf->dmenu.mode : DMENU_MODE_NONE;
+    bool dmenu_enabled = ctx->conf->dmenu.enabled;
     bool icons_enabled = ctx->conf->icons_enabled;
 
-    if (dmenu_mode) {
+    if (dmenu_enabled) {
         dmenu_load_entries(apps, ctx->dmenu_abort_fd);
         return send_event(ctx->event_fd, EVENT_APPS_LOADED);
     }

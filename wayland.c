@@ -439,7 +439,7 @@ execute_selected(struct wayland *wayl)
     struct application *app = match != NULL ? match->application : NULL;
     ssize_t index = match != NULL ? match->index : -1;
 
-    if (wayl->conf->dmenu.enabled != DMENU_MODE_NONE) {
+    if (wayl->conf->dmenu.enabled) {
         dmenu_execute(app, index, wayl->prompt, wayl->conf->dmenu.mode);
         wayl->exit_code = EXIT_SUCCESS;
     } else {

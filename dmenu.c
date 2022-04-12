@@ -100,10 +100,6 @@ dmenu_execute(const struct application *app, ssize_t index,
               const struct prompt *prompt, enum dmenu_mode format)
 {
     switch (format) {
-    case DMENU_MODE_NONE:
-        assert(false);
-        return false;
-
     case DMENU_MODE_TEXT: {
         char *text = ac32tombs(app != NULL ? app->title : prompt_text(prompt));
         if (text != NULL)
