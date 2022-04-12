@@ -521,9 +521,6 @@ main(int argc, char *const *argv)
     struct {
         struct config conf;
 
-        bool dmenu_enabled;
-        enum dmenu_mode dmenu_mode;
-
         bool dpi_aware_set:1;
         bool match_fields_set:1;
         bool icons_disabled_set:1;
@@ -560,7 +557,7 @@ main(int argc, char *const *argv)
         if (copy != NULL) {
             const char *name = basename(copy);
             if (name != NULL && strcmp(name, "dmenu") == 0) {
-                cmdline_overrides.dmenu_enabled = true;
+                cmdline_overrides.conf.dmenu.enabled = true;
                 cmdline_overrides.dmenu_enabled_set = true;
             }
 
@@ -887,7 +884,7 @@ main(int argc, char *const *argv)
         }
 
         case 'd':
-            cmdline_overrides.dmenu_enabled = true;
+            cmdline_overrides.conf.dmenu.enabled = true;
             cmdline_overrides.dmenu_enabled_set = true;
             break;
 
@@ -897,7 +894,7 @@ main(int argc, char *const *argv)
             break;
 
         case OPT_DMENU_INDEX:
-            cmdline_overrides.dmenu_mode = DMENU_MODE_INDEX;
+            cmdline_overrides.conf.dmenu.mode = DMENU_MODE_INDEX;
             cmdline_overrides.dmenu_mode_set = true;
             break;
 
@@ -954,7 +951,7 @@ main(int argc, char *const *argv)
     int ret = EXIT_FAILURE;
 
     struct config conf = {0};
-    bool conf_successful = config_load(&conf, NULL, NULL, false);
+    bool conf_successful = config_load(&conf, NULL, NULL, true);
     if (!conf_successful) {
         config_free(&conf);
         return ret;
@@ -1033,12 +1030,10 @@ main(int argc, char *const *argv)
         conf.line_height = cmdline_overrides.conf.line_height;
     if (cmdline_overrides.letter_spacing_set)
         conf.letter_spacing = cmdline_overrides.conf.letter_spacing;
-    if (cmdline_overrides.dmenu_enabled_set) {
-        enum dmenu_mode mode = cmdline_overrides.dmenu_mode_set
-            ? cmdline_overrides.dmenu_mode
-            : DMENU_MODE_TEXT;
-        conf.dmenu.mode = mode;
-    }
+    if (cmdline_overrides.dmenu_enabled_set)
+        conf.dmenu.enabled = cmdline_overrides.conf.dmenu.enabled;
+    if (cmdline_overrides.dmenu_mode_set)
+        conf.dmenu.mode = cmdline_overrides.conf.dmenu.mode;
     if (cmdline_overrides.dmenu_exit_immediately_if_empty_set)
         conf.dmenu.exit_immediately_if_empty = cmdline_overrides.conf.dmenu.exit_immediately_if_empty;
 
@@ -1053,6 +1048,8 @@ main(int argc, char *const *argv)
      * (https://codeberg.org/dnkl/fuzzel/issues/87) */
     atexit(&fcft_fini);
 #endif
+
+    LOG_WARN("dmenu: enabled=%d, mode=%d", conf.dmenu.enabled, conf.dmenu.mode);
 
     mtx_t icon_lock;
     if (mtx_init(&icon_lock, mtx_plain) != thrd_success) {
@@ -1105,7 +1102,7 @@ main(int argc, char *const *argv)
     if ((apps = applications_init()) == NULL)
         goto out;
 
-    if (conf.dmenu.mode != DMENU_MODE_NONE) {
+    if (conf.dmenu.enabled) {
         if (conf.dmenu.exit_immediately_if_empty) {
             /*
              * If no_run_if_empty is set, we *must* load the entries
@@ -1140,7 +1137,7 @@ main(int argc, char *const *argv)
             .terminal = conf.terminal,
             .icons_enabled = conf.icons_enabled,
             .actions_enabled = conf.actions_enabled,
-            .dmenu_mode = conf.dmenu.mode != DMENU_MODE_NONE,
+            .dmenu_mode = conf.dmenu.enabled,
         },
         .event_fd = -1,
         .dmenu_abort_fd = dmenu_abort_fd,
@@ -1155,9 +1152,7 @@ main(int argc, char *const *argv)
     ctx.wayl = wayl;
 
     /* Create thread that will populate the application list */
-    if (conf.dmenu.mode == DMENU_MODE_NONE ||
-        !conf.dmenu.exit_immediately_if_empty)
-    {
+    if (!conf.dmenu.enabled || !conf.dmenu.exit_immediately_if_empty) {
         if (pipe2(event_pipe, O_CLOEXEC | O_NONBLOCK) < 0) {
             LOG_ERRNO("failed to create event pipe");
             goto out;

@@ -56,6 +56,7 @@ struct config {
     } fuzzy;
 
     struct {
+        bool enabled;
         enum dmenu_mode mode;
         bool exit_immediately_if_empty;
     } dmenu;

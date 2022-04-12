@@ -20,6 +20,8 @@
 #define LOG_ENABLE_DBG 0
 #include "log.h"
 
+#define ALEN(v) (sizeof(v) / sizeof((v)[0]))
+
 struct context {
     struct config *conf;
     const char *section;
@@ -139,99 +141,313 @@ done:
     return ret;
 }
 
+static bool
+str_to_ulong(const char *s, int base, unsigned long *res)
+{
+    if (s == NULL)
+        return false;
+
+    errno = 0;
+    char *end = NULL;
+
+    *res = strtoul(s, &end, base);
+    return errno == 0 && *end == '\0';
+}
+
+static bool
+str_to_uint32(const char *s, int base, uint32_t *res)
+{
+    unsigned long v;
+    bool ret = str_to_ulong(s, base, &v);
+    if (v > UINT32_MAX)
+        return false;
+    *res = v;
+    return ret;
+}
+
+static bool
+value_to_str(struct context *ctx, char **res)
+{
+    free(*res);
+    *res = strdup(ctx->value);
+    return true;
+}
+
+static bool
+value_to_wchars(struct context *ctx, char32_t **res)
+{
+    char32_t *s = ambstoc32(ctx->value);
+    if (s == NULL) {
+        LOG_CONTEXTUAL_ERR("not a valie string value");
+        return false;
+    }
+
+    free(*res);
+    *res = s;
+    return true;
+}
+
+static bool
+value_to_bool(struct context *ctx, bool *res)
+{
+    static const char *const yes[] = {"on", "true", "yes", "1"};
+    static const char *const  no[] = {"off", "false", "no", "0"};
+
+    for (size_t i = 0; i < ALEN(yes); i++) {
+        if (strcasecmp(ctx->value, yes[i]) == 0) {
+            *res = true;
+            return true;
+        }
+    }
+
+    for (size_t i = 0; i < ALEN(no); i++) {
+        if (strcasecmp(ctx->value, no[i]) == 0) {
+            *res = false;
+            return true;
+        }
+    }
+
+    LOG_CONTEXTUAL_ERR("invalid boolean value");
+    return false;
+}
+
+static bool
+value_to_uint32(struct context *ctx, int base, uint32_t *res)
+{
+    if (!str_to_uint32(ctx->value, base, res)){
+        LOG_CONTEXTUAL_ERR(
+            "invalid integer value, or outside range 0-%u", UINT32_MAX);
+        return false;
+    }
+    return true;
+}
+
+static bool
+value_to_color(struct context *ctx, bool allow_alpha, struct rgba *color)
+{
+    if (strlen(ctx->value) != 8) {
+        LOG_CONTEXTUAL_ERR("not a valid color value");
+        return false;
+    }
+
+    uint32_t v;
+    if (!str_to_uint32(ctx->value, 16, &v)) {
+        LOG_CONTEXTUAL_ERR("not a valid color value");
+        return false;
+    }
+
+    if (!allow_alpha && (v & 0x000000ff) != 0) {
+        LOG_CONTEXTUAL_ERR("color value must not have an alpha component");
+        return false;
+    }
+
+    *color = conf_hex_to_rgba(v);
+    return true;
+}
+
+static bool
+value_to_double(struct context *ctx, float *res)
+{
+    const char *s = ctx->value;
+
+    if (s == NULL)
+        return false;
+
+    errno = 0;
+    char *end = NULL;
+
+    *res = strtof(s, &end);
+    if (!(errno == 0 && *end == '\0')) {
+        LOG_CONTEXTUAL_ERR("invalid decimal value");
+        return false;
+    }
+
+    return true;
+}
+
+static bool
+value_to_pt_or_px(struct context *ctx, struct pt_or_px *res)
+{
+    const char *s = ctx->value;
+
+    size_t len = s != NULL ? strlen(s) : 0;
+    if (len >= 2 && s[len - 2] == 'p' && s[len - 1] == 'x') {
+        errno = 0;
+        char *end = NULL;
+
+        long value = strtol(s, &end, 10);
+        if (!(errno == 0 && end == s + len - 2)) {
+            LOG_CONTEXTUAL_ERR("invalid px value (must be on the form 12px)");
+            return false;
+        }
+        res->pt = 0;
+        res->px = value;
+    } else {
+        float value;
+        if (!value_to_double(ctx, &value))
+            return false;
+        res->pt = value;
+        res->px = 0;
+    }
+
+    return true;
+}
+
+static bool
+value_to_enum(struct context *ctx, const char **value_map, int *res)
+{
+    size_t str_len = 0;
+    size_t count = 0;
+
+    for (; value_map[count] != NULL; count++) {
+        if (strcasecmp(value_map[count], ctx->value) == 0) {
+            *res = count;
+            return true;
+        }
+        str_len += strlen(value_map[count]);
+    }
+
+    const size_t size = str_len + count * 4 + 1;
+    char valid_values[512];
+    size_t idx = 0;
+    assert(size < sizeof(valid_values));
+
+    for (size_t i = 0; i < count; i++)
+        idx += snprintf(&valid_values[idx], size - idx, "'%s', ", value_map[i]);
+
+    if (count > 0)
+        valid_values[idx - 2] = '\0';
+
+    LOG_CONTEXTUAL_ERR("not one of %s", valid_values);
+    *res = -1;
+    return false;
+}
+
+
 static bool parse_config_file(
     FILE *f, struct config *conf, const char *path, bool errors_are_fatal);
 
 static bool
 parse_section_main(struct context *ctx)
 {
-    //struct config *conf = ctx->conf;
+    struct config *conf = ctx->conf;
     const char *key = ctx->key;
-    //const char *value = ctx->value;
+    const char *value = ctx->value;
 
-    if (strcmp(key, "output") == 0) {
-        ;
-    }
+    if (strcmp(key, "output") == 0)
+        return value_to_str(ctx, &conf->output);
 
-    else if (strcmp(key, "font") == 0) {
-        
-    }
+    else if (strcmp(key, "font") == 0)
+        return value_to_str(ctx, &conf->font);
 
     else if (strcmp(key, "dpi-aware") == 0) {
-        
+        if (strcmp(value, "auto") == 0)
+            conf->dpi_aware = DPI_AWARE_AUTO;
+        else {
+            bool value;
+            if (!value_to_bool(ctx, &value))
+                return false;
+            conf->dpi_aware = value ? DPI_AWARE_YES : DPI_AWARE_NO;
+        }
+        return true;
     }
-    else if (strcmp(key, "prompt") == 0) {
-        
-    }
-    else if (strcmp(key, "icon-theme") == 0) {
-        
-    }
-    else if (strcmp(key, "icons-enabled") == 0) {
-        
-    }
+
+    else if (strcmp(key, "prompt") == 0)
+        return value_to_wchars(ctx, &conf->prompt);
+
+    else if (strcmp(key, "icon-theme") == 0)
+        return value_to_str(ctx, &conf->icon_theme);
+
+    else if (strcmp(key, "icons-enabled") == 0)
+        return value_to_bool(ctx, &conf->icons_enabled);
+
     else if (strcmp(key, "fields") == 0) {
-        
+        _Static_assert(sizeof(conf->match_fields) == sizeof(int),
+            "enum is not 32-bit");
+
+        return value_to_enum(
+            ctx,
+            (const char *[]){
+                "filename",
+                "name",
+                "generic",
+                "exec",
+                "categories",
+                "keywords",
+                "comment",
+                NULL},
+            (int *)&conf->match_fields);
     }
-    else if (strcmp(key, "password-input") == 0) {
-        
+
+    else if (strcmp(key, "password-character") == 0) {
+        char32_t *password_chars = ambstoc32(value);
+        if (password_chars == NULL || c32len(password_chars) != 1) {
+            LOG_CONTEXTUAL_ERR("ivnalid password character");
+            free(password_chars);
+            return false;
+        }
+
+        conf->password = password_chars[0];
+        free(password_chars);
+        return true;
     }
-    else if (strcmp(key, "fuzzy") == 0) {
-        
-    }
-    else if (strcmp(key, "show-actions") == 0) {
-        
-    }
-    else if (strcmp(key, "terminal") == 0) {
-        
-    }
-    else if (strcmp(key, "launch-prefix") == 0) {
-        
-    }
-    else if (strcmp(key, "lines") == 0) {
-        
-    }
-    else if (strcmp(key, "width") == 0) {
-        
-    }
-    else if (strcmp(key, "horizontal-pad") == 0) {
-        
-    }
-    else if (strcmp(key, "vertical-pad") == 0) {
-        
-    }
-    else if (strcmp(key, "inner-pad") == 0) {
-        
-    }
-    else if (strcmp(key, "background") == 0) {
-        
-    }
-    else if (strcmp(key, "text-color") == 0) {
-        
-    }
-    else if (strcmp(key, "match-color") == 0) {
-        
-    }
-    else if (strcmp(key, "selection-color") == 0) {
-        
-    }
-    else if (strcmp(key, "selection-text-color") == 0) {
-        
-    }
-    else if (strcmp(key, "border-width") == 0) {
-        
-    }
-    else if (strcmp(key, "border-radius") == 0) {
-        
-    }
-    else if (strcmp(key, "border-color") == 0) {
-        
-    }
-    else if (strcmp(key, "line-height") == 0) {
-        
-    }
-    else if (strcmp(key, "letter-spacing") == 0) {
-        
-    }
+
+    else if (strcmp(key, "fuzzy") == 0)
+        return value_to_bool(ctx, &conf->fuzzy.enabled);
+
+    else if (strcmp(key, "show-actions") == 0)
+        return value_to_bool(ctx, &conf->actions_enabled);
+
+    else if (strcmp(key, "terminal") == 0)
+        return value_to_str(ctx, &conf->terminal);
+
+    else if (strcmp(key, "launch-prefix") == 0)
+        return value_to_str(ctx, &conf->launch_prefix);
+
+    else if (strcmp(key, "lines") == 0)
+        return value_to_uint32(ctx, 10, &conf->lines);
+
+    else if (strcmp(key, "width") == 0)
+        return value_to_uint32(ctx, 10, &conf->chars);
+
+    else if (strcmp(key, "horizontal-pad") == 0)
+        return value_to_uint32(ctx, 10, &conf->pad.x);
+
+    else if (strcmp(key, "vertical-pad") == 0)
+        return value_to_uint32(ctx, 10, &conf->pad.y);
+
+    else if (strcmp(key, "inner-pad") == 0)
+        return value_to_uint32(ctx, 10, &conf->pad.inner);
+
+    else if (strcmp(key, "background") == 0)
+        return value_to_color(ctx, true, &conf->colors.background);
+
+    else if (strcmp(key, "text-color") == 0)
+        return value_to_color(ctx, true, &conf->colors.text);
+
+    else if (strcmp(key, "match-color") == 0)
+        return value_to_color(ctx, true, &conf->colors.match);
+
+    else if (strcmp(key, "selection-color") == 0)
+        return value_to_color(ctx, true, &conf->colors.selection);
+
+    else if (strcmp(key, "selection-text-color") == 0)
+        return value_to_color(ctx, true, &conf->colors.selection_text);
+
+    else if (strcmp(key, "border-width") == 0)
+        return value_to_uint32(ctx, 10, &conf->border.size);
+
+    else if (strcmp(key, "border-radius") == 0)
+        return value_to_uint32(ctx, 10, &conf->border.radius);
+
+    else if (strcmp(key, "border-color") == 0)
+        return value_to_color(ctx, true, &conf->colors.border);
+
+    else if (strcmp(key, "line-height") == 0)
+        return value_to_pt_or_px(ctx, &conf->line_height);
+
+    else if (strcmp(key, "letter-spacing") == 0)
+        return value_to_pt_or_px(ctx, &conf->letter_spacing);
 
     else
         LOG_CONTEXTUAL_ERR("not a valid option: %s", key);
@@ -242,17 +458,19 @@ parse_section_main(struct context *ctx)
 static bool
 parse_section_dmenu(struct context *ctx)
 {
-    //struct config *conf = ctx->conf;
+    struct config *conf = ctx->conf;
     const char *key = ctx->key;
-    //const char *value = ctx->value;
 
     if (strcmp(key, "print-index") == 0) {
-        ;
+        bool enabled;
+        if (!value_to_bool(ctx, &enabled))
+            return false;
+        conf->dmenu.mode = enabled ? DMENU_MODE_INDEX : DMENU_MODE_TEXT;
+        return true;
     }
 
-    else if (strcmp(key, "exit-immediately-if-empty") == 0) {
-        ;
-    }
+    else if (strcmp(key, "exit-immediately-if-empty") == 0)
+        return value_to_bool(ctx, &conf->dmenu.exit_immediately_if_empty);
 
     else
         LOG_CONTEXTUAL_ERR("not a valid option: %s", key);
@@ -599,7 +817,8 @@ config_load(struct config *conf, const char *conf_path,
             .enabled = true,
         },
         .dmenu = {
-            .mode = DMENU_MODE_NONE,
+            .enabled = false,
+            .mode = DMENU_MODE_TEXT,
             .exit_immediately_if_empty = false,
         },
         .lines = 15,
