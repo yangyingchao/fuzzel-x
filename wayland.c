@@ -172,7 +172,7 @@ struct wayland {
     enum dmenu_mode dmenu_mode;
     const char *launch_prefix;
 
-    bool frame_is_scheduled;
+    struct wl_callback *frame_cb;
     struct buffer *pending;
 
     struct wl_display *display;
@@ -1433,10 +1433,10 @@ commit_buffer(struct wayland *wayl, struct buffer *buf)
     wl_surface_attach(wayl->surface, buf->wl_buf, 0, 0);
     wl_surface_damage_buffer(wayl->surface, 0, 0, buf->width, buf->height);
 
-    struct wl_callback *cb = wl_surface_frame(wayl->surface);
-    wl_callback_add_listener(cb, &frame_listener, wayl);
+    assert(wayl->frame_cb == NULL);
+    wayl->frame_cb = wl_surface_frame(wayl->surface);
+    wl_callback_add_listener(wayl->frame_cb, &frame_listener, wayl);
 
-    wayl->frame_is_scheduled = true;
     wl_surface_commit(wayl->surface);
 }
 
@@ -1445,8 +1445,9 @@ frame_callback(void *data, struct wl_callback *wl_callback, uint32_t callback_da
 {
     struct wayland *wayl = data;
 
-    wayl->frame_is_scheduled = false;
-    wl_callback_destroy(wl_callback);
+    assert(wayl->frame_cb == wl_callback);
+    wl_callback_destroy(wayl->frame_cb);
+    wayl->frame_cb = NULL;
 
     if (wayl->pending != NULL) {
         commit_buffer(wayl, wayl->pending);
@@ -1491,7 +1492,7 @@ wayl_refresh(struct wayland *wayl)
     cairo_surface_flush(buf->cairo_surface);
 #endif
 
-    if (wayl->frame_is_scheduled) {
+    if (wayl->frame_cb != NULL) {
         /* There's already a frame being drawn - delay current frame
          * (overwriting any previous pending frame) */
 
@@ -1802,6 +1803,9 @@ wayl_destroy(struct wayland *wayl)
 {
     if (wayl == NULL)
         return;
+
+    if (wayl->frame_cb != NULL)
+        wl_callback_destroy(wayl->frame_cb);
 
     if (wayl->display != NULL)
         fdm_del_no_close(wayl->fdm, wl_display_get_fd(wayl->display));
