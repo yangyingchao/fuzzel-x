@@ -159,10 +159,12 @@ str_to_uint32(const char *s, int base, uint32_t *res)
 {
     unsigned long v;
     bool ret = str_to_ulong(s, base, &v);
+    if (!ret)
+        return false;
     if (v > UINT32_MAX)
         return false;
     *res = v;
-    return ret;
+    return true;
 }
 
 static bool
