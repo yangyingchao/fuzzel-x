@@ -1144,9 +1144,8 @@ main(int argc, char *const *argv)
     };
 
     if ((wayl = wayl_init(
-             fdm, render, prompt, matches,
-             conf.dmenu.mode, conf.launch_prefix, conf.output, conf.font,
-             conf.dpi_aware, &font_reloaded, &ctx)) == NULL)
+             &conf, fdm, render, prompt, matches,
+             &font_reloaded, &ctx)) == NULL)
         goto out;
 
     ctx.wayl = wayl;

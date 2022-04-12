@@ -1642,12 +1642,9 @@ parse_font_spec(const char *font_spec, size_t *count, struct font_spec **specs)
 }
 
 struct wayland *
-wayl_init(struct fdm *fdm,
-          struct render *render, struct prompt *prompt, struct matches *matches,
-          enum dmenu_mode dmenu_mode, const char *launch_prefix,
-          const char *output_name, const char *font_spec,
-          enum dpi_aware dpi_aware,
-          font_reloaded_t font_reloaded_cb, void *data)
+wayl_init(const struct config *conf, struct fdm *fdm,
+          struct render *render, struct prompt *prompt,
+          struct matches *matches, font_reloaded_t font_reloaded_cb, void *data)
 {
     struct wayland *wayl = malloc(sizeof(*wayl));
     *wayl = (struct wayland){
@@ -1656,19 +1653,18 @@ wayl_init(struct fdm *fdm,
         .prompt = prompt,
         .matches = matches,
         .status = KEEP_RUNNING,
-        .exit_code = (dmenu_mode == DMENU_MODE_NONE
-                      ? EXIT_SUCCESS : EXIT_FAILURE),
-        .dmenu_mode = dmenu_mode,
-        .launch_prefix = launch_prefix,
-        .output_name = output_name != NULL ? strdup(output_name) : NULL,
+        .exit_code = !conf->dmenu.enabled ? EXIT_SUCCESS : EXIT_FAILURE,
+        .dmenu_mode = conf->dmenu.enabled ? conf->dmenu.mode : DMENU_MODE_NONE,
+        .launch_prefix = conf->launch_prefix,
+        .output_name = conf->output != NULL ? strdup(conf->output) : NULL,
         .font_reloaded = {
             .cb = font_reloaded_cb,
             .data = data,
         },
-        .dpi_aware = dpi_aware,
+        .dpi_aware = conf->dpi_aware,
     };
 
-    parse_font_spec(font_spec, &wayl->font_count, &wayl->fonts);
+    parse_font_spec(conf->font, &wayl->font_count, &wayl->fonts);
 
     wayl->display = wl_display_connect(NULL);
     if (wayl->display == NULL) {
