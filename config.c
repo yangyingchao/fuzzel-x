@@ -421,35 +421,59 @@ parse_section_main(struct context *ctx)
     else if (strcmp(key, "inner-pad") == 0)
         return value_to_uint32(ctx, 10, &conf->pad.inner);
 
-    else if (strcmp(key, "background") == 0)
-        return value_to_color(ctx, true, &conf->colors.background);
-
-    else if (strcmp(key, "text-color") == 0)
-        return value_to_color(ctx, true, &conf->colors.text);
-
-    else if (strcmp(key, "match-color") == 0)
-        return value_to_color(ctx, true, &conf->colors.match);
-
-    else if (strcmp(key, "selection-color") == 0)
-        return value_to_color(ctx, true, &conf->colors.selection);
-
-    else if (strcmp(key, "selection-text-color") == 0)
-        return value_to_color(ctx, true, &conf->colors.selection_text);
-
-    else if (strcmp(key, "border-width") == 0)
-        return value_to_uint32(ctx, 10, &conf->border.size);
-
-    else if (strcmp(key, "border-radius") == 0)
-        return value_to_uint32(ctx, 10, &conf->border.radius);
-
-    else if (strcmp(key, "border-color") == 0)
-        return value_to_color(ctx, true, &conf->colors.border);
-
     else if (strcmp(key, "line-height") == 0)
         return value_to_pt_or_px(ctx, &conf->line_height);
 
     else if (strcmp(key, "letter-spacing") == 0)
         return value_to_pt_or_px(ctx, &conf->letter_spacing);
+
+    else
+        LOG_CONTEXTUAL_ERR("not a valid option: %s", key);
+
+    return false;
+}
+
+static bool
+parse_section_colors(struct context *ctx)
+{
+    struct config *conf = ctx->conf;
+    const char *key = ctx->key;
+
+    if (strcmp(key, "background") == 0)
+        return value_to_color(ctx, true, &conf->colors.background);
+
+    else if (strcmp(key, "text") == 0)
+        return value_to_color(ctx, true, &conf->colors.text);
+
+    else if (strcmp(key, "match") == 0)
+        return value_to_color(ctx, true, &conf->colors.match);
+
+    else if (strcmp(key, "selection") == 0)
+        return value_to_color(ctx, true, &conf->colors.selection);
+
+    else if (strcmp(key, "selection-text") == 0)
+        return value_to_color(ctx, true, &conf->colors.selection_text);
+
+    else if (strcmp(key, "border") == 0)
+        return value_to_color(ctx, true, &conf->colors.border);
+
+    else
+        LOG_CONTEXTUAL_ERR("not a valid option: %s", key);
+
+    return false;
+}
+
+static bool
+parse_section_border(struct context *ctx)
+{
+    struct config *conf = ctx->conf;
+    const char *key = ctx->key;
+
+    if (strcmp(key, "width") == 0)
+        return value_to_uint32(ctx, 10, &conf->border.size);
+
+    else if (strcmp(key, "radius") == 0)
+        return value_to_uint32(ctx, 10, &conf->border.radius);
 
     else
         LOG_CONTEXTUAL_ERR("not a valid option: %s", key);
@@ -484,6 +508,8 @@ parse_section_dmenu(struct context *ctx)
 
 enum section {
     SECTION_MAIN,
+    SECTION_COLORS,
+    SECTION_BORDER,
     SECTION_DMENU,
     SECTION_COUNT,
 };
@@ -495,8 +521,10 @@ static const struct {
     parser_fun_t fun;
     const char *name;
 } section_info[] = {
-    [SECTION_MAIN] =  {&parse_section_main, "main"},
-    [SECTION_DMENU] = {&parse_section_dmenu, "dmenu"},
+    [SECTION_MAIN] =   {&parse_section_main, "main"},
+    [SECTION_COLORS] = {&parse_section_colors, "colors"},
+    [SECTION_BORDER] = {&parse_section_border, "border"},
+    [SECTION_DMENU] =  {&parse_section_dmenu, "dmenu"},
 };
 
 static enum section
