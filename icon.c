@@ -212,7 +212,7 @@ load_theme_in(const char *dir, struct icon_theme *theme,
     FILE *index = NULL;
     bool ret = false;
 
-    theme_dir_fd = open(dir, O_RDONLY);
+    theme_dir_fd = open(dir, O_RDONLY | O_DIRECTORY);
     if (theme_dir_fd == -1) {
         //LOG_ERRNO("%s: failed to open", dir);
         goto out;

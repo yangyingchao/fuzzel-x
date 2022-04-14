@@ -496,7 +496,7 @@ xdg_data_dirs(void)
 
     const char *xdg_data_home = getenv("XDG_DATA_HOME");
     if (xdg_data_home != NULL && xdg_data_home[0] != '\0') {
-        int fd = open(xdg_data_home, O_RDONLY);
+        int fd = open(xdg_data_home, O_RDONLY | O_DIRECTORY);
         if (fd >= 0) {
             struct xdg_data_dir d = {.fd = fd, .path = strdup(xdg_data_home)};
             tll_push_back(ret, d);
@@ -508,7 +508,7 @@ xdg_data_dirs(void)
         char *path = malloc(strlen(pw->pw_dir) + 1 + strlen(local) + 1);
         sprintf(path, "%s/%s", pw->pw_dir, local);
 
-        int fd = open(path, O_RDONLY);
+        int fd = open(path, O_RDONLY | O_DIRECTORY);
         if (fd >= 0) {
             struct xdg_data_dir d = {.fd = fd, .path = path};
             tll_push_back(ret, d);
@@ -527,7 +527,7 @@ xdg_data_dirs(void)
              tok != NULL;
              tok = strtok_r(NULL, ":", &ctx))
         {
-            int fd = open(tok, O_RDONLY);
+            int fd = open(tok, O_RDONLY | O_DIRECTORY);
             if (fd >= 0) {
                 struct xdg_data_dir d = {.fd = fd, .path = strdup(tok)};
                 tll_push_back(ret, d);
@@ -536,8 +536,8 @@ xdg_data_dirs(void)
 
         free(copy);
     } else {
-        int fd1 = open("/usr/local/share", O_RDONLY);
-        int fd2 = open("/usr/share", O_RDONLY);
+        int fd1 = open("/usr/local/share", O_RDONLY | O_DIRECTORY);
+        int fd2 = open("/usr/share", O_RDONLY | O_DIRECTORY);
 
         if (fd1 >= 0) {
             struct xdg_data_dir d = {.fd = fd1, .path = strdup("/usr/local/share")};
