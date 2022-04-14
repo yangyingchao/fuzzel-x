@@ -431,7 +431,8 @@ icon_reset(struct icon *icon)
 }
 
 static bool
-reload_icon(struct icon *icon, int icon_size, const icon_theme_list_t *themes)
+reload_icon(struct icon *icon, int icon_size, const icon_theme_list_t *themes,
+            const xdg_data_dirs_t *xdg_dirs)
 {
     if (icon->name == NULL)
         return true;
@@ -458,8 +459,6 @@ reload_icon(struct icon *icon, int icon_size, const icon_theme_list_t *themes)
 
     LOG_DBG("looking for %s (wanted size: %d)", name, icon_size);
 
-    xdg_data_dirs_t xdg_dirs = xdg_data_dirs();
-
     /* For details, see
      * https://specifications.freedesktop.org/icon-theme-spec/icon-theme-spec-latest.html#icon_lookup */
 
@@ -478,7 +477,7 @@ reload_icon(struct icon *icon, int icon_size, const icon_theme_list_t *themes)
         tll_foreach(theme->dirs, icon_dir_it) {
             const struct icon_dir *icon_dir = &icon_dir_it->item;
 
-            tll_foreach(xdg_dirs, xdg_dir_it) {
+            tll_foreach(*xdg_dirs, xdg_dir_it) {
                 const struct xdg_data_dir *xdg_dir = &xdg_dir_it->item;
 
                 if (faccessat(xdg_dir->fd, theme_relative_path, R_OK, 0) < 0)
@@ -584,14 +583,14 @@ reload_icon(struct icon *icon, int icon_size, const icon_theme_list_t *themes)
                     icon_from_svg(icon, full_path))
                 {
                     LOG_DBG("%s: %s", name, full_path);
-                    goto success;
+                    return true;
                 }
 
                 if (full_path[len - 3] == 'p' &&
                     icon_from_png(icon, full_path))
                 {
                     LOG_DBG("%s: %s", name, full_path);
-                    goto success;
+                    return true;
                 }
             }
         }
@@ -602,17 +601,19 @@ reload_icon(struct icon *icon, int icon_size, const icon_theme_list_t *themes)
             if (path_of_min_diff[len - 3] == 's' &&
                 icon_from_svg(icon, path_of_min_diff))
             {
-                goto success;
-            } else if (path_of_min_diff[len - 3] == 'p' &&
+                return true;
+            }
+
+            else if (path_of_min_diff[len - 3] == 'p' &&
                        icon_from_png(icon, path_of_min_diff))
             {
-                goto success;
+                return true;
             }
         }
     }
 
     /* Finally, look in XDG_DATA_DIRS/pixmaps */
-    tll_foreach(xdg_dirs, it) {
+    tll_foreach(*xdg_dirs, it) {
         char path[strlen(it->item.path) + 1 +
                   strlen("pixmaps") + 1 +
                   strlen(name) + strlen(".svg") + 1];
@@ -620,18 +621,15 @@ reload_icon(struct icon *icon, int icon_size, const icon_theme_list_t *themes)
         /* Try SVG variant first */
         sprintf(path, "%s/pixmaps/%s.svg", it->item.path, name);
         if (icon_from_svg(icon, path))
-            goto success;
+            return true;
 
         /* No SVG, look for PNG instead */
         sprintf(path, "%s/pixmaps/%s.png", it->item.path, name);
         if (icon_from_png(icon, path))
-            goto success;
+            return true;
     }
 
     icon_null(icon);
-
-success:
-    xdg_data_dirs_destroy(xdg_dirs);
     return true;
 }
 
@@ -642,9 +640,18 @@ icon_reload_application_icons(icon_theme_list_t themes, int icon_size,
     struct timespec start;
     clock_gettime(CLOCK_MONOTONIC, &start);
 
-    for (size_t i = 0; i < applications->count; i++)
-        if (!reload_icon(&applications->v[i].icon, icon_size, &themes))
+    xdg_data_dirs_t xdg_dirs = xdg_data_dirs();
+
+    for (size_t i = 0; i < applications->count; i++) {
+        if (!reload_icon(
+                &applications->v[i].icon, icon_size, &themes, &xdg_dirs))
+        {
+            xdg_data_dirs_destroy(xdg_dirs);
             return false;
+        }
+    }
+
+    xdg_data_dirs_destroy(xdg_dirs);
 
     struct timespec end;
     clock_gettime(CLOCK_MONOTONIC, &end);
