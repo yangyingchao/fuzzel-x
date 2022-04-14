@@ -480,9 +480,6 @@ reload_icon(struct icon *icon, int icon_size, const icon_theme_list_t *themes,
             tll_foreach(*xdg_dirs, xdg_dir_it) {
                 const struct xdg_data_dir *xdg_dir = &xdg_dir_it->item;
 
-                if (faccessat(xdg_dir->fd, theme_relative_path, R_OK, 0) < 0)
-                    continue;
-
                 const int scale = icon_dir->scale;
                 const int size = icon_dir->size * scale;
                 const int min_size = icon_dir->min_size * scale;
@@ -525,6 +522,9 @@ reload_icon(struct icon *icon, int icon_size, const icon_theme_list_t *themes,
                      * actually exists */
                     continue;
                 }
+
+                if (faccessat(xdg_dir->fd, theme_relative_path, R_OK, 0) < 0)
+                    continue;
 
                 const size_t len = strlen(xdg_dir->path) + 1 +
                     strlen("icons") + 1 +
