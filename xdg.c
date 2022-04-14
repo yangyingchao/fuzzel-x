@@ -495,15 +495,20 @@ xdg_data_dirs(void)
     xdg_data_dirs_t ret = tll_init();
 
     const char *xdg_data_home = getenv("XDG_DATA_HOME");
-    if (xdg_data_home != NULL)
-        tll_push_back(ret, strdup(xdg_data_home));
-    else {
+    if (xdg_data_home != NULL && xdg_data_home[0] != '\0') {
+        if (access(xdg_data_home, R_OK) == 0)
+            tll_push_back(ret, strdup(xdg_data_home));
+    } else {
         static const char *const local = ".local/share";
         const struct passwd *pw = getpwuid(getuid());
 
         char *path = malloc(strlen(pw->pw_dir) + 1 + strlen(local) + 1);
         sprintf(path, "%s/%s", pw->pw_dir, local);
-        tll_push_back(ret, path);
+
+        if (access(path, R_OK) == 0)
+            tll_push_back(ret, path);
+        else
+            free(path);
     }
 
     const char *_xdg_data_dirs = getenv("XDG_DATA_DIRS");
@@ -517,13 +522,16 @@ xdg_data_dirs(void)
              tok != NULL;
              tok = strtok_r(NULL, ":", &ctx))
         {
-            tll_push_back(ret, strdup(tok));
+            if (access(tok, R_OK) == 0)
+                tll_push_back(ret, strdup(tok));
         }
 
         free(copy);
     } else {
-        tll_push_back(ret, strdup("/usr/local/share"));
-        tll_push_back(ret, strdup("/usr/share"));
+        if (access("/usr/local/share", R_OK) == 0)
+            tll_push_back(ret, strdup("/usr/local/share"));
+        if (access("/usr/share", R_OK) == 0)
+            tll_push_back(ret, strdup("/usr/share"));
     }
 
     return ret;
