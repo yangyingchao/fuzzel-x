@@ -431,7 +431,7 @@ icon_reset(struct icon *icon)
 }
 
 static bool
-reload_icon(struct icon *icon, int icon_size, icon_theme_list_t themes)
+reload_icon(struct icon *icon, int icon_size, const icon_theme_list_t *themes)
 {
     if (icon->name == NULL)
         return true;
@@ -463,7 +463,7 @@ reload_icon(struct icon *icon, int icon_size, icon_theme_list_t themes)
     /* For details, see
      * https://specifications.freedesktop.org/icon-theme-spec/icon-theme-spec-latest.html#icon_lookup */
 
-    tll_foreach(themes, theme_it) {
+    tll_foreach(*themes, theme_it) {
         const struct icon_theme *theme = &theme_it->item;
 
         /* Fallback icon to use if there aren’t any exact matches */
@@ -643,7 +643,7 @@ icon_reload_application_icons(icon_theme_list_t themes, int icon_size,
     clock_gettime(CLOCK_MONOTONIC, &start);
 
     for (size_t i = 0; i < applications->count; i++)
-        if (!reload_icon(&applications->v[i].icon, icon_size, themes))
+        if (!reload_icon(&applications->v[i].icon, icon_size, &themes))
             return false;
 
     struct timespec end;
