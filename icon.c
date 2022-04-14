@@ -540,26 +540,14 @@ reload_icon(struct icon *icon, int icon_size, const icon_theme_list_t *themes,
                         xdg_dir->path, theme->name, icon_dir->path, name);
 
                 /* Look for SVGs first, if directory is ‘Scalable’ */
-                if (type == ICON_DIR_SCALABLE) {
+                full_path[len - 3] = 'p';
+                full_path[len - 2] = 'n';
+                full_path[len - 1] = 'g';
+
+                if (access(full_path, R_OK) < 0) {
                     full_path[len - 3] = 's';
                     full_path[len - 2] = 'v';
                     full_path[len - 1] = 'g';
-                } else {
-                    full_path[len - 3] = 'p';
-                    full_path[len - 2] = 'n';
-                    full_path[len - 1] = 'g';
-                }
-
-                if (access(full_path, R_OK) < 0) {
-                    if (full_path[len - 3] == 'p') {
-                        full_path[len - 3] = 's';
-                        full_path[len - 2] = 'v';
-                        full_path[len - 1] = 'g';
-                    } else {
-                        full_path[len - 3] = 'p';
-                        full_path[len - 2] = 'n';
-                        full_path[len - 1] = 'g';
-                    }
 
                     if (access(full_path, R_OK) < 0)
                         continue;
