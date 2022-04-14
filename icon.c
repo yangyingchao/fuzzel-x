@@ -207,38 +207,16 @@ static bool
 load_theme_in(const char *dir, struct icon_theme *theme,
               theme_names_t *themes_to_load)
 {
-    int theme_dir_fd = -1;
-    int index_fd = -1;
-    FILE *index = NULL;
-    bool ret = false;
+    char path[PATH_MAX];
+    snprintf(path, sizeof(path), "%s/index.theme", dir);
 
-    theme_dir_fd = open(dir, O_RDONLY | O_DIRECTORY);
-    if (theme_dir_fd == -1) {
-        //LOG_ERRNO("%s: failed to open", dir);
-        goto out;
-    }
-
-    index_fd = openat(theme_dir_fd, "index.theme", O_RDONLY);
-    if (index_fd == -1) {
-        //LOG_ERRNO("%s/index.theme: failed to open", dir);
-        goto out;
-    }
-
-    index = fdopen(index_fd, "r");
-    assert(index != NULL);
+    FILE *index = fopen(path, "r");
+    if (index == NULL)
+        return false;
 
     parse_theme(index, theme, themes_to_load);
-
-    ret = true;
-
- out:
-    if (index != NULL)
-        fclose(index);
-    if (index_fd != -1)
-        close(index_fd);
-    if (theme_dir_fd != -1)
-        close(theme_dir_fd);
-    return ret;
+    fclose(index);
+    return true;
 }
 
 icon_theme_list_t
