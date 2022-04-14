@@ -446,20 +446,26 @@ reload_icon(struct icon *icon, int icon_size, icon_theme_list_t themes)
         const struct icon_theme *theme = &theme_it->item;
         int min_diff = 10000;
 
+        char theme_relative_path[5 + 1 + strlen(theme->name) + 1];
+        sprintf(theme_relative_path, "icons/%s", theme->name);
+
         /* Assume sorted */
         for (size_t i = 0; i < 4; i++) {
             tll_foreach(theme->dirs, icon_dir_it) {
                 const struct icon_dir *icon_dir = &icon_dir_it->item;
 
                 tll_foreach(xdg_dirs, xdg_dir_it) {
-                    const char *xdg_dir = xdg_dir_it->item.path;
+                    const struct xdg_data_dir *xdg_dir = &xdg_dir_it->item;
+
+                    if (faccessat(xdg_dir->fd, theme_relative_path, R_OK, 0) < 0)
+                        continue;
 
                     const int size = icon_dir->size * icon_dir->scale;
                     const int min_size = icon_dir->min_size * icon_dir->scale;
                     const int max_size = icon_dir->max_size * icon_dir->scale;
                     const bool scalable = icon_dir->scalable;
 
-                    const size_t len = strlen(xdg_dir) + 1 +
+                    const size_t len = strlen(xdg_dir->path) + 1 +
                         strlen("icons") + 1 +
                         strlen(theme->name) + 1 +
                         strlen(icon_dir->path) + 1 +
@@ -468,7 +474,7 @@ reload_icon(struct icon *icon, int icon_size, icon_theme_list_t themes)
                     /* Check if a png/svg file exists at all */
                     char *full_path = malloc(len);
                     sprintf(full_path, "%s/icons/%s/%s/%s.png",
-                            xdg_dir, theme->name, icon_dir->path, name);
+                            xdg_dir->path, theme->name, icon_dir->path, name);
 
                     if (access(full_path, O_RDONLY) == -1) {
                         /* Also check for svg variant */
