@@ -17,6 +17,7 @@ struct icon_dir {
     int min_size;
     int max_size;
     int scale;
+    int threshold;
     enum icon_dir_type type;
 };
 

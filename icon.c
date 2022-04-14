@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <assert.h>
 #include <unistd.h>
+#include <limits.h>
 #include <time.h>
 
 #include <sys/stat.h>
@@ -75,8 +76,9 @@ parse_theme(FILE *index, struct icon_theme *theme, theme_names_t *themes_to_load
     int min_size = -1;
     int max_size = -1;
     int scale = 1;
+    int threshold = 2;
     char *context = NULL;
-    enum icon_dir_type type = ICON_DIR_FIXED;
+    enum icon_dir_type type = ICON_DIR_THRESHOLD;
 
     while (true) {
         char *line = NULL;
@@ -112,6 +114,7 @@ parse_theme(FILE *index, struct icon_theme *theme, theme_names_t *themes_to_load
                     .min_size = min_size >= 0 ? min_size : size,
                     .max_size = max_size >= 0 ? max_size : size,
                     .scale = scale,
+                    .threshold = threshold,
                     .type = type,
                 };
                 tll_push_back(theme->dirs, dir);
@@ -124,7 +127,8 @@ parse_theme(FILE *index, struct icon_theme *theme, theme_names_t *themes_to_load
             scale = 1;
             section = NULL;
             context = NULL;
-            type = ICON_DIR_FIXED;
+            type = ICON_DIR_THRESHOLD;
+            threshold = 2;
 
             section = malloc(len - 2 + 1);
             memcpy(section, &line[1], len - 2);
@@ -162,6 +166,9 @@ parse_theme(FILE *index, struct icon_theme *theme, theme_names_t *themes_to_load
         else if (strcasecmp(key, "context") == 0)
             context = strdup(value);
 
+        else if (strcasecmp(key, "threshold") == 0)
+            sscanf(value, "%d", &threshold);
+
         else if (strcasecmp(key, "type") == 0) {
             if (strcasecmp(value, "fixed") == 0)
                 type = ICON_DIR_FIXED;
@@ -186,6 +193,7 @@ parse_theme(FILE *index, struct icon_theme *theme, theme_names_t *themes_to_load
             .min_size = min_size >= 0 ? min_size : size,
             .max_size = max_size >= 0 ? max_size : size,
             .scale = scale,
+            .threshold = threshold,
             .type = type,
         };
         tll_push_back(theme->dirs, dir);
@@ -452,101 +460,158 @@ reload_icon(struct icon *icon, int icon_size, icon_theme_list_t themes)
 
     xdg_data_dirs_t xdg_dirs = xdg_data_dirs();
 
+    /* For details, see
+     * https://specifications.freedesktop.org/icon-theme-spec/icon-theme-spec-latest.html#icon_lookup */
+
     tll_foreach(themes, theme_it) {
         const struct icon_theme *theme = &theme_it->item;
-        int min_diff = 10000;
+
+        /* Fallback icon to use if there aren’t any exact matches */
+        int min_diff = INT_MAX;
+        char path_of_min_diff[PATH_MAX]; path_of_min_diff[0] = '\0';
 
         char theme_relative_path[5 + 1 + strlen(theme->name) + 1];
-        sprintf(theme_relative_path, "icons/%s", theme->name);
+        strcpy(theme_relative_path, "icons/");
+        strcat(theme_relative_path, theme->name);
 
         /* Assume sorted */
-        for (size_t i = 0; i < 4; i++) {
-            tll_foreach(theme->dirs, icon_dir_it) {
-                const struct icon_dir *icon_dir = &icon_dir_it->item;
+        tll_foreach(theme->dirs, icon_dir_it) {
+            const struct icon_dir *icon_dir = &icon_dir_it->item;
 
-                tll_foreach(xdg_dirs, xdg_dir_it) {
-                    const struct xdg_data_dir *xdg_dir = &xdg_dir_it->item;
+            tll_foreach(xdg_dirs, xdg_dir_it) {
+                const struct xdg_data_dir *xdg_dir = &xdg_dir_it->item;
 
-                    if (faccessat(xdg_dir->fd, theme_relative_path, R_OK, 0) < 0)
-                        continue;
+                if (faccessat(xdg_dir->fd, theme_relative_path, R_OK, 0) < 0)
+                    continue;
 
-                    const int size = icon_dir->size * icon_dir->scale;
-                    const int min_size = icon_dir->min_size * icon_dir->scale;
-                    const int max_size = icon_dir->max_size * icon_dir->scale;
-                    const bool scalable = icon_dir->type == ICON_DIR_SCALABLE;
+                const int scale = icon_dir->scale;
+                const int size = icon_dir->size * scale;
+                const int min_size = icon_dir->min_size * scale;
+                const int max_size = icon_dir->max_size * scale;
+                const int threshold = icon_dir->threshold * scale;
+                const enum icon_dir_type type = icon_dir->type;
 
-                    const size_t len = strlen(xdg_dir->path) + 1 +
-                        strlen("icons") + 1 +
-                        strlen(theme->name) + 1 +
-                        strlen(icon_dir->path) + 1 +
-                        strlen(name) + strlen(".png") + 1;
+                bool is_exact_match = false;;
+                int diff = INT_MAX;
 
-                    /* Check if a png/svg file exists at all */
-                    char *full_path = malloc(len);
-                    sprintf(full_path, "%s/icons/%s/%s/%s.png",
-                            xdg_dir->path, theme->name, icon_dir->path, name);
+                /* See if this directory is usable for the requested icon size */
+                switch (type) {
+                case ICON_DIR_FIXED:
+                    is_exact_match = size == icon_size;
+                    diff = abs(size - icon_size);
+                    break;
 
-                    if (access(full_path, O_RDONLY) == -1) {
-                        /* Also check for svg variant */
-                        full_path[len - 4] = 's';
-                        full_path[len - 3] = 'v';
-                        full_path[len - 2] = 'g';
-                        if (access(full_path, O_RDONLY) == -1) {
-                            free(full_path);
-                            continue;
-                        }
-                    }
+                case ICON_DIR_THRESHOLD:
+                    is_exact_match =
+                        (size - threshold) <= icon_size &&
+                        (size + threshold) >= icon_size;
+                    diff = icon_size < (size - threshold)
+                        ? (size - threshold) - icon_size
+                        : icon_size - (size + threshold);
+                    break;
 
-                    const int diff = scalable ? 0 : abs(size - icon_size);
-                    if (i == 0 && diff != 0) {
-                        /* Looking for *exactly* our wanted size */
-                        if (diff < min_diff)
-                            min_diff = diff;
-                        free(full_path);
-                        continue;
-                    } else if (i == 1 && diff != min_diff) {
-                        /* Try the one which matches most closely */
-                        free(full_path);
-                        continue;
-                    } else if (i == 2 && (icon_size < min_size ||
-                                          icon_size > max_size))
-                    {
-                        /* Find one whose scalable range we're in */
-                        free(full_path);
-                        continue;
-                    } else {
-                        /* Use anyone available */
-                    }
-
-                    if (icon_from_svg(icon, full_path)) {
-                        LOG_DBG("%s: %s scalable", name, full_path);
-                        free(full_path);
-                        goto success;
-                    }
-
-                    if (icon_from_png(icon, full_path)) {
-                        if (scalable)
-                            LOG_DBG("%s: %s: scalable", name, full_path);
-                        else if (i == 0)
-                            LOG_DBG("%s: %s: exact match", name, full_path);
-                        else if (i == 1)
-                            LOG_DBG("%s: %s: diff = %d", name, full_path, diff);
-                        else if (i == 2)
-                            LOG_DBG("%s: %s: range %d-%d",
-                                    name, full_path, min_size, max_size);
-                        else
-                            LOG_DBG("%s: %s: nothing else matched", name, full_path);
-
-                        free(full_path);
-                        goto success;
-                    }
-
-                    free(full_path);
+                case ICON_DIR_SCALABLE:
+                    is_exact_match =
+                        min_size <= icon_size &&
+                        max_size >= icon_size;
+                    diff = icon_size < min_size
+                        ? min_size - icon_size
+                        : icon_size - max_size;
+                    break;
                 }
+
+                if (!is_exact_match && diff >= min_diff) {
+                    /* Not a match, and the size diff is worse than
+                     * previously found - no need to check if the file
+                     * actually exists */
+                    continue;
+                }
+
+                const size_t len = strlen(xdg_dir->path) + 1 +
+                    strlen("icons") + 1 +
+                    strlen(theme->name) + 1 +
+                    strlen(icon_dir->path) + 1 +
+                    strlen(name) + strlen(".png");
+
+                char full_path[len + 1];
+
+                /* Check if a png/svg file exists at all */
+                sprintf(full_path, "%s/icons/%s/%s/%s.xxx",
+                        xdg_dir->path, theme->name, icon_dir->path, name);
+
+                /* Look for SVGs first, if directory is ‘Scalable’ */
+                if (type == ICON_DIR_SCALABLE) {
+                    full_path[len - 3] = 's';
+                    full_path[len - 2] = 'v';
+                    full_path[len - 1] = 'g';
+                } else {
+                    full_path[len - 3] = 'p';
+                    full_path[len - 2] = 'n';
+                    full_path[len - 1] = 'g';
+                }
+
+                if (access(full_path, R_OK) < 0) {
+                    if (full_path[len - 3] == 'p') {
+                        full_path[len - 3] = 's';
+                        full_path[len - 2] = 'v';
+                        full_path[len - 1] = 'g';
+                    } else {
+                        full_path[len - 3] = 'p';
+                        full_path[len - 2] = 'n';
+                        full_path[len - 1] = 'g';
+                    }
+
+                    if (access(full_path, R_OK) < 0)
+                        continue;
+                }
+
+                if (!is_exact_match) {
+                    /*
+                     * Not an exact match, but since file exists,
+                     * remember the path and the size diff - we may
+                     * use this icon as a fallback if we don’t find an
+                     * exact match.
+                     */
+
+                    assert(diff < min_diff);
+
+                    strcpy(path_of_min_diff, full_path);
+                    min_diff = diff;
+                    continue;
+                }
+
+                if (full_path[len - 3] == 's' &&
+                    icon_from_svg(icon, full_path))
+                {
+                    LOG_DBG("%s: %s", name, full_path);
+                    goto success;
+                }
+
+                if (full_path[len - 3] == 'p' &&
+                    icon_from_png(icon, full_path))
+                {
+                    LOG_DBG("%s: %s", name, full_path);
+                    goto success;
+                }
+            }
+        }
+
+        /* No exact matches found - try loading the fallback */
+        if (path_of_min_diff[0] != '\0') {
+            const size_t len = strlen(path_of_min_diff);
+            if (path_of_min_diff[len - 3] == 's' &&
+                icon_from_svg(icon, path_of_min_diff))
+            {
+                goto success;
+            } else if (path_of_min_diff[len - 3] == 'p' &&
+                       icon_from_png(icon, path_of_min_diff))
+            {
+                goto success;
             }
         }
     }
 
+    /* Finally, look in XDG_DATA_DIRS/pixmaps */
     tll_foreach(xdg_dirs, it) {
         char path[strlen(it->item.path) + 1 +
                   strlen("pixmaps") + 1 +
