@@ -46,7 +46,7 @@ timespec_sub(const struct timespec *a, const struct timespec *b,
 }
 
 static bool
-dir_is_usable(const char *path, const char *context, const char *type)
+dir_is_usable(const char *path, const char *context)
 {
     if (path == NULL || context == NULL) {
         return false;
@@ -76,7 +76,7 @@ parse_theme(FILE *index, struct icon_theme *theme, theme_names_t *themes_to_load
     int max_size = -1;
     int scale = 1;
     char *context = NULL;
-    char *type = NULL;
+    enum icon_dir_type type = ICON_DIR_FIXED;
 
     while (true) {
         char *line = NULL;
@@ -105,27 +105,26 @@ parse_theme(FILE *index, struct icon_theme *theme, theme_names_t *themes_to_load
 
         if (line[0] == '[' && line[len - 1] == ']') {
 
-            if (dir_is_usable(section, context, type)) {
+            if (dir_is_usable(section, context)) {
                 struct icon_dir dir = {
                     .path = section,
                     .size = size,
                     .min_size = min_size >= 0 ? min_size : size,
                     .max_size = max_size >= 0 ? max_size : size,
                     .scale = scale,
-                    .scalable = strcasecmp(type, "scalable") == 0,
+                    .type = type,
                 };
                 tll_push_back(theme->dirs, dir);
             } else
                 free(section);
 
             free(context);
-            free(type);
 
             size = min_size = max_size = -1;
             scale = 1;
             section = NULL;
             context = NULL;
-            type = NULL;
+            type = ICON_DIR_FIXED;
 
             section = malloc(len - 2 + 1);
             memcpy(section, &line[1], len - 2);
@@ -163,26 +162,37 @@ parse_theme(FILE *index, struct icon_theme *theme, theme_names_t *themes_to_load
         else if (strcasecmp(key, "context") == 0)
             context = strdup(value);
 
-        else if (strcasecmp(key, "type") == 0)
-            type = strdup(value);
+        else if (strcasecmp(key, "type") == 0) {
+            if (strcasecmp(value, "fixed") == 0)
+                type = ICON_DIR_FIXED;
+            else if (strcasecmp(value, "scalable") == 0)
+                type = ICON_DIR_SCALABLE;
+            else if (strcasecmp(value, "threshold") == 0)
+                type = ICON_DIR_THRESHOLD;
+            else {
+                LOG_WARN(
+                    "ignoring unrecognized icon theme directory type: %s",
+                    value);
+            }
+        }
 
         free(line);
     }
 
-    if (dir_is_usable(section, context, type)) {
+    if (dir_is_usable(section, context)) {
         struct icon_dir dir = {
             .path = section,
             .size = size,
             .min_size = min_size >= 0 ? min_size : size,
             .max_size = max_size >= 0 ? max_size : size,
-            .scale = scale
+            .scale = scale,
+            .type = type,
         };
         tll_push_back(theme->dirs, dir);
     } else
         free(section);
 
     free(context);
-    free(type);
 }
 
 static bool
@@ -408,7 +418,7 @@ icon_reset(struct icon *icon)
         pixman_image_unref(rast->pix);
         tll_remove(icon->rasterized, it);
     }
-    
+
     icon->type = ICON_NONE;
 }
 
@@ -463,7 +473,7 @@ reload_icon(struct icon *icon, int icon_size, icon_theme_list_t themes)
                     const int size = icon_dir->size * icon_dir->scale;
                     const int min_size = icon_dir->min_size * icon_dir->scale;
                     const int max_size = icon_dir->max_size * icon_dir->scale;
-                    const bool scalable = icon_dir->scalable;
+                    const bool scalable = icon_dir->type == ICON_DIR_SCALABLE;
 
                     const size_t len = strlen(xdg_dir->path) + 1 +
                         strlen("icons") + 1 +

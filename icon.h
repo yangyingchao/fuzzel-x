@@ -5,13 +5,19 @@
 #include "application.h"
 #include "tllist.h"
 
+enum icon_dir_type {
+    ICON_DIR_FIXED,
+    ICON_DIR_SCALABLE,
+    ICON_DIR_THRESHOLD,
+};
+
 struct icon_dir {
     char *path;  /* Relative to theme's base path */
     int size;
     int min_size;
     int max_size;
     int scale;
-    bool scalable;
+    enum icon_dir_type type;
 };
 
 struct icon_theme {
