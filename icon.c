@@ -412,9 +412,6 @@ static bool
 reload_icon(struct icon *icon, int icon_size, const icon_theme_list_t *themes,
             const xdg_data_dirs_t *xdg_dirs)
 {
-    if (icon->name == NULL)
-        return true;
-
     const char *name = icon->name;
     icon_reset(icon);
 
