@@ -107,20 +107,24 @@ parse_theme(FILE *index, struct icon_theme *theme, theme_names_t *themes_to_load
 
         if (line[0] == '[' && line[len - 1] == ']') {
 
-            if (dir_is_usable(section, context)) {
-                struct icon_dir dir = {
-                    .path = section,
-                    .size = size,
-                    .min_size = min_size >= 0 ? min_size : size,
-                    .max_size = max_size >= 0 ? max_size : size,
-                    .scale = scale,
-                    .threshold = threshold,
-                    .type = type,
-                };
-                tll_push_back(theme->dirs, dir);
-            } else
-                free(section);
+            tll_foreach(theme->dirs, it) {
+                struct icon_dir *d = &it->item;
 
+                if (section == NULL || strcmp(d->path, section) != 0)
+                    continue;
+
+                if (!dir_is_usable(section, context))
+                    break;
+
+                d->size = size;
+                d->min_size = min_size >= 0 ? min_size : size;
+                d->max_size = max_size >= 0 ? max_size : size;
+                d->scale = scale;
+                d->threshold = threshold;
+                d->type = type;
+            }
+
+            free(section);
             free(context);
 
             size = min_size = max_size = -1;
@@ -151,7 +155,18 @@ parse_theme(FILE *index, struct icon_theme *theme, theme_names_t *themes_to_load
             }
         }
 
-        if (strcasecmp(key, "size") == 0)
+        if (strcasecmp(key, "directories") == 0) {
+            char *save = NULL;
+            for (const char *d = strtok_r(value, ",", &save);
+                 d != NULL;
+                 d = strtok_r(NULL, ",", &save))
+            {
+                struct icon_dir dir = {.path = strdup(d)};
+                tll_push_back(theme->dirs, dir);
+            }
+        }
+
+        else if (strcasecmp(key, "size") == 0)
             sscanf(value, "%d", &size);
 
         else if (strcasecmp(key, "minsize") == 0)
@@ -186,20 +201,31 @@ parse_theme(FILE *index, struct icon_theme *theme, theme_names_t *themes_to_load
         free(line);
     }
 
-    if (dir_is_usable(section, context)) {
-        struct icon_dir dir = {
-            .path = section,
-            .size = size,
-            .min_size = min_size >= 0 ? min_size : size,
-            .max_size = max_size >= 0 ? max_size : size,
-            .scale = scale,
-            .threshold = threshold,
-            .type = type,
-        };
-        tll_push_back(theme->dirs, dir);
-    } else
-        free(section);
+    tll_foreach(theme->dirs, it) {
+        struct icon_dir *d = &it->item;
 
+        if (section == NULL || strcmp(d->path, section) != 0)
+            continue;
+
+        if (!dir_is_usable(section, context))
+            break;
+
+        d->size = size;
+        d->min_size = min_size >= 0 ? min_size : size;
+        d->max_size = max_size >= 0 ? max_size : size;
+        d->scale = scale;
+        d->threshold = threshold;
+        d->type = type;
+    }
+
+    tll_foreach(theme->dirs, it) {
+        if (it->item.size == 0) {
+            free(it->item.path);
+            tll_remove(theme->dirs, it);
+        }
+    }
+
+    free(section);
     free(context);
 }
 
@@ -576,12 +602,14 @@ reload_icon(struct icon *icon, int icon_size, const icon_theme_list_t *themes,
             if (path_of_min_diff[len - 3] == 's' &&
                 icon_from_svg(icon, path_of_min_diff))
             {
+                LOG_DBG("%s: %s (fallback)", name, path_of_min_diff);
                 return true;
             }
 
             else if (path_of_min_diff[len - 3] == 'p' &&
                        icon_from_png(icon, path_of_min_diff))
             {
+                LOG_DBG("%s: %s (fallback)", name, path_of_min_diff);
                 return true;
             }
         }
