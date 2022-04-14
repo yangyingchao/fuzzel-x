@@ -260,10 +260,10 @@ icon_load_theme(const char *name)
         }
 
         tll_foreach(dirs, dir_it) {
-            char path[strlen(dir_it->item) + 1 +
+            char path[strlen(dir_it->item.path) + 1 +
                       strlen("icons") + 1 +
                       strlen(theme_name) + 1];
-            sprintf(path, "%s/icons/%s", dir_it->item, theme_name);
+            sprintf(path, "%s/icons/%s", dir_it->item.path, theme_name);
 
             struct icon_theme theme = {0};
             if (load_theme_in(path, &theme, &themes_to_load)) {
@@ -452,7 +452,7 @@ reload_icon(struct icon *icon, int icon_size, icon_theme_list_t themes)
                 const struct icon_dir *icon_dir = &icon_dir_it->item;
 
                 tll_foreach(xdg_dirs, xdg_dir_it) {
-                    const char *xdg_dir = xdg_dir_it->item;
+                    const char *xdg_dir = xdg_dir_it->item.path;
 
                     const int size = icon_dir->size * icon_dir->scale;
                     const int min_size = icon_dir->min_size * icon_dir->scale;
@@ -532,17 +532,17 @@ reload_icon(struct icon *icon, int icon_size, icon_theme_list_t themes)
     }
 
     tll_foreach(xdg_dirs, it) {
-        char path[strlen(it->item) + 1 +
+        char path[strlen(it->item.path) + 1 +
                   strlen("pixmaps") + 1 +
                   strlen(name) + strlen(".svg") + 1];
 
         /* Try SVG variant first */
-        sprintf(path, "%s/pixmaps/%s.svg", it->item, name);
+        sprintf(path, "%s/pixmaps/%s.svg", it->item.path, name);
         if (icon_from_svg(icon, path))
             goto success;
 
         /* No SVG, look for PNG instead */
-        sprintf(path, "%s/pixmaps/%s.png", it->item, name);
+        sprintf(path, "%s/pixmaps/%s.png", it->item.path, name);
         if (icon_from_png(icon, path))
             goto success;
     }
