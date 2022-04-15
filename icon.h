@@ -34,3 +34,6 @@ void icon_themes_destroy(icon_theme_list_t themes);
 bool icon_reload_application_icons(
     icon_theme_list_t themes, int icon_size,
     struct application_list *applications);
+
+bool icon_from_png(struct icon *icon, const char *name);
+bool icon_from_svg(struct icon *icon, const char *name);

@@ -335,7 +335,7 @@ icon_from_png_libpng(struct icon *icon, const char *file_name)
 }
 #endif
 
-static bool
+bool
 icon_from_png(struct icon *icon, const char *name)
 {
 #if defined(FUZZEL_ENABLE_PNG_LIBPNG)
@@ -379,7 +379,7 @@ icon_from_svg_nanosvg(struct icon *icon, const char *file_name)
 }
 #endif
 
-static bool
+bool
 icon_from_svg(struct icon *icon, const char *name)
 {
 #if defined(FUZZEL_ENABLE_SVG_LIBRSVG)
@@ -391,9 +391,30 @@ icon_from_svg(struct icon *icon, const char *name)
 #endif
 }
 
+static bool
+svg(struct icon *icon, const char *path)
+{
+    icon->path = strdup(path);
+    icon->type = ICON_SVG;
+    icon->svg = NULL;
+    return true;
+}
+
+static bool
+png(struct icon *icon, const char *path)
+{
+    icon->path = strdup(path);
+    icon->type = ICON_PNG;
+    icon->png = NULL;
+    return true;
+}
+
 static void
 icon_reset(struct icon *icon)
 {
+    free(icon->path);
+    icon->path = NULL;
+
     switch (icon->type) {
     case ICON_NONE:
         break;
@@ -458,9 +479,9 @@ reload_icons(const icon_theme_list_t *themes, int icon_size,
             continue;
 
         if (app->icon.name[0] == '/') {
-            if (icon_from_svg(&app->icon, app->icon.name))
+            if (svg(&app->icon, app->icon.name))
                 LOG_DBG("%s: absolute path SVG", app->icon.name);
-            else if (icon_from_png(&app->icon, app->icon.name))
+            else if (png(&app->icon, app->icon.name))
                 LOG_DBG("%s: abslute path PNG", app->icon.name);
         } else {
             size_t file_name_len = strlen(app->icon.name) + 4;
@@ -585,9 +606,9 @@ reload_icons(const icon_theme_list_t *themes, int icon_size,
                             xdg_dir->path, theme->name, icon_dir->path, path);
 
                     if ((path[len - 3] == 's' &&
-                         icon_from_svg(&icon->app->icon, full_path)) ||
+                         svg(&icon->app->icon, full_path)) ||
                         (path[len - 3] == 'p' &&
-                         icon_from_png(&icon->app->icon, full_path)))
+                         png(&icon->app->icon, full_path)))
                     {
                         LOG_DBG("%s: %s", icon->name, full_path);
                         free(icon->file_name);
@@ -625,9 +646,9 @@ reload_icons(const icon_theme_list_t *themes, int icon_size,
                     icon->min_diff.type == ICON_SVG ? "svg" : "png");
 
             if ((icon->min_diff.type == ICON_SVG &&
-                 icon_from_svg(&icon->app->icon, full_path)) ||
+                 svg(&icon->app->icon, full_path)) ||
                 (icon->min_diff.type == ICON_PNG &&
-                 icon_from_png(&icon->app->icon, full_path)))
+                 png(&icon->app->icon, full_path)))
             {
                 LOG_DBG("%s: %s (fallback)", icon->name, full_path);
                 free(icon->file_name);
@@ -656,7 +677,7 @@ reload_icons(const icon_theme_list_t *themes, int icon_size,
 
             /* Try SVG variant first */
             sprintf(path, "%s/pixmaps/%s.svg", it->item.path, icon->name);
-            if (icon_from_svg(&icon->app->icon, path)) {
+            if (svg(&icon->app->icon, path)) {
                 LOG_DBG("%s: %s (pixmaps)", icon->name, path);
                 break;
             }
@@ -665,7 +686,7 @@ reload_icons(const icon_theme_list_t *themes, int icon_size,
             path[len - 3] = 'p';
             path[len - 2] = 'n';
             path[len - 1] = 'g';
-            if (icon_from_png(&icon->app->icon, path)) {
+            if (png(&icon->app->icon, path)) {
                 LOG_DBG("%s: %s (pixmaps)", icon->name, path);
                 break;
             }

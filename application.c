@@ -248,18 +248,22 @@ applications_destroy(struct application_list *apps)
             break;
 
         case ICON_PNG:
+            if (app->icon.png != NULL) {
 #if defined(FUZZEL_ENABLE_PNG_LIBPNG)
-            free(pixman_image_get_data(app->icon.png));
-            pixman_image_unref(app->icon.png);
+                free(pixman_image_get_data(app->icon.png));
+                pixman_image_unref(app->icon.png);
 #endif
+            }
             break;
 
         case ICON_SVG:
+            if (app->icon.svg != NULL) {
 #if defined(FUZZEL_ENABLE_SVG_LIBRSVG)
-            g_object_unref(app->icon.svg);
+                g_object_unref(app->icon.svg);
 #elif defined(FUZZEL_ENABLE_SVG_NANOSVG)
-            nsvgDelete(app->icon.svg);
+                nsvgDelete(app->icon.svg);
 #endif
+            }
             break;
         }
 
@@ -269,6 +273,7 @@ applications_destroy(struct application_list *apps)
             pixman_image_unref(rast->pix);
             tll_remove(app->icon.rasterized, it);
         }
+        free(app->icon.path);
 
         fcft_text_run_destroy(app->shaped);
     }

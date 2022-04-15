@@ -26,6 +26,7 @@ typedef tll(struct rasterized) rasterized_list_t;
 
 struct icon {
     char *name;
+    char *path;
     enum icon_type type;
     union {
 #if defined(FUZZEL_ENABLE_PNG_LIBPNG)
