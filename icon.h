@@ -31,7 +31,7 @@ typedef tll(struct icon_theme) icon_theme_list_t;
 icon_theme_list_t icon_load_theme(const char *name);
 void icon_themes_destroy(icon_theme_list_t themes);
 
-bool icon_reload_application_icons(
+bool icon_lookup_application_icons(
     icon_theme_list_t themes, int icon_size,
     struct application_list *applications);
 

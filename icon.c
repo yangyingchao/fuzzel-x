@@ -449,7 +449,7 @@ icon_reset(struct icon *icon)
 }
 
 static bool
-reload_icons(const icon_theme_list_t *themes, int icon_size,
+lookup_icons(const icon_theme_list_t *themes, int icon_size,
              struct application_list *applications,
              const xdg_data_dirs_t *xdg_dirs)
 {
@@ -700,14 +700,14 @@ reload_icons(const icon_theme_list_t *themes, int icon_size,
 }
 
 bool
-icon_reload_application_icons(icon_theme_list_t themes, int icon_size,
+icon_lookup_application_icons(icon_theme_list_t themes, int icon_size,
                               struct application_list *applications)
 {
     struct timespec start;
     clock_gettime(CLOCK_MONOTONIC, &start);
 
     xdg_data_dirs_t xdg_dirs = xdg_data_dirs();
-    reload_icons(&themes, icon_size, applications, &xdg_dirs);
+    lookup_icons(&themes, icon_size, applications, &xdg_dirs);
     xdg_data_dirs_destroy(xdg_dirs);
 
     struct timespec end;
