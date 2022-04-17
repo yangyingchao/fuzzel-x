@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <time.h>
 
 #include <fcft/fcft.h>
 
@@ -41,18 +40,6 @@ struct render {
     mtx_t *icon_lock;
 };
 
-static void
-timespec_sub(const struct timespec *a, const struct timespec *b,
-             struct timespec *res)
-{
-    res->tv_sec = a->tv_sec - b->tv_sec;
-    res->tv_nsec = a->tv_nsec - b->tv_nsec;
-    /* tv_nsec may be negative */
-    if (res->tv_nsec < 0) {
-        res->tv_sec--;
-        res->tv_nsec += 1000 * 1000 * 1000;
-    }
-}
 static pixman_color_t
 rgba2pixman(struct rgba rgba)
 {
@@ -571,8 +558,6 @@ render_match_list(const struct render *render, struct buffer *buf,
     int y = first_row + (row_height + font->height) / 2 - font->descent;
 
     bool render_icons = mtx_trylock(render->icon_lock) == thrd_success;
-    struct timespec start;
-    clock_gettime(CLOCK_MONOTONIC, &start);
 
     for (size_t i = 0; i < match_count; i++) {
         if (y + font->descent > buf->height - y_margin - border_size) {
@@ -671,14 +656,6 @@ render_match_list(const struct render *render, struct buffer *buf,
 
     if (render_icons)
         mtx_unlock(render->icon_lock);
-
-    struct timespec end;
-    clock_gettime(CLOCK_MONOTONIC, &end);
-
-    struct timespec diff;
-    timespec_sub(&end, &start, &diff);
-    if (render_icons)
-        LOG_WARN("rendered in %lds %09ldns", diff.tv_sec, diff.tv_nsec);
 }
 
 struct render *

@@ -7,7 +7,6 @@
 #include <assert.h>
 #include <unistd.h>
 #include <limits.h>
-#include <time.h>
 
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -32,19 +31,6 @@
 #include "xdg.h"
 
 typedef tll(char *) theme_names_t;
-
-static void
-timespec_sub(const struct timespec *a, const struct timespec *b,
-             struct timespec *res)
-{
-    res->tv_sec = a->tv_sec - b->tv_sec;
-    res->tv_nsec = a->tv_nsec - b->tv_nsec;
-    /* tv_nsec may be negative */
-    if (res->tv_nsec < 0) {
-        res->tv_sec--;
-        res->tv_nsec += 1000 * 1000 * 1000;
-    }
-}
 
 static bool
 dir_is_usable(const char *path, const char *context)
@@ -703,18 +689,9 @@ bool
 icon_lookup_application_icons(icon_theme_list_t themes, int icon_size,
                               struct application_list *applications)
 {
-    struct timespec start;
-    clock_gettime(CLOCK_MONOTONIC, &start);
-
     xdg_data_dirs_t xdg_dirs = xdg_data_dirs();
     lookup_icons(&themes, icon_size, applications, &xdg_dirs);
     xdg_data_dirs_destroy(xdg_dirs);
 
-    struct timespec end;
-    clock_gettime(CLOCK_MONOTONIC, &end);
-
-    struct timespec diff;
-    timespec_sub(&end, &start, &diff);
-    LOG_WARN("reloaded icons in %lds %09ldns", diff.tv_sec, diff.tv_nsec);
     return true;
 }
