@@ -42,6 +42,8 @@
 * It is no longer necessary to close stdin when using fuzzel in dmenu
   mode, as long as `--no-run-if-empty` is **not** being used
   (https://codeberg.org/dnkl/fuzzel/issues/106).
+* Improved performance of initial rendering of icons
+  (https://codeberg.org/dnkl/fuzzel/issues/124).
 
 
 ### Deprecated
