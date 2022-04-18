@@ -410,8 +410,8 @@ xdg_find_programs(const char *terminal, bool include_actions,
 
     xdg_data_dirs_t dirs = xdg_data_dirs();
     tll_foreach(dirs, it) {
-        char path[strlen(it->item) + 1 + strlen("applications") + 1];
-        sprintf(path, "%s/applications", it->item);
+        char path[strlen(it->item.path) + 1 + strlen("applications") + 1];
+        sprintf(path, "%s/applications", it->item.path);
 
         int fd = open(path, O_RDONLY);
         if (fd != -1) {
@@ -495,15 +495,25 @@ xdg_data_dirs(void)
     xdg_data_dirs_t ret = tll_init();
 
     const char *xdg_data_home = getenv("XDG_DATA_HOME");
-    if (xdg_data_home != NULL)
-        tll_push_back(ret, strdup(xdg_data_home));
-    else {
+    if (xdg_data_home != NULL && xdg_data_home[0] != '\0') {
+        int fd = open(xdg_data_home, O_RDONLY | O_DIRECTORY);
+        if (fd >= 0) {
+            struct xdg_data_dir d = {.fd = fd, .path = strdup(xdg_data_home)};
+            tll_push_back(ret, d);
+        }
+    } else {
         static const char *const local = ".local/share";
         const struct passwd *pw = getpwuid(getuid());
 
         char *path = malloc(strlen(pw->pw_dir) + 1 + strlen(local) + 1);
         sprintf(path, "%s/%s", pw->pw_dir, local);
-        tll_push_back(ret, path);
+
+        int fd = open(path, O_RDONLY | O_DIRECTORY);
+        if (fd >= 0) {
+            struct xdg_data_dir d = {.fd = fd, .path = path};
+            tll_push_back(ret, d);
+        } else
+            free(path);
     }
 
     const char *_xdg_data_dirs = getenv("XDG_DATA_DIRS");
@@ -517,13 +527,27 @@ xdg_data_dirs(void)
              tok != NULL;
              tok = strtok_r(NULL, ":", &ctx))
         {
-            tll_push_back(ret, strdup(tok));
+            int fd = open(tok, O_RDONLY | O_DIRECTORY);
+            if (fd >= 0) {
+                struct xdg_data_dir d = {.fd = fd, .path = strdup(tok)};
+                tll_push_back(ret, d);
+            }
         }
 
         free(copy);
     } else {
-        tll_push_back(ret, strdup("/usr/local/share"));
-        tll_push_back(ret, strdup("/usr/share"));
+        int fd1 = open("/usr/local/share", O_RDONLY | O_DIRECTORY);
+        int fd2 = open("/usr/share", O_RDONLY | O_DIRECTORY);
+
+        if (fd1 >= 0) {
+            struct xdg_data_dir d = {.fd = fd1, .path = strdup("/usr/local/share")};
+            tll_push_back(ret, d);
+        }
+
+        if (fd2 >= 0) {
+            struct xdg_data_dir d = {.fd = fd2, .path = strdup("/usr/share")};
+            tll_push_back(ret, d);;
+        }
     }
 
     return ret;
@@ -533,7 +557,8 @@ void
 xdg_data_dirs_destroy(xdg_data_dirs_t dirs)
 {
     tll_foreach(dirs, it) {
-        free(it->item);
+        close(it->item.fd);
+        free(it->item.path);
         tll_remove(dirs, it);
     }
 }

@@ -270,7 +270,7 @@ font_reloaded(struct wayland *wayl, struct fcft_font *font, void *data)
     {
         ctx->icon_size = font->height;
         if (ctx->options.icons_enabled) {
-            icon_reload_application_icons(
+            icon_lookup_application_icons(
                 *ctx->themes, ctx->icon_size, ctx->apps);
         }
     }
@@ -402,7 +402,7 @@ populate_apps(void *_ctx)
         {
             *ctx->themes = icon_themes;
             if (ctx->icon_size > 0) {
-                icon_reload_application_icons(
+                icon_lookup_application_icons(
                     *ctx->themes, ctx->icon_size, apps);
             }
         }

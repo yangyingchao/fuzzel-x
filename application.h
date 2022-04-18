@@ -26,15 +26,20 @@ typedef tll(struct rasterized) rasterized_list_t;
 
 struct icon {
     char *name;
+    char *path;
     enum icon_type type;
     union {
 #if defined(FUZZEL_ENABLE_PNG_LIBPNG)
         pixman_image_t *png;
+#else
+        void *png;
 #endif
 #if defined(FUZZEL_ENABLE_SVG_LIBRSVG)
         RsvgHandle *svg;
 #elif defined(FUZZEL_ENABLE_SVG_NANOSVG)
         NSVGimage *svg;
+#else
+        void *svg;
 #endif
     };
 

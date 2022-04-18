@@ -14,6 +14,7 @@
 #define LOG_ENABLE_DBG 0
 #include "log.h"
 #include "char32.h"
+#include "icon.h"
 #include "stride.h"
 #include "wayland.h"
 
@@ -432,6 +433,11 @@ render_svg(struct icon *icon, int x, int y, int size, struct buffer *buf)
 {
     assert(icon->type == ICON_SVG);
 
+    if (icon->svg == NULL) {
+        if (!icon_from_svg(icon, icon->path))
+            return;
+    }
+
 #if defined(FUZZEL_ENABLE_SVG_LIBRSVG)
     render_svg_librsvg(icon, x, y, size, buf);
 #elif defined(FUZZEL_ENABLE_SVG_NANOSVG)
@@ -512,6 +518,11 @@ static void
 render_png(struct icon *icon, int x, int y, int size, struct buffer *buf)
 {
     assert(icon->type == ICON_PNG);
+
+    if (icon->png == NULL) {
+        if (!icon_from_png(icon, icon->path))
+            return;
+    }
 
 #if defined(FUZZEL_ENABLE_PNG_LIBPNG)
     render_png_libpng(icon, x, y, size, buf);
