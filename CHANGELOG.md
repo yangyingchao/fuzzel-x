@@ -21,6 +21,8 @@
 
 ### Added
 
+* Support for file based configuration
+  (https://codeberg.org/dnkl/fuzzel/issues/3).
 * If `argv[0]` is _dmenu_, fuzzel now starts in dmenu mode
   (https://codeberg.org/dnkl/fuzzel/issues/107).
 * `--password=[CHARACTER]` command line option. Intended to be used
