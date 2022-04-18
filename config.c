@@ -51,7 +51,11 @@ log_contextual(struct context *ctx, enum log_class log_class,
     char *formatted_msg = NULL;
     va_list va;
     va_start(va, fmt);
-    vasprintf(&formatted_msg, fmt, va);
+    if (vasprintf(&formatted_msg, fmt, va) < 0) {
+        va_end(va);
+        return;
+    }
+
     va_end(va);
 
     bool print_dot = ctx->key != NULL;
@@ -96,10 +100,17 @@ open_config(void)
     char *xdg_config_dirs_copy = NULL;
 
     /* First, check XDG_CONFIG_HOME (or .config, if unset) */
-    if (xdg_config_home != NULL && xdg_config_home[0] != '\0')
-        asprintf(&path, "%s/fuzzel/fuzzel.ini", xdg_config_home);
-    else if (home_dir != NULL)
-        asprintf(&path, "%s/.config/fuzzel/fuzzel.ini", home_dir);
+    if (xdg_config_home != NULL && xdg_config_home[0] != '\0') {
+        if (asprintf(&path, "%s/fuzzel/fuzzel.ini", xdg_config_home) < 0) {
+            LOG_ERRNO("failed to build fuzzel.ini path");
+            goto done;
+        }
+    } else if (home_dir != NULL) {
+        if (asprintf(&path, "%s/.config/fuzzel/fuzzel.ini", home_dir) < 0) {
+            LOG_ERRNO("failed to build fuzzel.ini path");
+            goto done;
+        }
+    }
 
     if (path != NULL) {
         int fd = open(path, O_RDONLY | O_CLOEXEC);
@@ -125,7 +136,10 @@ open_config(void)
         free(path);
         path = NULL;
 
-        asprintf(&path, "%s/fuzzel/fuzzel.ini", conf_dir);
+        if (asprintf(&path, "%s/fuzzel/fuzzel.ini", conf_dir) < 0) {
+            LOG_ERRNO("failed to build fuzzel.ini path");
+            goto done;
+        }
 
         int fd = open(path, O_RDONLY | O_CLOEXEC);
         if (fd >= 0) {
