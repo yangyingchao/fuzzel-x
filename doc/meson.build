@@ -2,7 +2,8 @@ sh = find_program('sh', native: true)
 scdoc = dependency('scdoc', native: true)
 scdoc_prog = find_program(scdoc.get_variable('scdoc'), native: true)
 
-foreach man_src : [{'name': 'fuzzel', 'section': 1}]
+foreach man_src : [{'name': 'fuzzel', 'section': 1},
+                   {'name': 'fuzzel.ini', 'section': 5}]
   name = man_src['name']
   section = man_src['section']
   out = '@0@.@1@'.format(name, section)
