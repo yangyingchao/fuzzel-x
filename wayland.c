@@ -1475,8 +1475,7 @@ wayl_refresh(struct wayland *wayl)
         pixman_image_fill_rectangles(
             PIXMAN_OP_SRC, buf->pix, &transparent,
             1, &(pixman_rectangle16_t){0, 0, wayl->width, wayl->height});
-        commit_buffer(wayl, buf);
-        return;
+        goto commit;
     }
 
     render_set_subpixel(wayl->render, wayl->subpixel);
@@ -1492,6 +1491,7 @@ wayl_refresh(struct wayland *wayl)
     cairo_surface_flush(buf->cairo_surface);
 #endif
 
+commit:
     if (wayl->frame_cb != NULL) {
         /* There's already a frame being drawn - delay current frame
          * (overwriting any previous pending frame) */
