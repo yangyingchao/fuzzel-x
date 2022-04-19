@@ -196,7 +196,6 @@ All color values are in RGBA.
 	prints the index of the selected entry. Default: _text_.
 
 *exit-immediately-if-empty*
-
 	Boolean. If enabled, fuzzel will not run at all (i.e. it will not
 	open a window, and will not print anything on stdout) if there's
 	nothing on stdin. Default: _no_.
