@@ -552,7 +552,7 @@ lookup_icons(const icon_theme_list_t *themes, int icon_size,
                 tll_foreach(icons, icon_it) {
                     struct icon_data *icon = &icon_it->item;
 
-                    if (!is_exact_match && icon->min_diff.diff < diff)
+                    if (!is_exact_match && icon->min_diff.diff <= diff)
                         continue;
 
                     size_t len = icon->file_name_len;
