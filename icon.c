@@ -32,28 +32,6 @@
 
 typedef tll(char *) theme_names_t;
 
-static bool
-dir_is_usable(const char *path, const char *context)
-{
-    if (path == NULL || context == NULL) {
-        return false;
-    }
-
-    /*
-     * Valid names for application context: some icon themes use different
-     * names other than applications, for example, Faenza uses "apps".
-     */
-    static const char *const app_contex[] = { "applications", "apps" };
-
-    for (size_t i = 0; i < sizeof(app_contex)/sizeof(char*); i++) {
-        if (strcasecmp(context, app_contex[i]) == 0) {
-            return true;
-        }
-    }
-
-    return false;
-}
-
 static void
 parse_theme(FILE *index, struct icon_theme *theme, theme_names_t *themes_to_load)
 {
@@ -98,9 +76,6 @@ parse_theme(FILE *index, struct icon_theme *theme, theme_names_t *themes_to_load
 
                 if (section == NULL || strcmp(d->path, section) != 0)
                     continue;
-
-                if (!dir_is_usable(section, context))
-                    break;
 
                 d->size = size;
                 d->min_size = min_size >= 0 ? min_size : size;
@@ -192,9 +167,6 @@ parse_theme(FILE *index, struct icon_theme *theme, theme_names_t *themes_to_load
 
         if (section == NULL || strcmp(d->path, section) != 0)
             continue;
-
-        if (!dir_is_usable(section, context))
-            break;
 
         d->size = size;
         d->min_size = min_size >= 0 ? min_size : size;
