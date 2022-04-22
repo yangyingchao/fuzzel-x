@@ -165,6 +165,9 @@ executable(
   install: true)
 
 install_data(
+  'fuzzel.ini',
+  install_dir: join_paths(get_option('sysconfdir'), 'xdg', 'fuzzel'))
+install_data(
   'LICENSE', 'README.md', 'CHANGELOG.md',
   install_dir: join_paths(get_option('datadir'), 'doc', 'fuzzel'))
 
