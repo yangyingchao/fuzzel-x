@@ -196,7 +196,8 @@ print_usage(const char *prog_name)
     printf("Usage: %s [OPTION]...\n", prog_name);
     printf("\n");
     printf("Options:\n");
-    printf("  -o,--output=OUTPUT             output (monitor) to display on (none)\n"
+    printf("     --config=PATH               load configuration from PATH (XDG_CONFIG_HOME/fuzzel/fuzzel.ini)\n"
+           "  -o,--output=OUTPUT             output (monitor) to display on (none)\n"
            "  -f,--font=FONT                 font name and style, in FontConfig format\n"
            "                                 (monospace)\n"
            "  -D,--dpi-aware=no|yes|auto     enable or disable DPI aware rendering (auto)\n"
@@ -471,8 +472,10 @@ main(int argc, char *const *argv)
     #define OPT_LOG_COLORIZE                 265
     #define OPT_LOG_NO_SYSLOG                266
     #define OPT_PASSWORD                     267
+    #define OPT_CONFIG                       268
 
     static const struct option longopts[] = {
+        {"config",               required_argument, 0,  OPT_CONFIG},
         {"output"  ,             required_argument, 0, 'o'},
         {"font",                 required_argument, 0, 'f'},
         {"dpi-aware",            required_argument, 0, 'D'},
@@ -518,6 +521,7 @@ main(int argc, char *const *argv)
         {NULL,                   no_argument,       0, 0},
     };
 
+    const char *config_path = NULL;
     enum log_class log_level = LOG_CLASS_INFO;
     enum log_colorize log_colorize = LOG_COLORIZE_AUTO;
     bool log_syslog = true;
@@ -575,6 +579,10 @@ main(int argc, char *const *argv)
             break;
 
         switch (c) {
+        case OPT_CONFIG:
+            config_path = optarg;
+            break;
+
         case 'o':
             cmdline_overrides.conf.output = optarg;
             break;
@@ -955,7 +963,7 @@ main(int argc, char *const *argv)
     int ret = EXIT_FAILURE;
 
     struct config conf = {0};
-    bool conf_successful = config_load(&conf, NULL, NULL, true);
+    bool conf_successful = config_load(&conf, config_path, NULL, true);
     if (!conf_successful) {
         config_free(&conf);
         return ret;
