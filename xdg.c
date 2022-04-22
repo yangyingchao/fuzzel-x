@@ -567,7 +567,7 @@ const char *
 xdg_cache_dir(void)
 {
     const char *xdg_cache_home = getenv("XDG_CACHE_HOME");
-    if (xdg_cache_home != NULL)
+    if (xdg_cache_home != NULL && xdg_cache_home[0] != '\0')
         return xdg_cache_home;
 
     static char path[PATH_MAX];
