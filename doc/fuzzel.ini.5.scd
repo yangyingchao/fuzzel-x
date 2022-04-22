@@ -20,6 +20,8 @@ in this order:
 	- *XDG_CONFIG_DIRS/fuzzel/fuzzel.ini* (defaulting to
 	  */etc/xdg/fuzzel/fuzzel.ini* if unset)
 
+An example configuration file containing all options with their default value
+commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 
 # SECTION: main
 
