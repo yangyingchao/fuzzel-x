@@ -21,31 +21,28 @@
 
 ### Added
 
-* Support for file based configuration
-  ([#3](https://codeberg.org/dnkl/fuzzel/issues/3)).
+* Support for file based configuration ([#3][3]).
 * If `argv[0]` is _dmenu_, fuzzel now starts in dmenu mode
-  ([#107](https://codeberg.org/dnkl/fuzzel/issues/107)).
+  ([#107][107]).
 * `--password=[CHARACTER]` command line option. Intended to be used
   with “password input”; all typed text is rendered as _CHARACTER_,
-  defaulting to `*` if _CHARACTER_ is omitted
-  ([#108](https://codeberg.org/dnkl/fuzzel/issues/108)).
+  defaulting to `*` if _CHARACTER_ is omitted ([#108][108]).
 * `Ctrl+y` binding to execute selected entry.
 * `Ctrl+j`/`Ctrl+k` binding to move to the next/previous item
-  ([#120](https://codeberg.org/dnkl/fuzzel/issues/120)).
+  ([#120][120]).
 
 
 ### Changed
 
 * Minimum required meson version is now 0.58.
 * libpng warnings are now routed through fuzzel’s logging
-  ([#101](https://codeberg.org/dnkl/fuzzel/issues/101)).
+  ([#101][101]).
 * Nanosvg is now the default SVG backend. librsvg is still supported,
   and can be used by setting the `-Dsvg-backend=librsvg` meson option.
 * It is no longer necessary to close stdin when using fuzzel in dmenu
   mode, as long as `--no-run-if-empty` is **not** being used
-  ([#106](https://codeberg.org/dnkl/fuzzel/issues/106)).
-* Improved performance of initial rendering of icons
-  ([#124](https://codeberg.org/dnkl/fuzzel/issues/124)).
+  ([#106][106]).
+* Improved performance of initial rendering of icons ([#124][124]).
 
 
 ### Deprecated
@@ -53,13 +50,21 @@
 ### Fixed
 
 * User `.desktop` entries with `NoDisplay=true` not overriding system
-  entries ([#114](https://codeberg.org/dnkl/fuzzel/issues/114)).
+  entries ([#114][114]).
 * Icon lookup is now better at following the XDG specification.
 
 
 ### Security
 ### Contributors
 
+[3]: https://codeberg.org/dnkl/fuzzel/issues/3
+[107]: https://codeberg.org/dnkl/fuzzel/issues/107
+[108]: https://codeberg.org/dnkl/fuzzel/issues/108
+[120]: https://codeberg.org/dnkl/fuzzel/issues/120
+[101]: https://codeberg.org/dnkl/fuzzel/issues/101
+[106]: https://codeberg.org/dnkl/fuzzel/issues/106
+[124]: https://codeberg.org/dnkl/fuzzel/issues/124
+[114]: https://codeberg.org/dnkl/fuzzel/issues/114
 
 ## 1.7.0
 
