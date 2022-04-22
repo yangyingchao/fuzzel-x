@@ -22,30 +22,30 @@
 ### Added
 
 * Support for file based configuration
-  (https://codeberg.org/dnkl/fuzzel/issues/3).
+  ([#3](https://codeberg.org/dnkl/fuzzel/issues/3)).
 * If `argv[0]` is _dmenu_, fuzzel now starts in dmenu mode
-  (https://codeberg.org/dnkl/fuzzel/issues/107).
+  ([#107](https://codeberg.org/dnkl/fuzzel/issues/107)).
 * `--password=[CHARACTER]` command line option. Intended to be used
   with “password input”; all typed text is rendered as _CHARACTER_,
   defaulting to `*` if _CHARACTER_ is omitted
-  (https://codeberg.org/dnkl/fuzzel/issues/108).
+  ([#108](https://codeberg.org/dnkl/fuzzel/issues/108)).
 * `Ctrl+y` binding to execute selected entry.
 * `Ctrl+j`/`Ctrl+k` binding to move to the next/previous item
-  (https://codeberg.org/dnkl/fuzzel/issues/120).
+  ([#120](https://codeberg.org/dnkl/fuzzel/issues/120)).
 
 
 ### Changed
 
 * Minimum required meson version is now 0.58.
 * libpng warnings are now routed through fuzzel’s logging
-  (https://codeberg.org/dnkl/fuzzel/issues/101).
+  ([#101](https://codeberg.org/dnkl/fuzzel/issues/101)).
 * Nanosvg is now the default SVG backend. librsvg is still supported,
   and can be used by setting the `-Dsvg-backend=librsvg` meson option.
 * It is no longer necessary to close stdin when using fuzzel in dmenu
   mode, as long as `--no-run-if-empty` is **not** being used
-  (https://codeberg.org/dnkl/fuzzel/issues/106).
+  ([#106](https://codeberg.org/dnkl/fuzzel/issues/106)).
 * Improved performance of initial rendering of icons
-  (https://codeberg.org/dnkl/fuzzel/issues/124).
+  ([#124](https://codeberg.org/dnkl/fuzzel/issues/124)).
 
 
 ### Deprecated
@@ -53,7 +53,7 @@
 ### Fixed
 
 * User `.desktop` entries with `NoDisplay=true` not overriding system
-  entries (https://codeberg.org/dnkl/fuzzel/issues/114).
+  entries ([#114](https://codeberg.org/dnkl/fuzzel/issues/114)).
 * Icon lookup is now better at following the XDG specification.
 
 
@@ -67,17 +67,17 @@
 
 * `-F,--fields=FIELDS` command line option, allowing you to select
   which XDG Desktop Entry fields to match against
-  (https://codeberg.org/dnkl/fuzzel/issues/63).
+  ([#63](https://codeberg.org/dnkl/fuzzel/issues/63)).
 * Support for desktop entry actions
-  (https://codeberg.org/dnkl/fuzzel/issues/71).
+  ([#71](https://codeberg.org/dnkl/fuzzel/issues/71)).
 * Fuzzy matching. This is enabled by default, but can be disabled with
   `--no-fuzzy`. When enabled, the fuzziness can be adjusted with
   `--fuzzy-max-length-discrepancy` and `--fuzzy-max-distance`
-  (https://codeberg.org/dnkl/fuzzel/issues/56).
+  ([#56](https://codeberg.org/dnkl/fuzzel/issues/56)).
 * `--index` (dmenu mode only): print selected entry’s index instead of
-  its text (https://codeberg.org/dnkl/fuzzel/issues/88).
+  its text ([#88](https://codeberg.org/dnkl/fuzzel/issues/88)).
 * `--log-level=info|warning|error|none` command line option
-  (https://codeberg.org/dnkl/fuzzel/issues/34).
+  ([#34](https://codeberg.org/dnkl/fuzzel/issues/34)).
 * `--log-no-syslog` command line option.
 * `--log-colorize=auto|never|always` command line option.
 
@@ -85,43 +85,43 @@
 ### Changed
 
 * Fuzzel now refuses to start if there is another fuzzel instance
-  running (https://codeberg.org/dnkl/fuzzel/issues/57).
+  running ([#57](https://codeberg.org/dnkl/fuzzel/issues/57)).
 * Treat "Apps" as valid context for applications to support more
   icon themes (for example, Faenza)
 * The `Name` entry of the desktop files are no longer used as unique
   identifiers. Instead, we now generate the “desktop file ID”
   according to the XDG desktop entry specification, and use that as ID
-  (https://codeberg.org/dnkl/fuzzel/issues/68).
+  ([#68](https://codeberg.org/dnkl/fuzzel/issues/68)).
 * All XDG data directories are now searched when loading an
   icon. Previously, only XDG data directories where the theme
   directory contained an `index.theme` file were searched
-  (https://codeberg.org/dnkl/fuzzel/issues/62).
+  ([#62](https://codeberg.org/dnkl/fuzzel/issues/62)).
 * Pressing Tab when there is a single match now executes it
-  (https://codeberg.org/dnkl/fuzzel/issues/77).
+  ([#77](https://codeberg.org/dnkl/fuzzel/issues/77)).
 * Use a lock file instead of parsing `/proc` to prevent multiple
   fuzzel instances from running at the same time
-  (https://codeberg.org/dnkl/fuzzel/issues/84).
+  ([#84](https://codeberg.org/dnkl/fuzzel/issues/84)).
 * The application list is now populated in a separate thread, in
   parallel to initializing the GUI. This reduces the risk of missing
-  keyboard input (https://codeberg.org/dnkl/fuzzel/issues/82).
+  keyboard input ([#82](https://codeberg.org/dnkl/fuzzel/issues/82)).
 * Icons are now loaded in a thread. This allows us to display the
   application list quickly (initially without icons, if loading them
   takes “too” long).
 * Fuzzel now exits with exit code 0 when the non-dmenu launcher is
   aborted (no application has been launched) by the user
-  (https://codeberg.org/dnkl/fuzzel/issues/98).
+  ([#98](https://codeberg.org/dnkl/fuzzel/issues/98)).
 
 
 ### Fixed
 
 * Long entries overrunning the right side padding
-  (https://codeberg.org/dnkl/fuzzel/issues/80).
+  ([#80](https://codeberg.org/dnkl/fuzzel/issues/80)).
 * Tab and Shift+Tab not wrapping around
-  (https://codeberg.org/dnkl/fuzzel/issues/78).
+  ([#78](https://codeberg.org/dnkl/fuzzel/issues/78)).
 * Visual glitches in the corners, when using rounded corners
-  (https://codeberg.org/dnkl/fuzzel/issues/90).
+  ([#90](https://codeberg.org/dnkl/fuzzel/issues/90)).
 * Regression: `--dmenu --lines=0` crashing
-  (https://codeberg.org/dnkl/fuzzel/issues/92).
+  ([#92](https://codeberg.org/dnkl/fuzzel/issues/92)).
 
 
 ### Contributors
@@ -135,19 +135,19 @@
 ### Added
 
 * `--dpi-aware=no|yes|auto` command line option.
-* Multi-page view (https://codeberg.org/dnkl/fuzzel/issues/42).
+* Multi-page view ([#42](https://codeberg.org/dnkl/fuzzel/issues/42)).
 
 
 ### Removed
 
 * Misleading error message about a non-existing cache file
-  (https://codeberg.org/dnkl/fuzzel/issues/59).
+  ([#59](https://codeberg.org/dnkl/fuzzel/issues/59)).
 
 
 ### Fixed
 
 * Window quickly resized when launched
-  (https://codeberg.org/dnkl/fuzzel/issues/21).
+  ([#21](https://codeberg.org/dnkl/fuzzel/issues/21)).
 * Layer surface being committed before configure event has been ack:ed.
 
 
@@ -172,9 +172,9 @@
 ### Fixed
 
 * Graphical corruption triggered by the “gerbview” SVG icon, from
-  KiCAD (https://codeberg.org/dnkl/fuzzel/issues/47).
+  KiCAD ([#47](https://codeberg.org/dnkl/fuzzel/issues/47)).
 * SVG icons containing multiple icons not being limited to the main
-  icon (https://codeberg.org/dnkl/fuzzel/issues/48).
+  icon ([#48](https://codeberg.org/dnkl/fuzzel/issues/48)).
 
 
 ## 1.6.3
@@ -194,7 +194,7 @@
 
 * Removed usage of deprecated function `rsvg_handle_get_dimensions()`
   when building against recent versions of librsvg
-  (https://codeberg.org/dnkl/fuzzel/issues/45).
+  ([#45](https://codeberg.org/dnkl/fuzzel/issues/45)).
 
 
 ### Contributors
@@ -208,21 +208,21 @@
 
 * `-s,--selection-text-color` command line option, that lets you
   configure the foreground/text color of the currently selected item
-  (https://codeberg.org/dnkl/fuzzel/issues/37).
+  ([#37](https://codeberg.org/dnkl/fuzzel/issues/37)).
 
 
 ### Changed
 
 * Use `rsvg_handle_render_document()` instead of
   `rsvg_handle_render_cairo()` on libsrvg >= 2.46, since the latter
-  has been deprecated (https://codeberg.org/dnkl/fuzzel/issues/32).
+  has been deprecated ([#32](https://codeberg.org/dnkl/fuzzel/issues/32)).
 
 
 ### Fixed
 
 * Icons not being searched for in all icon theme instances
 * Crash when XKB compose file is missing
-  (https://codeberg.org/dnkl/fuzzel/issues/35).
+  ([#35](https://codeberg.org/dnkl/fuzzel/issues/35)).
 
 
 ## 1.6.1
@@ -231,14 +231,14 @@
 
 * Wrong font being used for some entries if guessing monitor fuzzel
   will appear on, and guessing wrong
-  (https://codeberg.org/dnkl/fuzzel/issues/31).
+  ([#31](https://codeberg.org/dnkl/fuzzel/issues/31)).
 
 
 ## 1.6.0
 
 ### Added
 
-* Text shaping support (https://codeberg.org/dnkl/fuzzel/issues/20).
+* Text shaping support ([#20](https://codeberg.org/dnkl/fuzzel/issues/20)).
 * Option for vertical padding between prompt and match list.
 
 
@@ -247,9 +247,9 @@
 * fcft >= 2.4.0 is now required.
 * In dmenu mode, fuzzel now prints the keyboard input as is, if it
   does not match any of the items
-  (https://codeberg.org/dnkl/fuzzel/issues/23).
+  ([#23](https://codeberg.org/dnkl/fuzzel/issues/23)).
 * The `.desktop` filename is now also matched against
-  (https://codeberg.org/dnkl/fuzzel/issues/25).
+  ([#25](https://codeberg.org/dnkl/fuzzel/issues/25)).
 
 
 ### Fixed
@@ -289,7 +289,7 @@
 ### Fixed
 
 * Crash when compositor provided bad monitor geometry data
-  (https://codeberg.org/dnkl/fuzzel/issues/17).
+  ([#17](https://codeberg.org/dnkl/fuzzel/issues/17)).
 
 
 ## 1.5.1
@@ -298,7 +298,7 @@
 
 * Regression: border not being rendered when `--border-radius=0`, or
   if fuzzel was built without cairo
-  (https://codeberg.org/dnkl/fuzzel/issues/15).
+  ([#15](https://codeberg.org/dnkl/fuzzel/issues/15)).
 
 
 ## 1.5.0
@@ -314,14 +314,14 @@
 * meson option `-Denable-cairo=[auto|enabled|disabled]`. When
   disabled, fuzzel will not be able to draw rounded corners, nor
   support SVGs (regardless of what `-Denable-svg` is set to)
-  (https://codeberg.org/dnkl/fuzzel/issues/10).
+  ([#10](https://codeberg.org/dnkl/fuzzel/issues/10)).
 * `-I,--no-icons` command line option; disables all icons
-  (https://codeberg.org/dnkl/fuzzel/issues/12)
+  ([#12](https://codeberg.org/dnkl/fuzzel/issues/12))
 * FreeBSD port.
 * `-x,--horizontal-pad` and `-y,--vertical-pad` command line options
-  (https://codeberg.org/dnkl/fuzzel/issues/12).
+  ([#12](https://codeberg.org/dnkl/fuzzel/issues/12)).
 * `--line-height` and `-letter-spacing` command line options
-  (https://codeberg.org/dnkl/fuzzel/issues/12).
+  ([#12](https://codeberg.org/dnkl/fuzzel/issues/12)).
 
 
 ### Changed
