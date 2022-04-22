@@ -214,6 +214,21 @@ options:
 *-v*,*--version*
 	Show the version number and quit
 
+# CONFIGURATION
+
+fuzzel will search for a configuration file in the following locations,
+in this order:
+
+	- *XDG_CONFIG_HOME/fuzzel/fuzzel.ini* (defaulting to
+	  *~/.config/fuzzel/fuzzel.ini* if unset)
+	- *XDG_CONFIG_DIRS/fuzzel/fuzzel.ini* (defaulting to
+	  */etc/xdg/fuzzel/fuzzel.ini* if unset)
+
+An example configuration file containing all options with their default value
+commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
+
+For more information, see *fuzzel.ini*(5).
+
 # FONT FORMAT
 
 The font is specified in FontConfig syntax. That is, a colon-separated
