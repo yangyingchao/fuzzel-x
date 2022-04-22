@@ -22,13 +22,20 @@
 #define max(x, y) ((x) > (y) ? (x) : (y))
 
 struct render {
-    struct render_options options;
+    const struct config *conf;
     struct fcft_font *font;
     enum fcft_subpixel subpixel;
 
     int scale;
     float dpi;
     bool size_font_by_dpi;
+
+    pixman_color_t pix_background_color;
+    pixman_color_t pix_border_color;
+    pixman_color_t pix_text_color;
+    pixman_color_t pix_match_color;
+    pixman_color_t pix_selection_color;
+    pixman_color_t pix_selection_text_color;
 
     unsigned x_margin;
     unsigned y_margin;
@@ -72,22 +79,22 @@ render_background(const struct render *render, struct buffer *buf)
 {
     bool use_pixman =
 #if defined(FUZZEL_ENABLE_CAIRO)
-        render->options.border_radius == 0
+        render->conf->border.radius == 0
 #else
         true
 #endif
         ;
 
     if (use_pixman) {
-        unsigned bw = render->options.border_size;
+        unsigned bw = render->conf->border.size;
 
-        pixman_color_t bg = rgba2pixman(render->options.background_color);
+        pixman_color_t bg = rgba2pixman(render->conf->colors.background);
         pixman_image_fill_rectangles(
             PIXMAN_OP_SRC, buf->pix, &bg,
             1, &(pixman_rectangle16_t){
                 bw, bw, buf->width - 2 * bw, buf->height - 2 * bw});
 
-        pixman_color_t border_color = rgba2pixman(render->options.border_color);
+        pixman_color_t border_color = rgba2pixman(render->conf->colors.border);
         pixman_image_fill_rectangles(
             PIXMAN_OP_SRC, buf->pix, &border_color,
             4, (pixman_rectangle16_t[]){
@@ -117,7 +124,7 @@ render_background(const struct render *render, struct buffer *buf)
         const double h = max(buf->height - 2 * b, 0.);
 
         const double from_degree = M_PI / 180;
-        const double radius = render->options.border_radius;
+        const double radius = render->conf->border.radius;
 
         /* Path describing an arc:ed rectangle */
         cairo_new_path(buf->cairo);
@@ -132,14 +139,14 @@ render_background(const struct render *render, struct buffer *buf)
         cairo_close_path(buf->cairo);
 
         /* Border */
-        const struct rgba *bc = &render->options.border_color;
+        const struct rgba *bc = &render->conf->colors.border;
         cairo_set_operator(buf->cairo, CAIRO_OPERATOR_SOURCE);
         cairo_set_line_width(buf->cairo, 2 * b);
         cairo_set_source_rgba(buf->cairo, bc->r, bc->g, bc->b, bc->a);
         cairo_stroke_preserve(buf->cairo);
 
         /* Background */
-        const struct rgba *bg = &render->options.background_color;
+        const struct rgba *bg = &render->conf->colors.background;
         cairo_set_source_rgba(buf->cairo, bg->r, bg->g, bg->b, bg->a);
         cairo_fill(buf->cairo);
 #else
@@ -175,7 +182,7 @@ render_prompt(const struct render *render, struct buffer *buf,
     struct fcft_font *font = render->font;
     assert(font != NULL);
 
-    const struct render_options *opts = &render->options;
+    const struct config *conf = render->conf;
 
     const char32_t *pprompt = prompt_prompt(prompt);
     const size_t prompt_len = c32len(pprompt);
@@ -184,8 +191,8 @@ render_prompt(const struct render *render, struct buffer *buf,
     const size_t text_len = c32len(ptext);
 
     const enum fcft_subpixel subpixel =
-        (render->options.background_color.a == 1. &&
-         render->options.selection_color.a == 1.)
+        (render->conf->colors.background.a == 1. &&
+         render->conf->colors.selection.a == 1.)
         ? render->subpixel : FCFT_SUBPIXEL_NONE;
 
     int x = render->border_size + render->x_margin;
@@ -196,8 +203,8 @@ render_prompt(const struct render *render, struct buffer *buf,
     for (size_t i = 0; i < prompt_len + text_len; i++) {
         char32_t wc = i < prompt_len
             ? pprompt[i]
-            : (opts->password != 0
-               ? opts->password
+            : (conf->password != 0
+               ? conf->password
                : ptext[i - prompt_len]);
 
         const struct fcft_glyph *glyph = fcft_rasterize_char_utf32(
@@ -212,15 +219,15 @@ render_prompt(const struct render *render, struct buffer *buf,
         fcft_kerning(font, prev, wc, &x_kern, NULL);
 
         x += x_kern;
-        render_glyph(buf->pix, glyph, x, y, &render->options.pix_text_color);
+        render_glyph(buf->pix, glyph, x, y, &render->pix_text_color);
         x += glyph->advance.x;
         if (i >= prompt_len)
-            x += pt_or_px_as_pixels(render, &render->options.letter_spacing);
+            x += pt_or_px_as_pixels(render, &render->conf->letter_spacing);
 
         /* Cursor */
         if (prompt_cursor(prompt) + prompt_len - 1 == i) {
             pixman_image_fill_rectangles(
-                PIXMAN_OP_SRC, buf->pix, &render->options.pix_text_color,
+                PIXMAN_OP_SRC, buf->pix, &render->pix_text_color,
                 1, &(pixman_rectangle16_t){
                     x, y - font->ascent,
                     font->underline.thickness, font->ascent + font->descent});
@@ -543,8 +550,8 @@ render_match_list(const struct render *render, struct buffer *buf,
     const size_t match_count = matches_get_count(matches);
     const size_t selected = matches_get_match_index(matches);
     const enum fcft_subpixel subpixel =
-        (render->options.background_color.a == 1. &&
-         render->options.selection_color.a == 1.)
+        (render->conf->colors.background.a == 1. &&
+         render->conf->colors.selection.a == 1.)
         ? render->subpixel : FCFT_SUBPIXEL_NONE;
     const struct fcft_glyph *ellipses =
         fcft_rasterize_char_utf32(font, U'…', subpixel);
@@ -589,7 +596,7 @@ render_match_list(const struct render *render, struct buffer *buf,
                 render_svg(&match->application->icon, img_x, img_y, size, buf);
             }
 
-            pixman_color_t sc = rgba2pixman(render->options.selection_color);
+            pixman_color_t sc = rgba2pixman(render->conf->colors.selection);
             pixman_image_fill_rectangles(
                 PIXMAN_OP_SRC, buf->pix, &sc, 1,
                 &(pixman_rectangle16_t){
@@ -604,7 +611,7 @@ render_match_list(const struct render *render, struct buffer *buf,
         double max_x = buf->width - border_size - x_margin;
 
 #if 0 /* Render the icon+text bounding box */
-        pixman_color_t sc = rgba2pixman(render->options.match_color);
+        pixman_color_t sc = rgba2pixman(render->conf->match_color);
         pixman_image_fill_rectangles(
             PIXMAN_OP_SRC, buf->pix, &sc, 1,
             &(pixman_rectangle16_t){
@@ -638,18 +645,18 @@ render_match_list(const struct render *render, struct buffer *buf,
 
         cur_x += row_height +
             (space != NULL ? space->advance.x : font->max_advance.x) +
-            pt_or_px_as_pixels(render, &render->options.letter_spacing);
+            pt_or_px_as_pixels(render, &render->conf->letter_spacing);
 
         /* Application title */
         render_match_text(
             buf, &cur_x, y, max_x - (ellipses != NULL ? ellipses->width : 0),
             match->application->title, match->start_title, c32len(prompt_text(prompt)),
             font, subpixel,
-            pt_or_px_as_pixels(render, &render->options.letter_spacing),
+            pt_or_px_as_pixels(render, &render->conf->letter_spacing),
             (i == selected
-             ? render->options.pix_selection_text_color
-             : render->options.pix_text_color),
-            render->options.pix_match_color, &match->application->shaped);
+             ? render->pix_selection_text_color
+             : render->pix_text_color),
+            render->pix_match_color, &match->application->shaped);
 
         y += row_height;
     }
@@ -659,21 +666,20 @@ render_match_list(const struct render *render, struct buffer *buf,
 }
 
 struct render *
-render_init(const struct render_options *options, mtx_t *icon_lock)
+render_init(const struct config *conf, mtx_t *icon_lock)
 {
     struct render *render = calloc(1, sizeof(*render));
     *render = (struct render){
-        .options = *options,
+        .conf = conf,
         .icon_lock = icon_lock,
     };
 
-    /* TODO: the one providing the options should calculate these */
-    render->options.pix_background_color = rgba2pixman(render->options.background_color);
-    render->options.pix_border_color = rgba2pixman(render->options.border_color);
-    render->options.pix_text_color = rgba2pixman(render->options.text_color);
-    render->options.pix_match_color = rgba2pixman(render->options.match_color);
-    render->options.pix_selection_color = rgba2pixman(render->options.selection_color);
-    render->options.pix_selection_text_color = rgba2pixman(render->options.selection_text_color);
+    render->pix_background_color = rgba2pixman(render->conf->colors.background);
+    render->pix_border_color = rgba2pixman(render->conf->colors.border);
+    render->pix_text_color = rgba2pixman(render->conf->colors.text);
+    render->pix_match_color = rgba2pixman(render->conf->colors.match);
+    render->pix_selection_color = rgba2pixman(render->conf->colors.selection);
+    render->pix_selection_text_color = rgba2pixman(render->conf->colors.selection_text);
     return render;
 }
 
@@ -703,14 +709,14 @@ render_set_font(struct render *render, struct fcft_font *font,
     const struct fcft_glyph *W = fcft_rasterize_char_utf32(
         font, U'W', render->subpixel);
 
-    const unsigned x_margin = render->options.pad.x * scale;
-    const unsigned y_margin = render->options.pad.y * scale;
-    const unsigned inner_pad = render->options.pad.inner * scale;
+    const unsigned x_margin = render->conf->pad.x * scale;
+    const unsigned y_margin = render->conf->pad.y * scale;
+    const unsigned inner_pad = render->conf->pad.inner * scale;
 
-    const unsigned border_size = render->options.border_size * scale;
+    const unsigned border_size = render->conf->border.size * scale;
 
-    const unsigned row_height = render->options.line_height.px >= 0
-        ? pt_or_px_as_pixels(render, &render->options.line_height)
+    const unsigned row_height = render->conf->line_height.px >= 0
+        ? pt_or_px_as_pixels(render, &render->conf->line_height)
         : font->height;
 
     const unsigned icon_height = max(0, row_height - font->descent);
@@ -720,7 +726,7 @@ render_set_font(struct render *render, struct fcft_font *font,
         y_margin +
         row_height +                         /* The prompt */
         inner_pad +                          /* Padding between prompt and matches */
-        render->options.lines * row_height + /* Matches */
+        render->conf->lines * row_height + /* Matches */
         y_margin +
         border_size;                         /* Bottom border */
 
@@ -728,9 +734,9 @@ render_set_font(struct render *render, struct fcft_font *font,
         border_size +
         x_margin +
         (max((W->advance.x + pt_or_px_as_pixels(
-                  render, &render->options.letter_spacing)),
+                  render, &render->conf->letter_spacing)),
              0)
-         * render->options.chars) +
+         * render->conf->chars) +
         x_margin +
         border_size;
 

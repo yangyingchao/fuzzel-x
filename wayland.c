@@ -144,12 +144,11 @@ struct seat {
 };
 
 struct wayland {
+    const struct config *conf;
     struct fdm *fdm;
     struct render *render;
     struct prompt *prompt;
     struct matches *matches;
-
-    const struct render_options *render_options;
 
     struct font_spec *fonts;
     size_t font_count;
@@ -164,13 +163,10 @@ struct wayland {
     int scale;
     float dpi;
     enum fcft_subpixel subpixel;
-    enum dpi_aware dpi_aware;
     bool font_is_sized_by_dpi;
 
     enum { KEEP_RUNNING, EXIT_UPDATE_CACHE, EXIT} status;
     int exit_code;
-    enum dmenu_mode dmenu_mode;
-    const char *launch_prefix;
 
     struct wl_callback *frame_cb;
     struct buffer *pending;
@@ -184,7 +180,6 @@ struct wayland {
     struct wl_shm *shm;
     struct zxdg_output_manager_v1 *xdg_output_manager;
 
-    char *output_name;
     tll(struct monitor) monitors;
     const struct monitor *monitor;
 
@@ -444,11 +439,12 @@ execute_selected(struct wayland *wayl)
     struct application *app = match != NULL ? match->application : NULL;
     ssize_t index = match != NULL ? match->index : -1;
 
-    if (wayl->dmenu_mode != DMENU_MODE_NONE) {
-        dmenu_execute(app, index, wayl->prompt, wayl->dmenu_mode);
+    if (wayl->conf->dmenu.enabled) {
+        dmenu_execute(app, index, wayl->prompt, wayl->conf->dmenu.mode);
         wayl->exit_code = EXIT_SUCCESS;
     } else {
-        bool success = application_execute(app, wayl->prompt, wayl->launch_prefix);
+        bool success = application_execute(
+            app, wayl->prompt, wayl->conf->launch_prefix);
         wayl->exit_code = success ? EXIT_SUCCESS : EXIT_FAILURE;
 
         if (success && match != NULL) {
@@ -876,7 +872,7 @@ guess_subpixel(const struct wayland *wayl)
 static bool
 size_font_using_dpi(const struct wayland *wayl)
 {
-    switch (wayl->dpi_aware) {
+    switch (wayl->conf->dpi_aware) {
     case DPI_AWARE_NO: return false;
     case DPI_AWARE_YES: return true;
 
@@ -1148,9 +1144,9 @@ xdg_output_handle_name(void *data, struct zxdg_output_v1 *xdg_output,
     free(mon->name);
     mon->name = name != NULL ? strdup(name) : NULL;
 
-    if (wayl->output_name != NULL &&
+    if (wayl->conf->output != NULL &&
         mon->name != NULL &&
-        strcmp(wayl->output_name, mon->name) == 0)
+        strcmp(wayl->conf->output, mon->name) == 0)
     {
         wayl->monitor = mon;
     }
@@ -1644,34 +1640,26 @@ parse_font_spec(const char *font_spec, size_t *count, struct font_spec **specs)
 }
 
 struct wayland *
-wayl_init(struct fdm *fdm,
-          struct render *render, struct prompt *prompt, struct matches *matches,
-          const struct render_options *render_options, enum dmenu_mode dmenu_mode,
-          const char *launch_prefix, const char *output_name,
-          const char *font_spec, enum dpi_aware dpi_aware,
-          font_reloaded_t font_reloaded_cb, void *data)
+wayl_init(const struct config *conf, struct fdm *fdm,
+          struct render *render, struct prompt *prompt,
+          struct matches *matches, font_reloaded_t font_reloaded_cb, void *data)
 {
     struct wayland *wayl = malloc(sizeof(*wayl));
     *wayl = (struct wayland){
+        .conf = conf,
         .fdm = fdm,
         .render = render,
         .prompt = prompt,
         .matches = matches,
         .status = KEEP_RUNNING,
-        .exit_code = (dmenu_mode == DMENU_MODE_NONE
-                      ? EXIT_SUCCESS : EXIT_FAILURE),
-        .dmenu_mode = dmenu_mode,
-        .launch_prefix = launch_prefix,
-        .output_name = output_name != NULL ? strdup(output_name) : NULL,
-        .render_options = render_options,
+        .exit_code = !conf->dmenu.enabled ? EXIT_SUCCESS : EXIT_FAILURE,
         .font_reloaded = {
             .cb = font_reloaded_cb,
             .data = data,
         },
-        .dpi_aware = dpi_aware,
     };
 
-    parse_font_spec(font_spec, &wayl->font_count, &wayl->fonts);
+    parse_font_spec(conf->font, &wayl->font_count, &wayl->fonts);
 
     wayl->display = wl_display_connect(NULL);
     if (wayl->display == NULL) {
@@ -1842,7 +1830,6 @@ wayl_destroy(struct wayland *wayl)
         free(wayl->fonts[i].pattern);
     free(wayl->fonts);
 
-    free(wayl->output_name);
     free(wayl);
 }
 

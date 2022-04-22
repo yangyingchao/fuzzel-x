@@ -132,6 +132,7 @@ version = custom_target(
 executable(
   'fuzzel',
   'application.c', 'application.h',
+  'config.c', 'config.h',
   'char32.c', 'char32.h',
   'dmenu.c', 'dmenu.h',
   'fdm.c', 'fdm.h',
@@ -163,6 +164,9 @@ executable(
                  fcft],
   install: true)
 
+install_data(
+  'fuzzel.ini',
+  install_dir: join_paths(get_option('sysconfdir'), 'xdg', 'fuzzel'))
 install_data(
   'LICENSE', 'README.md', 'CHANGELOG.md',
   install_dir: join_paths(get_option('datadir'), 'doc', 'fuzzel'))

@@ -14,6 +14,9 @@ Window. The search box supports Emacs-like key bindings.
 The window size, font and colors can be configured with command line
 options:
 
+*--config*=_PATH_
+	Path to configuration file, see *fuzzel.ini*(5) for details.
+
 *-o*,*--output*=_OUTPUT_
 	Specifies the monitor to display the window on. In _Sway_, you can
 	list the available outputs with *swaymsg -t get_outputs*.
@@ -129,7 +132,7 @@ options:
 
 *-S*,*--selection-text-color*=_HEX_
 	The text color of the currently selected application. See
-	*COLORS*. Default: _0x657b83ff_.
+	*COLORS*. Default: _657b83ff_.
 
 *-B*,*--border-width*=_INT_
 	The width of the surrounding border, in pixels (subject to output
@@ -211,6 +214,21 @@ options:
 *-v*,*--version*
 	Show the version number and quit
 
+# CONFIGURATION
+
+fuzzel will search for a configuration file in the following locations,
+in this order:
+
+	- *XDG_CONFIG_HOME/fuzzel/fuzzel.ini* (defaulting to
+	  *~/.config/fuzzel/fuzzel.ini* if unset)
+	- *XDG_CONFIG_DIRS/fuzzel/fuzzel.ini* (defaulting to
+	  */etc/xdg/fuzzel/fuzzel.ini* if unset)
+
+An example configuration file containing all options with their default value
+commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
+
+For more information, see *fuzzel.ini*(5).
+
 # FONT FORMAT
 
 The font is specified in FontConfig syntax. That is, a colon-separated
@@ -243,3 +261,7 @@ _$XDG_CACHE_HOME/fuzzel_
 _$XDG_RUNTIME_DIR/fuzzel-$WAYLAND_DISPLAY.lock_
 	Lock file, used to prevent multiple fuzzel instances from running
 	at the same time.
+
+# SEE ALSO
+
+*fuzzel.ini*(5)
