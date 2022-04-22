@@ -14,6 +14,9 @@ Window. The search box supports Emacs-like key bindings.
 The window size, font and colors can be configured with command line
 options:
 
+*--config*=_PATH_
+	Path to configuration file, see *fuzzel.ini*(5) for details.
+
 *-o*,*--output*=_OUTPUT_
 	Specifies the monitor to display the window on. In _Sway_, you can
 	list the available outputs with *swaymsg -t get_outputs*.
