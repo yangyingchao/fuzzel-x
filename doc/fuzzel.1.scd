@@ -261,3 +261,7 @@ _$XDG_CACHE_HOME/fuzzel_
 _$XDG_RUNTIME_DIR/fuzzel-$WAYLAND_DISPLAY.lock_
 	Lock file, used to prevent multiple fuzzel instances from running
 	at the same time.
+
+# SEE ALSO
+
+*fuzzel.ini*(5)
