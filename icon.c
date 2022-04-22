@@ -572,6 +572,8 @@ lookup_icons(const icon_theme_list_t *themes, int icon_size,
                         free(icon->file_name);
                         tll_remove(icons, icon_it);
                     }
+
+                    free(full_path);
                 }
 
                 close(dir_fd);
