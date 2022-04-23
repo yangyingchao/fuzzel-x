@@ -31,6 +31,11 @@
 * `Ctrl+j`/`Ctrl+k` binding to move to the next/previous item
   ([#120][120]).
 
+[3]: https://codeberg.org/dnkl/fuzzel/issues/3
+[107]: https://codeberg.org/dnkl/fuzzel/issues/107
+[108]: https://codeberg.org/dnkl/fuzzel/issues/108
+[120]: https://codeberg.org/dnkl/fuzzel/issues/120
+
 
 ### Changed
 
@@ -44,6 +49,10 @@
   ([#106][106]).
 * Improved performance of initial rendering of icons ([#124][124]).
 
+[101]: https://codeberg.org/dnkl/fuzzel/issues/101
+[106]: https://codeberg.org/dnkl/fuzzel/issues/106
+[124]: https://codeberg.org/dnkl/fuzzel/issues/124
+
 
 ### Deprecated
 ### Removed
@@ -53,18 +62,12 @@
   entries ([#114][114]).
 * Icon lookup is now better at following the XDG specification.
 
+[114]: https://codeberg.org/dnkl/fuzzel/issues/114
+
 
 ### Security
 ### Contributors
 
-[3]: https://codeberg.org/dnkl/fuzzel/issues/3
-[107]: https://codeberg.org/dnkl/fuzzel/issues/107
-[108]: https://codeberg.org/dnkl/fuzzel/issues/108
-[120]: https://codeberg.org/dnkl/fuzzel/issues/120
-[101]: https://codeberg.org/dnkl/fuzzel/issues/101
-[106]: https://codeberg.org/dnkl/fuzzel/issues/106
-[124]: https://codeberg.org/dnkl/fuzzel/issues/124
-[114]: https://codeberg.org/dnkl/fuzzel/issues/114
 
 ## 1.7.0
 
