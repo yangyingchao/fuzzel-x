@@ -123,9 +123,9 @@ application_execute(const struct application *app, const struct prompt *prompt, 
     /* Tokenize the command */
     char *unescaped;
     char *execute_dest;
-    int execute_len = strlen(execute);
+    size_t execute_len = strlen(execute);
     if (launch_prefix != NULL) {
-      int launch_len = strlen(launch_prefix);
+      size_t launch_len = strlen(launch_prefix);
       unescaped = malloc(launch_len + execute_len + 2 /* whitespace + null terminator */);
       sprintf(unescaped, "%s ", launch_prefix);
       execute_dest = unescaped + launch_len + 1;
@@ -135,7 +135,7 @@ application_execute(const struct application *app, const struct prompt *prompt, 
     }
 
     /* Substitute escape sequences for their literal character values */
-    for (int i = 0; i <= execute_len /* so null terminator is copied */; i++, execute_dest++) {
+    for (size_t i = 0; i <= execute_len /* so null terminator is copied */; i++, execute_dest++) {
       if (execute[i] != '\\') {
         *execute_dest = execute[i];
       } else {
