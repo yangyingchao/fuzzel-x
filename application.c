@@ -146,6 +146,8 @@ application_execute(const struct application *app, const struct prompt *prompt, 
     int pipe_fds[2];
     if (pipe2(pipe_fds, O_CLOEXEC) == -1) {
         LOG_ERRNO("failed to create pipe");
+        free(copy);
+        free(argv);
         return false;
     }
 
@@ -153,6 +155,9 @@ application_execute(const struct application *app, const struct prompt *prompt, 
     if (pid == -1) {
         close(pipe_fds[0]);
         close(pipe_fds[1]);
+
+        free(copy);
+        free(argv);
 
         LOG_ERRNO("failed to fork");
         return false;
