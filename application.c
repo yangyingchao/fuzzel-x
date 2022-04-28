@@ -160,6 +160,7 @@ application_execute(const struct application *app, const struct prompt *prompt, 
             *execute_dest = '\\';
             break;
           default:
+            free(unescaped);
             LOG_ERR("invalid escaped exec argument character: %c", execute[i]);
             return false;
         }
