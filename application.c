@@ -120,22 +120,56 @@ application_execute(const struct application *app, const struct prompt *prompt, 
 
     LOG_DBG("exec(%s)", execute);
 
-    if (strchr(execute, '\\') != NULL) {
-        LOG_ERR("unimplemented: escaped exec arguments: %s", execute);
-        return false;
+    /* Tokenize the command */
+    char *unescaped;
+    char *execute_dest;
+    size_t execute_len = strlen(execute);
+    if (launch_prefix != NULL) {
+      size_t launch_len = strlen(launch_prefix);
+      unescaped = malloc(launch_len + execute_len + 2 /* whitespace + null terminator */);
+      sprintf(unescaped, "%s ", launch_prefix);
+      execute_dest = unescaped + launch_len + 1;
+    } else {
+      unescaped = malloc(execute_len + 1);
+      execute_dest = unescaped;
     }
 
-    /* Tokenize the command */
-    char *copy;
-    if (launch_prefix != NULL) {
-      copy = malloc(strlen(execute) + strlen(launch_prefix) + 2 /* whitespace + null terminator */);
-      sprintf(copy, "%s %s", launch_prefix, execute);
-    } else {
-      copy = strdup(execute);
+    /* Substitute escape sequences for their literal character values */
+    for (size_t i = 0; i <= execute_len /* so null terminator is copied */; i++, execute_dest++) {
+      if (execute[i] != '\\') {
+        *execute_dest = execute[i];
+      } else {
+        i++;
+        switch(execute[i]) {
+          case 's':
+            *execute_dest = ' ';
+            break;
+          case 'n':
+            *execute_dest = '\n';
+            break;
+          case 't':
+            *execute_dest = '\t';
+            break;
+          case 'r':
+            *execute_dest = '\r';
+            break;
+          case ';':
+            *execute_dest = ';';
+            break;
+          case '\\':
+            *execute_dest = '\\';
+            break;
+          default:
+            free(unescaped);
+            LOG_ERR("invalid escaped exec argument character: %c", execute[i]);
+            return false;
+        }
+      }
     }
+
     char **argv;
-    if (!tokenize_cmdline(copy, &argv)) {
-        free(copy);
+    if (!tokenize_cmdline(unescaped, &argv)) {
+        free(unescaped);
         return false;
     }
 
@@ -146,7 +180,7 @@ application_execute(const struct application *app, const struct prompt *prompt, 
     int pipe_fds[2];
     if (pipe2(pipe_fds, O_CLOEXEC) == -1) {
         LOG_ERRNO("failed to create pipe");
-        free(copy);
+        free(unescaped);
         free(argv);
         return false;
     }
@@ -156,7 +190,7 @@ application_execute(const struct application *app, const struct prompt *prompt, 
         close(pipe_fds[0]);
         close(pipe_fds[1]);
 
-        free(copy);
+        free(unescaped);
         free(argv);
 
         LOG_ERRNO("failed to fork");
@@ -197,7 +231,7 @@ application_execute(const struct application *app, const struct prompt *prompt, 
     } else {
         /* Parent */
 
-        free(copy);
+        free(unescaped);
         free(argv);
 
         /* Close write end */
