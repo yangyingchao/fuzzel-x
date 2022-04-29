@@ -210,12 +210,13 @@ prompt_erase_next_char(struct prompt *prompt)
 bool
 prompt_erase_prev_char(struct prompt *prompt)
 {
-
     if (prompt->cursor == 0)
         return false;
 
     size_t prev_char = idx_prev_char(prompt);
-    prompt->text[prev_char] = U'\0';
+    memmove(&prompt->text[prev_char],
+            &prompt->text[prompt->cursor],
+            (c32len(prompt->text) - prompt->cursor + 1) * sizeof(char32_t));
     prompt->cursor = prev_char;
     return true;
 }

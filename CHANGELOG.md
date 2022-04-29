@@ -62,6 +62,8 @@
 * User `.desktop` entries with `NoDisplay=true` not overriding system
   entries ([#114][114]).
 * Icon lookup is now better at following the XDG specification.
+* Backspace removes not only the previous character, but also
+  everything **after** the cursor.
 
 [114]: https://codeberg.org/dnkl/fuzzel/issues/114
 
