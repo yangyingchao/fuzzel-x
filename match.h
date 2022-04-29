@@ -21,7 +21,8 @@ struct match_substring {
 struct match {
     enum matched_type matched_type;
     struct application *application;
-    struct match_substring match_pos;
+    struct match_substring *pos;
+    size_t pos_count;
     size_t index;
 };
 

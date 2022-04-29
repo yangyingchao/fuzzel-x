@@ -189,6 +189,9 @@ matches_destroy(struct matches *matches)
     if (matches == NULL)
         return;
 
+    for (size_t i = 0; i < matches->applications->count; i++)
+        free(matches->matches[i].pos);
+
     free(matches->matches);
     free(matches);
 }
@@ -201,8 +204,8 @@ matches_set_applications(struct matches *matches,
     assert(matches->matches == NULL);
 
     matches->applications = applications;
-    matches->matches = malloc(
-        applications->count * sizeof(matches->matches[0]));
+    matches->matches = calloc(
+        applications->count, sizeof(matches->matches[0]));
 }
 
 size_t
@@ -419,10 +422,13 @@ matches_update(struct matches *matches, const struct prompt *prompt)
             if (!matches->applications->v[i].visible)
                 continue;
 
+            free(matches->matches[matches->match_count].pos);
+
             matches->matches[matches->match_count++] = (struct match){
                 .matched_type = MATCHED_NONE,
                 .application = &matches->applications->v[i],
-                .match_pos = {-1, 0},
+                .pos = NULL,
+                .pos_count = 0,
                 .index = i,
             };
         }
@@ -467,22 +473,39 @@ matches_update(struct matches *matches, const struct prompt *prompt)
     for (size_t i = 0; i < matches->applications->count; i++) {
         struct application *app = &matches->applications->v[i];
         enum matched_type matched_type = MATCHED_NONE;
-        struct match_substring title = {-1, 0};
 
         if (!app->visible)
             continue;
 
+        size_t pos_count = 0;
+        struct match *match = &matches->matches[matches->match_count];
+        struct match_substring *pos = match->pos;
+
         if (matched_type == MATCHED_NONE && match_name) {
             const char32_t *m = c32casestr(app->title, ptext);
+            size_t match_len = 0;
+
             if (m != NULL) {
                 matched_type = MATCHED_EXACT;
-                title.start = m - app->title;
-                title.len = c32len(ptext);
+                match_len = c32len(ptext);
                 LOG_DBG("%ls: exact title", (const wchar_t *)app->title);
-            } else if ((m = match_levenshtein(matches, app->title, ptext, &title.len)) != NULL) {
+            } else if ((m = match_levenshtein(matches, app->title, ptext, &match_len)) != NULL) {
                 matched_type = MATCHED_FUZZY;
-                title.start = m - app->title;
                 LOG_DBG("%ls: fuzzy title", (const wchar_t *)app->title);
+            }
+
+            if (match_len > 0) {
+                size_t new_pos_count = pos_count + 1;
+                struct match_substring *new_pos = realloc(
+                    pos, new_pos_count * sizeof(new_pos[0]));
+
+                if (new_pos != NULL) {
+                    pos = new_pos;
+                    pos_count = new_pos_count;
+
+                    pos[pos_count - 1].start = m - app->title;
+                    pos[pos_count - 1].len = match_len;
+                }
             }
         }
 
@@ -563,12 +586,15 @@ matches_update(struct matches *matches, const struct prompt *prompt)
         if (matched_type == MATCHED_NONE)
             continue;
 
-        matches->matches[matches->match_count++] = (struct match){
+        *match = (struct match){
             .matched_type = matched_type,
             .application = app,
-            .match_pos = title,
+            .pos = pos,
+            .pos_count = pos_count,
             .index = i,
         };
+
+        matches->match_count++;
     }
 
     LOG_DBG("match update done");
