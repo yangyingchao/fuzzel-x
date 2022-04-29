@@ -621,6 +621,8 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
         }
     }
 
+    /* TODO: this is no longer having any effect, since ctrl+k is
+     * *also* mapped to “move to previous selection” */
     else if (sym == XKB_KEY_k && effective_mods == ctrl) {
         if (prompt_erase_after_cursor(wayl->prompt)) {
             matches_update(wayl->matches, wayl->prompt);
