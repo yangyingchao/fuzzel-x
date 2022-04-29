@@ -64,7 +64,7 @@ levenshtein_distance(const char32_t *a, size_t alen,
 
 static const char32_t *
 match_levenshtein(struct matches *matches,
-                  const char32_t *src, const char32_t *pat)
+                  const char32_t *src, const char32_t *pat, size_t *_match_len)
 {
     if (!matches->fuzzy)
         return NULL;
@@ -136,8 +136,8 @@ match_levenshtein(struct matches *matches,
     };
 #endif
     const size_t match_ofs = c;
-    const size_t match_len = end - c;
     const size_t match_distance = m[pat_len][end].distance;
+    const size_t match_len = end - c;
 
     LOG_DBG("%s vs. %s: sub-string: %.*ls, (distance=%zu, row=%zu, col=%zu)",
             src, pat, (int)match_len, &src[match_ofs], match_distance,
@@ -154,6 +154,8 @@ match_levenshtein(struct matches *matches,
     if (len_diff <= matches->fuzzy_max_length_discrepancy &&
         match_distance <= matches->fuzzy_max_distance)
     {
+        if (_match_len != NULL)
+            *_match_len = match_len;
         return &src[match_ofs];
     }
 
@@ -420,7 +422,7 @@ matches_update(struct matches *matches, const struct prompt *prompt)
             matches->matches[matches->match_count++] = (struct match){
                 .matched_type = MATCHED_NONE,
                 .application = &matches->applications->v[i],
-                .start_title = -1,
+                .match_pos = {-1, 0},
                 .index = i,
             };
         }
@@ -465,7 +467,7 @@ matches_update(struct matches *matches, const struct prompt *prompt)
     for (size_t i = 0; i < matches->applications->count; i++) {
         struct application *app = &matches->applications->v[i];
         enum matched_type matched_type = MATCHED_NONE;
-        ssize_t start_title = -1;
+        struct match_substring title = {-1, 0};
 
         if (!app->visible)
             continue;
@@ -474,11 +476,12 @@ matches_update(struct matches *matches, const struct prompt *prompt)
             const char32_t *m = c32casestr(app->title, ptext);
             if (m != NULL) {
                 matched_type = MATCHED_EXACT;
-                start_title = m - app->title;
+                title.start = m - app->title;
+                title.len = c32len(ptext);
                 LOG_DBG("%ls: exact title", (const wchar_t *)app->title);
-            } else if ((m = match_levenshtein(matches, app->title, ptext)) != NULL) {
+            } else if ((m = match_levenshtein(matches, app->title, ptext, &title.len)) != NULL) {
                 matched_type = MATCHED_FUZZY;
-                start_title = m - app->title;
+                title.start = m - app->title;
                 LOG_DBG("%ls: fuzzy title", (const wchar_t *)app->title);
             }
         }
@@ -488,7 +491,7 @@ matches_update(struct matches *matches, const struct prompt *prompt)
                 matched_type = MATCHED_EXACT;
                 LOG_DBG("%ls: exact filename", (const wchar_t *)app->title);
             }
-            else if (match_levenshtein(matches, app->basename, ptext) != NULL) {
+            else if (match_levenshtein(matches, app->basename, ptext, NULL) != NULL) {
                 matched_type = MATCHED_FUZZY;
                 LOG_DBG("%ls: fuzzy filename", (const wchar_t *)app->title);
             }
@@ -499,7 +502,7 @@ matches_update(struct matches *matches, const struct prompt *prompt)
                 matched_type = MATCHED_EXACT;
                 LOG_DBG("%ls: exact generic", (const wchar_t *)app->title);
             }
-            else if (match_levenshtein(matches, app->generic_name, ptext) != NULL) {
+            else if (match_levenshtein(matches, app->generic_name, ptext, NULL) != NULL) {
                 matched_type = MATCHED_FUZZY;
                 LOG_DBG("%ls: fuzzy generic", (const wchar_t *)app->title);
             }
@@ -509,7 +512,7 @@ matches_update(struct matches *matches, const struct prompt *prompt)
             if (c32casestr(app->wexec, ptext) != NULL) {
                 matched_type = MATCHED_EXACT;
                 LOG_DBG("%ls: exact exec", (const wchar_t *)app->title);
-            } else if (match_levenshtein(matches, app->wexec, ptext) != NULL) {
+            } else if (match_levenshtein(matches, app->wexec, ptext, NULL) != NULL) {
                 matched_type = MATCHED_FUZZY;
                 LOG_DBG("%ls: fuzzy exec", (const wchar_t *)app->title);
             }
@@ -519,7 +522,7 @@ matches_update(struct matches *matches, const struct prompt *prompt)
             if (c32casestr(app->comment, ptext) != NULL) {
                 matched_type = MATCHED_EXACT;
                 LOG_DBG("%ls: exact comment", (const wchar_t *)app->title);
-            } else if (match_levenshtein(matches, app->comment, ptext) != NULL) {
+            } else if (match_levenshtein(matches, app->comment, ptext, NULL) != NULL) {
                 matched_type = MATCHED_FUZZY;
                 LOG_DBG("%ls: fuzzy comment", (const wchar_t *)app->title);
             }
@@ -532,7 +535,7 @@ matches_update(struct matches *matches, const struct prompt *prompt)
                     LOG_DBG("%ls: exact keyword (%ls)",
                             (const wchar_t *)app->title, (const wchar_t *)it->item);
                     break;
-                } else if (match_levenshtein(matches, it->item, ptext) != NULL) {
+                } else if (match_levenshtein(matches, it->item, ptext, NULL) != NULL) {
                     matched_type = MATCHED_FUZZY;
                     LOG_DBG("%ls: fuzzy keyword (%ls)",
                             (const wchar_t *)app->title, (const wchar_t *)it->item);
@@ -548,7 +551,7 @@ matches_update(struct matches *matches, const struct prompt *prompt)
                     LOG_DBG("%ls: exact category (%ls)",
                             (const wchar_t *)app->title, (const wchar_t *)it->item);
                     break;
-                } else if (match_levenshtein(matches, it->item, ptext) != NULL) {
+                } else if (match_levenshtein(matches, it->item, ptext, NULL) != NULL) {
                     matched_type = MATCHED_FUZZY;
                     LOG_DBG("%ls: fuzzy category (%ls)",
                             (const wchar_t *)app->title, (const wchar_t *)it->item);
@@ -563,7 +566,7 @@ matches_update(struct matches *matches, const struct prompt *prompt)
         matches->matches[matches->match_count++] = (struct match){
             .matched_type = matched_type,
             .application = app,
-            .start_title = start_title,
+            .match_pos = title,
             .index = i,
         };
     }
