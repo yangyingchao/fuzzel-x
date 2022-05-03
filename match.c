@@ -629,9 +629,7 @@ matches_update(struct matches *matches, const struct prompt *prompt)
             }
 
             else {
-                if (app_match_type != MATCHED_NONE)
-                    app_match_type = MATCHED_FUZZY;
-                else
+                if (app_match_type != MATCHED_FUZZY)
                     app_match_type = token_match_type;
             }
         }
