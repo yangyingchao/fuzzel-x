@@ -31,6 +31,8 @@
 * `Ctrl+j`/`Ctrl+k` binding to move to the next/previous item
   ([#120][120]).
 * Escape sequences in `Exec` arguments are now supported.
+* Multiple space-separated search words can now be entered at the prompt.
+
 
 [3]: https://codeberg.org/dnkl/fuzzel/issues/3
 [107]: https://codeberg.org/dnkl/fuzzel/issues/107
