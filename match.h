@@ -13,10 +13,16 @@ enum matched_type {
     MATCHED_FUZZY,
 };
 
+struct match_substring {
+    ssize_t start;
+    size_t len;
+};
+
 struct match {
     enum matched_type matched_type;
     struct application *application;
-    ssize_t start_title;
+    struct match_substring *pos;
+    size_t pos_count;
     size_t index;
 };
 

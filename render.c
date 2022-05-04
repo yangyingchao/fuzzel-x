@@ -239,7 +239,8 @@ render_prompt(const struct render *render, struct buffer *buf,
 
 static void
 render_match_text(struct buffer *buf, double *_x, double _y, double max_x,
-                  const char32_t *text, ssize_t start, size_t length,
+                  const char32_t *text, size_t match_count,
+                  const struct match_substring matches[static match_count],
                   struct fcft_font *font, enum fcft_subpixel subpixel,
                   int letter_spacing,
                   pixman_color_t regular_color, pixman_color_t match_color,
@@ -289,7 +290,18 @@ render_match_text(struct buffer *buf, double *_x, double _y, double max_x,
     }
 
     for (size_t i = 0; i < count; i++) {
-        bool is_match = start >= 0 && clusters[i] >= start && clusters[i] < start + length;
+        bool is_match = false;
+        for (size_t j = 0; j < match_count; j++) {
+            const struct match_substring *match = &matches[j];
+            assert(match->start >= 0);
+
+            if (clusters[i] >= match->start &&
+                clusters[i] < match->start + match->len)
+            {
+                is_match = true;
+                break;
+            }
+        }
 
         if (x + (kern != NULL ? kern[i] : 0) + glyphs[i]->advance.x >= max_x) {
             const struct fcft_glyph *ellipses =
@@ -650,7 +662,7 @@ render_match_list(const struct render *render, struct buffer *buf,
         /* Application title */
         render_match_text(
             buf, &cur_x, y, max_x - (ellipses != NULL ? ellipses->width : 0),
-            match->application->title, match->start_title, c32len(prompt_text(prompt)),
+            match->application->title, match->pos_count, match->pos,
             font, subpixel,
             pt_or_px_as_pixels(render, &render->conf->letter_spacing),
             (i == selected
