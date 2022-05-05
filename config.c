@@ -25,6 +25,7 @@
 
 static const char *const binding_action_map[] = {
     [BIND_ACTION_NONE] = NULL,
+    [BIND_ACTION_CURSOR_HOME] = "cursor-home",
 };
 
 struct context {
@@ -1232,6 +1233,24 @@ overrides_apply(struct config *conf, const config_override_t *overrides,
     return true;
 }
 
+#define m_none       {0}
+#define m_alt        {.alt = true}
+#define m_ctrl       {.ctrl = true}
+#define m_shift      {.shift = true}
+#define m_ctrl_shift {.ctrl = true, .shift = true}
+
+static void
+add_default_key_bindings(struct config *conf)
+{
+    static const struct config_key_binding bindings[] = {
+        {BIND_ACTION_CURSOR_HOME, m_none, {{XKB_KEY_Home}}},
+    };
+
+    conf->key_bindings.count = ALEN(bindings);
+    conf->key_bindings.arr = malloc(sizeof(bindings));
+    memcpy(conf->key_bindings.arr, bindings, sizeof(bindings));
+}
+
 bool
 config_load(struct config *conf, const char *conf_path,
             const config_override_t *overrides, bool errors_are_fatal)
@@ -1285,6 +1304,8 @@ config_load(struct config *conf, const char *conf_path,
         .letter_spacing = {0},
         .layer = ZWLR_LAYER_SHELL_V1_LAYER_TOP,
     };
+
+    add_default_key_bindings(conf);
 
     struct config_file conf_file = {.path = NULL, .fd = -1};
 

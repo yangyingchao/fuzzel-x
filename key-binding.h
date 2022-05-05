@@ -7,6 +7,7 @@
 
 enum bind_action {
     BIND_ACTION_NONE,
+    BIND_ACTION_CURSOR_HOME,
     BIND_ACTION_COUNT,
 };
 
