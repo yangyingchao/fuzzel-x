@@ -7,6 +7,13 @@
 #include <wlr-layer-shell-unstable-v1.h>
 
 #include <tllist.h>
+#include <xkbcommon/xkbcommon.h>
+
+#define DEFINE_LIST(type) \
+    type##_list {         \
+        size_t count;     \
+        type *arr;        \
+    }
 
 struct rgba {double r; double g; double b; double a;};
 struct pt_or_px {int px; float pt;};
@@ -32,6 +39,37 @@ enum match_fields {
     MATCH_COMMENT =    0x40,
 };
 
+struct config_key_modifiers {
+    bool shift;
+    bool alt;
+    bool ctrl;
+    bool super;
+};
+
+struct config_key_binding {
+    int action;  /* One of the varios bind_action_* enums from wayland.h */
+    struct config_key_modifiers modifiers;
+    union {
+        /* Key bindings */
+        struct {
+            xkb_keysym_t sym;
+        } k;
+
+#if 0
+        /* Mouse bindings */
+        struct {
+            int button;
+            int count;
+        } m;
+#endif
+    };
+
+    /* For error messages in collision handling */
+    const char *path;
+    int lineno;
+};
+DEFINE_LIST(struct config_key_binding);
+
 struct config {
     char *output;
     char32_t *prompt;
@@ -48,6 +86,8 @@ struct config {
     char *icon_theme;
 
     bool actions_enabled;
+
+    struct config_key_binding_list key_bindings;
 
     struct {
         size_t min_length;

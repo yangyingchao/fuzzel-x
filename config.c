@@ -19,8 +19,13 @@
 #define LOG_MODULE "config"
 #define LOG_ENABLE_DBG 0
 #include "log.h"
+#include "key-binding.h"
 
 #define ALEN(v) (sizeof(v) / sizeof((v)[0]))
+
+static const char *const binding_action_map[] = {
+    [BIND_ACTION_NONE] = NULL,
+};
 
 struct context {
     struct config *conf;
@@ -152,6 +157,270 @@ open_config(void)
 done:
     free(xdg_config_dirs_copy);
     free(path);
+    return ret;
+}
+
+static void
+free_key_binding_list(struct config_key_binding_list *bindings)
+{
+    free(bindings->arr);
+    bindings->arr = NULL;
+    bindings->count = 0;
+}
+
+static bool
+parse_modifiers(struct context *ctx, const char *text, size_t len,
+                struct config_key_modifiers *modifiers)
+{
+    bool ret = false;
+
+    *modifiers = (struct config_key_modifiers){0};
+
+    /* Handle "none" separately because e.g. none+shift is nonsense */
+    if (strncmp(text, "none", len) == 0)
+        return true;
+
+    char *copy = strndup(text, len);
+
+    for (char *tok_ctx = NULL, *key = strtok_r(copy, "+", &tok_ctx);
+         key != NULL;
+         key = strtok_r(NULL, "+", &tok_ctx))
+    {
+        if (strcmp(key, XKB_MOD_NAME_SHIFT) == 0)
+            modifiers->shift = true;
+        else if (strcmp(key, XKB_MOD_NAME_CTRL) == 0)
+            modifiers->ctrl = true;
+        else if (strcmp(key, XKB_MOD_NAME_ALT) == 0)
+            modifiers->alt = true;
+        else if (strcmp(key, XKB_MOD_NAME_LOGO) == 0)
+            modifiers->super = true;
+        else {
+            LOG_CONTEXTUAL_ERR("not a valid modifier name: %s", key);
+            goto out;
+        }
+    }
+
+    ret = true;
+
+out:
+    free(copy);
+    return ret;
+}
+
+static void
+remove_from_key_bindings_list(struct config_key_binding_list *bindings,
+                              int action)
+{
+    size_t remove_first_idx = 0;
+    size_t remove_count = 0;
+
+    for (size_t i = 0; i < bindings->count; i++) {
+        struct config_key_binding *binding = &bindings->arr[i];
+
+        if (binding->action != action)
+            continue;
+
+        if (remove_count++ == 0)
+            remove_first_idx = i;
+
+        assert(remove_first_idx + remove_count - 1 == i);
+        //free_key_binding(binding);
+    }
+
+    if (remove_count == 0)
+        return;
+
+    size_t move_count = bindings->count - (remove_first_idx + remove_count);
+
+    memmove(
+        &bindings->arr[remove_first_idx],
+        &bindings->arr[remove_first_idx + remove_count],
+        move_count * sizeof(bindings->arr[0]));
+    bindings->count -= remove_count;
+}
+
+static bool
+value_to_key_combos(struct context *ctx, int action,
+                    struct config_key_binding_list *bindings)
+{
+    if (strcasecmp(ctx->value, "none") == 0) {
+        remove_from_key_bindings_list(bindings, action);
+        return true;
+    }
+
+    /* Count number of combinations */
+    size_t combo_count = 1;
+    for (const char *p = strchr(ctx->value, ' ');
+         p != NULL;
+         p = strchr(p + 1, ' '))
+    {
+        combo_count++;
+    }
+
+    struct config_key_binding new_combos[combo_count];
+
+    char *copy = strdup(ctx->value);
+    size_t idx = 0;
+
+    for (char *tok_ctx = NULL, *combo = strtok_r(copy, " ", &tok_ctx);
+         combo != NULL;
+         combo = strtok_r(NULL, " ", &tok_ctx),
+             idx++)
+    {
+        struct config_key_binding *new_combo = &new_combos[idx];
+        new_combo->action = action;
+        new_combo->path = ctx->path;
+        new_combo->lineno = ctx->lineno;
+
+        char *key = strrchr(combo, '+');
+
+        if (key == NULL) {
+            /* No modifiers */
+            key = combo;
+            new_combo->modifiers = (struct config_key_modifiers){0};
+        } else {
+            *key = '\0';
+            if (!parse_modifiers(ctx, combo, key - combo, &new_combo->modifiers))
+                goto err;
+            key++;  /* Skip past the '+' */
+        }
+
+        /* Translate key name to symbol */
+        new_combo->k.sym = xkb_keysym_from_name(key, 0);
+        if (new_combo->k.sym == XKB_KEY_NoSymbol) {
+            LOG_CONTEXTUAL_ERR("not a valid XKB key name: %s", key);
+            goto err;
+        }
+    }
+
+    if (idx == 0) {
+        LOG_CONTEXTUAL_ERR(
+            "empty binding not allowed (set to 'none' to unmap)");
+        goto err;
+    }
+
+    remove_from_key_bindings_list(bindings, action);
+
+    bindings->arr = realloc(
+        bindings->arr,
+        (bindings->count + combo_count) * sizeof(bindings->arr[0]));
+
+    memcpy(&bindings->arr[bindings->count],
+           new_combos,
+           combo_count * sizeof(bindings->arr[0]));
+    bindings->count += combo_count;
+
+    free(copy);
+    return true;
+
+err:
+    free(copy);
+    return false;
+}
+
+static bool
+modifiers_equal(const struct config_key_modifiers *mods1,
+                const struct config_key_modifiers *mods2)
+{
+    bool shift = mods1->shift == mods2->shift;
+    bool alt = mods1->alt == mods2->alt;
+    bool ctrl = mods1->ctrl == mods2->ctrl;
+    bool super = mods1->super == mods2->super;
+    return shift && alt && ctrl && super;
+}
+
+static char *
+modifiers_to_str(const struct config_key_modifiers *mods)
+{
+    char *ret = NULL;
+    asprintf(&ret,
+             "%s%s%s%s",
+             mods->ctrl ? XKB_MOD_NAME_CTRL "+" : "",
+             mods->alt ? XKB_MOD_NAME_ALT "+": "",
+             mods->super ? XKB_MOD_NAME_LOGO "+": "",
+             mods->shift ? XKB_MOD_NAME_SHIFT "+": "");
+    return ret;
+}
+
+static bool
+resolve_key_binding_collisions(struct config *conf, const char *section_name,
+                               const char *const action_map[],
+                               struct config_key_binding_list *bindings)
+{
+    bool ret = true;
+
+    for (size_t i = 1; i < bindings->count; i++) {
+        enum {
+            COLLISION_NONE,
+            COLLISION_BINDING,
+        } collision_type = COLLISION_NONE;
+
+        const struct config_key_binding *collision_binding = NULL;
+
+        struct config_key_binding *binding1 = &bindings->arr[i];
+        assert(binding1->action != BIND_ACTION_NONE);
+
+        const struct config_key_modifiers *mods1 = &binding1->modifiers;
+
+        /* Does our binding collide with another binding? */
+        for (ssize_t j = i - 1;
+             collision_type == COLLISION_NONE && j >= 0;
+             j--)
+        {
+            const struct config_key_binding *binding2 = &bindings->arr[j];
+            assert(binding2->action != BIND_ACTION_NONE);
+
+            if (binding2->action == binding1->action)
+                continue;
+
+            const struct config_key_modifiers *mods2 = &binding2->modifiers;
+
+            bool mods_equal = modifiers_equal(mods1, mods2);
+            bool sym_equal;
+
+            sym_equal = binding1->k.sym == binding2->k.sym;
+            if (!mods_equal || !sym_equal)
+                continue;
+
+            collision_binding = binding2;
+            collision_type = COLLISION_BINDING;
+            break;
+        }
+
+        if (collision_type != COLLISION_NONE) {
+            char *modifier_names = modifiers_to_str(mods1);
+            char sym_name[64];
+            xkb_keysym_get_name(binding1->k.sym, sym_name, sizeof(sym_name));
+
+            switch (collision_type) {
+            case COLLISION_NONE:
+                break;
+
+            case COLLISION_BINDING: {
+                LOG_ERR(
+                    "%s:%d: [%s].%s: %s%s already mapped to '%s'",
+                    binding1->path, binding1->lineno, section_name,
+                    action_map[binding1->action],
+                    modifier_names, sym_name,
+                    action_map[collision_binding->action]);
+                ret = false;
+                break;
+            }
+            }
+
+            free(modifier_names);
+            //free_key_binding(binding1);
+
+            /* Remove the most recent binding */
+            size_t move_count = bindings->count - (i + 1);
+            memmove(&bindings->arr[i], &bindings->arr[i + 1],
+                    move_count * sizeof(bindings->arr[0]));
+            bindings->count--;
+
+            i--;
+        }
+    }
+
     return ret;
 }
 
@@ -596,11 +865,32 @@ parse_section_dmenu(struct context *ctx)
     return false;
 }
 
+static bool
+parse_section_key_bindings(struct context *ctx)
+{
+    for (int action = 0; action < ALEN(binding_action_map); action++) {
+        if (binding_action_map[action] == NULL)
+            continue;
+
+        if (strcmp(ctx->key, binding_action_map[action]) != 0)
+            continue;
+
+        if (!value_to_key_combos(ctx, action, &ctx->conf->key_bindings))
+            return false;
+
+        return true;
+    }
+
+    LOG_CONTEXTUAL_ERR("not a valid action: %s", ctx->key);
+    return false;
+}
+
 enum section {
     SECTION_MAIN,
     SECTION_COLORS,
     SECTION_BORDER,
     SECTION_DMENU,
+    SECTION_KEY_BINDINGS,
     SECTION_COUNT,
 };
 
@@ -611,10 +901,11 @@ static const struct {
     parser_fun_t fun;
     const char *name;
 } section_info[] = {
-    [SECTION_MAIN] =   {&parse_section_main, "main"},
-    [SECTION_COLORS] = {&parse_section_colors, "colors"},
-    [SECTION_BORDER] = {&parse_section_border, "border"},
-    [SECTION_DMENU] =  {&parse_section_dmenu, "dmenu"},
+    [SECTION_MAIN] =         {&parse_section_main, "main"},
+    [SECTION_COLORS] =       {&parse_section_colors, "colors"},
+    [SECTION_BORDER] =       {&parse_section_border, "border"},
+    [SECTION_DMENU] =        {&parse_section_dmenu, "dmenu"},
+    [SECTION_KEY_BINDINGS] = {&parse_section_key_bindings, "key-bindings"},
 };
 
 static enum section
@@ -935,21 +1226,9 @@ overrides_apply(struct config *conf, const config_override_t *overrides,
         }
     }
 
-#if 0
-    return
-        resolve_key_binding_collisions(
-            conf, section_info[SECTION_KEY_BINDINGS].name,
-            binding_action_map, &conf->bindings.key, KEY_BINDING) &&
-        resolve_key_binding_collisions(
-            conf, section_info[SECTION_SEARCH_BINDINGS].name,
-            search_binding_action_map, &conf->bindings.search, KEY_BINDING) &&
-        resolve_key_binding_collisions(
-            conf, section_info[SECTION_URL_BINDINGS].name,
-            url_binding_action_map, &conf->bindings.url, KEY_BINDING) &&
-        resolve_key_binding_collisions(
-            conf, section_info[SECTION_MOUSE_BINDINGS].name,
-            binding_action_map, &conf->bindings.mouse, MOUSE_BINDING);
-#endif
+    return resolve_key_binding_collisions(
+        conf, section_info[SECTION_KEY_BINDINGS].name, binding_action_map,
+        &conf->key_bindings);
     return true;
 }
 
@@ -1070,6 +1349,7 @@ config_free(struct config *conf)
     free(conf->launch_prefix);
     free(conf->font);
     free(conf->icon_theme);
+    free_key_binding_list(&conf->key_bindings);
 }
 
 struct rgba
