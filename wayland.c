@@ -31,6 +31,7 @@
 #include "log.h"
 #include "dmenu.h"
 #include "icon.h"
+#include "key-binding.h"
 #include "prompt.h"
 #include "render.h"
 #include "shm.h"
@@ -146,6 +147,7 @@ struct seat {
 struct wayland {
     const struct config *conf;
     struct fdm *fdm;
+    struct kb_manager *kb_manager;
     struct render *render;
     struct prompt *prompt;
     struct matches *matches;
@@ -236,6 +238,8 @@ seat_destroy(struct seat *seat)
 {
     if (seat == NULL)
         return;
+
+    kb_remove_seat(seat->wayl->kb_manager, seat);
 
     if (seat->kbd.xkb_compose_state != NULL)
         xkb_compose_state_unref(seat->kbd.xkb_compose_state);
@@ -376,6 +380,8 @@ keyboard_keymap(void *data, struct wl_keyboard *wl_keyboard,
         seat->kbd.xkb = NULL;
     }
 
+    kb_unload_keymap(seat->wayl->kb_manager, seat);
+
     /* Verify keymap is in a format we understand */
     switch ((enum wl_keyboard_keymap_format)format) {
     case WL_KEYBOARD_KEYMAP_FORMAT_NO_KEYMAP:
@@ -424,6 +430,11 @@ keyboard_keymap(void *data, struct wl_keyboard *wl_keyboard,
 
     munmap(map_str, size);
     close(fd);
+
+    if (seat->kbd.xkb_state != NULL && seat->kbd.xkb_keymap != NULL) {
+        kb_load_keymap(seat->wayl->kb_manager, seat,
+                       seat->kbd.xkb_state, seat->kbd.xkb_keymap);
+    }
 }
 
 static void
@@ -480,19 +491,32 @@ static void
 keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
              uint32_t time, uint32_t key, uint32_t state)
 {
+    /* TODO: these can’t be static - need to reload on keymap changes */
     static bool mod_masks_initialized = false;
+    static xkb_mod_mask_t shift = -1;
     static xkb_mod_mask_t ctrl = -1;
     static xkb_mod_mask_t alt = -1;
-    //static xkb_mod_mask_t shift = -1;
+    static xkb_mod_mask_t super = -1;
 
     struct seat *seat = data;
     struct wayland *wayl = seat->wayl;
 
     if (!mod_masks_initialized) {
         mod_masks_initialized = true;
-        ctrl = 1 << xkb_keymap_mod_get_index(seat->kbd.xkb_keymap, "Control");
-        alt = 1 << xkb_keymap_mod_get_index(seat->kbd.xkb_keymap, "Mod1");
-        //shift = 1 << xkb_keymap_mod_get_index(seat->kbd.xkb_keymap, "Shift");
+
+        xkb_mod_index_t shift_idx = xkb_keymap_mod_get_index(
+            seat->kbd.xkb_keymap, XKB_MOD_NAME_SHIFT);
+        xkb_mod_index_t ctrl_idx = xkb_keymap_mod_get_index(
+            seat->kbd.xkb_keymap, XKB_MOD_NAME_CTRL);
+        xkb_mod_index_t alt_idx = xkb_keymap_mod_get_index(
+            seat->kbd.xkb_keymap, XKB_MOD_NAME_ALT);
+        xkb_mod_index_t super_idx = xkb_keymap_mod_get_index(
+            seat->kbd.xkb_keymap, XKB_MOD_NAME_LOGO);
+
+        shift = shift_idx != XKB_MOD_INVALID ? 1 << shift_idx : 0;
+        ctrl = ctrl_idx != XKB_MOD_INVALID ? 1 << ctrl_idx : 0;
+        alt = alt_idx != XKB_MOD_INVALID ? 1 << alt_idx : 0;
+        super = super_idx != XKB_MOD_INVALID ? 1 << super_idx : 0;
     }
 
     if (state == XKB_KEY_UP) {
@@ -519,9 +543,21 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
 
     xkb_mod_mask_t mods = xkb_state_serialize_mods(
         seat->kbd.xkb_state, XKB_STATE_MODS_EFFECTIVE);
-    xkb_mod_mask_t consumed = xkb_state_key_get_consumed_mods(seat->kbd.xkb_state, key);
-    xkb_mod_mask_t significant = ctrl | alt /*| shift*/;
-    xkb_mod_mask_t effective_mods = mods & ~consumed & significant;
+    const xkb_mod_mask_t consumed = xkb_state_key_get_consumed_mods(
+        seat->kbd.xkb_state, key);
+    const xkb_mod_mask_t locked = xkb_state_serialize_mods(
+        seat->kbd.xkb_state, XKB_STATE_MODS_LOCKED);
+
+    const xkb_mod_mask_t significant = shift | ctrl | alt | super;
+    const xkb_mod_mask_t effective_mods =
+        mods & significant & ~consumed & ~locked;
+
+    const xkb_layout_index_t layout_idx =
+        xkb_state_key_get_layout(seat->kbd.xkb_state, key);
+
+    const xkb_keysym_t *raw_syms = NULL;
+    const size_t raw_count = xkb_keymap_key_get_syms_by_level(
+        seat->kbd.xkb_keymap, key, layout_idx, 0, &raw_syms);
 
 #if 0
     for (size_t i = 0; i < 32; i++) {
@@ -534,6 +570,46 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
     LOG_DBG("sym=%u, mod=0x%08x, consumed=0x%08x, significant=0x%08x, "
             "effective=0x%08x",
             sym, mods, consumed, significant, effective_mods);
+
+    const struct key_binding_set *bindings =
+        key_binding_for(wayl->kb_manager, seat);
+    assert(bindings != NULL);
+
+    bool binding_matched = false;
+    tll_foreach(bindings->key, it) {
+        const struct key_binding *bind = &it->item;
+
+        if (bind->k.sym == sym &&
+            bind->mods == effective_mods)
+        {
+            LOG_ERR("MATCH type 1");
+            binding_matched = true;
+            break;
+        }
+
+        if (bind->mods != effective_mods || effective_mods != (mods & ~locked))
+            continue;
+
+        for (size_t i = 0; i < raw_count; i++) {
+            if (bind->k.sym == raw_syms[i]) {
+                LOG_ERR("MATCH type 2");
+                binding_matched = true;
+                break;
+            }
+        }
+
+        tll_foreach(bind->k.key_codes, code) {
+            if (code->item == key) {
+                LOG_ERR("MATCH type 3");
+                binding_matched = true;
+                break;
+            }
+        }
+    }
+
+    if (binding_matched) {
+        LOG_WARN("MATCH");
+    }
 
     if (sym == XKB_KEY_Home || (sym == XKB_KEY_a && effective_mods == ctrl)) {
         if (prompt_cursor_home(wayl->prompt))
@@ -1337,6 +1413,7 @@ handle_global(void *data, struct wl_registry *registry,
             return;
         }
 
+        kb_new_for_seat(wayl->kb_manager, wayl->conf, seat);
         wl_seat_add_listener(wl_seat, &seat_listener, seat);
     }
 
@@ -1665,6 +1742,7 @@ parse_font_spec(const char *font_spec, size_t *count, struct font_spec **specs)
 
 struct wayland *
 wayl_init(const struct config *conf, struct fdm *fdm,
+          struct kb_manager *kb_manager,
           struct render *render, struct prompt *prompt,
           struct matches *matches, font_reloaded_t font_reloaded_cb, void *data)
 {
@@ -1672,6 +1750,7 @@ wayl_init(const struct config *conf, struct fdm *fdm,
     *wayl = (struct wayland){
         .conf = conf,
         .fdm = fdm,
+        .kb_manager = kb_manager,
         .render = render,
         .prompt = prompt,
         .matches = matches,

@@ -34,8 +34,22 @@ typedef tll(struct key_binding) key_binding_list_t;
 
 struct key_binding_set {
     key_binding_list_t key;
-    key_binding_list_t search;
-    key_binding_list_t url;
-    key_binding_list_t mouse;
-    xkb_mod_mask_t selection_overrides;
+    //key_binding_list_t mouse;
 };
+
+struct seat;
+struct kb_manager;
+
+struct kb_manager *kb_manager_new(void);
+void kb_manager_destroy(struct kb_manager *mgr);
+
+void kb_new_for_seat(struct kb_manager *mgr, const struct config *conf,
+                     const struct seat *seat);
+void kb_remove_seat(struct kb_manager *mgr, const struct seat *seat);
+
+void kb_load_keymap(struct kb_manager *mgr, const struct seat *seat,
+                    struct xkb_state *xkb, struct xkb_keymap *keymap);
+void kb_unload_keymap(struct kb_manager *mgr, const struct seat *seat);
+
+struct key_binding_set *key_binding_for(
+    struct kb_manager *mgr, const struct seat *seat);

@@ -5,6 +5,7 @@
 #include "config.h"
 #include "dmenu.h"
 #include "fdm.h"
+#include "key-binding.h"
 #include "match.h"
 #include "prompt.h"
 #include "render.h"
@@ -15,11 +16,9 @@ typedef void (*font_reloaded_t)(
     struct wayland *wayl, struct fcft_font *font, void *data);
 
 struct wayland *wayl_init(
-    const struct config *conf, struct fdm *fdm, struct render *render,
+    const struct config *conf, struct fdm *fdm,
+    struct kb_manager *kb_manager, struct render *render,
     struct prompt *prompt, struct matches *matches,
-    //enum dmenu_mode dmenu_mode, const char *launch_prefix,
-    //const char *output_name, const char *font_spec,
-    //enum dpi_aware dpi_aware,
     font_reloaded_t font_reloaded_cb, void *data);
 
 void wayl_destroy(struct wayland *wayl);
