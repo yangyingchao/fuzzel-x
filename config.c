@@ -398,7 +398,7 @@ parse_section_main(struct context *ctx)
     else if (strcmp(key, "password-character") == 0) {
         char32_t *password_chars = ambstoc32(value);
         if (password_chars == NULL || c32len(password_chars) != 1) {
-            LOG_CONTEXTUAL_ERR("ivnalid password character");
+            LOG_CONTEXTUAL_ERR("invalid password character");
             free(password_chars);
             return false;
         }
