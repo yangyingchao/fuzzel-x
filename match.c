@@ -139,9 +139,9 @@ match_levenshtein(struct matches *matches,
     const size_t match_distance = m[pat_len][end].distance;
     const size_t match_len = end - c;
 
-    LOG_DBG("%s vs. %s: sub-string: %.*ls, (distance=%zu, row=%zu, col=%zu)",
-            src, pat, (int)match_len, &src[match_ofs], match_distance,
-            r, c);
+    LOG_DBG("%ls vs. %ls: sub-string: %.*ls, (distance=%zu, row=%zu, col=%zu)",
+            (const wchar_t *)src, (const wchar_t *)pat,
+            (int)match_len, &src[match_ofs], match_distance, r, c);
 
     for (size_t i = 0; i < pat_len + 1; i++)
         free(m[i]);
