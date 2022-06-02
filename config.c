@@ -381,18 +381,52 @@ parse_section_main(struct context *ctx)
         _Static_assert(sizeof(conf->match_fields) == sizeof(int),
             "enum is not 32-bit");
 
-        return value_to_enum(
-            ctx,
-            (const char *[]){
-                "filename",
-                "name",
-                "generic",
-                "exec",
-                "categories",
-                "keywords",
-                "comment",
-                NULL},
-            (int *)&conf->match_fields);
+        enum match_fields match_fields = 0;
+
+        char *copy = strdup(value);
+        for (const char *field = strtok(copy, ",");
+             field != NULL;
+             field = strtok(NULL, ","))
+        {
+            static const struct {
+                const char *name;
+                enum match_fields value;
+            } map[] = {
+                {"filename", MATCH_FILENAME},
+                {"name", MATCH_NAME},
+                {"generic", MATCH_GENERIC},
+                {"exec", MATCH_EXEC},
+                {"categories", MATCH_CATEGORIES},
+                {"keywords", MATCH_KEYWORDS},
+                {"comment", MATCH_COMMENT},
+            };
+
+            enum match_fields field_value = 0;
+
+            for (size_t i = 0; i < sizeof(map) / sizeof(map[0]); i++) {
+                if (strcmp(field, map[i].name) == 0) {
+                    field_value = map[i].value;
+                    break;
+                }
+            }
+
+            if (field_value == 0) {
+                LOG_CONTEXTUAL_ERR(
+                    "invalid field name \"%s\", "
+                    "must be one of: "
+                    "\"filename\", \"name\", \"generic\", \"exec\", "
+                    "\"categories\", \"keywords\", \"comment\"",
+                    field);
+                free(copy);
+                return false;
+            }
+
+            match_fields |= field_value;
+        }
+
+        conf->match_fields = match_fields;
+        free(copy);
+        return true;
     }
 
     else if (strcmp(key, "password-character") == 0) {
