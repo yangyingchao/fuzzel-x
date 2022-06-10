@@ -629,27 +629,46 @@ lookup_icons(const icon_theme_list_t *themes, int icon_size,
         const struct icon_data *icon = &icon_it->item;
 
         tll_foreach(*xdg_dirs, it) {
-            const size_t len =
-                strlen(it->item.path) + 1 +
-                strlen("pixmaps") + 1 +
-                strlen(icon->name) + strlen(".svg");
-            char path[len + 1];
+            int pixmaps_fd = openat(it->item.fd, "pixmaps", O_RDONLY);
+            if (pixmaps_fd < 0)
+                continue;
+
+            size_t len = icon->file_name_len;
+            char *path = icon->file_name;
+            path[len - 3] = 's';
+            path[len - 2] = 'v';
+            path[len - 1] = 'g';
+
+            if (faccessat(pixmaps_fd, path, R_OK, 0) < 0) {
+                path[len - 3] = 'p';
+                path[len - 2] = 'n';
+                path[len - 1] = 'g';
+
+                if (faccessat(pixmaps_fd, path, R_OK, 0) < 0) {
+                    close(pixmaps_fd);
+                    continue;
+                }
+            }
+
+            close(pixmaps_fd);
+
+            char full_path[strlen(it->item.path) + 1 +
+                           strlen("pixmaps") + 1 +
+                           len + 1];
 
             /* Try SVG variant first */
-            sprintf(path, "%s/pixmaps/%s.svg", it->item.path, icon->name);
-            if (svg(&icon->app->icon, path)) {
-                LOG_DBG("%s: %s (pixmaps)", icon->name, path);
+            sprintf(full_path, "%s/pixmaps/%s", it->item.path, path);
+            if (path[len - 3] == 's' && svg(&icon->app->icon, full_path)) {
+                LOG_DBG("%s: %s (pixmaps)", icon->name, full_path);
                 break;
             }
 
             /* No SVG, look for PNG instead */
-            path[len - 3] = 'p';
-            path[len - 2] = 'n';
-            path[len - 1] = 'g';
-            if (png(&icon->app->icon, path)) {
-                LOG_DBG("%s: %s (pixmaps)", icon->name, path);
+            if (path[len - 3] == 'p' && png(&icon->app->icon, full_path)) {
+                LOG_DBG("%s: %s (pixmaps)", icon->name, full_path);
                 break;
             }
+
         }
 
         free(icon->file_name);
