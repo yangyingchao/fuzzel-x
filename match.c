@@ -189,8 +189,10 @@ matches_destroy(struct matches *matches)
     if (matches == NULL)
         return;
 
-    for (size_t i = 0; i < matches->applications->count; i++)
-        free(matches->matches[i].pos);
+    if (matches->applications != NULL) {
+        for (size_t i = 0; i < matches->applications->count; i++)
+            free(matches->matches[i].pos);
+    }
 
     free(matches->matches);
     free(matches);
