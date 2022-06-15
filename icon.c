@@ -378,21 +378,24 @@ icon_reset(struct icon *icon)
         break;
 
     case ICON_PNG:
+        if (icon->png != NULL) {
 #if defined(FUZZEL_ENABLE_PNG_LIBPNG)
-        free(pixman_image_get_data(icon->png));
-        pixman_image_unref(icon->png);
-        icon->png = NULL;
+            free(pixman_image_get_data(icon->png));
+            pixman_image_unref(icon->png);
+            icon->png = NULL;
+        }
 #endif
         break;
 
     case ICON_SVG:
+        if (icon->svg != NULL) {
 #if defined(FUZZEL_ENABLE_SVG_LIBRSVG)
-        g_object_unref(icon->svg);
-        icon->svg = NULL;
+            g_object_unref(icon->svg);
 #elif defined(FUZZEL_ENABLE_SVG_NANOSVG)
-        nsvgDelete(icon->svg);
-        icon->svg = NULL;
+            nsvgDelete(icon->svg);
 #endif
+            icon->svg = NULL;
+        }
         break;
     }
 
