@@ -383,8 +383,8 @@ icon_reset(struct icon *icon)
             free(pixman_image_get_data(icon->png));
             pixman_image_unref(icon->png);
             icon->png = NULL;
-        }
 #endif
+        }
         break;
 
     case ICON_SVG:
