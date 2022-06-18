@@ -67,8 +67,10 @@
 * Backspace removes not only the previous character, but also
   everything **after** the cursor.
 * Crash on exit in dmenu mode when selection list is empty.
+* Keypad `enter` not executing the selected entry ([#138][138])
 
 [114]: https://codeberg.org/dnkl/fuzzel/issues/114
+[138]: https://codeberg.org/dnkl/fuzzel/issues/138
 
 
 ### Security
