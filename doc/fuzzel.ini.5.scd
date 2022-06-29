@@ -177,6 +177,10 @@ All color values are in RGBA.
 	Text (foreground) color of the selected entry. Default:
 	_657b83ff_.
 
+*selection-match*
+	Text (foreground) color of the matched substring of the
+	selected entry. Default: _cb4b16ff_.
+
 *border*
 	Border color. Default: _002b36ff_.
 

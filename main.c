@@ -222,6 +222,7 @@ print_usage(const char *prog_name)
            "  -m,--match-color=HEX           color of matched substring (cc9393ff)\n"
            "  -s,--selection-color=HEX       background color of selected item (333333ff)\n"
            "  -S,--selection-text-color=HEX  text color of selected item (ffffffff)\n"
+           "  -M,--selection-match-color=HEX color of matched substring in selection (cb4b16ff)\n"
            "  -B,--border-width=INT          width of border, in pixels (1)\n"
            "  -r,--border-radius=INT         amount of corner \"roundness\" (10)\n"
            "  -C,--border-color=HEX          border color (ffffffff)\n"
@@ -493,6 +494,7 @@ main(int argc, char *const *argv)
         {"match-color",          required_argument, 0, 'm'},
         {"selection-color",      required_argument, 0, 's'},
         {"selection-text-color", required_argument, 0, 'S'},
+        {"selection-match-color",required_argument, 0, 'M'},
         {"border-width",         required_argument, 0, 'B'},
         {"border-radius",        required_argument, 0, 'r'},
         {"border-color",         required_argument, 0, 'C'},
@@ -542,6 +544,7 @@ main(int argc, char *const *argv)
         bool match_color_set:1;
         bool selection_color_set:1;
         bool selection_text_color_set:1;
+        bool selection_match_color_set:1;
         bool border_color_set:1;
         bool border_size_set:1;
         bool border_radius_set:1;
@@ -574,7 +577,7 @@ main(int argc, char *const *argv)
     }
 
     while (true) {
-        int c = getopt_long(argc, argv, ":o:f:D:i:IF:l:w:x:y:p:P:b:t:m:s:S:B:r:C:T:dRvh", longopts, NULL);
+        int c = getopt_long(argc, argv, ":o:f:D:i:IF:l:w:x:y:p:P:b:t:m:s:S:M:B:r:C:T:dRvh", longopts, NULL);
         if (c == -1)
             break;
 
@@ -803,6 +806,18 @@ main(int argc, char *const *argv)
             break;
         }
 
+        case 'M': {
+            uint32_t selection_match_color;
+            if (sscanf(optarg, "%x", &selection_match_color) != 1) {
+                fprintf(stderr, "%s: invalid color\n", optarg);
+                return EXIT_FAILURE;
+            }
+            cmdline_overrides.conf.colors.selection_match =
+                conf_hex_to_rgba(selection_match_color);
+            cmdline_overrides.selection_match_color_set = true;
+            break;
+        }
+
         case 'B':
             if (sscanf(optarg, "%u", &cmdline_overrides.conf.border.size) != 1) {
                 fprintf(
@@ -1023,6 +1038,8 @@ main(int argc, char *const *argv)
         conf.colors.selection = cmdline_overrides.conf.colors.selection;
     if (cmdline_overrides.selection_text_color_set)
         conf.colors.selection_text = cmdline_overrides.conf.colors.selection_text;
+    if (cmdline_overrides.selection_match_color_set)
+        conf.colors.selection_match = cmdline_overrides.conf.colors.selection_match;
     if (cmdline_overrides.border_color_set)
         conf.colors.border = cmdline_overrides.conf.colors.border;
     if (cmdline_overrides.border_size_set)

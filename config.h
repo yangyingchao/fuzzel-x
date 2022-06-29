@@ -76,6 +76,7 @@ struct config {
         struct rgba match;
         struct rgba selection;
         struct rgba selection_text;
+        struct rgba selection_match;
     } colors;
 
     struct {

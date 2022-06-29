@@ -134,6 +134,12 @@ options:
 	The text color of the currently selected application. See
 	*COLORS*. Default: _657b83ff_.
 
+*-M*,*--selection-match-color*=_HEX_
+	The color of matching substring(s) of the currently selected
+	application. As you start typing in the search box, the matching
+	part in each application's name is highlighted with this color.
+	See *COLORS*. Default: _cb4b16ff_.
+
 *-B*,*--border-width*=_INT_
 	The width of the surrounding border, in pixels (subject to output
 	scaling). Default: _1_.

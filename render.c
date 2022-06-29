@@ -36,6 +36,7 @@ struct render {
     pixman_color_t pix_match_color;
     pixman_color_t pix_selection_color;
     pixman_color_t pix_selection_text_color;
+    pixman_color_t pix_selection_match_color;
 
     unsigned x_margin;
     unsigned y_margin;
@@ -668,7 +669,10 @@ render_match_list(const struct render *render, struct buffer *buf,
             (i == selected
              ? render->pix_selection_text_color
              : render->pix_text_color),
-            render->pix_match_color, &match->application->shaped);
+            (i == selected
+             ? render->pix_selection_match_color
+             : render->pix_match_color),
+            &match->application->shaped);
 
         y += row_height;
     }
@@ -692,6 +696,7 @@ render_init(const struct config *conf, mtx_t *icon_lock)
     render->pix_match_color = rgba2pixman(render->conf->colors.match);
     render->pix_selection_color = rgba2pixman(render->conf->colors.selection);
     render->pix_selection_text_color = rgba2pixman(render->conf->colors.selection_text);
+    render->pix_selection_match_color = rgba2pixman(render->conf->colors.selection_match);
     return render;
 }
 

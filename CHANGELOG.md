@@ -32,6 +32,8 @@
   ([#120][120]).
 * Escape sequences in `Exec` arguments are now supported.
 * Multiple space-separated search words can now be entered at the prompt.
+* `-M,--selection-match-color`, that lets you configure the color of
+  matched substrings of the currently selected item
 
 
 [3]: https://codeberg.org/dnkl/fuzzel/issues/3
