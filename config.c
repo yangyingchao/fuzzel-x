@@ -946,6 +946,7 @@ config_load(struct config *conf, const char *conf_path,
         conf_file = open_config();
         if (conf_file.fd < 0) {
             LOG_WARN("no configuration found, using defaults");
+            ret = true;
             goto out;
         }
     }
