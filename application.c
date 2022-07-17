@@ -126,6 +126,7 @@ application_execute(const struct application *app, const struct prompt *prompt,
 
     const char *execute = app != NULL ? app->exec : cprompt;
     const char *path = app != NULL ? app->path : NULL;
+    const char *id = app != NULL ? app->id : NULL;
 
     LOG_DBG("exec(%s)", execute);
 
@@ -138,6 +139,11 @@ application_execute(const struct application *app, const struct prompt *prompt,
       unescaped = malloc(launch_len + execute_len + 2 /* whitespace + null terminator */);
       sprintf(unescaped, "%s ", launch_prefix);
       execute_dest = unescaped + launch_len + 1;
+      if (id != NULL) {
+          setenv("FUZZEL_DESKTOP_FILE_ID", id, 1);
+      } else {
+          LOG_WARN("No Desktop File ID, not setting FUZZEL_DESKTOP_FILE_ID");
+      }
     } else {
       unescaped = malloc(execute_len + 1);
       execute_dest = unescaped;
