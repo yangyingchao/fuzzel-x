@@ -130,7 +130,11 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	e.g. \"xterm -e\". Default: _$TERMINAL -e_.
 
 *launch-prefix*
-	Prefix to add before argv of executed program. Default: _not set_.
+	Prefix to add before argv of executed program.
+	If set, fuzzel will pass the Desktop File ID of the chosen application
+	(see the Desktop Entry specification) in the FUZZEL_DESKTOP_FILE_ID
+	environment variables.
+	Default: _not set_.
 
 *lines*
 	Number of matches to show. Default: _15_.
@@ -366,4 +370,5 @@ done by setting _action=none_; e.g. *delete-line=none*.
 
 # SEE ALSO
 
-*fuzzel*(1)
+*fuzzel*(1),
+*https://specifications.freedesktop.org/desktop-entry-spec/desktop-entry-spec-latest.html*

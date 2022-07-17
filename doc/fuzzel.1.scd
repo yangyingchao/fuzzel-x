@@ -219,7 +219,10 @@ or command line options:
 	least up to, and including 1.7) exhibits this behavior.
 
 *--launch-prefix*=_COMMAND_
-	Command to launch XDG applications with. Example: _swaymsg exec --_.
+	Command to launch XDG applications with.
+	If set, fuzzel will pass the Desktop File ID of the chosen application
+	(see the Desktop Entry specification) in the FUZZEL_DESKTOP_FILE_ID
+	environment variables.  Example: _swaymsg exec --_.
 	Default: _not set_.
 
 *-d*,*--dmenu*
@@ -313,4 +316,5 @@ _$XDG_RUNTIME_DIR/fuzzel-$WAYLAND_DISPLAY.lock_
 
 # SEE ALSO
 
-*fuzzel.ini*(5)
+*fuzzel.ini*(5),
+*https://specifications.freedesktop.org/desktop-entry-spec/desktop-entry-spec-latest.html*
