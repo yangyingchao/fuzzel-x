@@ -123,7 +123,7 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 
 *terminal*
 	terminal command to use when launching 'terminal' programs,
-	e.g. \"xterm -e\". Default: _not set_.
+	e.g. \"xterm -e\". Default: _$TERMINAL -e_.
 
 *launch-prefix*
 	Prefix to add before argv of executed program. Default: _not set_.

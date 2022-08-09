@@ -936,6 +936,10 @@ config_load(struct config *conf, const char *conf_path,
         .letter_spacing = {0},
     };
 
+    const char *terminal = getenv("TERMINAL");
+    if (terminal != NULL)
+        asprintf(&conf->terminal, "%s -e", terminal);
+
     struct config_file conf_file = {.path = NULL, .fd = -1};
     if (conf_path != NULL) {
         int fd = open(conf_path, O_RDONLY);

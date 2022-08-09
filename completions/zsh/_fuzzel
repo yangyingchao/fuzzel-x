@@ -11,7 +11,7 @@ _arguments \
     '(-i --icon-theme)'{-i,--icon-theme}'[icon theme name (hicolor)]:theme:->icon_theme' \
     '(-I --no-icons)'{-I,--no-icons}'[do not render any icons]' \
     '(-F --fields)'{-F,--fields}'[comma separated list of XDG Desktop entry fields to match ]:fields:->fields' \
-    '(-T --terminal)'{-T,--terminal}'[terminal command, with arguments]:terminal:_command_names -e' \
+    '(-T --terminal)'{-T,--terminal}'[terminal command, with arguments ($TERMINAL -e)]:terminal:_command_names -e' \
     '(-l --lines)'{-l,--lines}'[maximum number of matches to display (15)]:()' \
     '(-w --width)'{-w,--width}'[window width, in characters (30)]:()' \
     '(-x --horizontal-pad)'{-x,--horizontal-pad}'[horizontal padding, in pixels (40)]:()' \
