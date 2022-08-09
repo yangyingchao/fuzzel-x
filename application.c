@@ -44,57 +44,62 @@ tokenize_cmdline(char *cmdline, char ***argv)
     *argv = NULL;
     size_t argv_size = 0;
 
-    bool first_token_is_quoted = cmdline[0] == '"' || cmdline[0] == '\'';
-    char delim = first_token_is_quoted ? cmdline[0] : ' ';
-
-    char *p = first_token_is_quoted ? &cmdline[1] : &cmdline[0];
-    char *search_start = p;
+    char *p = cmdline;
+    char *search_start = p; // points to start of current arg
+    char open_quote = 0; // the current opening quote character, 0 means none open
 
     size_t idx = 0;
     while (*p != '\0') {
-        char *end = strchr(search_start, delim);
-        if (end == NULL) {
-            if (delim != ' ') {
-                LOG_ERR("unterminated %s quote\n", delim == '"' ? "double" : "single");
-                free(*argv);
-                return false;
+        if (*p == '\\') {
+            // lookahead to handle escaped chars
+            // only escape if not within single quotes
+            if (open_quote != '\'') {
+                // within double quotes, only \$, \`, \", \\ should be escaped, others should be literal
+                if ((open_quote != '"' && (*(p + 1) == '\'' || *(p + 1) == ' '))
+                        || *(p + 1) == '$' || *(p + 1) == '"' || *(p + 1) == '`' || *(p + 1) == '\\') {
+                    // essentially delete the (first) backslash
+                    memmove(p, p + 1, strlen(p + 1));
+                    p[strlen(p) - 1] = '\0';
+                }
             }
-
-            if (!push_argv(argv, &argv_size, p, &idx) ||
-                !push_argv(argv, &argv_size, NULL, &idx))
-            {
-                goto err;
-            } else
-                return true;
+            // ignore the other cases
+        } else {
+            if (open_quote == 0 && (*p == '\'' || *p == '"')) {
+                // open a quote, delete the opening character but remember that we have one open
+                open_quote = *p;
+                memmove(p, p + 1, strlen(p + 1));
+                p[strlen(p) - 1] = '\0';
+            }
+            if (*p == open_quote) {
+                // close the quote, delete the closing character
+                open_quote = 0;
+                memmove(p, p + 1, strlen(p + 1));
+                p[strlen(p) - 1] = '\0';
+            }
+            if (*p == ' ' && open_quote == 0) {
+                // we must not be in an argument rn
+                // check if we can close the arg at p (exclusive)
+                // note: passing empty quotes doesn't count as an argument
+                if (p > search_start) {
+                    *p = '\0';
+                    if (!push_argv(argv, &argv_size, search_start, &idx))
+                        goto err;
+                }
+                search_start = p + 1;
+            }
         }
+        p++;
+    }
 
-        if (end > p && *(end - 1) == '\\')  {
-            /* Escaped quote, remove one level of escaping and
-             * continue searching for "our" closing quote */
-            memmove(end - 1, end, strlen(end));
-            end[strlen(end) - 1] = '\0';
-            search_start = end;
-            continue;
-        }
+    if (open_quote != 0) {
+        LOG_ERR("unterminated %s quote\n", open_quote == '"' ? "double" : "single");
+        goto err;
+    }
 
-        *end = '\0';
-
-        if (!push_argv(argv, &argv_size, p, &idx))
+    // edge case: argument terminated by \0
+    if (p > search_start) {
+        if (!push_argv(argv, &argv_size, search_start, &idx))
             goto err;
-
-        p = end + 1;
-        while (*p == delim)
-            p++;
-
-        while (*p == ' ')
-            p++;
-
-        if (*p == '"' || *p == '\'') {
-            delim = *p;
-            p++;
-        } else
-            delim = ' ';
-        search_start = p;
     }
 
     if (!push_argv(argv, &argv_size, NULL, &idx))
