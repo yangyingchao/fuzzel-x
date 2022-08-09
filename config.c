@@ -475,6 +475,20 @@ parse_section_main(struct context *ctx)
     else if (strcmp(key, "letter-spacing") == 0)
         return value_to_pt_or_px(ctx, &conf->letter_spacing);
 
+    else if (strcmp(key, "image-size-ratio") == 0) {
+        float ratio;
+        if (!value_to_double(ctx, &ratio))
+            return false;
+
+        if (ratio < 0. || ratio > 1.) {
+            LOG_CONTEXTUAL_ERR("not in range 0.0 - 1.0");
+            return false;
+        }
+
+        conf->image_size_ratio = ratio;
+        return true;
+    }
+
     else
         LOG_CONTEXTUAL_ERR("not a valid option: %s", key);
 
@@ -932,6 +946,7 @@ config_load(struct config *conf, const char *conf_path,
             .size = 1u,
             .radius = 10u,
         },
+        .image_size_ratio = 0.5,
         .line_height = {-1, 0.0},
         .letter_spacing = {0},
     };

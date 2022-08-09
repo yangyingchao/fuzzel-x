@@ -34,7 +34,9 @@
 * Multiple space-separated search words can now be entered at the prompt.
 * `-M,--selection-match-color`, that lets you configure the color of
   matched substrings of the currently selected item
-
+* New config option `image-size-ratio`, allowing you to control the
+  size of the large image displayed when there are only a “few”
+  matches.
 
 [3]: https://codeberg.org/dnkl/fuzzel/issues/3
 [107]: https://codeberg.org/dnkl/fuzzel/issues/107
@@ -55,6 +57,8 @@
 * Improved performance of initial rendering of icons ([#124][124]).
 * `--terminal` now defaults to `$TERMINAL -e`.
 * Font shaping is now applied to the prompt
+* The large image displayed when there are only a “few” matches is now
+  smaller by default.
 
 [101]: https://codeberg.org/dnkl/fuzzel/issues/101
 [106]: https://codeberg.org/dnkl/fuzzel/issues/106

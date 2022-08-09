@@ -147,6 +147,10 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	Vertical padding between prompt and match list, in
 	pixels. Default: _0_.
 
+*image-size-ratio*
+	The ratio of the large image displayed when there are only a "few"
+	matches, compared to the full window size. Default: _0.5_.
+
 *line-height*
 	Override line height from font metrics. Default: use font metrics.
 

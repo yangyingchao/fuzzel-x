@@ -620,7 +620,8 @@ render_match_list(const struct render *render, struct buffer *buf,
              * there's "enough" free space, render a large
              * representation of the icon */
 
-            const double size = min(buf->height * 0.618, buf->width * 0.618);
+            const double ratio = render->conf->image_size_ratio;
+            const double size = min(buf->height * ratio, buf->width * ratio);
             const double img_x = (buf->width - size) / 2.;
             const double img_y_bottom = max(buf->height - first_row, 0.);
             const double img_y = max(img_y_bottom - size, 0.);

@@ -84,6 +84,8 @@ struct config {
         unsigned radius;
     } border;
 
+    float image_size_ratio;
+
     struct pt_or_px line_height;
     struct pt_or_px letter_spacing;
 };
