@@ -54,6 +54,7 @@
   ([#106][106]).
 * Improved performance of initial rendering of icons ([#124][124]).
 * `--terminal` now defaults to `$TERMINAL -e`.
+* Font shaping is now applied to the prompt
 
 [101]: https://codeberg.org/dnkl/fuzzel/issues/101
 [106]: https://codeberg.org/dnkl/fuzzel/issues/106

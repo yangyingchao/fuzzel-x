@@ -186,7 +186,7 @@ render_prompt(const struct render *render, struct buffer *buf,
     const struct config *conf = render->conf;
 
     const char32_t *pprompt = prompt_prompt(prompt);
-    const size_t prompt_len = c32len(pprompt);
+    size_t prompt_len = c32len(pprompt);
 
     const char32_t *ptext = prompt_text(prompt);
     const size_t text_len = c32len(ptext);
@@ -198,6 +198,33 @@ render_prompt(const struct render *render, struct buffer *buf,
 
     int x = render->border_size + render->x_margin;
     int y = render->border_size + render->y_margin + font->ascent;
+
+    if (fcft_capabilities() & FCFT_CAPABILITY_TEXT_RUN_SHAPING) {
+        struct fcft_text_run *run = fcft_rasterize_text_run_utf32(
+            font, prompt_len, pprompt, subpixel);
+
+        if (run != NULL) {
+            for (size_t i = 0; i < run->count; i++) {
+                const struct fcft_glyph *glyph = run->glyphs[i];
+                render_glyph(buf->pix, glyph, x, y, &render->pix_text_color);
+                x += glyph->advance.x;
+            }
+            fcft_text_run_destroy(run);
+
+            /* Cursor, if right after the prompt. In all other cases,
+             * the cursor will be rendered by the loop below */
+            if (prompt_cursor(prompt) == 0) {
+                pixman_image_fill_rectangles(
+                    PIXMAN_OP_SRC, buf->pix, &render->pix_text_color,
+                    1, &(pixman_rectangle16_t){
+                        x, y - font->ascent,
+                        font->underline.thickness, font->ascent + font->descent});
+            }
+
+            /* Prevent loop below from rendering the prompt */;
+            prompt_len = 0;
+        }
+    }
 
     char32_t prev = 0;
 
