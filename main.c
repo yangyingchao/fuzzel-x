@@ -835,6 +835,7 @@ main(int argc, char *const *argv)
         }
 
         case OPT_SHOW_ACTIONS:
+            cmdline_overrides.actions_enabled_set = true;
             cmdline_overrides.conf.actions_enabled = true;
             break;
 
