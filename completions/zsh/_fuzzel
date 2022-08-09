@@ -11,12 +11,13 @@ _arguments \
     '(-i --icon-theme)'{-i,--icon-theme}'[icon theme name (hicolor)]:theme:->icon_theme' \
     '(-I --no-icons)'{-I,--no-icons}'[do not render any icons]' \
     '(-F --fields)'{-F,--fields}'[comma separated list of XDG Desktop entry fields to match ]:fields:->fields' \
+    '(-p --prompt)'{-p,--prompt}'[string to use as input prompt ("> ")]:()' \
     '(-T --terminal)'{-T,--terminal}'[terminal command, with arguments ($TERMINAL -e)]:terminal:_command_names -e' \
     '(-l --lines)'{-l,--lines}'[maximum number of matches to display (15)]:()' \
     '(-w --width)'{-w,--width}'[window width, in characters (30)]:()' \
     '(-x --horizontal-pad)'{-x,--horizontal-pad}'[horizontal padding, in pixels (40)]:()' \
     '(-y --vertical-pad)'{-y,--vertical-pad}'[vertical padding, in pixels (8)]:()' \
-    '(-p --inner-pad)'{-p,--inner-pad}'[vertical padding between prompt and matches, in pixels (0)]:()' \
+    '(-P --inner-pad)'{-P,--inner-pad}'[vertical padding between prompt and matches, in pixels (0)]:()' \
     '(-b --background)'{-b,--background}'[background color (fdf6e3dd)]:background:()' \
     '(-t --text-color)'{-t,--text-color}'[text color (657b83ff)]:text-color:()' \
     '(-m --match-color)'{-m,--match-color}'[color of matched substring (cb4b16ff)]:match-color:()' \

@@ -59,7 +59,7 @@ options:
 	
 	Default: _auto_
 
-*-P*,*--prompt*=_PROMPT_
+*-p*,*--prompt*=_PROMPT_
 	Prompt to use. Default: _> _.
 
 *-i*,*--icon-theme*=_NAME_
@@ -111,7 +111,7 @@ options:
 	Vertical padding between border and text. In pixels, subject to
 	output scaling. Default: _8_.
 
-*-p*,*--inner-pad*=_PAD_
+*-P*,*--inner-pad*=_PAD_
 	Vertical padding between prompt and match list. In pixels, subject to
 	output scaling. Default: _0_.
 

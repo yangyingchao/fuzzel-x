@@ -205,7 +205,7 @@ print_usage(const char *prog_name)
            "  -I,--no-icons                  do not render any icons\n"
            "  -F,--fields=FIELDS             comma separated list of XDG Desktop entry\n"
            "                                 fields to match\n"
-           "  -P,--prompt=PROMPT             string to use as input prompt (\"> \")\n"
+           "  -p,--prompt=PROMPT             string to use as input prompt (\"> \")\n"
            "     --password=[CHARACTER]      render all input as CHARACTER ('*' by default)\n"
            "  -T,--terminal                  terminal command to use when launching\n"
            "                                 'terminal' programs, e.g. \"xterm -e\".\n"
@@ -215,7 +215,7 @@ print_usage(const char *prog_name)
            "                                 borders not included)\n"
            "  -x,--horizontal-pad=PAD        horizontal padding, in pixels (40)\n"
            "  -y,--vertical-pad=PAD          vertical padding, in pixels (8)\n"
-           "  -p,--inner-pad=PAD             vertical padding between prompt and match list,\n"
+           "  -P,--inner-pad=PAD             vertical padding between prompt and match list,\n"
            "                                 in pixels (0)\n"
            "  -b,--background-color=HEX      background color (000000ff)\n"
            "  -t,--text-color=HEX            text color (ffffffff)\n"
@@ -488,7 +488,7 @@ main(int argc, char *const *argv)
         {"width",                required_argument, 0, 'w'},
         {"horizontal-pad",       required_argument, 0, 'x'},
         {"vertical-pad",         required_argument, 0, 'y'},
-        {"inner-pad",            required_argument, 0, 'p'},
+        {"inner-pad",            required_argument, 0, 'P'},
         {"background-color",     required_argument, 0, 'b'},
         {"text-color",           required_argument, 0, 't'},
         {"match-color",          required_argument, 0, 'm'},
@@ -498,7 +498,7 @@ main(int argc, char *const *argv)
         {"border-width",         required_argument, 0, 'B'},
         {"border-radius",        required_argument, 0, 'r'},
         {"border-color",         required_argument, 0, 'C'},
-        {"prompt",               required_argument, 0, 'P'},
+        {"prompt",               required_argument, 0, 'p'},
         {"terminal",             required_argument, 0, 'T'},
         {"show-actions",         no_argument,       0, OPT_SHOW_ACTIONS},
         {"no-fuzzy",             no_argument,       0, OPT_NO_FUZZY},
@@ -728,7 +728,7 @@ main(int argc, char *const *argv)
             cmdline_overrides.pad_y_set = true;
             break;
 
-        case 'p':
+        case 'P':
             if (sscanf(optarg, "%u", &cmdline_overrides.conf.pad.inner) != 1) {
                 fprintf(stderr, "%s: invalid padding\n", optarg);
                 return EXIT_FAILURE;
@@ -736,7 +736,7 @@ main(int argc, char *const *argv)
             cmdline_overrides.pad_inner_set = true;
             break;
 
-        case 'P':
+        case 'p':
             free(cmdline_overrides.conf.prompt);
             cmdline_overrides.conf.prompt = ambstoc32(optarg);
 
