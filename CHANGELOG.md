@@ -31,7 +31,7 @@
 * `Ctrl+j`/`Ctrl+k` binding to move to the next/previous item
   ([#120][120]).
 * Escape sequences in `Exec` arguments are now supported.
-* Quoted environment variables in `Exec` arguments are now supported.
+* Quoted environment variables in `Exec` arguments are now supported ([#143][143]).
 * Multiple space-separated search words can now be entered at the prompt.
 * `-M,--selection-match-color`, that lets you configure the color of
   matched substrings of the currently selected item
@@ -43,6 +43,7 @@
 [107]: https://codeberg.org/dnkl/fuzzel/issues/107
 [108]: https://codeberg.org/dnkl/fuzzel/issues/108
 [120]: https://codeberg.org/dnkl/fuzzel/issues/120
+[143]: https://codeberg.org/dnkl/fuzzel/issues/143
 
 
 ### Changed
