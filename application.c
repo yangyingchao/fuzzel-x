@@ -45,41 +45,38 @@ tokenize_cmdline(char *cmdline, char ***argv)
     size_t argv_size = 0;
 
     char *p = cmdline;
-    char *search_start = p; // points to start of current arg
-    char open_quote = 0; // the current opening quote character, 0 means none open
+    char *search_start = p; /* points to start of current arg */
+    char open_quote = 0; /* the current opening quote character, 0 means none open */
 
     size_t idx = 0;
     while (*p != '\0') {
         if (*p == '\\') {
-            // lookahead to handle escaped chars
-            // only escape if not within single quotes
+            /* lookahead to handle escaped chars
+             * only escape if not within single quotes */
             if (open_quote != '\'') {
-                // within double quotes, only \$, \`, \", \\ should be escaped, others should be literal
+                /* within double quotes, only \$, \`, \", \\ should be escaped, others should be literal */
                 if ((open_quote != '"' && (*(p + 1) == '\'' || *(p + 1) == ' '))
                         || *(p + 1) == '$' || *(p + 1) == '"' || *(p + 1) == '`' || *(p + 1) == '\\') {
-                    // essentially delete the (first) backslash
-                    memmove(p, p + 1, strlen(p + 1));
-                    p[strlen(p) - 1] = '\0';
+                    /* essentially delete the (first) backslash */
+                    memmove(p, p + 1, strlen(p + 1) + 1);
                 }
             }
-            // ignore the other cases
+            /* ignore the other cases */
         } else {
             if (open_quote == 0 && (*p == '\'' || *p == '"')) {
-                // open a quote, delete the opening character but remember that we have one open
+                /* open a quote, delete the opening character but remember that we have one open */
                 open_quote = *p;
-                memmove(p, p + 1, strlen(p + 1));
-                p[strlen(p) - 1] = '\0';
-            }
-            if (*p == open_quote) {
-                // close the quote, delete the closing character
+                memmove(p, p + 1, strlen(p + 1) + 1);
+                continue; /* don't increment p */
+            } else if (*p == open_quote) {
+                /* close the quote, delete the closing character */
                 open_quote = 0;
-                memmove(p, p + 1, strlen(p + 1));
-                p[strlen(p) - 1] = '\0';
-            }
-            if (*p == ' ' && open_quote == 0) {
-                // we must not be in an argument rn
-                // check if we can close the arg at p (exclusive)
-                // note: passing empty quotes doesn't count as an argument
+                memmove(p, p + 1, strlen(p + 1) + 1);
+                continue; /* don't increment p */
+            } else if (*p == ' ' && open_quote == 0) {
+                /* we must not be in an argument rn
+                 * check if we can close the arg at p (exclusive)
+                 * note: passing empty quotes doesn't count as an argument */
                 if (p > search_start) {
                     *p = '\0';
                     if (!push_argv(argv, &argv_size, search_start, &idx))
@@ -96,7 +93,7 @@ tokenize_cmdline(char *cmdline, char ***argv)
         goto err;
     }
 
-    // edge case: argument terminated by \0
+    /* edge case: argument terminated by \0 */
     if (p > search_start) {
         if (!push_argv(argv, &argv_size, search_start, &idx))
             goto err;
