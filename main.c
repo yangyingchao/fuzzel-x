@@ -173,11 +173,11 @@ write_cache(const struct application_list *apps)
         sprintf(count_as_str, "%u", apps->v[i].count);
         const size_t count_len = strlen(count_as_str);
 
-        size_t clen = c32tombs(NULL, apps->v[i].title, 0);
-        char ctitle[clen + 1];
-        c32tombs(ctitle, apps->v[i].title, clen + 1);
+        size_t c32len = c32tombs(NULL, apps->v[i].title, 0);
+        char ctitle[c32len + 1];
+        c32tombs(ctitle, apps->v[i].title, c32len + 1);
 
-        if (write(fd, ctitle, clen) != clen ||
+        if (write(fd, ctitle, c32len) != c32len ||
             write(fd, "|", 1) != 1 ||
             write(fd, count_as_str, count_len) != count_len ||
             write(fd, "\n", 1) != 1)

@@ -111,9 +111,9 @@ bool
 application_execute(const struct application *app, const struct prompt *prompt, const char *launch_prefix)
 {
     const char32_t *ptext = prompt_text(prompt);
-    const size_t clen = c32tombs(NULL, ptext, 0);
-    char cprompt[clen + 1];
-    c32tombs(cprompt, ptext, clen + 1);
+    const size_t c32len = c32tombs(NULL, ptext, 0);
+    char cprompt[c32len + 1];
+    c32tombs(cprompt, ptext, c32len + 1);
 
     const char *execute = app != NULL ? app->exec : cprompt;
     const char *path = app != NULL ? app->path : NULL;
