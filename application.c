@@ -54,9 +54,14 @@ tokenize_cmdline(char *cmdline, char ***argv)
             /* lookahead to handle escaped chars
              * only escape if not within single quotes */
             if (open_quote != '\'') {
-                /* within double quotes, only \$, \`, \", \\ should be escaped, others should be literal */
-                if ((open_quote != '"' && (*(p + 1) == '\'' || *(p + 1) == ' '))
-                        || *(p + 1) == '$' || *(p + 1) == '"' || *(p + 1) == '`' || *(p + 1) == '\\') {
+                /* within double quotes, only \$, \`, \", \\ should be
+                 * escaped, others should be literal */
+                if ((open_quote != '"' && (*(p + 1) == '\'' || *(p + 1) == ' ')) ||
+                    *(p + 1) == '$' ||
+                    *(p + 1) == '"' ||
+                    *(p + 1) == '`' ||
+                    *(p + 1) == '\\')
+                {
                     /* essentially delete the (first) backslash */
                     memmove(p, p + 1, strlen(p + 1) + 1);
                 }
@@ -64,7 +69,8 @@ tokenize_cmdline(char *cmdline, char ***argv)
             /* ignore the other cases */
         } else {
             if (open_quote == 0 && (*p == '\'' || *p == '"')) {
-                /* open a quote, delete the opening character but remember that we have one open */
+                /* open a quote, delete the opening character but
+                 * remember that we have one open */
                 open_quote = *p;
                 memmove(p, p + 1, strlen(p + 1) + 1);
                 continue; /* don't increment p */
