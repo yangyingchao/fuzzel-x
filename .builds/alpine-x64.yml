@@ -17,7 +17,7 @@ packages:
   - py3-pip
 
 sources:
-  - https://codeberg.org/dnkl/fuzzel
+  - https://git.sr.ht/~dnkl/fuzzel
 
 # triggers:
 #   - action: email

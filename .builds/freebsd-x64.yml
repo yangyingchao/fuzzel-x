@@ -13,7 +13,7 @@ packages:
   - wlroots
 
 sources:
-  - https://codeberg.org/dnkl/fuzzel
+  - https://git.sr.ht/~dnkl/fuzzel
 
 tasks:
   - fcft: |
