@@ -63,11 +63,15 @@
   smaller by default.
 * Swapped meaning of the command line options `-p` and `-P`; `-p` is
   now the short option for `--prompt` ([#146][146]).
+* Do not add icon-sized padding on the left size in dmenu mode
+  ([#158][158]).
+
 
 [101]: https://codeberg.org/dnkl/fuzzel/issues/101
 [106]: https://codeberg.org/dnkl/fuzzel/issues/106
 [124]: https://codeberg.org/dnkl/fuzzel/issues/124
 [146]: https://codeberg.org/dnkl/fuzzel/issues/146
+[158]: https://codeberg.org/dnkl/fuzzel/issues/158
 
 
 ### Deprecated

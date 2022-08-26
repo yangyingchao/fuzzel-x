@@ -684,8 +684,11 @@ render_match_list(const struct render *render, struct buffer *buf,
         const struct fcft_glyph *space = fcft_rasterize_char_utf32(
             font, U' ', subpixel);
 
-        cur_x += row_height +
-            (space != NULL ? space->advance.x : font->max_advance.x) +
+        cur_x +=
+            (!render->conf->dmenu.enabled
+             ? (row_height +
+                (space != NULL ? space->advance.x : font->max_advance.x))
+             : 0) +
             pt_or_px_as_pixels(render, &render->conf->letter_spacing);
 
         /* Application title */
