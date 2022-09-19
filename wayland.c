@@ -355,8 +355,6 @@ keyboard_keymap(void *data, struct wl_keyboard *wl_keyboard,
 {
     struct seat *seat = data;
 
-    char *map_str = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
-
     if (seat->kbd.xkb_compose_state != NULL) {
         xkb_compose_state_unref(seat->kbd.xkb_compose_state);
         seat->kbd.xkb_compose_state = NULL;
@@ -378,10 +376,33 @@ keyboard_keymap(void *data, struct wl_keyboard *wl_keyboard,
         seat->kbd.xkb = NULL;
     }
 
+    /* Verify keymap is in a format we understand */
+    switch ((enum wl_keyboard_keymap_format)format) {
+    case WL_KEYBOARD_KEYMAP_FORMAT_NO_KEYMAP:
+        return;
+
+    case WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1:
+        break;
+
+    default:
+        LOG_WARN("unrecognized keymap format: %u", format);
+        return;
+    }
+
+    char *map_str = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
+    if (map_str == MAP_FAILED) {
+        LOG_ERRNO("failed to mmap keyboard keymap");
+        close(fd);
+        return;
+    }
+
+    while (map_str[size - 1] == '\0')
+        size--;
+
     seat->kbd.xkb = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
     if (seat->kbd.xkb != NULL) {
-        seat->kbd.xkb_keymap = xkb_keymap_new_from_string(
-            seat->kbd.xkb, map_str, XKB_KEYMAP_FORMAT_TEXT_V1,
+        seat->kbd.xkb_keymap = xkb_keymap_new_from_buffer(
+            seat->kbd.xkb, map_str, size, XKB_KEYMAP_FORMAT_TEXT_V1,
             XKB_KEYMAP_COMPILE_NO_FLAGS);
 
         /* Compose (dead keys) */
