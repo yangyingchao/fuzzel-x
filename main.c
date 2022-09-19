@@ -748,8 +748,12 @@ main(int argc, char *const *argv)
             break;
 
         case 'b': {
+            const char *clr_start = optarg;
+            if (clr_start[0] == '#')
+                clr_start++;
+
             uint32_t background;
-            if (sscanf(optarg, "%08x", &background) != 1) {
+            if (sscanf(clr_start, "%08x", &background) != 1) {
                 fprintf(stderr, "%s: invalid color\n", optarg);
                 return EXIT_FAILURE;
             }
@@ -760,8 +764,12 @@ main(int argc, char *const *argv)
         }
 
         case 't': {
+            const char *clr_start = optarg;
+            if (clr_start[0] == '#')
+                clr_start++;
+
             uint32_t text_color;
-            if (sscanf(optarg, "%08x", &text_color) != 1) {
+            if (sscanf(clr_start, "%08x", &text_color) != 1) {
                 fprintf(stderr, "%s: invalid color\n", optarg);
                 return EXIT_FAILURE;
             }
@@ -771,8 +779,12 @@ main(int argc, char *const *argv)
         }
 
         case 'm': {
+            const char *clr_start = optarg;
+            if (clr_start[0] == '#')
+                clr_start++;
+
             uint32_t match_color;
-            if (sscanf(optarg, "%x", &match_color) != 1) {
+            if (sscanf(clr_start, "%x", &match_color) != 1) {
                 fprintf(stderr, "%s: invalid color\n", optarg);
                 return EXIT_FAILURE;
             }
@@ -783,8 +795,12 @@ main(int argc, char *const *argv)
         }
 
         case 's': {
+            const char *clr_start = optarg;
+            if (clr_start[0] == '#')
+                clr_start++;
+
             uint32_t selection_color;
-            if (sscanf(optarg, "%x", &selection_color) != 1) {
+            if (sscanf(clr_start, "%x", &selection_color) != 1) {
                 fprintf(stderr, "%s: invalid color\n", optarg);
                 return EXIT_FAILURE;
             }
@@ -795,8 +811,12 @@ main(int argc, char *const *argv)
         }
 
         case 'S': {
+            const char *clr_start = optarg;
+            if (clr_start[0] == '#')
+                clr_start++;
+
             uint32_t selection_text_color;
-            if (sscanf(optarg, "%x", &selection_text_color) != 1) {
+            if (sscanf(clr_start, "%x", &selection_text_color) != 1) {
                 fprintf(stderr, "%s: invalid color\n", optarg);
                 return EXIT_FAILURE;
             }
@@ -807,8 +827,12 @@ main(int argc, char *const *argv)
         }
 
         case 'M': {
+            const char *clr_start = optarg;
+            if (clr_start[0] == '#')
+                clr_start++;
+
             uint32_t selection_match_color;
-            if (sscanf(optarg, "%x", &selection_match_color) != 1) {
+            if (sscanf(clr_start, "%x", &selection_match_color) != 1) {
                 fprintf(stderr, "%s: invalid color\n", optarg);
                 return EXIT_FAILURE;
             }
@@ -838,8 +862,12 @@ main(int argc, char *const *argv)
             break;
 
         case 'C': {
+            const char *clr_start = optarg;
+            if (clr_start[0] == '#')
+                clr_start++;
+
             uint32_t border_color;
-            if (sscanf(optarg, "%x", &border_color) != 1) {
+            if (sscanf(clr_start, "%x", &border_color) != 1) {
                 fprintf(stderr, "%s: invalid color\n", optarg);
                 return EXIT_FAILURE;
             }

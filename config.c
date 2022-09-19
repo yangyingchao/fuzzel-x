@@ -241,13 +241,17 @@ value_to_uint32(struct context *ctx, int base, uint32_t *res)
 static bool
 value_to_color(struct context *ctx, bool allow_alpha, struct rgba *color)
 {
-    if (strlen(ctx->value) != 8) {
+    const char *clr_start = ctx->value;
+    if (clr_start[0] == '#')
+        clr_start++;
+
+    if (strlen(clr_start) != 8) {
         LOG_CONTEXTUAL_ERR("not a valid color value");
         return false;
     }
 
     uint32_t v;
-    if (!str_to_uint32(ctx->value, 16, &v)) {
+    if (!str_to_uint32(clr_start, 16, &v)) {
         LOG_CONTEXTUAL_ERR("not a valid color value");
         return false;
     }

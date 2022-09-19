@@ -65,6 +65,8 @@
   now the short option for `--prompt` ([#146][146]).
 * Do not add icon-sized padding on the left size in dmenu mode
   ([#158][158]).
+* Color config values are now allowed to be prefixed with `#`
+  ([#160][160]).
 
 
 [101]: https://codeberg.org/dnkl/fuzzel/issues/101
@@ -72,6 +74,7 @@
 [124]: https://codeberg.org/dnkl/fuzzel/issues/124
 [146]: https://codeberg.org/dnkl/fuzzel/issues/146
 [158]: https://codeberg.org/dnkl/fuzzel/issues/158
+[160]: https://codeberg.org/dnkl/fuzzel/issues/160
 
 
 ### Deprecated
