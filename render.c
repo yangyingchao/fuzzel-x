@@ -685,7 +685,7 @@ render_match_list(const struct render *render, struct buffer *buf,
             font, U' ', subpixel);
 
         cur_x +=
-            (!render->conf->dmenu.enabled
+            (!render->conf->dmenu.enabled || matches_have_icons(matches)
              ? (row_height +
                 (space != NULL ? space->advance.x : font->max_advance.x))
              : 0) +
