@@ -35,6 +35,7 @@ void matches_destroy(struct matches *matches);
 
 void matches_set_applications(
     struct matches *matches, const struct application_list *applications);
+bool matches_have_icons(const struct matches *matches);
 
 size_t matches_max_matches_per_page(const struct matches *matches);
 void matches_max_matches_per_page_set(
