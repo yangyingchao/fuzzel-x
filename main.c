@@ -376,13 +376,12 @@ populate_apps(void *_ctx)
     bool dmenu_enabled = ctx->conf->dmenu.enabled;
     bool icons_enabled = ctx->conf->icons_enabled;
 
-    if (dmenu_enabled) {
+    if (dmenu_enabled)
         dmenu_load_entries(apps, ctx->dmenu_abort_fd);
-        return send_event(ctx->event_fd, EVENT_APPS_LOADED);
+    else {
+        xdg_find_programs(terminal, actions_enabled, apps);
+        read_cache(apps);
     }
-
-    xdg_find_programs(terminal, actions_enabled, apps);
-    read_cache(apps);
 
     int r = send_event(ctx->event_fd, EVENT_APPS_LOADED);
     if (r != 0)
