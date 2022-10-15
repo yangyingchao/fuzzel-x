@@ -487,6 +487,28 @@ execute_selected(struct wayland *wayl)
 }
 
 
+static bool
+execute_binding(struct seat *seat, const struct key_binding *binding,
+                bool *refresh)
+{
+    const enum bind_action action = binding->action;
+
+    switch (action) {
+    case BIND_ACTION_NONE:
+        return true;
+
+    case BIND_ACTION_CURSOR_HOME:
+        *refresh = prompt_cursor_home(seat->wayl->prompt);
+        return true;
+
+    case BIND_ACTION_COUNT:
+        assert(false);
+        return false;
+    }
+
+    return false;
+}
+
 static void
 keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
              uint32_t time, uint32_t key, uint32_t state)
@@ -575,48 +597,44 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
         key_binding_for(wayl->kb_manager, seat);
     assert(bindings != NULL);
 
-    bool binding_matched = false;
+    bool refresh = false;
     tll_foreach(bindings->key, it) {
         const struct key_binding *bind = &it->item;
 
         if (bind->k.sym == sym &&
-            bind->mods == effective_mods)
+            bind->mods == effective_mods &&
+            execute_binding(seat, bind, &refresh))
         {
-            LOG_ERR("MATCH type 1");
-            binding_matched = true;
-            break;
+            if (refresh)
+                wayl_refresh(wayl);
+            goto maybe_repeat;
         }
 
         if (bind->mods != effective_mods || effective_mods != (mods & ~locked))
             continue;
 
         for (size_t i = 0; i < raw_count; i++) {
-            if (bind->k.sym == raw_syms[i]) {
-                LOG_ERR("MATCH type 2");
-                binding_matched = true;
-                break;
+            if (bind->k.sym == raw_syms[i] &&
+                execute_binding(seat, bind, &refresh))
+            {
+                if (refresh)
+                    wayl_refresh(wayl);
+                goto maybe_repeat;
             }
         }
 
         tll_foreach(bind->k.key_codes, code) {
-            if (code->item == key) {
-                LOG_ERR("MATCH type 3");
-                binding_matched = true;
-                break;
+            if (code->item == key &&
+                execute_binding(seat, bind, &refresh))
+            {
+                if (refresh)
+                    wayl_refresh(wayl);
+                goto maybe_repeat;
             }
         }
     }
 
-    if (binding_matched) {
-        LOG_WARN("MATCH");
-    }
-
-    if (sym == XKB_KEY_Home || (sym == XKB_KEY_a && effective_mods == ctrl)) {
-        if (prompt_cursor_home(wayl->prompt))
-            wayl_refresh(wayl);
-    }
-
-    else if (sym == XKB_KEY_End || (sym == XKB_KEY_e && effective_mods == ctrl)) {
+    if (sym == XKB_KEY_End || (sym == XKB_KEY_e && effective_mods == ctrl)) {
         if (prompt_cursor_end(wayl->prompt))
             wayl_refresh(wayl);
     }
