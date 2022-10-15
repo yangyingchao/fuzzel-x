@@ -1244,6 +1244,7 @@ add_default_key_bindings(struct config *conf)
 {
     static const struct config_key_binding bindings[] = {
         {BIND_ACTION_CURSOR_HOME, m_none, {{XKB_KEY_Home}}},
+        {BIND_ACTION_CURSOR_HOME, m_ctrl, {{XKB_KEY_a}}},
     };
 
     conf->key_bindings.count = ALEN(bindings);
