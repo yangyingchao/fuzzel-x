@@ -38,12 +38,15 @@
 * New config option `image-size-ratio`, allowing you to control the
   size of the large image displayed when there are only a “few”
   matches.
+* Support for icons in dmenu mode, using Rofi’s extended dmenu
+  protocol ([#166][166]).
 
 [3]: https://codeberg.org/dnkl/fuzzel/issues/3
 [107]: https://codeberg.org/dnkl/fuzzel/issues/107
 [108]: https://codeberg.org/dnkl/fuzzel/issues/108
 [120]: https://codeberg.org/dnkl/fuzzel/issues/120
 [143]: https://codeberg.org/dnkl/fuzzel/issues/143
+[166]: https://codeberg.org/dnkl/fuzzel/issues/166
 
 
 ### Changed

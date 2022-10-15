@@ -210,6 +210,20 @@ matches_set_applications(struct matches *matches,
         applications->count, sizeof(matches->matches[0]));
 }
 
+bool
+matches_have_icons(const struct matches *matches)
+{
+    if (matches->applications == NULL)
+        return false;
+
+    for (size_t i = 0; i < matches->applications->count; i++) {
+        if (matches->applications->v[i].icon.name != NULL)
+            return true;
+    }
+
+    return false;
+}
+
 size_t
 matches_max_matches_per_page(const struct matches *matches)
 {

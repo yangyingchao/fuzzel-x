@@ -20,7 +20,7 @@
 void
 dmenu_load_entries(struct application_list *applications, int abort_fd)
 {
-    tll(char32_t *) entries = tll_init();
+    tll(struct application) entries = tll_init();
 
     char *line = NULL;
     size_t alloc_size = 0;
@@ -57,7 +57,7 @@ dmenu_load_entries(struct application_list *applications, int abort_fd)
 
         ssize_t len = getline(&line, &alloc_size, stdin);
 
-        if (len == -1) {
+        if (len < 0) {
             if (errno != 0)
                 LOG_ERRNO("failed to read from stdin");
             break;
@@ -66,13 +66,35 @@ dmenu_load_entries(struct application_list *applications, int abort_fd)
         while (len > 0 && line[len - 1] == '\n')
             line[--len] = '\0';
 
-        LOG_DBG("%s", line);
+        /*
+         * Support Rofi’s extended dmenu protocol. One can specify an
+         * icon by appending ‘\0icon\x1f<icon-name>’ to the entry:
+         *
+         *  “hello world\0icon\x1ffirefox”
+         */
+        const char *icon_name = NULL;
+        const char *extra = strchr(line, '\0');
+        if (extra != NULL && strncmp(extra + 1, "icon", 4) == 0) {
+            char *separator = strchr(extra + 1, '\x1f');
+            if (separator != NULL) {
+                *separator = '\0';
+                icon_name = separator + 1;
+            }
+        }
+
+        LOG_DBG("%s (icon=%s)", line, icon_name);
 
         char32_t *wline = ambstoc32(line);
         if (wline == NULL)
             continue;
 
-        tll_push_back(entries, wline);
+        struct application app = {
+            .title = wline,
+            .icon = {.name = icon_name != NULL ? strdup(icon_name) : NULL},
+            .visible = true,
+        };
+
+        tll_push_back(entries, app);
     }
 
     free(line);
@@ -82,13 +104,10 @@ out:
     applications->v = calloc(tll_length(entries), sizeof(applications->v[0]));
     applications->count = tll_length(entries);
 
+    /* Convert linked-list to regular array */
     size_t i = 0;
     tll_foreach(entries, it) {
-        struct application *app = &applications->v[i++];
-        app->title = it->item;
-        app->icon.type = ICON_NONE;
-        app->visible = true;
-
+        applications->v[i++] = it->item;
         tll_remove(entries, it);
     }
 

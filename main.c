@@ -376,13 +376,12 @@ populate_apps(void *_ctx)
     bool dmenu_enabled = ctx->conf->dmenu.enabled;
     bool icons_enabled = ctx->conf->icons_enabled;
 
-    if (dmenu_enabled) {
+    if (dmenu_enabled)
         dmenu_load_entries(apps, ctx->dmenu_abort_fd);
-        return send_event(ctx->event_fd, EVENT_APPS_LOADED);
+    else {
+        xdg_find_programs(terminal, actions_enabled, apps);
+        read_cache(apps);
     }
-
-    xdg_find_programs(terminal, actions_enabled, apps);
-    read_cache(apps);
 
     int r = send_event(ctx->event_fd, EVENT_APPS_LOADED);
     if (r != 0)
@@ -1175,6 +1174,14 @@ main(int argc, char *const *argv)
             dmenu_load_entries(apps, -1);
             if (apps->count == 0)
                 goto out;
+
+            if (conf.icons_enabled) {
+                themes = icon_load_theme(conf.icon_theme);
+                if (tll_length(themes) > 0)
+                    LOG_INFO("theme: %s", tll_front(themes).name);
+                else
+                    LOG_WARN("%s: icon theme not found", conf.icon_theme);
+            }
 
             matches_set_applications(matches, apps);
             matches_update(matches, prompt);
