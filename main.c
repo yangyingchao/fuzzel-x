@@ -1175,6 +1175,14 @@ main(int argc, char *const *argv)
             if (apps->count == 0)
                 goto out;
 
+            if (conf.icons_enabled) {
+                themes = icon_load_theme(conf.icon_theme);
+                if (tll_length(themes) > 0)
+                    LOG_INFO("theme: %s", tll_front(themes).name);
+                else
+                    LOG_WARN("%s: icon theme not found", conf.icon_theme);
+            }
+
             matches_set_applications(matches, apps);
             matches_update(matches, prompt);
         }
