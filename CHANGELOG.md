@@ -22,6 +22,7 @@
 ### Added
 
 * Support for file based configuration ([#3][3]).
+* Custom key bindings ([#117][117]).
 * If `argv[0]` is _dmenu_, fuzzel now starts in dmenu mode
   ([#107][107]).
 * `--password=[CHARACTER]` command line option. Intended to be used
@@ -44,6 +45,7 @@
   render the fuzzel window on (`top` or `overlay`) ([#81][81]).
 
 [3]: https://codeberg.org/dnkl/fuzzel/issues/3
+[117]: https://codeberg.org/dnkl/fuzzel/issues/117
 [107]: https://codeberg.org/dnkl/fuzzel/issues/107
 [108]: https://codeberg.org/dnkl/fuzzel/issues/108
 [120]: https://codeberg.org/dnkl/fuzzel/issues/120
