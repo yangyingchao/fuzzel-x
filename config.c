@@ -493,6 +493,19 @@ parse_section_main(struct context *ctx)
         return true;
     }
 
+    else if (strcmp(key, "layer") == 0) {
+        if (strcasecmp(value, "top") == 0) {
+            conf->layer = ZWLR_LAYER_SHELL_V1_LAYER_TOP;
+            return true;
+        } else if (strcasecmp(value, "overlay") == 0) {
+            conf->layer = ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY;
+            return true;
+        }
+
+        LOG_CONTEXTUAL_ERR("not one of 'top', 'overay'");
+        return false;
+    }
+
     else
         LOG_CONTEXTUAL_ERR("not a valid option: %s", key);
 
@@ -953,6 +966,7 @@ config_load(struct config *conf, const char *conf_path,
         .image_size_ratio = 0.5,
         .line_height = {-1, 0.0},
         .letter_spacing = {0},
+        .layer = ZWLR_LAYER_SHELL_V1_LAYER_TOP,
     };
 
     struct config_file conf_file = {.path = NULL, .fd = -1};

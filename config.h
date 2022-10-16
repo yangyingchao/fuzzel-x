@@ -4,6 +4,8 @@
 #include <stdbool.h>
 #include <char32.h>
 
+#include <wlr-layer-shell-unstable-v1.h>
+
 #include <tllist.h>
 
 struct rgba {double r; double g; double b; double a;};
@@ -88,6 +90,8 @@ struct config {
 
     struct pt_or_px line_height;
     struct pt_or_px letter_spacing;
+
+    enum zwlr_layer_shell_v1_layer layer;
 };
 
 typedef tll(char *) config_override_t;
