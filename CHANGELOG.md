@@ -51,6 +51,10 @@
 
 ### Changed
 
+* `-i` is now **ignored**. This is to increase compatibility with
+  other similar utilities. To set the icon theme, either use the long
+  option (`--icon-theme=THEME`), or set it in the configuration file
+  (default: `$XDG_CONFIG_HOME/fuzzel/fuzzel.ini`) ([#149][149]).
 * Minimum required meson version is now 0.58.
 * libpng warnings are now routed through fuzzel’s logging
   ([#101][101]).
@@ -72,6 +76,7 @@
   ([#160][160]).
 
 
+[149]: https://codeberg.org/dnkl/fuzzel/issues/149
 [101]: https://codeberg.org/dnkl/fuzzel/issues/101
 [106]: https://codeberg.org/dnkl/fuzzel/issues/106
 [124]: https://codeberg.org/dnkl/fuzzel/issues/124
