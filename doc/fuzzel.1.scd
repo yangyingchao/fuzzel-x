@@ -189,6 +189,20 @@ options:
 	(i.e. *letter-spacing=5px*). Negative values are
 	supported. Default: _0_.
 
+*--layer*=_top_|_overlay_
+	Which layer to render the fuzzel window on. Valid values are *top*
+	and *overlay*.
+	
+	*top* renders above normal windows, but typically below fullscreen
+	windows and lock screens.
+	
+	*overlay* renders on top of both normal windows and fullscreen
+	windows. Note that the order is undefined if several windows use
+	the same layer. Since e.g. lock screens typically use *overlay*,
+	that means fuzzel may or may not appear on top of a lock screen.
+	
+	Default: _top_
+
 *--launch-prefix*=_COMMAND_
 	Command to launch XDG applications with. Example: _swaymsg exec --_.
 	Default: _not set_.
