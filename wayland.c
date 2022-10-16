@@ -552,6 +552,12 @@ execute_binding(struct seat *seat, const struct key_binding *binding,
             matches_update(wayl->matches, wayl->prompt);
         return true;
 
+    case BIND_ACTION_DELETE_LINE:
+        *refresh = prompt_erase_after_cursor(wayl->prompt);
+        if (*refresh)
+            matches_update(wayl->matches, wayl->prompt);
+        return true;
+
     case BIND_ACTION_MATCHES_EXECUTE:
         execute_selected(wayl);
         return true;
@@ -716,43 +722,35 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
         }
     }
 
-    /* TODO: this is no longer having any effect, since ctrl+k is
-     * *also* mapped to “move to previous selection” */
-    if (sym == XKB_KEY_k && effective_mods == ctrl) {
-        if (prompt_erase_after_cursor(wayl->prompt)) {
-            matches_update(wayl->matches, wayl->prompt);
-            wayl_refresh(wayl);
-        }
+    if (effective_mods != 0)
+        goto maybe_repeat;
+
+    /*
+     * Compose, and maybe emit "normal" character
+     */
+
+    char buf[64] = {0};
+    int count = 0;
+
+    if (compose_status == XKB_COMPOSE_COMPOSED) {
+        count = xkb_compose_state_get_utf8(
+            seat->kbd.xkb_compose_state, buf, sizeof(buf));
+        xkb_compose_state_reset(seat->kbd.xkb_compose_state);
+    } else if (compose_status == XKB_COMPOSE_CANCELLED) {
+        goto maybe_repeat;
+    } else {
+        count = xkb_state_key_get_utf8(
+            seat->kbd.xkb_state, key, buf, sizeof(buf));
     }
 
-    else if (effective_mods == 0) {
-        /*
-         * Compose, and maybe emit "normal" character
-         */
+    if (count == 0)
+        return;
 
-        char buf[64] = {0};
-        int count = 0;
+    if (!prompt_insert_chars(wayl->prompt, buf, count))
+        return;
 
-        if (compose_status == XKB_COMPOSE_COMPOSED) {
-            count = xkb_compose_state_get_utf8(
-                seat->kbd.xkb_compose_state, buf, sizeof(buf));
-            xkb_compose_state_reset(seat->kbd.xkb_compose_state);
-        } else if (compose_status == XKB_COMPOSE_CANCELLED) {
-            goto maybe_repeat;
-        } else {
-            count = xkb_state_key_get_utf8(
-                seat->kbd.xkb_state, key, buf, sizeof(buf));
-        }
-
-        if (count == 0)
-            return;
-
-        if (!prompt_insert_chars(wayl->prompt, buf, count))
-            return;
-
-        matches_update(wayl->matches, wayl->prompt);
-        wayl_refresh(wayl);
-    }
+    matches_update(wayl->matches, wayl->prompt);
+    wayl_refresh(wayl);
 
 maybe_repeat:
 
