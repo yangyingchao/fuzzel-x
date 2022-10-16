@@ -40,6 +40,8 @@
   matches.
 * Support for icons in dmenu mode, using Rofi’s extended dmenu
   protocol ([#166][166]).
+* `--layer` command line option, allowing you to choose which layer to
+  render the fuzzel window on (`top` or `overlay`) ([#81][81]).
 
 [3]: https://codeberg.org/dnkl/fuzzel/issues/3
 [107]: https://codeberg.org/dnkl/fuzzel/issues/107
@@ -47,6 +49,7 @@
 [120]: https://codeberg.org/dnkl/fuzzel/issues/120
 [143]: https://codeberg.org/dnkl/fuzzel/issues/143
 [166]: https://codeberg.org/dnkl/fuzzel/issues/166
+[81]: https://codeberg.org/dnkl/fuzzel/issues/81
 
 
 ### Changed
