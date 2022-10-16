@@ -158,6 +158,19 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	Additional letter spacing. Negative values are allowed. Default:
 	_0_.
 
+*layer*
+	Which layer to render the fuzzel window on. Valid values are *top*
+	and *overlay*.
+	
+	*top* renders above normal windows, but typically below fullscreen
+	windows and lock screens.
+	
+	*overlay* renders on top of both normal windows and fullscreen
+	windows. Note that the order is undefined if several windows use
+	the same layer. Since e.g. lock screens typically use *overlay*,
+	that means fuzzel may or may not appear on top of a lock screen.
+	
+	Default: _top_
 
 # SECTION: colors
 
