@@ -26,6 +26,11 @@
 static const char *const binding_action_map[] = {
     [BIND_ACTION_NONE] = NULL,
     [BIND_ACTION_CURSOR_HOME] = "cursor-home",
+    [BIND_ACTION_CURSOR_END] = "cursor-end",
+    [BIND_ACTION_CURSOR_LEFT] = "cursor-left",
+    [BIND_ACTION_CURSOR_LEFT_WORD] = "cursor-left-word",
+    [BIND_ACTION_CURSOR_RIGHT] = "cursor-right",
+    [BIND_ACTION_CURSOR_RIGHT_WORD] = "cursor-right_word",
 };
 
 struct context {
@@ -1245,6 +1250,16 @@ add_default_key_bindings(struct config *conf)
     static const struct config_key_binding bindings[] = {
         {BIND_ACTION_CURSOR_HOME, m_none, {{XKB_KEY_Home}}},
         {BIND_ACTION_CURSOR_HOME, m_ctrl, {{XKB_KEY_a}}},
+        {BIND_ACTION_CURSOR_END, m_none, {{XKB_KEY_End}}},
+        {BIND_ACTION_CURSOR_END, m_ctrl, {{XKB_KEY_e}}},
+        {BIND_ACTION_CURSOR_LEFT, m_ctrl, {{XKB_KEY_b}}},
+        {BIND_ACTION_CURSOR_LEFT, m_none, {{XKB_KEY_Left}}},
+        {BIND_ACTION_CURSOR_LEFT_WORD, m_alt, {{XKB_KEY_b}}},
+        {BIND_ACTION_CURSOR_LEFT_WORD, m_ctrl, {{XKB_KEY_Left}}},
+        {BIND_ACTION_CURSOR_RIGHT, m_ctrl, {{XKB_KEY_f}}},
+        {BIND_ACTION_CURSOR_RIGHT, m_none, {{XKB_KEY_Right}}},
+        {BIND_ACTION_CURSOR_RIGHT_WORD, m_alt, {{XKB_KEY_f}}},
+        {BIND_ACTION_CURSOR_RIGHT_WORD, m_ctrl, {{XKB_KEY_Right}}},
     };
 
     conf->key_bindings.count = ALEN(bindings);

@@ -492,14 +492,36 @@ execute_binding(struct seat *seat, const struct key_binding *binding,
                 bool *refresh)
 {
     const enum bind_action action = binding->action;
+    struct wayland *wayl = seat->wayl;
 
     switch (action) {
     case BIND_ACTION_NONE:
         return true;
 
     case BIND_ACTION_CURSOR_HOME:
-        *refresh = prompt_cursor_home(seat->wayl->prompt);
+        *refresh = prompt_cursor_home(wayl->prompt);
         return true;
+
+    case BIND_ACTION_CURSOR_END:
+        *refresh = prompt_cursor_end(wayl->prompt);
+        return true;
+
+    case BIND_ACTION_CURSOR_LEFT:
+        *refresh = prompt_cursor_prev_char(wayl->prompt);
+        return true;
+
+    case BIND_ACTION_CURSOR_LEFT_WORD:
+        *refresh = prompt_cursor_prev_word(wayl->prompt);
+        return true;
+
+    case BIND_ACTION_CURSOR_RIGHT:
+        *refresh = prompt_cursor_next_char(wayl->prompt);
+        return true;
+
+    case BIND_ACTION_CURSOR_RIGHT_WORD:
+        *refresh = prompt_cursor_next_word(wayl->prompt);
+        return true;
+
 
     case BIND_ACTION_COUNT:
         assert(false);
@@ -634,25 +656,8 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
         }
     }
 
-    if (sym == XKB_KEY_End || (sym == XKB_KEY_e && effective_mods == ctrl)) {
-        if (prompt_cursor_end(wayl->prompt))
-            wayl_refresh(wayl);
-    }
 
-    else if ((sym == XKB_KEY_b && effective_mods == alt) ||
-             (sym == XKB_KEY_Left && effective_mods == ctrl)) {
-        if (prompt_cursor_prev_word(wayl->prompt))
-            wayl_refresh(wayl);
-    }
-
-    else if ((sym == XKB_KEY_f && effective_mods == alt) ||
-             (sym == XKB_KEY_Right && effective_mods == ctrl)) {
-
-        if (prompt_cursor_next_word(wayl->prompt))
-            wayl_refresh(wayl);
-    }
-
-    else if ((sym == XKB_KEY_Escape && effective_mods == 0) ||
+    if ((sym == XKB_KEY_Escape && effective_mods == 0) ||
              (sym == XKB_KEY_g && effective_mods == ctrl)) {
         wayl->status = EXIT;
     }
@@ -690,18 +695,6 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
 
     else if (sym == XKB_KEY_Page_Up && effective_mods == 0) {
         if (matches_selected_prev_page(wayl->matches))
-            wayl_refresh(wayl);
-    }
-
-    else if ((sym == XKB_KEY_b && effective_mods == ctrl) ||
-             (sym == XKB_KEY_Left && effective_mods == 0)) {
-        if (prompt_cursor_prev_char(wayl->prompt))
-            wayl_refresh(wayl);
-    }
-
-    else if ((sym == XKB_KEY_f && effective_mods == ctrl) ||
-             (sym == XKB_KEY_Right && effective_mods == 0)) {
-        if (prompt_cursor_next_char(wayl->prompt))
             wayl_refresh(wayl);
     }
 
