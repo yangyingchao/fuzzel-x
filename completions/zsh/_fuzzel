@@ -34,6 +34,7 @@ _arguments \
     '--fuzzy-max-distance[maximum allowed levenshtein distance between the search string and a fuzzy match (1)]:()' \
     '--line-height[override line height from font metrics, in points or pixels]:()' \
     '--letter-spacing[additional letter spacing, in points or pixels]:()' \
+    '--layer[which layer to render the fuzzel window on (top)]:layer:(top overlay)' \
     '(-d --dmenu)'{-d,--dmenu}'[dmenu compatibility mode; list entries are read from stdin]' \
     "--index[print selected entry's index instead of its text (dmenu mode only)]" \
     '(-R --no-run-if-empty)'{-R,--no-run-if-empty}'[exit immediately without showing the UI if stdin is empty (dmenu mode only)]' \
