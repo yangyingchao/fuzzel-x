@@ -473,13 +473,14 @@ main(int argc, char *const *argv)
     #define OPT_LOG_NO_SYSLOG                266
     #define OPT_PASSWORD                     267
     #define OPT_CONFIG                       268
+    #define OPT_ICON_THEME                   270
 
     static const struct option longopts[] = {
         {"config",               required_argument, 0,  OPT_CONFIG},
         {"output"  ,             required_argument, 0, 'o'},
         {"font",                 required_argument, 0, 'f'},
         {"dpi-aware",            required_argument, 0, 'D'},
-        {"icon-theme",           required_argument, 0, 'i'},
+        {"icon-theme",           required_argument, 0, OPT_ICON_THEME},
         {"no-icons",             no_argument,       0, 'I'},
         {"fields",               required_argument, 0, 'F'},
         {"password",             optional_argument, 0, OPT_PASSWORD},
@@ -576,7 +577,7 @@ main(int argc, char *const *argv)
     }
 
     while (true) {
-        int c = getopt_long(argc, argv, ":o:f:D:i:IF:l:w:x:y:p:P:b:t:m:s:S:M:B:r:C:T:dRvh", longopts, NULL);
+        int c = getopt_long(argc, argv, ":o:f:D:iIF:l:w:x:y:p:P:b:t:m:s:S:M:B:r:C:T:dRvh", longopts, NULL);
         if (c == -1)
             break;
 
@@ -612,6 +613,11 @@ main(int argc, char *const *argv)
             break;
 
         case 'i':
+            /* Ignore (this flag means case insensitive search in
+             * other fuzzel-like utilities) */
+            break;
+
+        case OPT_ICON_THEME:
             cmdline_overrides.conf.icon_theme = optarg;
             break;
 
