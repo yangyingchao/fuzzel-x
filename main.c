@@ -577,7 +577,7 @@ main(int argc, char *const *argv)
     }
 
     while (true) {
-        int c = getopt_long(argc, argv, ":o:f:D:iIF:l:w:x:y:p:P:b:t:m:s:S:M:B:r:C:T:dRvh", longopts, NULL);
+        int c = getopt_long(argc, argv, ":o:f:D:IF:il:w:x:y:p:P:b:t:m:s:S:M:B:r:C:T:dRvh", longopts, NULL);
         if (c == -1)
             break;
 
