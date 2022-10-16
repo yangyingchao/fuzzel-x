@@ -1198,7 +1198,7 @@ overrides_apply(struct config *conf, const config_override_t *overrides,
                 bool errors_are_fatal)
 {
     if (overrides == NULL)
-        return true;
+        goto resolve_key_bindings;
 
     struct context context = {
         .conf = conf,
@@ -1245,10 +1245,10 @@ overrides_apply(struct config *conf, const config_override_t *overrides,
         }
     }
 
+resolve_key_bindings:
     return resolve_key_binding_collisions(
         conf, section_info[SECTION_KEY_BINDINGS].name, binding_action_map,
         &conf->key_bindings);
-    return true;
 }
 
 #define m_none       {0}
