@@ -25,12 +25,20 @@
 
 static const char *const binding_action_map[] = {
     [BIND_ACTION_NONE] = NULL,
+    [BIND_ACTION_CANCEL] = "cancel",
     [BIND_ACTION_CURSOR_HOME] = "cursor-home",
     [BIND_ACTION_CURSOR_END] = "cursor-end",
     [BIND_ACTION_CURSOR_LEFT] = "cursor-left",
     [BIND_ACTION_CURSOR_LEFT_WORD] = "cursor-left-word",
     [BIND_ACTION_CURSOR_RIGHT] = "cursor-right",
     [BIND_ACTION_CURSOR_RIGHT_WORD] = "cursor-right_word",
+    [BIND_ACTION_MATCHES_EXECUTE] = "execute",
+    [BIND_ACTION_MATCHES_EXECUTE_OR_NEXT] = "execute-or-next",
+    [BIND_ACTION_MATCHES_PREV] = "prev",
+    [BIND_ACTION_MATCHES_PREV_WITH_WRAP] = "prev-with-wrap",
+    [BIND_ACTION_MATCHES_NEXT] = "next",
+    [BIND_ACTION_MATCHES_PREV_PAGE] = "prev-page",
+    [BIND_ACTION_MATCHES_NEXT_PAGE] = "next-page",
 };
 
 struct context {
@@ -1248,18 +1256,45 @@ static void
 add_default_key_bindings(struct config *conf)
 {
     static const struct config_key_binding bindings[] = {
+        {BIND_ACTION_CANCEL, m_none, {{XKB_KEY_Escape}}},
+        {BIND_ACTION_CANCEL, m_ctrl, {{XKB_KEY_g}}},
+
         {BIND_ACTION_CURSOR_HOME, m_none, {{XKB_KEY_Home}}},
         {BIND_ACTION_CURSOR_HOME, m_ctrl, {{XKB_KEY_a}}},
+
         {BIND_ACTION_CURSOR_END, m_none, {{XKB_KEY_End}}},
         {BIND_ACTION_CURSOR_END, m_ctrl, {{XKB_KEY_e}}},
+
         {BIND_ACTION_CURSOR_LEFT, m_ctrl, {{XKB_KEY_b}}},
         {BIND_ACTION_CURSOR_LEFT, m_none, {{XKB_KEY_Left}}},
+
         {BIND_ACTION_CURSOR_LEFT_WORD, m_alt, {{XKB_KEY_b}}},
         {BIND_ACTION_CURSOR_LEFT_WORD, m_ctrl, {{XKB_KEY_Left}}},
+
         {BIND_ACTION_CURSOR_RIGHT, m_ctrl, {{XKB_KEY_f}}},
         {BIND_ACTION_CURSOR_RIGHT, m_none, {{XKB_KEY_Right}}},
+
         {BIND_ACTION_CURSOR_RIGHT_WORD, m_alt, {{XKB_KEY_f}}},
         {BIND_ACTION_CURSOR_RIGHT_WORD, m_ctrl, {{XKB_KEY_Right}}},
+
+        {BIND_ACTION_MATCHES_EXECUTE, m_none, {{XKB_KEY_Return}}},
+        {BIND_ACTION_MATCHES_EXECUTE, m_none, {{XKB_KEY_KP_Enter}}},
+        {BIND_ACTION_MATCHES_EXECUTE, m_ctrl, {{XKB_KEY_y}}},
+
+        {BIND_ACTION_MATCHES_EXECUTE_OR_NEXT, m_none, {{XKB_KEY_Tab}}},
+
+        {BIND_ACTION_MATCHES_PREV, m_none, {{XKB_KEY_Up}}},
+        {BIND_ACTION_MATCHES_PREV, m_ctrl, {{XKB_KEY_p}}},
+        {BIND_ACTION_MATCHES_PREV_WITH_WRAP, m_none, {{XKB_KEY_ISO_Left_Tab}}},
+
+        {BIND_ACTION_MATCHES_PREV_PAGE, m_none, {{XKB_KEY_Page_Up}}},
+        {BIND_ACTION_MATCHES_PREV_PAGE, m_none, {{XKB_KEY_KP_Page_Up}}},
+
+        {BIND_ACTION_MATCHES_NEXT, m_none, {{XKB_KEY_Down}}},
+        {BIND_ACTION_MATCHES_NEXT, m_ctrl, {{XKB_KEY_n}}},
+
+        {BIND_ACTION_MATCHES_NEXT_PAGE, m_none, {{XKB_KEY_Page_Down}}},
+        {BIND_ACTION_MATCHES_NEXT_PAGE, m_none, {{XKB_KEY_KP_Page_Down}}},
     };
 
     conf->key_bindings.count = ALEN(bindings);

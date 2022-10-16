@@ -494,8 +494,14 @@ execute_binding(struct seat *seat, const struct key_binding *binding,
     const enum bind_action action = binding->action;
     struct wayland *wayl = seat->wayl;
 
+    *refresh = false;
+
     switch (action) {
     case BIND_ACTION_NONE:
+        return true;
+
+    case BIND_ACTION_CANCEL:
+        wayl->status = EXIT;
         return true;
 
     case BIND_ACTION_CURSOR_HOME:
@@ -522,6 +528,36 @@ execute_binding(struct seat *seat, const struct key_binding *binding,
         *refresh = prompt_cursor_next_word(wayl->prompt);
         return true;
 
+    case BIND_ACTION_MATCHES_EXECUTE:
+        execute_selected(wayl);
+        return true;
+
+    case BIND_ACTION_MATCHES_EXECUTE_OR_NEXT:
+        if (matches_get_count(wayl->matches) == 1)
+            execute_selected(wayl);
+        else
+            *refresh = matches_selected_next(wayl->matches, true);
+        return true;
+
+    case BIND_ACTION_MATCHES_PREV:
+        *refresh = matches_selected_prev(wayl->matches, false);
+        return true;
+
+    case BIND_ACTION_MATCHES_PREV_WITH_WRAP:
+        *refresh = matches_selected_prev(wayl->matches, true);
+        return true;
+
+    case BIND_ACTION_MATCHES_PREV_PAGE:
+        *refresh = matches_selected_prev_page(wayl->matches);
+        return true;
+
+    case BIND_ACTION_MATCHES_NEXT:
+        *refresh = matches_selected_next(wayl->matches, false);
+        return true;
+
+    case BIND_ACTION_MATCHES_NEXT_PAGE:
+        *refresh = matches_selected_next_page(wayl->matches);
+        return true;
 
     case BIND_ACTION_COUNT:
         assert(false);
@@ -656,49 +692,7 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
         }
     }
 
-
-    if ((sym == XKB_KEY_Escape && effective_mods == 0) ||
-             (sym == XKB_KEY_g && effective_mods == ctrl)) {
-        wayl->status = EXIT;
-    }
-
-    else if ((sym == XKB_KEY_p && effective_mods == ctrl) ||
-             (sym == XKB_KEY_k && effective_mods == ctrl) ||
-             (sym == XKB_KEY_Up && effective_mods == 0)) {
-        if (matches_selected_prev(wayl->matches, false))
-            wayl_refresh(wayl);
-    }
-
-    else if ((sym == XKB_KEY_n && effective_mods == ctrl) ||
-             (sym == XKB_KEY_j && effective_mods == ctrl) ||
-             (sym == XKB_KEY_Down && effective_mods == 0)) {
-        if (matches_selected_next(wayl->matches, false))
-            wayl_refresh(wayl);
-    }
-
-    else if (sym == XKB_KEY_Tab && effective_mods == 0) {
-        if (matches_get_count(wayl->matches) == 1)
-            execute_selected(wayl);
-        else if (matches_selected_next(wayl->matches, true))
-            wayl_refresh(wayl);
-    }
-
-    else if (sym == XKB_KEY_ISO_Left_Tab && effective_mods == 0) {
-        if (matches_selected_prev(wayl->matches, true))
-            wayl_refresh(wayl);
-    }
-
-    else if (sym == XKB_KEY_Page_Down && effective_mods == 0) {
-        if (matches_selected_next_page(wayl->matches))
-            wayl_refresh(wayl);
-    }
-
-    else if (sym == XKB_KEY_Page_Up && effective_mods == 0) {
-        if (matches_selected_prev_page(wayl->matches))
-            wayl_refresh(wayl);
-    }
-
-    else if ((sym == XKB_KEY_d && effective_mods == ctrl) ||
+    if ((sym == XKB_KEY_d && effective_mods == ctrl) ||
              (sym == XKB_KEY_Delete && effective_mods == 0)) {
         if (prompt_erase_next_char(wayl->prompt)) {
             matches_update(wayl->matches, wayl->prompt);
