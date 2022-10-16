@@ -62,7 +62,11 @@ options:
 *-p*,*--prompt*=_PROMPT_
 	Prompt to use. Default: _> _.
 
-*-i*,*--icon-theme*=_NAME_
+*-i*
+	Ignored; for compatibility with other, similar utilities (where
+	*-i* means "case insensitive search").
+
+*--icon-theme*=_NAME_
 	Icon theme to use. Note that this option is case sensitive; the
 	name must match the theme's folder name.
 	
