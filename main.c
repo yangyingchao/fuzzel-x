@@ -239,6 +239,7 @@ print_usage(const char *prog_name)
            "                                 mean more fuzzy matches\n"
            "     --line-height=HEIGHT        override line height from font metrics\n"
            "     --letter-spacing=AMOUNT     additional letter spacing\n"
+           "     --layer=top|overlay         which layer to render the fuzzel window on (top)\n"
            "     --launch-prefix=COMMAND     prefix to add before argv of executed program\n"
            "  -d,--dmenu                     dmenu compatibility mode\n"
            "     --index                     print selected entry's index instead of of the \n"
@@ -473,6 +474,7 @@ main(int argc, char *const *argv)
     #define OPT_LOG_NO_SYSLOG                266
     #define OPT_PASSWORD                     267
     #define OPT_CONFIG                       268
+    #define OPT_LAYER                        269
     #define OPT_ICON_THEME                   270
 
     static const struct option longopts[] = {
@@ -508,6 +510,7 @@ main(int argc, char *const *argv)
         {"line-height",          required_argument, 0, 'H'},
         {"letter-spacing",       required_argument, 0, OPT_LETTER_SPACING},
         {"launch-prefix",        required_argument, 0, OPT_LAUNCH_PREFIX},
+        {"layer",                required_argument, 0, OPT_LAYER},
 
         /* dmenu mode */
         {"dmenu",                no_argument,       0, 'd'},
@@ -558,6 +561,7 @@ main(int argc, char *const *argv)
         bool dmenu_enabled_set:1;
         bool dmenu_mode_set:1;
         bool dmenu_exit_immediately_if_empty_set:1;
+        bool layer_set:1;
     } cmdline_overrides = {{0}};
 
     setlocale(LC_CTYPE, "");
@@ -944,6 +948,21 @@ main(int argc, char *const *argv)
             break;
         }
 
+        case OPT_LAYER:
+            if (strcasecmp(optarg, "top") == 0)
+                cmdline_overrides.conf.layer = ZWLR_LAYER_SHELL_V1_LAYER_TOP;
+            else if (strcasecmp(optarg, "overlay") == 0)
+                cmdline_overrides.conf.layer = ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY;
+            else {
+                fprintf(
+                    stderr,
+                    "%s: invalid layer. Must be one of 'top', 'overlay'\n",
+                    optarg);
+                return EXIT_FAILURE;
+            }
+            cmdline_overrides.layer_set = true;
+            break;
+
         case 'd':
             cmdline_overrides.conf.dmenu.enabled = true;
             cmdline_overrides.dmenu_enabled_set = true;
@@ -1100,6 +1119,8 @@ main(int argc, char *const *argv)
         conf.line_height = cmdline_overrides.conf.line_height;
     if (cmdline_overrides.letter_spacing_set)
         conf.letter_spacing = cmdline_overrides.conf.letter_spacing;
+    if (cmdline_overrides.layer_set)
+        conf.layer = cmdline_overrides.conf.layer;
     if (cmdline_overrides.dmenu_enabled_set)
         conf.dmenu.enabled = cmdline_overrides.conf.dmenu.enabled;
     if (cmdline_overrides.dmenu_mode_set)
