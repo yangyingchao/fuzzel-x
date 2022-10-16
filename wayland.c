@@ -528,6 +528,30 @@ execute_binding(struct seat *seat, const struct key_binding *binding,
         *refresh = prompt_cursor_next_word(wayl->prompt);
         return true;
 
+    case BIND_ACTION_DELETE_PREV:
+        *refresh = prompt_erase_prev_char(wayl->prompt);
+        if (*refresh)
+            matches_update(wayl->matches, wayl->prompt);
+        return true;
+
+    case BIND_ACTION_DELETE_PREV_WORD:
+        *refresh = prompt_erase_prev_word(wayl->prompt);
+        if (*refresh)
+            matches_update(wayl->matches, wayl->prompt);
+        return true;
+
+    case BIND_ACTION_DELETE_NEXT:
+        *refresh = prompt_erase_next_char(wayl->prompt);
+        if (*refresh)
+            matches_update(wayl->matches, wayl->prompt);
+        return true;
+
+    case BIND_ACTION_DELETE_NEXT_WORD:
+        *refresh = prompt_erase_next_word(wayl->prompt);
+        if (*refresh)
+            matches_update(wayl->matches, wayl->prompt);
+        return true;
+
     case BIND_ACTION_MATCHES_EXECUTE:
         execute_selected(wayl);
         return true;
@@ -692,50 +716,14 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
         }
     }
 
-    if ((sym == XKB_KEY_d && effective_mods == ctrl) ||
-             (sym == XKB_KEY_Delete && effective_mods == 0)) {
-        if (prompt_erase_next_char(wayl->prompt)) {
-            matches_update(wayl->matches, wayl->prompt);
-            wayl_refresh(wayl);
-        }
-    }
-
-    else if (sym == XKB_KEY_BackSpace && effective_mods == 0) {
-        if (prompt_erase_prev_char(wayl->prompt)) {
-            matches_update(wayl->matches, wayl->prompt);
-            wayl_refresh(wayl);
-        }
-    }
-
-    else if (sym == XKB_KEY_BackSpace && (effective_mods == ctrl ||
-                                          effective_mods == alt)) {
-        if (prompt_erase_prev_word(wayl->prompt)) {
-            matches_update(wayl->matches, wayl->prompt);
-            wayl_refresh(wayl);
-        }
-    }
-
-    else if ((sym == XKB_KEY_d && effective_mods == alt) ||
-             (sym == XKB_KEY_Delete && effective_mods == ctrl)) {
-        if (prompt_erase_next_word(wayl->prompt)) {
-            matches_update(wayl->matches, wayl->prompt);
-            wayl_refresh(wayl);
-        }
-    }
-
     /* TODO: this is no longer having any effect, since ctrl+k is
      * *also* mapped to “move to previous selection” */
-    else if (sym == XKB_KEY_k && effective_mods == ctrl) {
+    if (sym == XKB_KEY_k && effective_mods == ctrl) {
         if (prompt_erase_after_cursor(wayl->prompt)) {
             matches_update(wayl->matches, wayl->prompt);
             wayl_refresh(wayl);
         }
     }
-
-    else if (((sym == XKB_KEY_Return || sym == XKB_KEY_KP_Enter)
-              && effective_mods == 0) ||
-             (sym == XKB_KEY_y && effective_mods == ctrl))
-        execute_selected(wayl);
 
     else if (effective_mods == 0) {
         /*
