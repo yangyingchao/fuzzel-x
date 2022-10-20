@@ -687,6 +687,44 @@ parse_key_value(char *kv, const char **section, const char **key, const char **v
     while (isspace(*value[0]))
         ++*value;
 
+    /* Un-quote
+     *
+     * Note: this is very simple; we only support the *entire* value
+     * being quoted. That is, no mid-value quotes. Both double and
+     * single quotes are supported.
+     *
+     *  - key="value"              OK
+     *  - key=abc "quote" def  NOT OK
+     *  - key=’value’              OK
+     *
+     * Finally, we support escaping the quote character, and the
+     * escape character itself:
+     *
+     *  - key="value \"quotes\""
+     *  - key="backslash: \\"
+     *
+     * ONLY the "current" quote character can be escaped:
+     *
+     *  key="value \'"   NOt OK (both backslash and single quote is kept)
+     */
+    {
+        char *end = (char *)*value + strlen(*value) - 1;
+        if ((*value[0] == '"' && *end == '"') ||
+            (*value[0] == '\'' && *end == '\''))
+        {
+            const char quote = (*value)[0];
+            (*value)++;
+            *end = '\0';
+
+            /* Un-escape */
+            for (char *p = (char *)*value; *p != '\0'; p++) {
+                if (p[0] == '\\' && (p[1] == '\\' || p[1] == quote)) {
+                    memmove(p, p + 1, end - p);
+                }
+            }
+        }
+    }
+
     return true;
 }
 
