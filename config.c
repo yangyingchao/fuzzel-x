@@ -353,12 +353,13 @@ static char *
 modifiers_to_str(const struct config_key_modifiers *mods)
 {
     char *ret = NULL;
-    asprintf(&ret,
-             "%s%s%s%s",
-             mods->ctrl ? XKB_MOD_NAME_CTRL "+" : "",
-             mods->alt ? XKB_MOD_NAME_ALT "+": "",
-             mods->super ? XKB_MOD_NAME_LOGO "+": "",
-             mods->shift ? XKB_MOD_NAME_SHIFT "+": "");
+    if (asprintf(&ret,
+                 "%s%s%s%s",
+                 mods->ctrl ? XKB_MOD_NAME_CTRL "+" : "",
+                 mods->alt ? XKB_MOD_NAME_ALT "+": "",
+                 mods->super ? XKB_MOD_NAME_LOGO "+": "",
+                 mods->shift ? XKB_MOD_NAME_SHIFT "+": "") < 0)
+        return NULL;
     return ret;
 }
 
