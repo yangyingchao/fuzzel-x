@@ -210,7 +210,6 @@ All color values are in RGBA.
 *radius*
 	Amount of corner "roundness". Default: _10_.
 
-
 # SECTION: dmenu
 
 *mode*
@@ -222,6 +221,105 @@ All color values are in RGBA.
 	Boolean. If enabled, fuzzel will not run at all (i.e. it will not
 	open a window, and will not print anything on stdout) if there's
 	nothing on stdin. Default: _no_.
+
+
+# SECTION: key-bindings
+
+This section lets you override the default key bindings.
+
+The general format is _action=combo1...comboN_. That is, each action
+may have one or more key combinations, space separated. Each
+combination is in the form _mod1+mod2+key_. The names of the modifiers
+and the key *must* be valid XKB key names.
+
+Note that if *Shift* is one of the modifiers, the _key_ *must not* be
+in upper case. For example, *Control+Shift+V* will never trigger, but
+*Control+Shift+v* will.
+
+Note that *Alt* is usually called *Mod1*.
+
+*xkbcli interactive-wayland* can be useful for finding keysym names.
+
+A key combination can only be mapped to *one* action. Lets say you
+want to bind *Control+k* to *next*. Since this is the default shortcut
+for *delete-line*, you must unmap the default binding. This can be
+done by setting _action=none_; e.g. *delete-line=none*.
+
+*cancel*
+	Quite fuzzel without executing anythingDefault: _Control+g
+	Control+c Escape_.
+
+*execute*
+	Execute the currently selected entry. Or, in dmenu mode, print the
+	selected entry on stdout. Default: _Return KP_Enter Control+y_.
+
+*execute-or-next*
+	If there is a single match, execute it. If there are more than one
+	match, select the next entry. Wraps around when the last entry has
+	been reached. Default: _Tab_.
+
+*cursor-left*
+	Moves the cursor one **character** to the left. Default: _Left
+	Control+b_.
+
+*cursor-left-word*
+	Moves the cursor one **word** to the left. Default: _Control+Left
+	Mod1+b_.
+
+*cursor-right*
+	Moves the cursor one **character** to the right. Default: _Right
+	Control+f_.
+
+*cursor-right-word*
+	Moves the cursor one **word** to the right. Default:
+	_Control+Right Mod1+f_.
+
+*cursor-home*
+	Moves the cursor to the beginning of the input. Default: _Home
+	Control+a_.
+
+*cursor-end*
+	Moves the cursor to the end of the input. Default: _End
+	Control+e_.
+
+*delete-prev*
+	Deletes the **character before** the cursor. Default: _BackSpace_.
+
+*delete-prev-word*
+	Deletes the **word before** the cursor. Default: _Mod1+BackSpace
+	Control+BackSpace_.
+
+*delete-next*
+	Deletes the **character after** the cursor. Default: _Delete_.
+
+*delete-next-word*
+	Deletes the **word after** the cursor. Default: _Mod1+d
+	Control+Delete_.
+
+*delete-line*
+	Deletes everything after the cursor. Default: _Control+k_.
+
+*prev*
+	Select the previous entry. Does *not* wrap around when the first
+	entry has been reached. Default: _Up Control+p_.
+
+*prev-with-wrap*
+	Select the previous entry. Wraps around when the first entry has
+	been reached. Default: _ISO_Left_Tab_.
+
+*prev-page*
+	Switch to the previous page. Default: _PageUp KP_PageUp_.
+
+*next*
+	Select the next entry. Does *not* wrap around when the last entry
+	has been reached. Default: _Down Control+n_.
+
+*next-with-wrap*
+	Select the previous entry. Wraps around when the first entry has
+	been reached. Default: _not bound_.
+
+*next-page*
+	Switch to the next page. Default: _Page_Down KP_Page_Down_.
 
 
 # SEE ALSO
