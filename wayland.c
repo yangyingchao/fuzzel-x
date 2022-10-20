@@ -585,6 +585,10 @@ execute_binding(struct seat *seat, const struct key_binding *binding,
         *refresh = matches_selected_next(wayl->matches, false);
         return true;
 
+    case BIND_ACTION_MATCHES_NEXT_WITH_WRAP:
+        *refresh = matches_selected_next(wayl->matches, true);
+        return true;
+
     case BIND_ACTION_MATCHES_NEXT_PAGE:
         *refresh = matches_selected_next_page(wayl->matches);
         return true;

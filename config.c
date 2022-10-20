@@ -43,6 +43,7 @@ static const char *const binding_action_map[] = {
     [BIND_ACTION_MATCHES_PREV_WITH_WRAP] = "prev-with-wrap",
     [BIND_ACTION_MATCHES_PREV_PAGE] = "prev-page",
     [BIND_ACTION_MATCHES_NEXT] = "next",
+    [BIND_ACTION_MATCHES_NEXT_WITH_WRAP] = "next-with-wrap",
     [BIND_ACTION_MATCHES_NEXT_PAGE] = "next-page",
 };
 
