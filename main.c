@@ -25,10 +25,11 @@
 #define LOG_ENABLE_DBG 0
 #include "log.h"
 #include "application.h"
-#include "config.h"
 #include "char32.h"
+#include "config.h"
 #include "dmenu.h"
 #include "fdm.h"
+#include "key-binding.h"
 #include "match.h"
 #include "render.h"
 #include "shm.h"
@@ -1152,6 +1153,7 @@ main(int argc, char *const *argv)
     struct matches *matches = NULL;
     struct render *render = NULL;
     struct wayland *wayl = NULL;
+    struct kb_manager *kb_manager = NULL;
 
     thrd_t app_thread_id;
     bool join_app_thread = false;
@@ -1235,8 +1237,11 @@ main(int argc, char *const *argv)
         .dmenu_abort_fd = dmenu_abort_fd,
     };
 
+    if ((kb_manager = kb_manager_new()) == NULL)
+        goto out;
+
     if ((wayl = wayl_init(
-             &conf, fdm, render, prompt, matches,
+             &conf, fdm, kb_manager, render, prompt, matches,
              &font_reloaded, &ctx)) == NULL)
         goto out;
 
@@ -1309,6 +1314,7 @@ out:
     shm_fini();
 
     wayl_destroy(wayl);
+    kb_manager_destroy(kb_manager);
     render_destroy(render);
     matches_destroy(matches);
     prompt_destroy(prompt);

@@ -137,6 +137,7 @@ executable(
   'dmenu.c', 'dmenu.h',
   'fdm.c', 'fdm.h',
   'icon.c', 'icon.h',
+  'key-binding.c', 'key-binding.h',
   'log.c', 'log.h',
   'main.c',
   'match.c', 'match.h',
