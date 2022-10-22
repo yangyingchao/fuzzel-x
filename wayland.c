@@ -1939,7 +1939,7 @@ wayl_flush(struct wayland *wayl)
     wl_display_flush(wayl->display);
 }
 
-bool
+int
 wayl_exit_code(const struct wayland *wayl)
 {
     return wayl->exit_code;
