@@ -465,7 +465,7 @@ keyboard_leave(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
 }
 
 static void
-execute_selected(struct wayland *wayl)
+execute_selected(struct wayland *wayl, int custom_dmenu_success_exit_code)
 {
     wayl->status = EXIT;
 
@@ -475,7 +475,9 @@ execute_selected(struct wayland *wayl)
 
     if (wayl->conf->dmenu.enabled) {
         dmenu_execute(app, index, wayl->prompt, wayl->conf->dmenu.mode);
-        wayl->exit_code = EXIT_SUCCESS;
+        wayl->exit_code = custom_dmenu_success_exit_code >= 0
+            ? custom_dmenu_success_exit_code
+            : EXIT_SUCCESS;
     } else {
         bool success = application_execute(
             app, wayl->prompt, wayl->conf->launch_prefix);
@@ -561,12 +563,12 @@ execute_binding(struct seat *seat, const struct key_binding *binding,
         return true;
 
     case BIND_ACTION_MATCHES_EXECUTE:
-        execute_selected(wayl);
+        execute_selected(wayl, -1);
         return true;
 
     case BIND_ACTION_MATCHES_EXECUTE_OR_NEXT:
         if (matches_get_count(wayl->matches) == 1)
-            execute_selected(wayl);
+            execute_selected(wayl, -1);
         else
             *refresh = matches_selected_next(wayl->matches, true);
         return true;
@@ -594,6 +596,33 @@ execute_binding(struct seat *seat, const struct key_binding *binding,
     case BIND_ACTION_MATCHES_NEXT_PAGE:
         *refresh = matches_selected_next_page(wayl->matches);
         return true;
+
+    case BIND_ACTION_CUSTOM_1:
+    case BIND_ACTION_CUSTOM_2:
+    case BIND_ACTION_CUSTOM_3:
+    case BIND_ACTION_CUSTOM_4:
+    case BIND_ACTION_CUSTOM_5:
+    case BIND_ACTION_CUSTOM_6:
+    case BIND_ACTION_CUSTOM_7:
+    case BIND_ACTION_CUSTOM_8:
+    case BIND_ACTION_CUSTOM_9:
+    case BIND_ACTION_CUSTOM_10:
+    case BIND_ACTION_CUSTOM_11:
+    case BIND_ACTION_CUSTOM_12:
+    case BIND_ACTION_CUSTOM_13:
+    case BIND_ACTION_CUSTOM_14:
+    case BIND_ACTION_CUSTOM_15:
+    case BIND_ACTION_CUSTOM_16:
+    case BIND_ACTION_CUSTOM_17:
+    case BIND_ACTION_CUSTOM_18:
+    case BIND_ACTION_CUSTOM_19: {
+        if (!wayl->conf->dmenu.enabled)
+            return false;
+
+        const size_t idx = action - BIND_ACTION_CUSTOM_1;
+        execute_selected(wayl, 10 + idx);
+        return true;
+    }
 
     case BIND_ACTION_COUNT:
         assert(false);

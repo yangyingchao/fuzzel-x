@@ -45,6 +45,27 @@ static const char *const binding_action_map[] = {
     [BIND_ACTION_MATCHES_NEXT] = "next",
     [BIND_ACTION_MATCHES_NEXT_WITH_WRAP] = "next-with-wrap",
     [BIND_ACTION_MATCHES_NEXT_PAGE] = "next-page",
+
+    [BIND_ACTION_CUSTOM_1] = "custom-1",
+    [BIND_ACTION_CUSTOM_2] = "custom-2",
+    [BIND_ACTION_CUSTOM_3] = "custom-3",
+    [BIND_ACTION_CUSTOM_4] = "custom-4",
+    [BIND_ACTION_CUSTOM_5] = "custom-5",
+    [BIND_ACTION_CUSTOM_6] = "custom-6",
+    [BIND_ACTION_CUSTOM_7] = "custom-7",
+    [BIND_ACTION_CUSTOM_8] = "custom-8",
+    [BIND_ACTION_CUSTOM_9] = "custom-9",
+    [BIND_ACTION_CUSTOM_10] = "custom-10",
+    [BIND_ACTION_CUSTOM_11] = "custom-11",
+    [BIND_ACTION_CUSTOM_12] = "custom-12",
+    [BIND_ACTION_CUSTOM_13] = "custom-13",
+    [BIND_ACTION_CUSTOM_14] = "custom-14",
+    [BIND_ACTION_CUSTOM_15] = "custom-15",
+    [BIND_ACTION_CUSTOM_16] = "custom-16",
+    [BIND_ACTION_CUSTOM_17] = "custom-17",
+    [BIND_ACTION_CUSTOM_18] = "custom-18",
+    [BIND_ACTION_CUSTOM_19] = "custom-19",
+
 };
 
 struct context {
@@ -1320,6 +1341,26 @@ add_default_key_bindings(struct config *conf)
 
         {BIND_ACTION_MATCHES_NEXT_PAGE, m_none, {{XKB_KEY_Page_Down}}},
         {BIND_ACTION_MATCHES_NEXT_PAGE, m_none, {{XKB_KEY_KP_Page_Down}}},
+
+        {BIND_ACTION_CUSTOM_1, m_alt, {{XKB_KEY_1}}},
+        {BIND_ACTION_CUSTOM_2, m_alt, {{XKB_KEY_2}}},
+        {BIND_ACTION_CUSTOM_3, m_alt, {{XKB_KEY_3}}},
+        {BIND_ACTION_CUSTOM_4, m_alt, {{XKB_KEY_4}}},
+        {BIND_ACTION_CUSTOM_5, m_alt, {{XKB_KEY_5}}},
+        {BIND_ACTION_CUSTOM_6, m_alt, {{XKB_KEY_6}}},
+        {BIND_ACTION_CUSTOM_7, m_alt, {{XKB_KEY_7}}},
+        {BIND_ACTION_CUSTOM_8, m_alt, {{XKB_KEY_8}}},
+        {BIND_ACTION_CUSTOM_9, m_alt, {{XKB_KEY_9}}},
+        {BIND_ACTION_CUSTOM_10, m_alt, {{XKB_KEY_0}}},
+        {BIND_ACTION_CUSTOM_11, m_alt, {{XKB_KEY_exclam}}},
+        {BIND_ACTION_CUSTOM_12, m_alt, {{XKB_KEY_at}}},
+        {BIND_ACTION_CUSTOM_13, m_alt, {{XKB_KEY_numbersign}}},
+        {BIND_ACTION_CUSTOM_14, m_alt, {{XKB_KEY_dollar}}},
+        {BIND_ACTION_CUSTOM_15, m_alt, {{XKB_KEY_percent}}},
+        {BIND_ACTION_CUSTOM_16, m_alt, {{XKB_KEY_dead_circumflex}}},
+        {BIND_ACTION_CUSTOM_17, m_alt, {{XKB_KEY_ampersand}}},
+        {BIND_ACTION_CUSTOM_18, m_alt, {{XKB_KEY_asterisk}}},
+        {BIND_ACTION_CUSTOM_19, m_alt, {{XKB_KEY_parenleft}}},
     };
 
     conf->key_bindings.count = ALEN(bindings);
