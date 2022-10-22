@@ -331,6 +331,33 @@ done by setting _action=none_; e.g. *delete-line=none*.
 *next-page*
 	Switch to the next page. Default: _Page_Down KP_Page_Down_.
 
+*custom-1*, *custom-2*, ..., *custom-19*
+	Execute the currently selected entry, then exit with a non-zero
+	exit code. *custom-1* exits with exit code 10, *custom-2* with 11,
+	*custom-3* with 12, and so on.
+	
+	Dmenu mode only.
+	
+	Default:
+		- custom-1: _Mod1+1_
+		- custom-2: _Mod1+2_
+		- custom-3: _Mod1+3_
+		- custom-4: _Mod1+4_
+		- custom-5: _Mod1+5_
+		- custom-6: _Mod1+6_
+		- custom-7: _Mod1+7_
+		- custom-8: _Mod1+8_
+		- custom-9: _Mod1+9_
+		- custom-10: _Mod1+10_
+		- custom-11: _Mod1+11_
+		- custom-12: _Mod1+12_
+		- custom-13: _Mod1+13_
+		- custom-14: _Mod1+14_
+		- custom-15: _Mod1+15_
+		- custom-16: _Mod1+16_
+		- custom-17: _Mod1+17_
+		- custom-18: _Mod1+18_
+		- custom-19: _Mod1+19_
 
 # SEE ALSO
 
