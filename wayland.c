@@ -659,14 +659,16 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
 
     xkb_mod_mask_t mods = xkb_state_serialize_mods(
         seat->kbd.xkb_state, XKB_STATE_MODS_EFFECTIVE);
-    const xkb_mod_mask_t consumed = xkb_state_key_get_consumed_mods(
-        seat->kbd.xkb_state, key);
+    const xkb_mod_mask_t consumed = xkb_state_key_get_consumed_mods2(
+        seat->kbd.xkb_state, key, XKB_CONSUMED_MODE_XKB);
     const xkb_mod_mask_t locked = xkb_state_serialize_mods(
         seat->kbd.xkb_state, XKB_STATE_MODS_LOCKED);
 
     const xkb_mod_mask_t significant = shift | ctrl | alt | super;
-    const xkb_mod_mask_t effective_mods =
-        mods & significant & ~consumed & ~locked;
+    const xkb_mod_mask_t bind_mods
+        = mods & significant & ~locked;
+    const xkb_mod_mask_t bind_consumed =
+        consumed & significant & ~locked;
 
     const xkb_layout_index_t layout_idx =
         xkb_state_key_get_layout(seat->kbd.xkb_state, key);
@@ -696,7 +698,7 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
         const struct key_binding *bind = &it->item;
 
         if (bind->k.sym == sym &&
-            bind->mods == effective_mods &&
+            bind->mods == (bind_mods & ~bind_consumed) &&
             execute_binding(seat, bind, &refresh))
         {
             if (refresh)
@@ -704,7 +706,7 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
             goto maybe_repeat;
         }
 
-        if (bind->mods != effective_mods || effective_mods != (mods & ~locked))
+        if (bind->mods != bind_mods || bind_mods != (mods & ~locked))
             continue;
 
         for (size_t i = 0; i < raw_count; i++) {
@@ -728,7 +730,7 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
         }
     }
 
-    if (effective_mods != 0)
+    if (bind_mods != 0)
         goto maybe_repeat;
 
     /*
