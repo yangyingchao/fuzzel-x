@@ -24,7 +24,7 @@
 * Support for file based configuration ([#3][3]).
 * Customizable key bindings ([#117][117]).
 * "Custom" key bindings (like Rofi’s `kb-custom-N` key
-  bindings). Dmenu mode only.
+  bindings).
 * If `argv[0]` is _dmenu_, fuzzel now starts in dmenu mode
   ([#107][107]).
 * `--password=[CHARACTER]` command line option. Intended to be used

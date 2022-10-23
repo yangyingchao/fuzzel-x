@@ -336,8 +336,6 @@ done by setting _action=none_; e.g. *delete-line=none*.
 	exit code. *custom-1* exits with exit code 10, *custom-2* with 11,
 	*custom-3* with 12, and so on.
 	
-	Dmenu mode only.
-	
 	Default:
 		- custom-1: _Mod1+1_
 		- custom-2: _Mod1+2_

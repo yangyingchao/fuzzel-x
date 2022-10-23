@@ -465,7 +465,7 @@ keyboard_leave(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
 }
 
 static void
-execute_selected(struct wayland *wayl, int custom_dmenu_success_exit_code)
+execute_selected(struct wayland *wayl, int custom_success_exit_code)
 {
     wayl->status = EXIT;
 
@@ -475,13 +475,18 @@ execute_selected(struct wayland *wayl, int custom_dmenu_success_exit_code)
 
     if (wayl->conf->dmenu.enabled) {
         dmenu_execute(app, index, wayl->prompt, wayl->conf->dmenu.mode);
-        wayl->exit_code = custom_dmenu_success_exit_code >= 0
-            ? custom_dmenu_success_exit_code
+        wayl->exit_code = custom_success_exit_code >= 0
+            ? custom_success_exit_code
             : EXIT_SUCCESS;
     } else {
         bool success = application_execute(
             app, wayl->prompt, wayl->conf->launch_prefix);
-        wayl->exit_code = success ? EXIT_SUCCESS : EXIT_FAILURE;
+
+        wayl->exit_code = success
+            ? (custom_success_exit_code >= 0
+               ? custom_success_exit_code
+               : EXIT_SUCCESS)
+            : EXIT_FAILURE;
 
         if (success && match != NULL) {
             wayl->status = EXIT_UPDATE_CACHE;
@@ -616,9 +621,6 @@ execute_binding(struct seat *seat, const struct key_binding *binding,
     case BIND_ACTION_CUSTOM_17:
     case BIND_ACTION_CUSTOM_18:
     case BIND_ACTION_CUSTOM_19: {
-        if (!wayl->conf->dmenu.enabled)
-            return false;
-
         const size_t idx = action - BIND_ACTION_CUSTOM_1;
         execute_selected(wayl, 10 + idx);
         return true;
