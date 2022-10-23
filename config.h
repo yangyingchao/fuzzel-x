@@ -132,6 +132,7 @@ struct config {
     struct pt_or_px letter_spacing;
 
     enum zwlr_layer_shell_v1_layer layer;
+    bool exit_on_kb_focus_loss;
 };
 
 typedef tll(char *) config_override_t;

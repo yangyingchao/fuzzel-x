@@ -459,7 +459,9 @@ keyboard_leave(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
     struct seat *seat = data;
     repeat_stop(&seat->kbd.repeat, -1);
     seat->kbd.serial = 0;
-    seat->wayl->status = EXIT;
+
+    if (seat->wayl->conf->exit_on_kb_focus_loss)
+        seat->wayl->status = EXIT;
 }
 
 static void

@@ -796,6 +796,9 @@ parse_section_main(struct context *ctx)
         return false;
     }
 
+    else if (strcmp(key, "exit-on-keyboard-focus-loss") == 0)
+        return value_to_bool(ctx, &conf->exit_on_kb_focus_loss);
+
     else
         LOG_CONTEXTUAL_ERR("not a valid option: %s", key);
 
@@ -1376,6 +1379,7 @@ config_load(struct config *conf, const char *conf_path,
         .line_height = {-1, 0.0},
         .letter_spacing = {0},
         .layer = ZWLR_LAYER_SHELL_V1_LAYER_TOP,
+        .exit_on_kb_focus_loss = true,
     };
 
     add_default_key_bindings(conf);

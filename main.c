@@ -241,6 +241,7 @@ print_usage(const char *prog_name)
            "     --line-height=HEIGHT        override line height from font metrics\n"
            "     --letter-spacing=AMOUNT     additional letter spacing\n"
            "     --layer=top|overlay         which layer to render the fuzzel window on (top)\n"
+           "     --no-exit-on-keyboard-focus-loss  do not exit when losing keyboard focus\n"
            "     --launch-prefix=COMMAND     prefix to add before argv of executed program\n"
            "  -d,--dmenu                     dmenu compatibility mode\n"
            "     --index                     print selected entry's index instead of of the \n"
@@ -477,6 +478,7 @@ main(int argc, char *const *argv)
     #define OPT_CONFIG                       268
     #define OPT_LAYER                        269
     #define OPT_ICON_THEME                   270
+    #define OPT_NO_EXIT_ON_KB_LOSS           271
 
     static const struct option longopts[] = {
         {"config",               required_argument, 0,  OPT_CONFIG},
@@ -512,6 +514,7 @@ main(int argc, char *const *argv)
         {"letter-spacing",       required_argument, 0, OPT_LETTER_SPACING},
         {"launch-prefix",        required_argument, 0, OPT_LAUNCH_PREFIX},
         {"layer",                required_argument, 0, OPT_LAYER},
+        {"no-exit-on-keyboard-focus-loss", no_argument, 0, OPT_NO_EXIT_ON_KB_LOSS},
 
         /* dmenu mode */
         {"dmenu",                no_argument,       0, 'd'},
@@ -563,6 +566,7 @@ main(int argc, char *const *argv)
         bool dmenu_mode_set:1;
         bool dmenu_exit_immediately_if_empty_set:1;
         bool layer_set:1;
+        bool no_exit_on_keyboard_focus_loss_set:1;
     } cmdline_overrides = {{0}};
 
     setlocale(LC_CTYPE, "");
@@ -964,6 +968,11 @@ main(int argc, char *const *argv)
             cmdline_overrides.layer_set = true;
             break;
 
+        case OPT_NO_EXIT_ON_KB_LOSS:
+            cmdline_overrides.conf.exit_on_kb_focus_loss = false;
+            cmdline_overrides.no_exit_on_keyboard_focus_loss_set = true;
+            break;
+
         case 'd':
             cmdline_overrides.conf.dmenu.enabled = true;
             cmdline_overrides.dmenu_enabled_set = true;
@@ -1122,6 +1131,8 @@ main(int argc, char *const *argv)
         conf.letter_spacing = cmdline_overrides.conf.letter_spacing;
     if (cmdline_overrides.layer_set)
         conf.layer = cmdline_overrides.conf.layer;
+    if (cmdline_overrides.no_exit_on_keyboard_focus_loss_set)
+        conf.exit_on_kb_focus_loss = cmdline_overrides.conf.exit_on_kb_focus_loss;
     if (cmdline_overrides.dmenu_enabled_set)
         conf.dmenu.enabled = cmdline_overrides.conf.dmenu.enabled;
     if (cmdline_overrides.dmenu_mode_set)
