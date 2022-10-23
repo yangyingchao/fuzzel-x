@@ -172,6 +172,16 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	
 	Default: _top_
 
+*exit-on-keyboard-focus-loss*
+	Boolean. If true, exit when the fuzzel window loses keyboard focus.
+	
+	Setting this to false can be useful on compositors where enabling
+	"focus-follows-mouse" causes fuzzel to exit as soon as the mouse
+	is moved over another window. Sway (<= 1.7) exhibits this
+	behavior, for example.
+	
+	Default: _yes_
+l
 # SECTION: colors
 
 All color values are in RGBA.
