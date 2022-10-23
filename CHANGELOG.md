@@ -43,6 +43,8 @@
   protocol ([#166][166]).
 * `--layer` command line option, allowing you to choose which layer to
   render the fuzzel window on (`top` or `overlay`) ([#81][81]).
+* `--no-exit-on-keyboard-focus-loss` command line option
+  (`exit-on-keyboard-focus-loss` config option) ([#128][128]).
 
 [3]: https://codeberg.org/dnkl/fuzzel/issues/3
 [117]: https://codeberg.org/dnkl/fuzzel/issues/117
@@ -52,6 +54,7 @@
 [143]: https://codeberg.org/dnkl/fuzzel/issues/143
 [166]: https://codeberg.org/dnkl/fuzzel/issues/166
 [81]: https://codeberg.org/dnkl/fuzzel/issues/81
+[128]: https://codeberg.org/dnkl/fuzzel/issues/128
 
 
 ### Changed
