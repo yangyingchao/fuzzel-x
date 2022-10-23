@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [1.8.0](#1-8-0)
 * [1.7.0](#1-7-0)
 * [1.6.5](#1-6-5)
 * [1.6.4](#1-6-4)
@@ -17,7 +17,7 @@
 * [1.4.1](#1-4-1)
 
 
-## Unreleased
+## 1.8.0
 
 ### Added
 
@@ -95,8 +95,6 @@
 [160]: https://codeberg.org/dnkl/fuzzel/issues/160
 
 
-### Deprecated
-### Removed
 ### Fixed
 
 * User `.desktop` entries with `NoDisplay=true` not overriding system
@@ -111,8 +109,12 @@
 [138]: https://codeberg.org/dnkl/fuzzel/issues/138
 
 
-### Security
 ### Contributors
+
+* Chinmay Dalal
+* Matthew Toohey
+* Michael Yang
+* Eyeoglu
 
 
 ## 1.7.0
