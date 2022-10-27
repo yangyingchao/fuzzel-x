@@ -761,7 +761,7 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
         }
     }
 
-    if (bind_mods != 0)
+    if ((bind_mods & ~bind_consumed) != 0)
         goto maybe_repeat;
 
     /*

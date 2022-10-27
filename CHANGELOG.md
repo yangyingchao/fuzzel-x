@@ -24,6 +24,13 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* Regression: not able to input text with modifiers (e.g. Shift)
+  pressed ([#177][177]).
+
+[177]: https://codeberg.org/dnkl/fuzzel/issues/177
+
+
 ### Security
 ### Contributors
 
