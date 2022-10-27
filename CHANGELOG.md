@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [1.8.1](#1-8-1)
 * [1.8.0](#1-8-0)
 * [1.7.0](#1-7-0)
 * [1.6.5](#1-6-5)
@@ -18,21 +18,14 @@
 * [1.4.1](#1-4-1)
 
 
-## Unreleased
-### Added
-### Changed
-### Deprecated
-### Removed
+## 1.8.1
+
 ### Fixed
 
 * Regression: not able to input text with modifiers (e.g. Shift)
   pressed ([#177][177]).
 
 [177]: https://codeberg.org/dnkl/fuzzel/issues/177
-
-
-### Security
-### Contributors
 
 
 ## 1.8.0
