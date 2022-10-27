@@ -21,6 +21,12 @@
 
 ## Unreleased
 ### Added
+
+* Fish completions ([#176][176])
+
+[176]: https://codeberg.org/dnkl/fuzzel/issues/176
+
+
 ### Changed
 ### Deprecated
 ### Removed
