@@ -50,7 +50,7 @@ case "${state}" in
         ;;
 
     icon_theme)
-        _values 'icon themes' $(cd /usr/share/icons; echo *)
+        _values 'icon themes' $(find /usr/share/icons -mindepth 1 -maxdepth 1 -type d -print0 | xargs -0 -n 1 basename | sort)
         ;;
 
     outputs)

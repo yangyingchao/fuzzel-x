@@ -5,7 +5,7 @@ complete -c fuzzel -r -s c -l config                                            
 complete -c fuzzel -x -s f -l font               -a "(fc-list : family | sed 's/,/\n/g' | sort | uniq)"         -d "font name and style in fontconfig format (monospace)"
 complete -c fuzzel -x -s o -l output             -a "(wlr-randr | grep -e '^[^[:space:]]\+' | cut -d ' ' -f 1)" -d "output (monitor) do display on (none)"
 complete -c fuzzel -x -s D -l dpi-aware          -a "no yes auto"                                               -d "scale fonts using the monitor's DPI (auto)"
-complete -c fuzzel -x      -l icon-theme         -a "(cd /usr/share/icons; echo *)"                             -d "icon theme name (hicolor)"
+complete -c fuzzel -x      -l icon-theme         -a "(find /usr/share/icons -mindepth 1 -maxdepth 1 -type d -print0 | xargs -0 -n 1 basename | sort)" -d "icon theme name (hicolor)"
 complete -c fuzzel    -s I -l no-icons                                                                          -d "do not render any icons"
 complete -c fuzzel -x -s F -l fields             -a "filename name generic exec categories keywords comment"    -d "comma separated list of XDG Desktop entry fields to match"
 complete -c fuzzel -x -s p -l prompt                                                                            -d "string to use as input prompt (\"> \")"
