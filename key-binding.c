@@ -4,7 +4,7 @@
 #include <assert.h>
 
 #define LOG_MODULE "key-binding"
-#define LOG_ENABLE_DBG 1
+#define LOG_ENABLE_DBG 0
 #include "log.h"
 
 #define ALEN(v) (sizeof(v) / sizeof((v)[0]))
