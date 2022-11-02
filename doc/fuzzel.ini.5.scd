@@ -135,6 +135,9 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	Window width, in characters. Border and margins are not included
 	in this. Default: _30_.
 
+*tabs*
+	Number of spaces a tab is expanded to. Default: _8_.
+
 *horizontal-pad*
 	Horizontal padding, in pixels, between border and
 	content. Default: _40_.
