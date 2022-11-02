@@ -107,6 +107,9 @@ options:
 	Window width, in characters. Margins and borders not
 	included. Default: _30_.
 
+*--tabs*=_COUNT_
+	Number of spaces a tab is expanded to. Default: _8_.
+
 *-x*,*--horizontal-pad*=_PAD_
 	Horizontal padding between border and icons and text. In pixels,
 	subject to output scaling. Default: _40_.
@@ -202,6 +205,12 @@ options:
 	that means fuzzel may or may not appear on top of a lock screen.
 	
 	Default: _top_
+
+*--no-exit-on-keyboard-focus-loss*
+	Do not exit when losing keyboard focus. This can be useful on
+	compositors where enabling "focus-follows-mouse" causes fuzzel to
+	exit as soon as the mouse is moved over another window. Sway (at
+	least up to, and including 1.7) exhibits this behavior.
 
 *--launch-prefix*=_COMMAND_
 	Command to launch XDG applications with. Example: _swaymsg exec --_.
