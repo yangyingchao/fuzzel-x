@@ -270,7 +270,7 @@ render_match_text(struct buffer *buf, double *_x, double _y, double max_x,
                   const char32_t *text, size_t match_count,
                   const struct match_substring matches[static match_count],
                   struct fcft_font *font, enum fcft_subpixel subpixel,
-                  int letter_spacing,
+                  int letter_spacing, int tabs,
                   pixman_color_t regular_color, pixman_color_t match_color,
                   struct fcft_text_run **run)
 {
@@ -318,6 +318,18 @@ render_match_text(struct buffer *buf, double *_x, double _y, double max_x,
     }
 
     for (size_t i = 0; i < count; i++) {
+        if (text[clusters[i]] == U'\t') {
+            const struct fcft_glyph *space =
+                fcft_rasterize_char_utf32(font, U' ', subpixel);
+
+            if (space != NULL) {
+                const size_t chars_to_next_tab_stop = tabs - (clusters[i] % tabs);
+                x += chars_to_next_tab_stop * space->advance.x;
+            }
+
+            continue;
+        }
+
         bool is_match = false;
         for (size_t j = 0; j < match_count; j++) {
             const struct match_substring *match = &matches[j];
@@ -699,6 +711,7 @@ render_match_list(const struct render *render, struct buffer *buf,
             match->application->title, match->pos_count, match->pos,
             font, subpixel,
             pt_or_px_as_pixels(render, &render->conf->letter_spacing),
+            render->conf->tabs,
             (i == selected
              ? render->pix_selection_text_color
              : render->pix_text_color),
