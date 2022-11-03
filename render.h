@@ -28,3 +28,5 @@ void render_prompt(
 void render_match_list(
     const struct render *render, struct buffer *buf,
     const struct prompt *prompt, const struct matches *matches);
+
+int render_icon_size(const struct render *render);
