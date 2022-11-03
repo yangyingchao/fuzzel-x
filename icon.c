@@ -498,6 +498,11 @@ lookup_icons(const icon_theme_list_t *themes, int icon_size,
                 case ICON_DIR_FIXED:
                     is_exact_match = size == icon_size;
                     diff = abs(size - icon_size);
+                    LOG_DBG(
+                        "%s/%s (fixed): "
+                        "icon-size=%d, size=%d, exact=%d, diff=%d",
+                        xdg_dir->path, theme_relative_path, icon_size, size,
+                        is_exact_match, diff);
                     break;
 
                 case ICON_DIR_THRESHOLD:
@@ -505,8 +510,15 @@ lookup_icons(const icon_theme_list_t *themes, int icon_size,
                         (size - threshold) <= icon_size &&
                         (size + threshold) >= icon_size;
                     diff = icon_size < (size - threshold)
-                        ? (size - threshold) - icon_size
-                        : icon_size - (size + threshold);
+                        ? min_size - icon_size
+                        : (icon_size > (size + threshold)
+                           ? icon_size - max_size
+                           : 0);
+                    LOG_DBG(
+                        "%s/%s (threshold): "
+                        "icon-size=%d, threshold=%d, exact=%d, diff=%d",
+                        xdg_dir->path, theme_relative_path, icon_size, threshold,
+                        is_exact_match, diff);
                     break;
 
                 case ICON_DIR_SCALABLE:
@@ -515,7 +527,13 @@ lookup_icons(const icon_theme_list_t *themes, int icon_size,
                         max_size >= icon_size;
                     diff = icon_size < min_size
                         ? min_size - icon_size
-                        : icon_size - max_size;
+                        : (icon_size > max_size
+                           ? icon_size - max_size
+                           : 0);
+                    LOG_DBG("%s/%s (scalable): "
+                            "icon-size=%d, min=%d, max=%d, exact=%d, diff=%d",
+                            xdg_dir->path, theme_relative_path, icon_size,
+                            min_size, max_size, is_exact_match, diff);
                     break;
                 }
 
