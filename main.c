@@ -191,6 +191,38 @@ write_cache(const struct application_list *apps)
     close(fd);
 }
 
+static const char *
+version_and_features(void)
+{
+    static char buf[256];
+    snprintf(buf, sizeof(buf), "version: %s %ccairo %cpng %csvg%s %cassertions",
+             FUZZEL_VERSION,
+#if defined(FUZZEL_ENABLE_CAIRO)
+             '+',
+#else
+             '-',
+#endif
+#if defined(FUZZEL_ENABLE_PNG_LIBPNG)
+             '+',
+#else
+             '-',
+#endif
+#if defined(FUZZEL_ENABLE_SVG_NANOSVG)
+             '+', "(nanosvg)",
+#elif defined(FUZZEL_ENABLE_SVG_LIBRSVG)
+             '+', "(librsvg)",
+#else
+             '-', "",
+#endif
+#if !defined(NDEBUG)
+             '+'
+#else
+             '-'
+#endif
+        );
+    return buf;
+}
+
 static void
 print_usage(const char *prog_name)
 {
@@ -1019,7 +1051,7 @@ main(int argc, char *const *argv)
             break;
 
         case 'v':
-            printf("fuzzel version %s\n", FUZZEL_VERSION);
+            printf("fuzzel %s\n", version_and_features());
             return EXIT_SUCCESS;
 
         case 'h':
@@ -1037,6 +1069,7 @@ main(int argc, char *const *argv)
     }
 
     log_init(log_colorize, log_syslog, LOG_FACILITY_USER, log_level);
+    LOG_INFO("%s", version_and_features());
 
     int ret = EXIT_FAILURE;
 
