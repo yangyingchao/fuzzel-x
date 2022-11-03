@@ -34,6 +34,9 @@
 
 * Unsupported icon formats not being skipped when loading application
   icons.
+* Wrong size of PNG icons selected ([#182][182])
+
+[182]: https://codeberg.org/dnkl/fuzzel/issues/182
 
 
 ### Security

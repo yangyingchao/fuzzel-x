@@ -37,6 +37,8 @@
 #include "wayland.h"
 #include "xdg.h"
 
+#define max(x, y) ((x) > (y) ? (x) : (y))
+
 struct context {
     const struct config *conf;
     struct wayland *wayl;
@@ -295,13 +297,15 @@ static void
 font_reloaded(struct wayland *wayl, struct fcft_font *font, void *data)
 {
     struct context *ctx = data;
+    const struct config *conf = ctx->conf;
 
     applications_flush_text_run_cache(ctx->apps);
 
     mtx_lock(ctx->icon_lock);
     {
-        ctx->icon_size = font->height;
-        if (ctx->conf->icons_enabled) {
+        ctx->icon_size = render_icon_size(ctx->render);
+
+        if (conf->icons_enabled) {
             icon_lookup_application_icons(
                 *ctx->themes, ctx->icon_size, ctx->apps);
         }
