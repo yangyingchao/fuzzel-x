@@ -31,6 +31,11 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* Unsupported icon formats not being skipped when loading application
+  icons.
+
+
 ### Security
 ### Contributors
 

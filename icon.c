@@ -409,6 +409,53 @@ icon_reset(struct icon *icon)
     icon->type = ICON_NONE;
 }
 
+/*
+ * Path is expected to contain the icon’s basename. It doesn’t have to
+ * have the extension filled in; it will be filled in by this
+ * function.
+ *
+ * Note that only supported image types are searched for. That is, if
+ * PNGs have been disabled, we only search for SVGs.
+ *
+ * Also note that we only check for the existence of a file; we don’t
+ * validate it.
+ *
+ * Returns true if there exist an icon file (of the specified name) in
+ * <dir_fd>. In this case, path has been updated with the extension
+ * (.png or .svg).
+ */
+static bool
+icon_file_exists(int dir_fd, char *path, size_t path_len)
+{
+#if defined(FUZZEL_ENABLE_PNG_LIBPNG)
+    path[path_len - 3] = 'p';
+    path[path_len - 2] = 'n';
+    path[path_len - 1] = 'g';
+
+    if (faccessat(dir_fd, path, R_OK, 0) < 0) {
+#if defined(FUZZEL_ENABLE_SVG_NANOSVG) || defined(FUZZEL_ENABLE_SVG_LIBRSVG)
+        path[path_len - 3] = 's';
+        path[path_len - 2] = 'v';
+        path[path_len - 1] = 'g';
+        return faccessat(dir_fd, path, R_OK, 0) == 0;
+#else
+        return false;
+#endif
+    }
+
+    return true;
+
+#elif defined(FUZZEL_ENABLE_SVG_NANOSVG) || defined(FUZZEL_ENABLE_SVG_LIBRSVG)
+    path[path_len - 3] = 's';
+    path[path_len - 2] = 'v';
+    path[path_len - 1] = 'g';
+
+    return faccessat(dir_fd, path, R_OK, 0) == 0;
+#else
+    return false;
+#endif
+}
+
 static bool
 lookup_icons(const icon_theme_list_t *themes, int icon_size,
              struct application_list *applications,
@@ -490,7 +537,7 @@ lookup_icons(const icon_theme_list_t *themes, int icon_size,
                 const int threshold = icon_dir->threshold * scale;
                 const enum icon_dir_type type = icon_dir->type;
 
-                bool is_exact_match = false;;
+                bool is_exact_match = false;
                 int diff = INT_MAX;
 
                 /* See if this directory is usable for the requested icon size */
@@ -551,17 +598,9 @@ lookup_icons(const icon_theme_list_t *themes, int icon_size,
                     size_t len = icon->file_name_len;
                     char *path = icon->file_name;
                     path[len - 4] = '.';
-                    path[len - 3] = 'p';
-                    path[len - 2] = 'n';
-                    path[len - 1] = 'g';
 
-                    if (faccessat(dir_fd, path, R_OK, 0) < 0) {
-                        path[len - 3] = 's';
-                        path[len - 2] = 'v';
-                        path[len - 1] = 'g';
-                        if (faccessat(dir_fd, path, R_OK, 0) < 0)
-                            continue;
-                    }
+                    if (!icon_file_exists(dir_fd, path, len))
+                        continue;
 
                     if (!is_exact_match) {
                         assert(diff < icon->min_diff.diff);
@@ -656,19 +695,10 @@ lookup_icons(const icon_theme_list_t *themes, int icon_size,
 
             size_t len = icon->file_name_len;
             char *path = icon->file_name;
-            path[len - 3] = 's';
-            path[len - 2] = 'v';
-            path[len - 1] = 'g';
 
-            if (faccessat(pixmaps_fd, path, R_OK, 0) < 0) {
-                path[len - 3] = 'p';
-                path[len - 2] = 'n';
-                path[len - 1] = 'g';
-
-                if (faccessat(pixmaps_fd, path, R_OK, 0) < 0) {
-                    close(pixmaps_fd);
-                    continue;
-                }
+            if (!icon_file_exists(pixmaps_fd, path, len)) {
+                close(pixmaps_fd);
+                continue;
             }
 
             close(pixmaps_fd);
