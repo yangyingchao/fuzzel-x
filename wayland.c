@@ -1081,13 +1081,18 @@ reload_font(struct wayland *wayl, float new_dpi, unsigned new_scale)
         if (font == NULL)
             return false;
 
+        bool ret = render_set_font(
+            wayl->render, font, new_scale, new_dpi,
+            wayl->font_is_sized_by_dpi, &wayl->width, &wayl->height);
+
         if (wayl->font_reloaded.cb != NULL)
             wayl->font_reloaded.cb(wayl, font, wayl->font_reloaded.data);
+
+        return ret;
     }
 
-    return render_set_font(
-        wayl->render, font, new_scale, new_dpi, wayl->font_is_sized_by_dpi,
-        &wayl->width, &wayl->height);
+    return true;
+
 }
 
 static float
