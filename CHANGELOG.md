@@ -21,7 +21,14 @@
 
 
 ## Unreleased
+
 ### Added
+
+* Convert tabs to spaces when rendering ([#137][137]).
+
+[137]: https://codeberg.org/dnkl/fuzzel/issues/137
+
+
 ### Changed
 ### Deprecated
 ### Removed
@@ -35,10 +42,8 @@
 ### Added
 
 * Fish completions ([#176][176])
-* Convert tabs to spaces when rendering ([#137][137]).
 
 [176]: https://codeberg.org/dnkl/fuzzel/issues/176
-[137]: https://codeberg.org/dnkl/fuzzel/issues/137
 
 
 ### Fixed
