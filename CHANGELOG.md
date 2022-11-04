@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [1.8.2](#1-8-2)
 * [1.8.1](#1-8-1)
 * [1.8.0](#1-8-0)
 * [1.7.0](#1-7-0)
@@ -19,7 +19,8 @@
 * [1.4.1](#1-4-1)
 
 
-## Unreleased
+## 1.8.2
+
 ### Added
 
 * Fish completions ([#176][176])
@@ -27,9 +28,6 @@
 [176]: https://codeberg.org/dnkl/fuzzel/issues/176
 
 
-### Changed
-### Deprecated
-### Removed
 ### Fixed
 
 * Unsupported icon formats not being skipped when loading application
@@ -37,10 +35,6 @@
 * Wrong size of PNG icons selected ([#182][182])
 
 [182]: https://codeberg.org/dnkl/fuzzel/issues/182
-
-
-### Security
-### Contributors
 
 
 ## 1.8.1

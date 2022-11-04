@@ -1,5 +1,5 @@
 project('fuzzel', 'c',
-        version: '1.8.1',
+        version: '1.8.2',
         license: 'MIT',
         meson_version: '>=0.58.0',
         default_options: [
