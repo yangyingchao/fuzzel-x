@@ -37,6 +37,8 @@
 #include "wayland.h"
 #include "xdg.h"
 
+#define max(x, y) ((x) > (y) ? (x) : (y))
+
 struct context {
     const struct config *conf;
     struct wayland *wayl;
@@ -191,6 +193,38 @@ write_cache(const struct application_list *apps)
     close(fd);
 }
 
+static const char *
+version_and_features(void)
+{
+    static char buf[256];
+    snprintf(buf, sizeof(buf), "version: %s %ccairo %cpng %csvg%s %cassertions",
+             FUZZEL_VERSION,
+#if defined(FUZZEL_ENABLE_CAIRO)
+             '+',
+#else
+             '-',
+#endif
+#if defined(FUZZEL_ENABLE_PNG_LIBPNG)
+             '+',
+#else
+             '-',
+#endif
+#if defined(FUZZEL_ENABLE_SVG_NANOSVG)
+             '+', "(nanosvg)",
+#elif defined(FUZZEL_ENABLE_SVG_LIBRSVG)
+             '+', "(librsvg)",
+#else
+             '-', "",
+#endif
+#if !defined(NDEBUG)
+             '+'
+#else
+             '-'
+#endif
+        );
+    return buf;
+}
+
 static void
 print_usage(const char *prog_name)
 {
@@ -263,13 +297,15 @@ static void
 font_reloaded(struct wayland *wayl, struct fcft_font *font, void *data)
 {
     struct context *ctx = data;
+    const struct config *conf = ctx->conf;
 
     applications_flush_text_run_cache(ctx->apps);
 
     mtx_lock(ctx->icon_lock);
     {
-        ctx->icon_size = font->height;
-        if (ctx->conf->icons_enabled) {
+        ctx->icon_size = render_icon_size(ctx->render);
+
+        if (conf->icons_enabled) {
             icon_lookup_application_icons(
                 *ctx->themes, ctx->icon_size, ctx->apps);
         }
@@ -1019,7 +1055,7 @@ main(int argc, char *const *argv)
             break;
 
         case 'v':
-            printf("fuzzel version %s\n", FUZZEL_VERSION);
+            printf("fuzzel %s\n", version_and_features());
             return EXIT_SUCCESS;
 
         case 'h':
@@ -1037,6 +1073,7 @@ main(int argc, char *const *argv)
     }
 
     log_init(log_colorize, log_syslog, LOG_FACILITY_USER, log_level);
+    LOG_INFO("%s", version_and_features());
 
     int ret = EXIT_FAILURE;
 

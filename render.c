@@ -483,6 +483,7 @@ render_svg(struct icon *icon, int x, int y, int size, struct buffer *buf)
     if (icon->svg == NULL) {
         if (!icon_from_svg(icon, icon->path))
             return;
+        LOG_DBG("%s", icon->path);
     }
 
 #if defined(FUZZEL_ENABLE_SVG_LIBRSVG)
@@ -569,6 +570,7 @@ render_png(struct icon *icon, int x, int y, int size, struct buffer *buf)
     if (icon->png == NULL) {
         if (!icon_from_png(icon, icon->path))
             return;
+        LOG_DBG("%s", icon->path);
     }
 
 #if defined(FUZZEL_ENABLE_PNG_LIBPNG)
@@ -806,6 +808,12 @@ render_set_font(struct render *render, struct fcft_font *font,
         *new_height = height;
 
     return true;
+}
+
+int
+render_icon_size(const struct render *render)
+{
+    return render->icon_height;
 }
 
 void

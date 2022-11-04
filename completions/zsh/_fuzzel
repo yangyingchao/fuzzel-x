@@ -50,11 +50,13 @@ case "${state}" in
         ;;
 
     icon_theme)
-        _values 'icon themes' $(cd /usr/share/icons; echo *)
+        _values 'icon themes' $(find /usr/share/icons -mindepth 1 -maxdepth 1 -type d -print0 | xargs -0 -n 1 basename | sort)
         ;;
 
     outputs)
-        if command -v swaymsg > /dev/null; then
+        if command -v wlr-randr > /dev/null; then
+            _values 'outputs' $(wlr-randr | grep -e '^[^[:space:]]\+' | cut -d ' ' -f 1)
+        elif command -v swaymsg > /dev/null; then
             _values 'outputs' $(swaymsg -t get_outputs --raw|grep name|cut -d '"' -f 4)
         fi
         ;;
