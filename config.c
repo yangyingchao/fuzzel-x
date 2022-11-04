@@ -775,6 +775,9 @@ parse_section_main(struct context *ctx)
     else if (strcmp(key, "width") == 0)
         return value_to_uint32(ctx, 10, &conf->chars);
 
+    else if (strcmp(key, "tabs") == 0)
+        return value_to_uint32(ctx, 10, &conf->tabs);
+
     else if (strcmp(key, "horizontal-pad") == 0)
         return value_to_uint32(ctx, 10, &conf->pad.x);
 
@@ -1398,6 +1401,7 @@ config_load(struct config *conf, const char *conf_path,
         },
         .lines = 15,
         .chars = 30,
+        .tabs = 8,
         .pad = {
             .x = 40,
             .y = 8,

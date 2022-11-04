@@ -104,6 +104,7 @@ struct config {
 
     unsigned lines;
     unsigned chars;
+    unsigned tabs;  /* Tab stop every number of #spaces */
 
     struct {
         unsigned x;

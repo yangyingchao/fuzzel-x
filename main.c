@@ -248,6 +248,7 @@ print_usage(const char *prog_name)
            "  -l,--lines                     number of matches to show\n"
            "  -w,--width                     window width, in characters (margins and\n"
            "                                 borders not included)\n"
+           "     --tabs=INT                  number of spaces a tab is expanded to (8)\n"
            "  -x,--horizontal-pad=PAD        horizontal padding, in pixels (40)\n"
            "  -y,--vertical-pad=PAD          vertical padding, in pixels (8)\n"
            "  -P,--inner-pad=PAD             vertical padding between prompt and match list,\n"
@@ -515,6 +516,7 @@ main(int argc, char *const *argv)
     #define OPT_LAYER                        269
     #define OPT_ICON_THEME                   270
     #define OPT_NO_EXIT_ON_KB_LOSS           271
+    #define OPT_TABS                         272
 
     static const struct option longopts[] = {
         {"config",               required_argument, 0,  OPT_CONFIG},
@@ -527,6 +529,7 @@ main(int argc, char *const *argv)
         {"password",             optional_argument, 0, OPT_PASSWORD},
         {"lines",                required_argument, 0, 'l'},
         {"width",                required_argument, 0, 'w'},
+        {"tabs",                 required_argument, 0, OPT_TABS},
         {"horizontal-pad",       required_argument, 0, 'x'},
         {"vertical-pad",         required_argument, 0, 'y'},
         {"inner-pad",            required_argument, 0, 'P'},
@@ -579,6 +582,7 @@ main(int argc, char *const *argv)
         bool icons_disabled_set:1;
         bool lines_set:1;
         bool chars_set:1;
+        bool tabs_set:1;
         bool pad_x_set:1;
         bool pad_y_set:1;
         bool pad_inner_set:1;
@@ -760,6 +764,14 @@ main(int argc, char *const *argv)
                 return EXIT_FAILURE;
             }
             cmdline_overrides.chars_set = true;
+            break;
+
+        case OPT_TABS:
+            if (sscanf(optarg, "%u", &cmdline_overrides.conf.tabs) != 1) {
+                fprintf(stderr, "%s: invalid tab count\n", optarg);
+                return EXIT_FAILURE;
+            }
+            cmdline_overrides.tabs_set = true;
             break;
 
         case 'x':
@@ -1121,6 +1133,8 @@ main(int argc, char *const *argv)
         conf.lines = cmdline_overrides.conf.lines;
     if (cmdline_overrides.chars_set)
         conf.chars = cmdline_overrides.conf.chars;
+    if (cmdline_overrides.tabs_set)
+        conf.tabs = cmdline_overrides.conf.tabs;
     if (cmdline_overrides.pad_x_set)
         conf.pad.x = cmdline_overrides.conf.pad.x;
     if (cmdline_overrides.pad_y_set)
