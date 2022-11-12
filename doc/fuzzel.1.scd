@@ -11,17 +11,20 @@ fuzzel - display XDG applications in a searchable Wayland window
 *fuzzel* lists all available XDG applications in a searchable
 Window. The search box supports Emacs-like key bindings.
 
-The window size, font and colors can be configured with command line
-options:
+The window size, font and colors can be configured with *fuzzel.ini*(5)
+or command line options:
 
 *--config*=_PATH_
 	Path to configuration file, see *fuzzel.ini*(5) for details.
 
 *-o*,*--output*=_OUTPUT_
-	Specifies the monitor to display the window on. In _Sway_, you can
-	list the available outputs with *swaymsg -t get_outputs*.
+	Specifies the monitor to display the window on. Autocompletion is available
+	for zsh and fish, or you can list the available outputs with *wlr-randr* or
+	with Sway using *swaymsg -t get_outputs*.
 
-	The default is to let the compositor choose output.
+	Example: _DP-1_
+
+	Default: Let the compositor choose output.
 
 *-f*,*--font*=_FONT_[,_FALLBACK1_,_FALLBACK2_,...]
 	Comma separated list of primary font, and fallback fonts, in

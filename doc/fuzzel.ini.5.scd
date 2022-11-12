@@ -26,8 +26,12 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 # SECTION: main
 
 *output*
-	Output (monitor) to display on. If unset, the compositor will
-	choose the monitor. Default: _not set_.
+	Output (monitor) to display on. You can list the available outputs
+	with *wlr-randr* or with Sway using *swaymsg -t get_outputs*.
+
+	Example: _DP-1_
+
+	Default: Not set-- let the compositor choose output.
 
 *font*
 	Comma separated list of fonts to use, in fontconfig format. That
