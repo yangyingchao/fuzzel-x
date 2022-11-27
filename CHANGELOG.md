@@ -33,6 +33,13 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* Update nanosvg to f0a3e10. Fixes rendering of certain SVG icons
+  ([#190][190]).
+
+[190]: https://codeberg.org/dnkl/fuzzel/issues/190
+
+
 ### Security
 ### Contributors
 
