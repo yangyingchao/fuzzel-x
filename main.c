@@ -814,9 +814,12 @@ main(int argc, char *const *argv)
             if (clr_start[0] == '#')
                 clr_start++;
 
-            uint32_t background;
-            if (sscanf(clr_start, "%08x", &background) != 1) {
-                fprintf(stderr, "%s: invalid color\n", optarg);
+            errno = 0;
+            char *end = NULL;
+            uint32_t background = strtoul(clr_start, &end, 16);
+            if (errno != 0 || end == NULL || *end != '\0' || (end - clr_start) != 8) {
+                fprintf(stderr, "background-color: %s: invalid color\n",
+                        optarg);
                 return EXIT_FAILURE;
             }
             cmdline_overrides.conf.colors.background =
@@ -830,9 +833,11 @@ main(int argc, char *const *argv)
             if (clr_start[0] == '#')
                 clr_start++;
 
-            uint32_t text_color;
-            if (sscanf(clr_start, "%08x", &text_color) != 1) {
-                fprintf(stderr, "%s: invalid color\n", optarg);
+            errno = 0;
+            char *end = NULL;
+            uint32_t text_color = strtoul(clr_start, &end, 16);
+            if (errno != 0 || end == NULL || *end != '\0' || (end - clr_start) != 8) {
+                fprintf(stderr, "text-color: %s: invalid color\n", optarg);
                 return EXIT_FAILURE;
             }
             cmdline_overrides.conf.colors.text = conf_hex_to_rgba(text_color);
@@ -845,9 +850,11 @@ main(int argc, char *const *argv)
             if (clr_start[0] == '#')
                 clr_start++;
 
-            uint32_t match_color;
-            if (sscanf(clr_start, "%x", &match_color) != 1) {
-                fprintf(stderr, "%s: invalid color\n", optarg);
+            errno = 0;
+            char *end = NULL;
+            uint32_t match_color = strtoul(clr_start, &end, 16);
+            if (errno != 0 || end == NULL || *end != '\0' || (end - clr_start) != 8) {
+                fprintf(stderr, "match-color: %s: invalid color\n", optarg);
                 return EXIT_FAILURE;
             }
             cmdline_overrides.conf.colors.match =
@@ -861,9 +868,11 @@ main(int argc, char *const *argv)
             if (clr_start[0] == '#')
                 clr_start++;
 
-            uint32_t selection_color;
-            if (sscanf(clr_start, "%x", &selection_color) != 1) {
-                fprintf(stderr, "%s: invalid color\n", optarg);
+            errno = 0;
+            char *end = NULL;
+            uint32_t selection_color = strtoul(clr_start, &end, 16);
+            if (errno != 0 || end == NULL || *end != '\0' || (end - clr_start) != 8) {
+                fprintf(stderr, "selection-color: %s: invalid color\n", optarg);
                 return EXIT_FAILURE;
             }
             cmdline_overrides.conf.colors.selection =
@@ -877,9 +886,12 @@ main(int argc, char *const *argv)
             if (clr_start[0] == '#')
                 clr_start++;
 
-            uint32_t selection_text_color;
-            if (sscanf(clr_start, "%x", &selection_text_color) != 1) {
-                fprintf(stderr, "%s: invalid color\n", optarg);
+            errno = 0;
+            char *end = NULL;
+            uint32_t selection_text_color = strtoul(clr_start, &end, 16);
+            if (errno != 0 || end == NULL || *end != '\0' || (end - clr_start) != 8) {
+                fprintf(stderr, "selection-text-color: %s: invalid color\n",
+                        optarg);
                 return EXIT_FAILURE;
             }
             cmdline_overrides.conf.colors.selection_text =
@@ -893,9 +905,12 @@ main(int argc, char *const *argv)
             if (clr_start[0] == '#')
                 clr_start++;
 
-            uint32_t selection_match_color;
-            if (sscanf(clr_start, "%x", &selection_match_color) != 1) {
-                fprintf(stderr, "%s: invalid color\n", optarg);
+            errno = 0;
+            char *end = NULL;
+            uint32_t selection_match_color = strtoul(clr_start, &end, 16);
+            if (errno != 0 || end == NULL || *end != '\0' || (end - clr_start) != 8) {
+                fprintf(stderr, "selection-match-color: %s: invalid color\n",
+                        optarg);
                 return EXIT_FAILURE;
             }
             cmdline_overrides.conf.colors.selection_match =
@@ -928,9 +943,11 @@ main(int argc, char *const *argv)
             if (clr_start[0] == '#')
                 clr_start++;
 
-            uint32_t border_color;
-            if (sscanf(clr_start, "%x", &border_color) != 1) {
-                fprintf(stderr, "%s: invalid color\n", optarg);
+            errno = 0;
+            char *end = NULL;
+            uint32_t border_color = strtoul(clr_start, &end, 16);
+            if (errno != 0 || end == NULL || *end != '\0' || (end - clr_start) != 8) {
+                fprintf(stderr, "border-color: %s: invalid color\n", optarg);
                 return EXIT_FAILURE;
             }
             cmdline_overrides.conf.colors.border =

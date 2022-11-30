@@ -30,6 +30,13 @@
 
 
 ### Changed
+
+* Better verification of color values specified on the command line
+  ([#194][194]).
+
+[194]: https://codeberg.org/dnkl/fuzzel/issues/194
+
+
 ### Deprecated
 ### Removed
 ### Fixed
