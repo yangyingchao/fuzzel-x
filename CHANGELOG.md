@@ -24,8 +24,10 @@
 
 ### Added
 
+* Add support for startup notifications via xdg activation ([#195][195])
 * Convert tabs to spaces when rendering ([#137][137]).
 
+[195]: https://codeberg.org/dnkl/fuzzel/pulls/195
 [137]: https://codeberg.org/dnkl/fuzzel/issues/137
 
 

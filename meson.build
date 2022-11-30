@@ -106,7 +106,8 @@ wl_proto_src = []
 foreach prot : [
   'external/wlr-layer-shell-unstable-v1.xml',
   wayland_protocols_datadir + '/stable/xdg-shell/xdg-shell.xml',
-  wayland_protocols_datadir + '/unstable/xdg-output/xdg-output-unstable-v1.xml']
+  wayland_protocols_datadir + '/unstable/xdg-output/xdg-output-unstable-v1.xml',
+  wayland_protocols_datadir + '/staging/xdg-activation/xdg-activation-v1.xml']
 
   wl_proto_headers += custom_target(
     prot.underscorify() + '-client-header',
