@@ -290,6 +290,7 @@ applications_destroy(struct application_list *apps)
         free(app->exec);
         free(app->basename);
         free(app->wexec);
+        free(app->app_id);
         free(app->title);
         free(app->generic_name);
         free(app->comment);

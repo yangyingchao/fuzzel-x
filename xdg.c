@@ -37,6 +37,7 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename,
     struct action {
         char32_t *name;
         char32_t *generic_name;
+        char *app_id;
         char32_t *comment;
         char32_list_t keywords;
         char32_list_t categories;
@@ -162,6 +163,11 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename,
                 action->generic_name = ambstoc32(value);
             }
 
+            else if (strcmp(key, "StartupWMClass") == 0) {
+                free(action->app_id);
+                action->app_id = strdup(value);
+            }
+
             else if (strcmp(key, "Comment") == 0) {
                 free(action->comment);
                 action->comment = ambstoc32(value);
@@ -230,6 +236,7 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename,
         {
             free(a->name);
             free(a->generic_name);
+            free(a->app_id);
             free(a->comment);
             free(a->icon);
             free(a->exec);
@@ -275,6 +282,7 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename,
                 .basename = c32dup(file_basename),
                 .wexec = a->wexec,
                 .title = title,
+                .app_id = a->app_id,
                 .generic_name = a->generic_name,
                 .comment = a->comment,
                 .keywords = a->keywords,
