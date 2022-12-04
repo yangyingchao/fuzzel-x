@@ -10,6 +10,7 @@ int c32cmp(const char32_t *s1, const char32_t *s2);
 char32_t *c32cpy(char32_t *dest, const char32_t *src);
 char32_t *c32cat(char32_t *dest, const char32_t *src);
 char32_t *c32dup(const char32_t *s);
+char32_t *c32chr(const char32_t *s, char32_t c);
 
 size_t mbsntoc32(char32_t *dst, const char *src, size_t nms, size_t len);
 size_t mbstoc32(char32_t *dst, const char *src, size_t len);

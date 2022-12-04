@@ -60,6 +60,12 @@ c32dup(const char32_t *s)
     return (char32_t *)wcsdup((const wchar_t *)s);
 }
 
+char32_t *
+c32chr(const char32_t *s, char32_t c)
+{
+    return (char32_t *)wcschr((const wchar_t *)s, (wchar_t)c);
+}
+
 size_t
 mbsntoc32(char32_t *dst, const char *src, size_t nms, size_t len)
 {
