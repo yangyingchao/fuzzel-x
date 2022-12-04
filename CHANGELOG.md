@@ -26,9 +26,12 @@
 
 * Add support for startup notifications via xdg activation ([#195][195])
 * Convert tabs to spaces when rendering ([#137][137]).
+* `--dmenu0` command line option. Like `--dmenu`, but input is NUL
+  separated instead of newline separated ([#197][197]).
 
 [195]: https://codeberg.org/dnkl/fuzzel/pulls/195
 [137]: https://codeberg.org/dnkl/fuzzel/issues/137
+[197]: https://codeberg.org/dnkl/fuzzel/issues/197
 
 
 ### Changed
