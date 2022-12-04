@@ -705,10 +705,31 @@ render_match_list(const struct render *render, struct buffer *buf,
              : 0) +
             pt_or_px_as_pixels(render, &render->conf->letter_spacing);
 
+        /* Replace newlines in title, with spaces (basic support for
+         * multiline entries) */
+        if (match->application->render_title == NULL) {
+            char32_t *newline = c32chr(match->application->title, U'\n');
+
+            if (newline != NULL) {
+                char32_t *render_title = c32dup(match->application->title);
+
+                newline = render_title + (newline - match->application->title);
+                *newline = U' ';
+
+                while ((newline = c32chr(newline, U'\n')) != NULL)
+                    *newline = U' ';
+
+                match->application->render_title = render_title;
+            } else {
+                /* No newlines, use title as-is */
+                match->application->render_title = match->application->title;
+            }
+        }
+
         /* Application title */
         render_match_text(
             buf, &cur_x, y, max_x - (ellipses != NULL ? ellipses->width : 0),
-            match->application->title, match->pos_count, match->pos,
+            match->application->render_title, match->pos_count, match->pos,
             font, subpixel,
             pt_or_px_as_pixels(render, &render->conf->letter_spacing),
             render->conf->tabs,

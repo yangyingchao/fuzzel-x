@@ -56,6 +56,7 @@ struct application {
     char32_t *basename;
     char32_t *wexec;  /* Same as ‘exec’, but for matching purposes */
     char32_t *title;
+    char32_t *render_title;
     char32_t *generic_name;
     char *app_id;
     char32_t *comment;
