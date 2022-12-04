@@ -235,6 +235,10 @@ or command line options:
 	
 		echo -en "Firefox\\0icon\\x1ffirefox" | fuzzel --dmenu
 
+*--dmenu0*
+	Like *--dmenu*, but input is NUL separated instead of newline
+	separated. Note that in this mode, icons are not supported.
+
 *--index*
 	Print selected entry's index instead of its text. **dmenu** mode
 	only.
