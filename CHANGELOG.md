@@ -48,8 +48,10 @@
 
 * Update nanosvg to f0a3e10. Fixes rendering of certain SVG icons
   ([#190][190]).
+* Not being able to input numbers using the keypad ([#192][192]).
 
 [190]: https://codeberg.org/dnkl/fuzzel/issues/190
+[192]: https://codeberg.org/dnkl/fuzzel/issues/192
 
 
 ### Security
