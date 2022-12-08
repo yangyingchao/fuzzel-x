@@ -100,6 +100,7 @@ struct config {
         bool enabled;
         enum dmenu_mode mode;
         bool exit_immediately_if_empty;
+        char delim;
     } dmenu;
 
     unsigned lines;

@@ -18,7 +18,8 @@
 #include "char32.h"
 
 void
-dmenu_load_entries(struct application_list *applications, int abort_fd)
+dmenu_load_entries(struct application_list *applications, char delim,
+                   int abort_fd)
 {
     tll(struct application) entries = tll_init();
 
@@ -55,7 +56,7 @@ dmenu_load_entries(struct application_list *applications, int abort_fd)
         if (fds[1].revents & (POLLIN | POLLHUP))
             break;
 
-        ssize_t len = getline(&line, &alloc_size, stdin);
+        ssize_t len = getdelim(&line, &alloc_size, delim, stdin);
 
         if (len < 0) {
             if (errno != 0)

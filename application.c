@@ -292,6 +292,8 @@ applications_destroy(struct application_list *apps)
         free(app->wexec);
         free(app->app_id);
         free(app->title);
+        if (app->render_title != app->title)
+            free(app->render_title);
         free(app->generic_name);
         free(app->comment);
         free(app->icon.name);

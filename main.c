@@ -279,6 +279,8 @@ print_usage(const char *prog_name)
            "     --no-exit-on-keyboard-focus-loss  do not exit when losing keyboard focus\n"
            "     --launch-prefix=COMMAND     prefix to add before argv of executed program\n"
            "  -d,--dmenu                     dmenu compatibility mode\n"
+           "     --dmenu0                    like --dmenu, but input is NUL separated\n"
+           "                                 instead of newline separated\n"
            "     --index                     print selected entry's index instead of of the \n"
            "                                 entry's text (dmenu mode only)\n"
            "  -R,--no-run-if-empty           exit immediately without showing UI if stdin\n"
@@ -410,14 +412,16 @@ populate_apps(void *_ctx)
 {
     struct context *ctx = _ctx;
     struct application_list *apps = ctx->apps;
-    const char *icon_theme = ctx->conf->icon_theme;
-    const char *terminal = ctx->conf->terminal;
-    bool actions_enabled = ctx->conf->actions_enabled;
-    bool dmenu_enabled = ctx->conf->dmenu.enabled;
-    bool icons_enabled = ctx->conf->icons_enabled;
+    const struct config *conf = ctx->conf;
+    const char *icon_theme = conf->icon_theme;
+    const char *terminal = conf->terminal;
+    bool actions_enabled = conf->actions_enabled;
+    bool dmenu_enabled = conf->dmenu.enabled;
+    bool icons_enabled = conf->icons_enabled;
+    char dmenu_delim = conf->dmenu.delim;
 
     if (dmenu_enabled)
-        dmenu_load_entries(apps, ctx->dmenu_abort_fd);
+        dmenu_load_entries(apps, dmenu_delim, ctx->dmenu_abort_fd);
     else {
         xdg_find_programs(terminal, actions_enabled, apps);
         read_cache(apps);
@@ -517,6 +521,7 @@ main(int argc, char *const *argv)
     #define OPT_ICON_THEME                   270
     #define OPT_NO_EXIT_ON_KB_LOSS           271
     #define OPT_TABS                         272
+    #define OPT_DMENU_NULL                   273
 
     static const struct option longopts[] = {
         {"config",               required_argument, 0,  OPT_CONFIG},
@@ -557,6 +562,7 @@ main(int argc, char *const *argv)
 
         /* dmenu mode */
         {"dmenu",                no_argument,       0, 'd'},
+        {"dmenu0",               no_argument,       0, OPT_DMENU_NULL},
         {"no-run-if-empty",      no_argument,       0, 'R'},
         {"index",                no_argument,       0, OPT_DMENU_INDEX},
 
@@ -605,6 +611,7 @@ main(int argc, char *const *argv)
         bool dmenu_enabled_set:1;
         bool dmenu_mode_set:1;
         bool dmenu_exit_immediately_if_empty_set:1;
+        bool dmenu_delim_set:1;
         bool layer_set:1;
         bool no_exit_on_keyboard_focus_loss_set:1;
     } cmdline_overrides = {{0}};
@@ -1043,6 +1050,13 @@ main(int argc, char *const *argv)
             cmdline_overrides.dmenu_enabled_set = true;
             break;
 
+        case OPT_DMENU_NULL:
+            cmdline_overrides.conf.dmenu.enabled = true;
+            cmdline_overrides.conf.dmenu.delim = '\0';
+            cmdline_overrides.dmenu_enabled_set = true;
+            cmdline_overrides.dmenu_delim_set = true;
+            break;
+
         case 'R':
             cmdline_overrides.conf.dmenu.exit_immediately_if_empty = true;
             cmdline_overrides.dmenu_exit_immediately_if_empty_set = true;
@@ -1203,6 +1217,8 @@ main(int argc, char *const *argv)
         conf.exit_on_kb_focus_loss = cmdline_overrides.conf.exit_on_kb_focus_loss;
     if (cmdline_overrides.dmenu_enabled_set)
         conf.dmenu.enabled = cmdline_overrides.conf.dmenu.enabled;
+    if (cmdline_overrides.dmenu_delim_set)
+        conf.dmenu.delim = cmdline_overrides.conf.dmenu.delim;
     if (cmdline_overrides.dmenu_mode_set)
         conf.dmenu.mode = cmdline_overrides.conf.dmenu.mode;
     if (cmdline_overrides.dmenu_exit_immediately_if_empty_set)
@@ -1279,7 +1295,7 @@ main(int argc, char *const *argv)
              * If no_run_if_empty is set, we *must* load the entries
              * *before displaying the window.
              */
-            dmenu_load_entries(apps, -1);
+            dmenu_load_entries(apps, conf.dmenu.delim, -1);
             if (apps->count == 0)
                 goto out;
 
