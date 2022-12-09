@@ -1,11 +1,12 @@
 #include "xdg.h"
 
+#include <limits.h>
+#include <locale.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdbool.h>
 #include <unistd.h>
-#include <limits.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -21,9 +22,17 @@
 
 typedef tll(struct application) application_llist_t;
 
+struct locale_variants {
+    char *lang_country_modifier;
+    char *lang_country;
+    char *lang_modifier;
+    char *lang;
+};
+
 static void
 parse_desktop_file(int fd, char *id, const char32_t *file_basename,
                    const char *terminal, bool include_actions,
+                   const struct locale_variants *lc_messages,
                    application_llist_t *applications)
 {
     FILE *f = fdopen(fd, "r");
@@ -41,6 +50,12 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename,
         char32_t *comment;
         char32_list_t keywords;
         char32_list_t categories;
+
+        int name_locale_score;
+        int generic_name_locale_score;
+        int comment_lcoale_score;
+        int keywords_locale_score;
+        int categories_locale_score;
 
         char *icon;
         char *exec;
@@ -137,13 +152,53 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename,
             }
         }
 
-        const char *key = strtok(line, "=");
+        char *key = strtok(line, "=");
         char *value = strtok(NULL, "\n");
+        int locale_score = 1;  /* Default, locale not specified in key */
 
         if (key != NULL && value != NULL) {
+            const size_t key_len = strlen(key);
+
+            if (key[key_len - 1] == ']') {
+                char *locale = strchr(key, '[');
+                if (locale != NULL) {
+                    /* NULL terminate key */
+                    *locale = '\0';
+
+                    /* NULL terminate locale */
+                    key[key_len - 1] = '\0';
+                    locale++;  /* Skip past ‘[’ */
+
+                    if (lc_messages->lang_country_modifier != NULL &&
+                        strcmp(locale, lc_messages->lang_country_modifier) == 0)
+                    {
+                        locale_score = 5;
+                    } else if (lc_messages->lang_country != NULL &&
+                               strcmp(locale, lc_messages->lang_country) == 0)
+                    {
+                        locale_score = 4;
+                    } else if (lc_messages->lang_modifier != NULL &&
+                               strcmp(locale, lc_messages->lang_modifier) == 0)
+                    {
+                        locale_score = 3;
+                    } else if (lc_messages->lang != NULL &&
+                               strcmp(locale, lc_messages->lang) == 0)
+                    {
+                        locale_score = 2;
+                    } else {
+                        /* Key has locale, but didn’t match. Make sure
+                         * we don’t use its value */
+                        locale_score = -1;
+                    }
+                }
+            }
+
             if (strcmp(key, "Name") == 0) {
-                free(action->name);
-                action->name = ambstoc32(value);
+                if (locale_score > action->name_locale_score) {
+                    free(action->name);
+                    action->name = ambstoc32(value);
+                    action->name_locale_score = locale_score;
+                }
             }
 
             else if (strcmp(key, "Exec") == 0) {
@@ -159,8 +214,11 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename,
             }
 
             else if (strcmp(key, "GenericName") == 0) {
-                free(action->generic_name);
-                action->generic_name = ambstoc32(value);
+                if (locale_score > action->generic_name_locale_score) {
+                    free(action->generic_name);
+                    action->generic_name = ambstoc32(value);
+                    action->generic_name_locale_score = locale_score;
+                }
             }
 
             else if (strcmp(key, "StartupWMClass") == 0) {
@@ -169,29 +227,40 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename,
             }
 
             else if (strcmp(key, "Comment") == 0) {
-                free(action->comment);
-                action->comment = ambstoc32(value);
+                if (locale_score > action->comment_lcoale_score) {
+                    free(action->comment);
+                    action->comment = ambstoc32(value);
+                    action->comment_lcoale_score = locale_score;
+                }
             }
 
             else if (strcmp(key, "Keywords") == 0) {
-                for (const char *kw = strtok(value, ";");
-                     kw != NULL;
-                     kw = strtok(NULL, ";"))
-                {
-                    char32_t *wide_kw = ambstoc32(kw);
-                    if (wide_kw != NULL)
-                        tll_push_back(action->keywords, wide_kw);
+                if (locale_score > action->keywords_locale_score) {
+                    for (const char *kw = strtok(value, ";");
+                         kw != NULL;
+                         kw = strtok(NULL, ";"))
+                    {
+                        char32_t *wide_kw = ambstoc32(kw);
+                        if (wide_kw != NULL)
+                            tll_push_back(action->keywords, wide_kw);
+                    }
+
+                    action->keywords_locale_score = locale_score;
                 }
             }
 
             else if (strcmp(key, "Categories") == 0) {
-                for (const char *category = strtok(value, ";");
-                     category != NULL;
-                     category = strtok(NULL, ";"))
-                {
-                    char32_t *wide_category = ambstoc32(category);
-                    if (wide_category != NULL)
-                        tll_push_back(action->categories, wide_category);
+                if (locale_score > action->categories_locale_score) {
+                    for (const char *category = strtok(value, ";");
+                         category != NULL;
+                         category = strtok(NULL, ";"))
+                    {
+                        char32_t *wide_category = ambstoc32(category);
+                        if (wide_category != NULL)
+                            tll_push_back(action->categories, wide_category);
+                    }
+
+                    action->categories_locale_score = locale_score;
                 }
             }
 
@@ -323,6 +392,46 @@ scan_dir(int base_fd, const char *terminal, bool include_actions,
         return;
     }
 
+    const char *locale = setlocale(LC_MESSAGES, NULL);
+    struct locale_variants lc_messages = {NULL};
+
+    if (locale != NULL) {
+        char *copy = strdup(locale);
+
+        char *lang = copy;
+        char *country_start = strchr(copy, '_');
+        char *encoding_start = strchr(copy, '.');
+        char *modifier_start = strchr(copy, '@');
+
+        if (country_start != NULL)
+            *country_start = '\0';
+        if (encoding_start != NULL)
+            *encoding_start = '\0';
+        if (modifier_start != NULL)
+            *modifier_start = '\0';
+
+        lc_messages.lang = copy;
+        if (country_start != NULL) {
+            asprintf(
+                &lc_messages.lang_country, "%s_%s", lang, country_start + 1);
+        }
+
+        if (modifier_start != NULL) {
+            asprintf(
+                &lc_messages.lang_modifier, "%s@%s", lang, modifier_start + 1);
+        }
+
+        if (country_start != NULL && modifier_start != NULL) {
+            asprintf(
+                &lc_messages.lang_country_modifier,
+                "%s_%s@%s", lang, country_start + 1, modifier_start + 1);
+        }
+
+        LOG_DBG("lang=%s, lang_country=%s, lang@modifier=%s, lang_country@modifier=%s",
+                lc_messages.lang, lc_messages.lang_country,
+                lc_messages.lang_modifier, lc_messages.lang_country_modifier);
+    }
+
     for (const struct dirent *e = readdir(d); e != NULL; e = readdir(d)) {
         if (strcmp(e->d_name, ".") == 0 || strcmp(e->d_name, "..") == 0)
             continue;
@@ -390,15 +499,18 @@ scan_dir(int base_fd, const char *terminal, bool include_actions,
                 if (!already_added) {
                     parse_desktop_file(
                         fd, id, wfile_basename, terminal, include_actions,
-                        applications);
+                        &lc_messages, applications);
                 } else
                     free(id);
                 close(fd);
             }
         }
-
     }
 
+    free(lc_messages.lang);
+    free(lc_messages.lang_country);
+    free(lc_messages.lang_modifier);
+    free(lc_messages.lang_country_modifier);
     closedir(d);
 }
 
