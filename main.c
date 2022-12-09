@@ -617,6 +617,7 @@ main(int argc, char *const *argv)
     } cmdline_overrides = {{0}};
 
     setlocale(LC_CTYPE, "");
+    setlocale(LC_MESSAGES, "");
 
     /* Auto-enable dmenu mode if invoked through a ‘dmenu’ symlink */
     if (argv[0] != NULL) {
