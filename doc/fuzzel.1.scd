@@ -11,6 +11,9 @@ fuzzel - display XDG applications in a searchable Wayland window
 *fuzzel* lists all available XDG applications in a searchable
 Window. The search box supports Emacs-like key bindings.
 
+Fuzzel uses the localized strings from the .desktop files by
+default. To disable this, run fuzzel with *LC_MESSAGES=C*.
+
 The window size, font and colors can be configured with *fuzzel.ini*(5)
 or command line options:
 
