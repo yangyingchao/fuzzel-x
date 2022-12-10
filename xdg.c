@@ -1,5 +1,6 @@
 #include "xdg.h"
 
+#include <errno.h>
 #include <limits.h>
 #include <locale.h>
 #include <stdbool.h>
@@ -412,19 +413,31 @@ scan_dir(int base_fd, const char *terminal, bool include_actions,
 
         lc_messages.lang = copy;
         if (country_start != NULL) {
-            asprintf(
-                &lc_messages.lang_country, "%s_%s", lang, country_start + 1);
+            if (asprintf(
+                    &lc_messages.lang_country, "%s_%s", lang, country_start + 1) < 0) {
+                LOG_WARN(
+                    "failed to construct lang_country string from %s and %s: %s",
+                    lang, country_start + 1, strerror(errno));
+            }
         }
 
         if (modifier_start != NULL) {
-            asprintf(
-                &lc_messages.lang_modifier, "%s@%s", lang, modifier_start + 1);
+            if (asprintf(
+                    &lc_messages.lang_modifier, "%s@%s", lang, modifier_start + 1) < 0) {
+                LOG_WARN(
+                    "failed to construct lang@modifier string from %s and %s: %s",
+                    lang, modifier_start + 1, strerror(errno));
+            }
         }
 
         if (country_start != NULL && modifier_start != NULL) {
-            asprintf(
-                &lc_messages.lang_country_modifier,
-                "%s_%s@%s", lang, country_start + 1, modifier_start + 1);
+            if (asprintf(
+                    &lc_messages.lang_country_modifier,
+                    "%s_%s@%s", lang, country_start + 1, modifier_start + 1) < 0) {
+                LOG_WARN(
+                    "failed to construct lang_country@modifier string from %s, %s and %s: %s",
+                    lang, country_start + 1, modifier_start + 1, strerror(errno));
+            }
         }
 
         LOG_DBG("lang=%s, lang_country=%s, lang@modifier=%s, lang_country@modifier=%s",
