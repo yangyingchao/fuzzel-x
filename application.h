@@ -50,7 +50,8 @@ struct icon {
 typedef tll(char32_t *) char32_list_t;
 
 struct application {
-    char *id;
+    char *id; /* Desktop File ID, as defined in the Desktop Entry specicication
+                 https://specifications.freedesktop.org/desktop-entry-spec/desktop-entry-spec-latest.html */
     char *path;
     char *exec;
     char32_t *basename;
