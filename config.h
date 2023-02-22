@@ -39,6 +39,25 @@ enum match_fields {
     MATCH_COMMENT =    0x40,
 };
 
+enum anchors {
+    ANCHOR_TOP_LEFT =     ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT,
+    ANCHOR_TOP =          ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP,
+    ANCHOR_TOP_RIGHT =    ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT,
+    ANCHOR_LEFT  =        ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT,
+    ANCHOR_CENTER =       ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT | ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM,
+    ANCHOR_RIGHT =        ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT,
+    ANCHOR_BOTTOM_LEFT =  ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM | ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT,
+    ANCHOR_BOTTOM =       ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM,
+    ANCHOR_BOTTOM_RIGHT = ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM | ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT,
+};
+
+struct anchors_map {
+    const char *name;
+    enum anchors value;
+};
+
+extern const struct anchors_map anchors_map[];
+
 struct config_key_modifiers {
     bool shift;
     bool alt;
@@ -108,6 +127,8 @@ struct config {
         bool exit_immediately_if_empty;
         char delim;
     } dmenu;
+
+    enum anchors anchor;
 
     unsigned lines;
     unsigned chars;

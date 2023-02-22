@@ -105,6 +105,22 @@ or command line options:
 	*Terminal=true* (_htop_, for example). Example: _xterm -e_.
 	Default: _not set_.
 
+*-a*,*--anchor*=_ANCHOR_
+	Set window anchor, i.e. where on screen the window will be
+	displayed.  You can choose one from:
+	
+	- top-left
+	- top
+	- top-right
+	- left
+	- center
+	- right
+	- bottom-left
+	- bottom
+	- bottom-right
+	
+	Default: _center_
+
 *-l*,*--lines*=COUNT
 	The (maximum) number of matches to display. This dictates the
 	window height. Default: _15_.

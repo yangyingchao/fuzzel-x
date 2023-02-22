@@ -140,6 +140,22 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	environment variables.
 	Default: _not set_.
 
+*anchor*
+	Set window anchor, i.e. where on screen the window will be
+	displayed.  You can choose one from:
+	
+	- top-left
+	- top
+	- top-right
+	- left
+	- center
+	- right
+	- bottom-left
+	- bottom
+	- bottom-right
+	
+	Default: _center_
+
 *lines*
 	Number of matches to show. Default: _15_.
 

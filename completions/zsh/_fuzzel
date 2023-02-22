@@ -14,6 +14,7 @@ _arguments \
     '(-p --prompt)'{-p,--prompt}'[string to use as input prompt ("> ")]:()' \
     '--password[render all input using either "*", or the specified character]:()' \
     '(-T --terminal)'{-T,--terminal}'[terminal command, with arguments ($TERMINAL -e)]:terminal:_command_names -e' \
+    '(-a --anchor)'{-a,--anchor}'[set window anchor (center)]:anchors:->anchors' \
     '(-l --lines)'{-l,--lines}'[maximum number of matches to display (15)]:()' \
     '(-w --width)'{-w,--width}'[window width, in characters (30)]:()' \
     '(-x --horizontal-pad)'{-x,--horizontal-pad}'[horizontal padding, in pixels (40)]:()' \
@@ -66,5 +67,9 @@ case "${state}" in
 
     fields)
         _values -s , 'Desktop entry fields' filename name generic exec categories keywords comment
+        ;;
+
+    anchors)
+        _values -s , 'Window anchor' top-left top top-right left center right bottom-left bottom bottom-right
         ;;
 esac
