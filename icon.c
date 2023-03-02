@@ -487,10 +487,20 @@ lookup_icons(const icon_theme_list_t *themes, int icon_size,
             continue;
 
         if (app->icon.name[0] == '/') {
-            if (svg(&app->icon, app->icon.name))
-                LOG_DBG("%s: absolute path SVG", app->icon.name);
-            else if (png(&app->icon, app->icon.name))
-                LOG_DBG("%s: abslute path PNG", app->icon.name);
+            const size_t name_len = strlen(app->icon.name);
+            if (app->icon.name[name_len - 3] == 's' &&
+                app->icon.name[name_len - 2] == 'v' &&
+                app->icon.name[name_len - 1] == 'g')
+            {
+                if (svg(&app->icon, app->icon.name))
+                    LOG_DBG("%s: absolute path SVG", app->icon.name);
+            } else if (app->icon.name[name_len - 3] == 'p' &&
+                       app->icon.name[name_len - 2] == 'n' &&
+                       app->icon.name[name_len - 1] == 'g')
+            {
+                if (png(&app->icon, app->icon.name))
+                    LOG_DBG("%s: abslute path PNG", app->icon.name);
+            }
         } else {
             size_t file_name_len = strlen(app->icon.name) + 4;
             char *file_name = malloc(file_name_len + 1);
