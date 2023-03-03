@@ -45,8 +45,12 @@
 
 * Better verification of color values specified on the command line
   ([#194][194]).
+* When determining initial font size, do FontConfig config
+  substitution if the user-provided font pattern has no {pixel}size
+  option ([#1287][foot-1287]).
 
 [194]: https://codeberg.org/dnkl/fuzzel/issues/194
+[foot-1287]: https://codeberg.org/dnkl/foot/issues/1287
 
 
 ### Deprecated
