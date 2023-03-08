@@ -619,7 +619,7 @@ execute_binding(struct seat *seat, const struct key_binding *binding, bool *refr
         return true;
 
     case BIND_ACTION_MATCHES_EXECUTE_OR_NEXT:
-        if (matches_get_count(wayl->matches) == 1)
+        if (matches_get_total_count(wayl->matches) == 1)
             execute_selected(seat, -1);
         else
             *refresh = matches_selected_next(wayl->matches, true);

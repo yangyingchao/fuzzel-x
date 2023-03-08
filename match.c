@@ -298,6 +298,12 @@ matches_get_count(const struct matches *matches)
 }
 
 size_t
+matches_get_total_count(const struct matches *matches)
+{
+    return matches->match_count;
+}
+
+size_t
 matches_get_match_index(const struct matches *matches)
 {
     return matches->max_matches_per_page != 0
