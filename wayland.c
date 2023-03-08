@@ -490,18 +490,20 @@ get_xdg_activation_token(struct seat *seat, const char *app_id,
     struct wayland *wayl = seat->wayl;
     struct xdg_activation_token_v1 *token =
         xdg_activation_v1_get_activation_token(wayl->xdg_activation_v1);
+
     xdg_activation_token_v1_set_serial(token, seat->kbd.serial, seat->wl_seat);
     xdg_activation_token_v1_set_surface(token, wayl->surface);
+
     if (app_id != NULL)
         xdg_activation_token_v1_set_app_id(token, app_id);
 
-    xdg_activation_token_v1_add_listener(token, &token_listener,
-            xdg_activation_token);
+    xdg_activation_token_v1_add_listener(
+        token, &token_listener, xdg_activation_token);
+
     xdg_activation_token_v1_commit(token);
     wl_display_roundtrip(wayl->display);
     xdg_activation_token_v1_destroy(token);
 }
-
 
 static void
 execute_selected(struct seat *seat, int custom_success_exit_code)
@@ -521,9 +523,8 @@ execute_selected(struct seat *seat, int custom_success_exit_code)
             : EXIT_SUCCESS;
     } else {
         char *xdg_activation_token = NULL;
-        if (wayl->xdg_activation_v1) {
+        if (wayl->xdg_activation_v1 != NULL)
             get_xdg_activation_token(seat, app->app_id, &xdg_activation_token);
-        }
 
         bool success = application_execute(
             app, wayl->prompt, wayl->conf->launch_prefix, xdg_activation_token);
