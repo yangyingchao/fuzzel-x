@@ -37,6 +37,7 @@ static const char *const binding_action_map[] = {
     [BIND_ACTION_DELETE_NEXT] = "delete-next",
     [BIND_ACTION_DELETE_NEXT_WORD] = "delete-next-word",
     [BIND_ACTION_DELETE_LINE] = "delete-line",
+    [BIND_ACTION_INSERT_SELECTED] = "insert-selected",
     [BIND_ACTION_MATCHES_EXECUTE] = "execute",
     [BIND_ACTION_MATCHES_EXECUTE_OR_NEXT] = "execute-or-next",
     [BIND_ACTION_MATCHES_PREV] = "prev",
@@ -1327,6 +1328,8 @@ add_default_key_bindings(struct config *conf)
         {BIND_ACTION_DELETE_NEXT_WORD, m_ctrl, {{XKB_KEY_KP_Delete}}},
 
         {BIND_ACTION_DELETE_LINE, m_ctrl, {{XKB_KEY_k}}},
+
+        {BIND_ACTION_INSERT_SELECTED, m_ctrl, {{XKB_KEY_Tab}}},
 
         {BIND_ACTION_MATCHES_EXECUTE, m_none, {{XKB_KEY_Return}}},
         {BIND_ACTION_MATCHES_EXECUTE, m_none, {{XKB_KEY_KP_Enter}}},

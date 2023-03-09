@@ -35,6 +35,9 @@
   launch prefix ([#110][110]).
 * New key bindings: `[key-bindings].first` and `[key-bindings].last`,
   bound to `Control+Home` and `Control+End` by default ([#210][210]).
+* New key binding: `[key-bindings].insert-selected`, bound to
+  `Control+Tab` by default. It replaces the current prompt (filter)
+  with the selected item ([#212][212]).
 
 [195]: https://codeberg.org/dnkl/fuzzel/pulls/195
 [137]: https://codeberg.org/dnkl/fuzzel/issues/137
@@ -42,6 +45,7 @@
 [199]: https://codeberg.org/dnkl/fuzzel/issues/199
 [110]: https://codeberg.org/dnkl/fuzzel/issues/110
 [210]: https://codeberg.org/dnkl/fuzzel/issues/210
+[212]: https://codeberg.org/dnkl/fuzzel/issues/212
 
 
 ### Changed

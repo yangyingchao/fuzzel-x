@@ -320,6 +320,11 @@ done by setting _action=none_; e.g. *delete-line=none*.
 *delete-line*
 	Deletes everything after the cursor. Default: _Control+k_.
 
+*insert-selected*
+	Copies the selected entry to the prompt, replacing the current
+	prompt. In application mode, the *Exec* line is inserted, and in
+	dmenu mode the entry itself is used. Default: _Control+Tab_.
+
 *prev*
 	Select the previous entry. Does *not* wrap around when the first
 	entry has been reached. Default: _Up Control+p_.

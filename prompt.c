@@ -195,6 +195,15 @@ prompt_cursor_next_word(struct prompt *prompt)
 }
 
 bool
+prompt_erase_all(struct prompt *prompt)
+{
+    free(prompt->text);
+    prompt->text = calloc(1, sizeof(char32_t));
+    prompt->cursor = 0;
+    return true;
+}
+
+bool
 prompt_erase_next_char(struct prompt *prompt)
 {
     if (prompt->cursor >= c32len(prompt->text))

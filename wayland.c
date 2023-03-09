@@ -614,6 +614,32 @@ execute_binding(struct seat *seat, const struct key_binding *binding, bool *refr
             matches_update(wayl->matches, wayl->prompt);
         return true;
 
+    case BIND_ACTION_INSERT_SELECTED: {
+        const struct match *match = matches_get_match(wayl->matches);
+        if (match == NULL)
+            return true;
+
+        prompt_erase_all(wayl->prompt);
+
+        if (wayl->conf->dmenu.enabled) {
+            char *chars = ac32tombs(match->application->title);
+            if (chars != NULL) {
+                *refresh = prompt_insert_chars(
+                    wayl->prompt, chars, strlen(chars));
+                free(chars);
+            }
+        } else {
+            *refresh = prompt_insert_chars(
+                wayl->prompt,
+                match->application->exec,
+                strlen(match->application->exec));
+        }
+
+        if (*refresh)
+            matches_update(wayl->matches, wayl->prompt);
+        return true;
+    }
+
     case BIND_ACTION_MATCHES_EXECUTE:
         execute_selected(seat, -1);
         return true;

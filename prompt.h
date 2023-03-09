@@ -21,6 +21,7 @@ bool prompt_cursor_prev_char(struct prompt *prompt);
 bool prompt_cursor_prev_word(struct prompt *prompt);
 bool prompt_cursor_next_word(struct prompt *prompt);
 
+bool prompt_erase_all(struct prompt *prompt);
 bool prompt_erase_next_char(struct prompt *prompt);
 bool prompt_erase_prev_char(struct prompt *prompt);
 bool prompt_erase_next_word(struct prompt *prompt);
