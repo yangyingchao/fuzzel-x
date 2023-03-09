@@ -649,6 +649,14 @@ execute_binding(struct seat *seat, const struct key_binding *binding, bool *refr
         *refresh = matches_selected_next_page(wayl->matches);
         return true;
 
+    case BIND_ACTION_MATCHES_FIRST:
+        *refresh = matches_selected_first(wayl->matches);
+        return true;
+
+    case BIND_ACTION_MATCHES_LAST:
+        *refresh = matches_selected_last(wayl->matches);
+        return true;
+
     case BIND_ACTION_CUSTOM_1:
     case BIND_ACTION_CUSTOM_2:
     case BIND_ACTION_CUSTOM_3:

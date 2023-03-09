@@ -45,6 +45,8 @@ static const char *const binding_action_map[] = {
     [BIND_ACTION_MATCHES_NEXT] = "next",
     [BIND_ACTION_MATCHES_NEXT_WITH_WRAP] = "next-with-wrap",
     [BIND_ACTION_MATCHES_NEXT_PAGE] = "next-page",
+    [BIND_ACTION_MATCHES_FIRST] = "first",
+    [BIND_ACTION_MATCHES_LAST] = "last",
 
     [BIND_ACTION_CUSTOM_1] = "custom-1",
     [BIND_ACTION_CUSTOM_2] = "custom-2",
@@ -1344,6 +1346,9 @@ add_default_key_bindings(struct config *conf)
 
         {BIND_ACTION_MATCHES_NEXT_PAGE, m_none, {{XKB_KEY_Page_Down}}},
         {BIND_ACTION_MATCHES_NEXT_PAGE, m_none, {{XKB_KEY_KP_Page_Down}}},
+
+        {BIND_ACTION_MATCHES_FIRST, m_ctrl, {{XKB_KEY_Home}}},
+        {BIND_ACTION_MATCHES_LAST, m_ctrl, {{XKB_KEY_End}}},
 
         {BIND_ACTION_CUSTOM_1, m_alt, {{XKB_KEY_1}}},
         {BIND_ACTION_CUSTOM_2, m_alt, {{XKB_KEY_2}}},

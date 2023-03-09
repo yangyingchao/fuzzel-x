@@ -312,6 +312,29 @@ matches_get_match_index(const struct matches *matches)
 }
 
 bool
+matches_selected_first(struct matches *matches)
+{
+    if (matches->match_count <= 0 || matches->selected <= 0)
+        return false;
+
+    matches->selected = 0;
+    return true;
+}
+
+bool
+matches_selected_last(struct matches *matches)
+{
+    if (matches->match_count <= 0 ||
+        matches->selected >= matches->match_count - 1)
+    {
+        return false;
+    }
+
+    matches->selected = matches->match_count - 1;
+    return true;
+}
+
+bool
 matches_selected_prev(struct matches *matches, bool wrap)
 {
     if (matches->selected > 0) {

@@ -342,6 +342,13 @@ done by setting _action=none_; e.g. *delete-line=none*.
 *next-page*
 	Switch to the next page. Default: _Page_Down KP_Page_Down_.
 
+*first*
+	Select the first entry, on the first page. Default:
+	_Control+Home_.
+
+*last*
+	Select the last entry, on the last page. Default: _Control+End_.
+
 *custom-1*, *custom-2*, ..., *custom-19*
 	Execute the currently selected entry, then exit with a non-zero
 	exit code. *custom-1* exits with exit code 10, *custom-2* with 11,

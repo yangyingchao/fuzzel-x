@@ -33,12 +33,15 @@
 * Export `FUZZEL_DESKTOP_FILE_ID` environment variable when setting
   the `--launch-prefix` in order to pass the Desktop File ID to the
   launch prefix ([#110][110]).
+* New key bindings: `[key-bindings].first` and `[key-bindings].last`,
+  bound to `Control+Home` and `Control+End` by default ([#210][210]).
 
 [195]: https://codeberg.org/dnkl/fuzzel/pulls/195
 [137]: https://codeberg.org/dnkl/fuzzel/issues/137
 [197]: https://codeberg.org/dnkl/fuzzel/issues/197
 [199]: https://codeberg.org/dnkl/fuzzel/issues/199
 [110]: https://codeberg.org/dnkl/fuzzel/issues/110
+[210]: https://codeberg.org/dnkl/fuzzel/issues/210
 
 
 ### Changed
