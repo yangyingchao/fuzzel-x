@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [1.9.0](#1-9-0)
 * [1.8.2](#1-8-2)
 * [1.8.1](#1-8-1)
 * [1.8.0](#1-8-0)
@@ -20,7 +20,7 @@
 * [1.4.1](#1-4-1)
 
 
-## Unreleased
+## 1.9.0
 
 ### Added
 
@@ -60,8 +60,6 @@
 [foot-1287]: https://codeberg.org/dnkl/foot/issues/1287
 
 
-### Deprecated
-### Removed
 ### Fixed
 
 * Update nanosvg to f0a3e10. Fixes rendering of certain SVG icons
@@ -74,8 +72,11 @@
 [214]: https://codeberg.org/dnkl/fuzzel/issues/214
 
 
-### Security
 ### Contributors
+
+* Mark Stosberg
+* Max Gautier
+* Ronan Pigott
 
 
 ## 1.8.2
