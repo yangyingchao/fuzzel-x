@@ -523,7 +523,7 @@ execute_selected(struct seat *seat, int custom_success_exit_code)
             : EXIT_SUCCESS;
     } else {
         char *xdg_activation_token = NULL;
-        if (wayl->xdg_activation_v1 != NULL)
+        if (wayl->xdg_activation_v1 != NULL && app != NULL)
             get_xdg_activation_token(seat, app->app_id, &xdg_activation_token);
 
         bool success = application_execute(

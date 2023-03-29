@@ -31,6 +31,10 @@
 * Regression: default font size was unintentionally changed from 12pt
   in 1.8.2, to 8pt in 1.9.0. The old default of 12pt has now been
   restored.
+* Regression: crash when pressing Enter and the match list is empty (e.g. when
+  trying to execute a command line) ([#222][222]).
+
+[222]: https://codeberg.org/dnkl/fuzzel/issues/222
 
 
 ### Security
