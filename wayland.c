@@ -1897,7 +1897,7 @@ font_pattern_to_spec(const char *pattern, struct font_spec *spec)
         FcPatternDestroy(pat_copy);
 
         if (have_pt_size != FcResultMatch && have_px_size != FcResultMatch)
-            pt_size = 8.0;
+            pt_size = 12.0;
     }
 
     FcPatternRemove(pat, FC_SIZE, 0);

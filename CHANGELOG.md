@@ -27,6 +27,12 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* Regression: default font size was unintentionally changed from 12pt
+  in 1.8.2, to 8pt in 1.9.0. The old default of 12pt has now been
+  restored.
+
+
 ### Security
 ### Contributors
 
