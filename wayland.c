@@ -523,7 +523,7 @@ execute_selected(struct seat *seat, int custom_success_exit_code)
             : EXIT_SUCCESS;
     } else {
         char *xdg_activation_token = NULL;
-        if (wayl->xdg_activation_v1 != NULL)
+        if (wayl->xdg_activation_v1 != NULL && app != NULL)
             get_xdg_activation_token(seat, app->app_id, &xdg_activation_token);
 
         bool success = application_execute(
@@ -1897,7 +1897,7 @@ font_pattern_to_spec(const char *pattern, struct font_spec *spec)
         FcPatternDestroy(pat_copy);
 
         if (have_pt_size != FcResultMatch && have_px_size != FcResultMatch)
-            pt_size = 8.0;
+            pt_size = 12.0;
     }
 
     FcPatternRemove(pat, FC_SIZE, 0);
