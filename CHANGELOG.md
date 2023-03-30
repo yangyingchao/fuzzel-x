@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [1.9.1](#1-9-1)
 * [1.9.0](#1-9-0)
 * [1.8.2](#1-8-2)
 * [1.8.1](#1-8-1)
@@ -21,11 +21,8 @@
 * [1.4.1](#1-4-1)
 
 
-## Unreleased
-### Added
-### Changed
-### Deprecated
-### Removed
+## 1.9.1
+
 ### Fixed
 
 * Regression: default font size was unintentionally changed from 12pt
@@ -35,10 +32,6 @@
   trying to execute a command line) ([#222][222]).
 
 [222]: https://codeberg.org/dnkl/fuzzel/issues/222
-
-
-### Security
-### Contributors
 
 
 ## 1.9.0
