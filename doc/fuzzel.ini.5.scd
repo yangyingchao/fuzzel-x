@@ -81,7 +81,7 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	
 	Default: _auto_.
 
-*prompt*=
+*prompt*
 	String to use as input prompt. Default: _> _.
 
 *icon-theme*
