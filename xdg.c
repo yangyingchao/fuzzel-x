@@ -30,11 +30,60 @@ struct locale_variants {
     char *lang;
 };
 
+struct action {
+    char32_t *name;
+    char32_t *generic_name;
+    char *app_id;
+    char32_t *comment;
+    char32_list_t keywords;
+    char32_list_t categories;
+    char_list_t onlyshowin;
+    char_list_t notshowin;
+
+    int name_locale_score;
+    int generic_name_locale_score;
+    int comment_lcoale_score;
+    int keywords_locale_score;
+    int categories_locale_score;
+
+    char *icon;
+    char *exec;
+    char32_t *wexec;
+
+    char *path;
+    bool visible;
+    bool use_terminal;
+};
+
+static bool
+filter_desktop_entry(const struct action *act, const char_list_t *desktops)
+{
+    /* If a matching entry is found in OnlyShowIn then the desktop file is
+     * shown. If an entry is found in NotShowIn then the desktop file is not
+     * shown. */
+    tll_foreach(*desktops, current) {
+        tll_foreach(act->onlyshowin, desktop) {
+            if (strcmp(current->item, desktop->item) == 0)
+                return true;
+        }
+
+        tll_foreach(act->notshowin, desktop) {
+            if (strcmp(current->item, desktop->item) == 0)
+                return false;
+        }
+    }
+
+    /* By default, a desktop file should be shown, unless an OnlyShowIn key is
+     * present, in which case, the default is for the file not to be shown. */
+    return tll_length(act->onlyshowin) == 0;
+}
+
 static void
 parse_desktop_file(int fd, char *id, const char32_t *file_basename,
                    const char *terminal, bool include_actions,
                    const struct locale_variants *lc_messages,
-                   application_llist_t *applications)
+                   application_llist_t *applications,
+                   char_list_t *desktops)
 {
     FILE *f = fdopen(fd, "r");
     if (f == NULL)
@@ -43,29 +92,6 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename,
     bool is_desktop_entry = false;
 
     tll(char *) action_names = tll_init();
-
-    struct action {
-        char32_t *name;
-        char32_t *generic_name;
-        char *app_id;
-        char32_t *comment;
-        char32_list_t keywords;
-        char32_list_t categories;
-
-        int name_locale_score;
-        int generic_name_locale_score;
-        int comment_lcoale_score;
-        int keywords_locale_score;
-        int categories_locale_score;
-
-        char *icon;
-        char *exec;
-        char32_t *wexec;
-
-        char *path;
-        bool visible;
-        bool use_terminal;
-    };
 
     tll(struct action) actions = tll_init();
     tll_push_back(actions, ((struct action){.visible = true}));
@@ -274,6 +300,24 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename,
                 }
             }
 
+            else if (strcmp(key, "OnlyShowIn") == 0) {
+                for (const char *desktop = strtok(value, ";");
+                     desktop != NULL;
+                     desktop = strtok(NULL, ";"))
+                {
+                    tll_push_back(action->onlyshowin, strdup(desktop));
+                }
+            }
+
+            else if (strcmp(key, "NotShowIn") == 0) {
+                for (const char *desktop = strtok(value, ";");
+                     desktop != NULL;
+                     desktop = strtok(NULL, ";"))
+                {
+                    tll_push_back(action->notshowin, strdup(desktop));
+                }
+            }
+
             else if (strcmp(key, "Icon") == 0) {
                 free(action->icon);
                 action->icon = strdup(value);
@@ -315,6 +359,8 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename,
 
             tll_free_and_free(a->keywords, free);
             tll_free_and_free(a->categories, free);
+            tll_free_and_free(a->onlyshowin, free);
+            tll_free_and_free(a->notshowin, free);
 
             continue;
         }
@@ -358,7 +404,7 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename,
                 .keywords = a->keywords,
                 .categories = a->categories,
                 .icon = {.name = a->icon},
-                .visible = a->visible,
+                .visible = a->visible && filter_desktop_entry(a, desktops),
                 .count = 0}));
     }
 
@@ -445,6 +491,18 @@ scan_dir(int base_fd, const char *terminal, bool include_actions,
                 lc_messages.lang_modifier, lc_messages.lang_country_modifier);
     }
 
+
+    char_list_t desktops = tll_init();
+    char *xdg_current_desktop = getenv("XDG_CURRENT_DESKTOP");
+    if (xdg_current_desktop) {
+        for (char *desktop = strtok(xdg_current_desktop, ":");
+             desktop != NULL;
+             desktop = strtok(NULL, ":"))
+            {
+                tll_push_back(desktops, desktop);
+            }
+    }
+
     for (const struct dirent *e = readdir(d); e != NULL; e = readdir(d)) {
         if (strcmp(e->d_name, ".") == 0 || strcmp(e->d_name, "..") == 0)
             continue;
@@ -512,7 +570,7 @@ scan_dir(int base_fd, const char *terminal, bool include_actions,
                 if (!already_added) {
                     parse_desktop_file(
                         fd, id, wfile_basename, terminal, include_actions,
-                        &lc_messages, applications);
+                        &lc_messages, applications, &desktops);
                 } else
                     free(id);
                 close(fd);
