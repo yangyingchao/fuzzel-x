@@ -1139,11 +1139,11 @@ main(int argc, char *const *argv)
             return EXIT_SUCCESS;
 
         case ':':
-            fprintf(stderr, "error: -%c: missing required argument\n", optopt);
+            fprintf(stderr, "error: %s: missing required argument\n", argv[optind-1]);
             return EXIT_FAILURE;
 
         case '?':
-            fprintf(stderr, "error: -%c: invalid option\n", optopt);
+            fprintf(stderr, "error: %s: invalid option\n", argv[optind-1]);
             return EXIT_FAILURE;
         }
     }
