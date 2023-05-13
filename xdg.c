@@ -81,9 +81,9 @@ filter_desktop_entry(const struct action *act, const char_list_t *desktops)
 static void
 parse_desktop_file(int fd, char *id, const char32_t *file_basename,
                    const char *terminal, bool include_actions,
+                   bool filter_desktops, char_list_t *desktops,
                    const struct locale_variants *lc_messages,
-                   application_llist_t *applications,
-                   char_list_t *desktops)
+                   application_llist_t *applications)
 {
     FILE *f = fdopen(fd, "r");
     if (f == NULL)
@@ -404,7 +404,7 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename,
                 .keywords = a->keywords,
                 .categories = a->categories,
                 .icon = {.name = a->icon},
-                .visible = a->visible && filter_desktop_entry(a, desktops),
+                .visible = a->visible && (!filter_desktops || filter_desktop_entry(a, desktops)),
                 .count = 0}));
     }
 
@@ -431,6 +431,7 @@ new_id(const char *base_id, const char *new_part)
 
 static void
 scan_dir(int base_fd, const char *terminal, bool include_actions,
+         bool filter_desktop, char_list_t *desktops,
          application_llist_t *applications, const char *base_id)
 {
     DIR *d = fdopendir(base_fd);
@@ -492,17 +493,6 @@ scan_dir(int base_fd, const char *terminal, bool include_actions,
     }
 
 
-    char_list_t desktops = tll_init();
-    char *xdg_current_desktop = getenv("XDG_CURRENT_DESKTOP");
-    if (xdg_current_desktop) {
-        for (char *desktop = strtok(xdg_current_desktop, ":");
-             desktop != NULL;
-             desktop = strtok(NULL, ":"))
-            {
-                tll_push_back(desktops, desktop);
-            }
-    }
-
     for (const struct dirent *e = readdir(d); e != NULL; e = readdir(d)) {
         if (strcmp(e->d_name, ".") == 0 || strcmp(e->d_name, "..") == 0)
             continue;
@@ -522,6 +512,7 @@ scan_dir(int base_fd, const char *terminal, bool include_actions,
 
             char *nested_base_id = new_id(base_id, e->d_name);
             scan_dir(dir_fd, terminal, include_actions,
+                     filter_desktop, desktops,
                      applications, nested_base_id);
             free(nested_base_id);
             close(dir_fd);
@@ -570,7 +561,8 @@ scan_dir(int base_fd, const char *terminal, bool include_actions,
                 if (!already_added) {
                     parse_desktop_file(
                         fd, id, wfile_basename, terminal, include_actions,
-                        &lc_messages, applications, &desktops);
+                        filter_desktop, desktops,
+                        &lc_messages, applications);
                 } else
                     free(id);
                 close(fd);
@@ -595,6 +587,7 @@ sort_application_by_title(const void *_a, const void *_b)
 
 void
 xdg_find_programs(const char *terminal, bool include_actions,
+                  bool filter_desktop, char_list_t *desktops,
                   struct application_list *applications)
 {
     application_llist_t apps = tll_init();
@@ -606,7 +599,7 @@ xdg_find_programs(const char *terminal, bool include_actions,
 
         int fd = open(path, O_RDONLY);
         if (fd != -1) {
-            scan_dir(fd, terminal, include_actions, &apps, NULL);
+            scan_dir(fd, terminal, include_actions, filter_desktop, desktops, &apps, NULL);
             close(fd);
         }
     }

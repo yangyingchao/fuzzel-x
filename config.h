@@ -82,6 +82,8 @@ struct config {
     char *font;
     enum dpi_aware dpi_aware;
 
+    bool filter_desktop;
+
     bool icons_enabled;
     char *icon_theme;
 

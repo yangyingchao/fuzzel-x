@@ -117,6 +117,9 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	line, by explicitly specifying the character with
 	*--password=X*. Default: _\*_.
 
+*filter-desktop*
+	Boolean. Filter desktop files based on the value of XDG_CURRENT_DESKTOP.
+
 *fuzzy*
 	Boolean. Enables or disables fuzzy matching. Default: _yes_.
 

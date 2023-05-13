@@ -24,13 +24,19 @@
 
 ## Unreleased
 ### Added
+
+* Added a new option `--filter-desktop` which toggles filtering of desktop
+  entries based on the OnlyShowIn and NotShowIn keys. Filtering is based on the
+  value of $XDG\_CURRENT\_DESKTOP according to desktop-entry spec. Filtering is
+  off by default. To disable filtering set in the config from the command line,
+  use --filter-desktop=no
+
 ### Changed
 ### Deprecated
 ### Removed
 ### Fixed
 ### Security
 ### Contributors
-
 
 ## 1.9.1
 

@@ -29,6 +29,7 @@ _arguments \
     '(-C --border-color)'{-C,--border-color}'[border color (002b36ff)]:border-color:()' \
     '--show-actions[include desktop actions (e.g "New Window") in the list]' \
     '--no-fuzzy[disable fuzzy matching]' \
+    '--filter-desktop=-[filter desktop entries based on XDG_CURRENT_DESKTOP]: :(no)' \
     '--fuzzy-min-length[search strings shorter than this will not be fuzzy matched (3)]:()' \
     '--fuzzy-max-length-discrepancy[maximum allowed length difference between the search string and a fuzzy match (2)]:()' \
     '--fuzzy-max-distance[maximum allowed levenshtein distance between the search string and a fuzzy match (1)]:()' \

@@ -419,13 +419,30 @@ populate_apps(void *_ctx)
     bool dmenu_enabled = conf->dmenu.enabled;
     bool icons_enabled = conf->icons_enabled;
     char dmenu_delim = conf->dmenu.delim;
+    bool filter_desktop = conf->filter_desktop;
+    char_list_t desktops = tll_init();
+
+    if (filter_desktop) {
+        char *xdg_current_desktop = getenv("XDG_CURRENT_DESKTOP");
+        if (xdg_current_desktop && strlen(xdg_current_desktop) != 0) {
+            xdg_current_desktop = strdup(xdg_current_desktop);
+            for (char *desktop = strtok(xdg_current_desktop, ":");
+                 desktop != NULL;
+                 desktop = strtok(NULL, ":"))
+                {
+                    tll_push_back(desktops, desktop);
+                }
+            free(xdg_current_desktop);
+        }
+    }
 
     if (dmenu_enabled)
         dmenu_load_entries(apps, dmenu_delim, ctx->dmenu_abort_fd);
     else {
-        xdg_find_programs(terminal, actions_enabled, apps);
+        xdg_find_programs(terminal, actions_enabled, filter_desktop, &desktops, apps);
         read_cache(apps);
     }
+    tll_free_and_free(desktops, free);
 
     int r = send_event(ctx->event_fd, EVENT_APPS_LOADED);
     if (r != 0)
@@ -522,6 +539,7 @@ main(int argc, char *const *argv)
     #define OPT_NO_EXIT_ON_KB_LOSS           271
     #define OPT_TABS                         272
     #define OPT_DMENU_NULL                   273
+    #define OPT_FILTER_DESKTOP               274
 
     static const struct option longopts[] = {
         {"config",               required_argument, 0,  OPT_CONFIG},
@@ -550,6 +568,7 @@ main(int argc, char *const *argv)
         {"prompt",               required_argument, 0, 'p'},
         {"terminal",             required_argument, 0, 'T'},
         {"show-actions",         no_argument,       0, OPT_SHOW_ACTIONS},
+        {"filter-desktop",       optional_argument, 0, OPT_FILTER_DESKTOP},
         {"no-fuzzy",             no_argument,       0, OPT_NO_FUZZY},
         {"fuzzy-min-length",     required_argument, 0, OPT_FUZZY_MIN_LENGTH},
         {"fuzzy-max-length-discrepancy", required_argument, 0, OPT_FUZZY_MAX_LENGTH_DISCREPANCY},
@@ -602,6 +621,7 @@ main(int argc, char *const *argv)
         bool border_size_set:1;
         bool border_radius_set:1;
         bool actions_enabled_set:1;
+        bool filter_desktop_set:1;
         bool fuzzy_set:1;
         bool fuzzy_min_length_set:1;
         bool fuzzy_max_length_discrepancy_set:1;
@@ -969,6 +989,18 @@ main(int argc, char *const *argv)
             cmdline_overrides.conf.actions_enabled = true;
             break;
 
+        case OPT_FILTER_DESKTOP:
+            cmdline_overrides.filter_desktop_set = true;
+            if (optarg != NULL && strcasecmp(optarg, "no") == 0)
+                cmdline_overrides.conf.filter_desktop = false;
+            else if (optarg != NULL) {
+                fprintf(stderr, "%s: invalid filter-desktop option\n", optarg);
+                return EXIT_FAILURE;
+            }
+            else
+                cmdline_overrides.conf.filter_desktop = true;
+            break;
+
         case OPT_NO_FUZZY:
             cmdline_overrides.conf.fuzzy.enabled = false;
             cmdline_overrides.fuzzy_set = true;
@@ -1198,6 +1230,8 @@ main(int argc, char *const *argv)
                  cmdline_overrides.conf.border.radius);
 #endif
     }
+    if (cmdline_overrides.filter_desktop_set)
+        conf.filter_desktop = cmdline_overrides.conf.filter_desktop;
     if (cmdline_overrides.actions_enabled_set)
         conf.actions_enabled = cmdline_overrides.conf.actions_enabled;
     if (cmdline_overrides.fuzzy_set)

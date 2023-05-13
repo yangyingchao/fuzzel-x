@@ -169,6 +169,11 @@ or command line options:
 	alternative actions some desktop entries have. Examples include
 	"New Window", "New Document", etc.
 
+*--filter-desktop*=[_no_]
+	Filter the visible desktop entries based on the value of
+	XDG_CURRENT_DESKTOP. If the optional parameter is "no",
+	explicitly disables filtering.
+
 *--no-fuzzy*
 	Disables fuzzy matching. When disabled, only exact (case
 	insensitive) substring matches are considered.

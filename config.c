@@ -760,6 +760,9 @@ parse_section_main(struct context *ctx)
         return true;
     }
 
+    else if (strcmp(key, "filter-desktop") == 0)
+        return value_to_bool(ctx, &conf->filter_desktop);
+
     else if (strcmp(key, "fuzzy") == 0)
         return value_to_bool(ctx, &conf->fuzzy.enabled);
 

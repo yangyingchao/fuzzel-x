@@ -37,6 +37,7 @@ complete -c fuzzel -x -s r -l border-radius                                     
 complete -c fuzzel -x -s C -l border-color                                                                      -d "border color (002b36ff)"
 complete -c fuzzel         -l show-actions                                                                      -d "include desktop actions (e.g. \"New Window\") in the list"
 complete -c fuzzel         -l no-fuzzy                                                                          -d "disable fuzzy matching"
+complete -c fuzzel         -l filter-desktop                                                                    -d "filter desktop entries based on XDG_CURRENT_DESKTOP"
 complete -c fuzzel -x      -l fuzzy-min-length                                                                  -d "search strings shorter than this will not be fuzzy matched"
 complete -c fuzzel -x      -l fuzzy-max-length-discrepancy                                                      -d "maximum allowed length difference between the search string and a fuzzy match (2)"
 complete -c fuzzel -x      -l fuzzy-max-distance                                                                -d "maximum allowed levenshtein distance between the search string and a fuzzy match (1)"
