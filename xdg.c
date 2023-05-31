@@ -179,8 +179,9 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename,
             }
         }
 
-        char *key = strtok(line, "=");
-        char *value = strtok(NULL, "\n");
+        char *ctx;
+        char *key = strtok_r(line, "=", &ctx);
+        char *value = strtok_r(NULL, "\n", &ctx);
         int locale_score = 1;  /* Default, locale not specified in key */
 
         if (key != NULL && value != NULL) {
@@ -263,9 +264,9 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename,
 
             else if (strcmp(key, "Keywords") == 0) {
                 if (locale_score > action->keywords_locale_score) {
-                    for (const char *kw = strtok(value, ";");
+                    for (const char *kw = strtok_r(value, ";", &ctx);
                          kw != NULL;
-                         kw = strtok(NULL, ";"))
+                         kw = strtok_r(NULL, ";", &ctx))
                     {
                         char32_t *wide_kw = ambstoc32(kw);
                         if (wide_kw != NULL)
@@ -278,9 +279,9 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename,
 
             else if (strcmp(key, "Categories") == 0) {
                 if (locale_score > action->categories_locale_score) {
-                    for (const char *category = strtok(value, ";");
+                    for (const char *category = strtok_r(value, ";", &ctx);
                          category != NULL;
-                         category = strtok(NULL, ";"))
+                         category = strtok_r(NULL, ";", &ctx))
                     {
                         char32_t *wide_category = ambstoc32(category);
                         if (wide_category != NULL)
@@ -292,27 +293,27 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename,
             }
 
             else if (strcmp(key, "Actions") == 0) {
-                for (const char *action = strtok(value, ";");
+                for (const char *action = strtok_r(value, ";", &ctx);
                      action != NULL;
-                     action = strtok(NULL, ";"))
+                     action = strtok_r(NULL, ";", &ctx))
                 {
                     tll_push_back(action_names, strdup(action));
                 }
             }
 
             else if (strcmp(key, "OnlyShowIn") == 0) {
-                for (const char *desktop = strtok(value, ";");
+                for (const char *desktop = strtok_r(value, ";", &ctx);
                      desktop != NULL;
-                     desktop = strtok(NULL, ";"))
+                     desktop = strtok_r(NULL, ";", &ctx))
                 {
                     tll_push_back(action->onlyshowin, strdup(desktop));
                 }
             }
 
             else if (strcmp(key, "NotShowIn") == 0) {
-                for (const char *desktop = strtok(value, ";");
+                for (const char *desktop = strtok_r(value, ";", &ctx);
                      desktop != NULL;
-                     desktop = strtok(NULL, ";"))
+                     desktop = strtok_r(NULL, ";", &ctx))
                 {
                     tll_push_back(action->notshowin, strdup(desktop));
                 }

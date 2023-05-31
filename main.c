@@ -421,16 +421,17 @@ populate_apps(void *_ctx)
     char dmenu_delim = conf->dmenu.delim;
     bool filter_desktop = conf->filter_desktop;
     char_list_t desktops = tll_init();
+    char *saveptr = NULL;
 
     if (filter_desktop) {
         char *xdg_current_desktop = getenv("XDG_CURRENT_DESKTOP");
         if (xdg_current_desktop && strlen(xdg_current_desktop) != 0) {
             xdg_current_desktop = strdup(xdg_current_desktop);
-            for (char *desktop = strtok(xdg_current_desktop, ":");
+            for (char *desktop = strtok_r(xdg_current_desktop, ":", &saveptr);
                  desktop != NULL;
-                 desktop = strtok(NULL, ":"))
+                 desktop = strtok_r(NULL, ":", &saveptr))
                 {
-                    tll_push_back(desktops, desktop);
+                    tll_push_back(desktops, strdup(desktop));
                 }
             free(xdg_current_desktop);
         }
