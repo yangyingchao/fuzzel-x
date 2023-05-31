@@ -42,7 +42,7 @@ struct action {
 
     int name_locale_score;
     int generic_name_locale_score;
-    int comment_lcoale_score;
+    int comment_locale_score;
     int keywords_locale_score;
     int categories_locale_score;
 
@@ -254,10 +254,10 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename,
             }
 
             else if (strcmp(key, "Comment") == 0) {
-                if (locale_score > action->comment_lcoale_score) {
+                if (locale_score > action->comment_locale_score) {
                     free(action->comment);
                     action->comment = ambstoc32(value);
-                    action->comment_lcoale_score = locale_score;
+                    action->comment_locale_score = locale_score;
                 }
             }
 
@@ -335,7 +335,6 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename,
                     action->use_terminal = true;
             }
         }
-
         free(line);
     }
 
