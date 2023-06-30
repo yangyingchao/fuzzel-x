@@ -196,7 +196,7 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	behavior, for example.
 	
 	Default: _yes_
-l
+
 # SECTION: colors
 
 All color values are in RGBA.
