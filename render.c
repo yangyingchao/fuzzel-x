@@ -157,7 +157,8 @@ render_background(const struct render *render, struct buffer *buf)
 }
 
 static void
-render_glyph(pixman_image_t *pix, const struct fcft_glyph *glyph, int x, int y, const pixman_color_t *color)
+render_glyph(pixman_image_t *pix, const struct fcft_glyph *glyph, int x, int y,
+             const pixman_color_t *color)
 {
     if (pixman_image_get_format(glyph->pix) == PIXMAN_a8r8g8b8) {
         /* Glyph surface is a pre-rendered image (typically a color emoji...) */
