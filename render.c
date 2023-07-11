@@ -667,7 +667,7 @@ render_match_list(const struct render *render, struct buffer *buf,
         double max_x = buf->width - border_size - x_margin;
 
 #if 0 /* Render the icon+text bounding box */
-        pixman_color_t sc = rgba2pixman(render->conf->match_color);
+        pixman_color_t sc = rgba2pixman(render->conf->colors.match);
         pixman_image_fill_rectangles(
             PIXMAN_OP_SRC, buf->pix, &sc, 1,
             &(pixman_rectangle16_t){
