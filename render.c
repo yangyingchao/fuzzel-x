@@ -198,7 +198,8 @@ render_prompt(const struct render *render, struct buffer *buf,
         ? render->subpixel : FCFT_SUBPIXEL_NONE;
 
     int x = render->border_size + render->x_margin;
-    int y = render->border_size + render->y_margin + font->ascent;
+    int y = render->border_size + render->y_margin +
+        (render->row_height + font->height) / 2 - font->descent;
 
     if (fcft_capabilities() & FCFT_CAPABILITY_TEXT_RUN_SHAPING) {
         struct fcft_text_run *run = fcft_rasterize_text_run_utf32(
