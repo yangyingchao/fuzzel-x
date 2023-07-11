@@ -35,6 +35,12 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* Last line sometimes not being rendered ([#234][234]).
+
+[234]: https://codeberg.org/dnkl/fuzzel/issues/234
+
+
 ### Security
 ### Contributors
 

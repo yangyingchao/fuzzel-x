@@ -623,12 +623,6 @@ render_match_list(const struct render *render, struct buffer *buf,
     bool render_icons = mtx_trylock(render->icon_lock) == thrd_success;
 
     for (size_t i = 0; i < match_count; i++) {
-        if (y + font->descent > buf->height - y_margin - border_size) {
-            /* Window too small - happens if the compositor doesn't
-             * respect our requested size */
-            break;
-        }
-
         const struct match *match = matches_get(matches, i);
 
         if (i == selected) {
