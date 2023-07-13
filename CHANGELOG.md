@@ -32,6 +32,12 @@
   use --filter-desktop=no
 
 ### Changed
+
+* Output scaling is now applied to the border radius ([#236][236]).
+
+[236]: https://codeberg.org/dnkl/fuzzel/issues/236
+
+
 ### Deprecated
 ### Removed
 ### Fixed

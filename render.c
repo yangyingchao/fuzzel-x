@@ -125,7 +125,7 @@ render_background(const struct render *render, struct buffer *buf)
         const double h = max(buf->height - 2 * b, 0.);
 
         const double from_degree = M_PI / 180;
-        const double radius = render->conf->border.radius;
+        const double radius = render->conf->border.radius * render->scale;
 
         /* Path describing an arc:ed rectangle */
         cairo_new_path(buf->cairo);
