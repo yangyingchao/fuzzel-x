@@ -12,6 +12,7 @@ _arguments \
     '(-I --no-icons)'{-I,--no-icons}'[do not render any icons]' \
     '(-F --fields)'{-F,--fields}'[comma separated list of XDG Desktop entry fields to match ]:fields:->fields' \
     '(-p --prompt)'{-p,--prompt}'[string to use as input prompt ("> ")]:()' \
+    '--password[render all input using either "*", or the specified character]:()' \
     '(-T --terminal)'{-T,--terminal}'[terminal command, with arguments ($TERMINAL -e)]:terminal:_command_names -e' \
     '(-l --lines)'{-l,--lines}'[maximum number of matches to display (15)]:()' \
     '(-w --width)'{-w,--width}'[window width, in characters (30)]:()' \

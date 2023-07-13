@@ -41,6 +41,7 @@
   action.
 * `password-character` being set in `fuzzel.ini` incorrectly enabling
   password mode ([#241][241]).
+* Added missing zsh+fish completions for `--password`.
 
 [234]: https://codeberg.org/dnkl/fuzzel/issues/234
 [241]: https://codeberg.org/dnkl/fuzzel/issues/241

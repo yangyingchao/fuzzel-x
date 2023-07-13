@@ -17,6 +17,7 @@ complete -c fuzzel -x      -l icon-theme         -a "(find /usr/share/icons -min
 complete -c fuzzel    -s I -l no-icons                                                                          -d "do not render any icons"
 complete -c fuzzel -x -s F -l fields             -a "filename name generic exec categories keywords comment"    -d "comma separated list of XDG Desktop entry fields to match"
 complete -c fuzzel -x -s p -l prompt                                                                            -d "string to use as input prompt (\"> \")"
+complete -c fuzzel         -l password           -a "" -d "render all input using either '*', or the specified character"
 
 # TODO: this currently doesn’t quote the completed argument
 complete -c fuzzel -x -s T -l terminal           -a "(__fish_complete_subcommand)"                              -d "terminal command, with arguments ($TERMINAL -e)"
