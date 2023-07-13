@@ -73,8 +73,12 @@ DEFINE_LIST(struct config_key_binding);
 struct config {
     char *output;
     char32_t *prompt;
-    char32_t password;
     enum match_fields match_fields;
+
+    struct {
+        char32_t character;
+        bool enabled;
+    } password_mode;
 
     char *terminal;
     char *launch_prefix;

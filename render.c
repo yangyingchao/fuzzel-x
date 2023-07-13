@@ -233,8 +233,8 @@ render_prompt(const struct render *render, struct buffer *buf,
     for (size_t i = 0; i < prompt_len + text_len; i++) {
         char32_t wc = i < prompt_len
             ? pprompt[i]
-            : (conf->password != 0
-               ? conf->password
+            : (conf->password_mode.enabled
+               ? conf->password_mode.character
                : ptext[i - prompt_len]);
 
         const struct fcft_glyph *glyph = fcft_rasterize_char_utf32(

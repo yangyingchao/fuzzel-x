@@ -757,7 +757,7 @@ main(int argc, char *const *argv)
         }
 
         case OPT_PASSWORD: {
-            char32_t password_char = U'*';
+            char32_t password_char = U'\0';
             if (optarg != NULL) {
                 char32_t *wide_optarg = ambstoc32(optarg);
                 if (c32len(wide_optarg) != 1) {
@@ -771,7 +771,8 @@ main(int argc, char *const *argv)
                 password_char = wide_optarg[0];
                 free(wide_optarg);
             }
-            cmdline_overrides.conf.password = password_char;
+            cmdline_overrides.conf.password_mode.enabled = true;
+            cmdline_overrides.conf.password_mode.character = password_char;
             break;
         }
 
@@ -1170,8 +1171,15 @@ main(int argc, char *const *argv)
         free(conf.prompt);
         conf.prompt = cmdline_overrides.conf.prompt;
     }
-    if (cmdline_overrides.conf.password != U'\0')
-        conf.password = cmdline_overrides.conf.password;
+    if (cmdline_overrides.conf.password_mode.enabled) {
+        conf.password_mode.enabled = true;
+        conf.password_mode.character =
+            cmdline_overrides.conf.password_mode.character != U'\0'
+            ? cmdline_overrides.conf.password_mode.character
+            : conf.password_mode.character != U'\0'
+            ? conf.password_mode.character
+            : U'*';
+    }
     if (cmdline_overrides.conf.terminal != NULL) {
         free(conf.terminal);
         conf.terminal = strdup(cmdline_overrides.conf.terminal);

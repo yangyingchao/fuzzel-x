@@ -39,8 +39,11 @@
 * Last line sometimes not being rendered ([#234][234]).
 * `key-bindings.cursor-right-word` not being recognized as a valid
   action.
+* `password-character` being set in `fuzzel.ini` incorrectly enabling
+  password mode ([#241][241]).
 
 [234]: https://codeberg.org/dnkl/fuzzel/issues/234
+[241]: https://codeberg.org/dnkl/fuzzel/issues/241
 
 
 ### Security

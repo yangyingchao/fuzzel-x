@@ -755,7 +755,7 @@ parse_section_main(struct context *ctx)
             return false;
         }
 
-        conf->password = password_chars[0];
+        conf->password_mode.character = password_chars[0];
         free(password_chars);
         return true;
     }
@@ -1390,8 +1390,11 @@ config_load(struct config *conf, const char *conf_path,
     *conf = (struct config) {
         .output = NULL,
         .prompt = c32dup(U"> "),
-        .password = U'\0',
         .match_fields = MATCH_FILENAME | MATCH_NAME | MATCH_GENERIC,
+        .password_mode = {
+            .character = U'\0',
+            .enabled = false,
+        },
         .terminal = NULL,
         .launch_prefix = NULL,
         .font = strdup("monospace"),
