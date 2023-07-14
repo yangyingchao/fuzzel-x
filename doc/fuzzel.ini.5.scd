@@ -82,7 +82,8 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	Default: _auto_.
 
 *prompt*=
-	String to use as input prompt. Default: _> _.
+	String to use as input prompt. Note that trailing spaces are
+	trimmed, unless the string is quoted. Default: _"> "_.
 
 *icon-theme*
 	Icon theme. Note that the name is case sensitive. Default:
@@ -115,6 +116,9 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	*--password*. Note that this can be overridden on the command
 	line, by explicitly specifying the character with
 	*--password=X*. Default: _\*_.
+
+*filter-desktop*
+	Boolean. Filter desktop files based on the value of XDG_CURRENT_DESKTOP.
 
 *fuzzy*
 	Boolean. Enables or disables fuzzy matching. Default: _yes_.
@@ -192,7 +196,7 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	behavior, for example.
 	
 	Default: _yes_
-l
+
 # SECTION: colors
 
 All color values are in RGBA.

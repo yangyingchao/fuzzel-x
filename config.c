@@ -31,7 +31,7 @@ static const char *const binding_action_map[] = {
     [BIND_ACTION_CURSOR_LEFT] = "cursor-left",
     [BIND_ACTION_CURSOR_LEFT_WORD] = "cursor-left-word",
     [BIND_ACTION_CURSOR_RIGHT] = "cursor-right",
-    [BIND_ACTION_CURSOR_RIGHT_WORD] = "cursor-right_word",
+    [BIND_ACTION_CURSOR_RIGHT_WORD] = "cursor-right-word",
     [BIND_ACTION_DELETE_PREV] = "delete-prev",
     [BIND_ACTION_DELETE_PREV_WORD] = "delete-prev-word",
     [BIND_ACTION_DELETE_NEXT] = "delete-next",
@@ -755,10 +755,13 @@ parse_section_main(struct context *ctx)
             return false;
         }
 
-        conf->password = password_chars[0];
+        conf->password_mode.character = password_chars[0];
         free(password_chars);
         return true;
     }
+
+    else if (strcmp(key, "filter-desktop") == 0)
+        return value_to_bool(ctx, &conf->filter_desktop);
 
     else if (strcmp(key, "fuzzy") == 0)
         return value_to_bool(ctx, &conf->fuzzy.enabled);
@@ -1387,8 +1390,11 @@ config_load(struct config *conf, const char *conf_path,
     *conf = (struct config) {
         .output = NULL,
         .prompt = c32dup(U"> "),
-        .password = U'\0',
         .match_fields = MATCH_FILENAME | MATCH_NAME | MATCH_GENERIC,
+        .password_mode = {
+            .character = U'\0',
+            .enabled = false,
+        },
         .terminal = NULL,
         .launch_prefix = NULL,
         .font = strdup("monospace"),

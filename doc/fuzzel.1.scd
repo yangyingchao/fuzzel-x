@@ -158,8 +158,8 @@ or command line options:
 	scaling). Default: _1_.
 
 *-r*,*--border-radius*=_INT_
-	The corner curvature. Larger means more rounded corners.
-	0 disables rounded corners. Default: _10_.
+	The corner curvature, subject to output scaling. Larger means more
+	rounded corners. 0 disables rounded corners. Default: _10_.
 
 *-C*,*--border-color*=_HEX_
 	The color of the border. See *COLORS*. Default: _002b36ff_.
@@ -168,6 +168,11 @@ or command line options:
 	Include desktop actions in the list. Desktop actions are
 	alternative actions some desktop entries have. Examples include
 	"New Window", "New Document", etc.
+
+*--filter-desktop*=[_no_]
+	Filter the visible desktop entries based on the value of
+	XDG_CURRENT_DESKTOP. If the optional parameter is "no",
+	explicitly disables filtering.
 
 *--no-fuzzy*
 	Disables fuzzy matching. When disabled, only exact (case

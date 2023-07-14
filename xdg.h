@@ -18,4 +18,5 @@ const char *xdg_cache_dir(void);
 
 void xdg_find_programs(
     const char *terminal, bool include_actions,
+    bool filter_desktop, char_list_t *desktops,
     struct application_list *applications);

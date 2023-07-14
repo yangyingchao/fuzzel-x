@@ -1,5 +1,6 @@
 # Changelog
 
+* [Unreleased](#unreleased)
 * [1.9.1](#1-9-1)
 * [1.9.0](#1-9-0)
 * [1.8.2](#1-8-2)
@@ -20,6 +21,40 @@
 * [1.4.2](#1-4-2)
 * [1.4.1](#1-4-1)
 
+
+## Unreleased
+### Added
+
+* Added a new option `--filter-desktop` which toggles filtering of desktop
+  entries based on the OnlyShowIn and NotShowIn keys. Filtering is based on the
+  value of $XDG\_CURRENT\_DESKTOP according to desktop-entry spec. Filtering is
+  off by default. To disable filtering set in the config from the command line,
+  use --filter-desktop=no
+
+### Changed
+
+* Output scaling is now applied to the border radius ([#236][236]).
+
+[236]: https://codeberg.org/dnkl/fuzzel/issues/236
+
+
+### Deprecated
+### Removed
+### Fixed
+
+* Last line sometimes not being rendered ([#234][234]).
+* `key-bindings.cursor-right-word` not being recognized as a valid
+  action.
+* `password-character` being set in `fuzzel.ini` incorrectly enabling
+  password mode ([#241][241]).
+* Added missing zsh+fish completions for `--password`.
+
+[234]: https://codeberg.org/dnkl/fuzzel/issues/234
+[241]: https://codeberg.org/dnkl/fuzzel/issues/241
+
+
+### Security
+### Contributors
 
 ## 1.9.1
 

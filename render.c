@@ -125,7 +125,7 @@ render_background(const struct render *render, struct buffer *buf)
         const double h = max(buf->height - 2 * b, 0.);
 
         const double from_degree = M_PI / 180;
-        const double radius = render->conf->border.radius;
+        const double radius = render->conf->border.radius * render->scale;
 
         /* Path describing an arc:ed rectangle */
         cairo_new_path(buf->cairo);
@@ -157,7 +157,8 @@ render_background(const struct render *render, struct buffer *buf)
 }
 
 static void
-render_glyph(pixman_image_t *pix, const struct fcft_glyph *glyph, int x, int y, const pixman_color_t *color)
+render_glyph(pixman_image_t *pix, const struct fcft_glyph *glyph, int x, int y,
+             const pixman_color_t *color)
 {
     if (pixman_image_get_format(glyph->pix) == PIXMAN_a8r8g8b8) {
         /* Glyph surface is a pre-rendered image (typically a color emoji...) */
@@ -197,7 +198,8 @@ render_prompt(const struct render *render, struct buffer *buf,
         ? render->subpixel : FCFT_SUBPIXEL_NONE;
 
     int x = render->border_size + render->x_margin;
-    int y = render->border_size + render->y_margin + font->ascent;
+    int y = render->border_size + render->y_margin +
+        (render->row_height + font->height) / 2 - font->descent;
 
     if (fcft_capabilities() & FCFT_CAPABILITY_TEXT_RUN_SHAPING) {
         struct fcft_text_run *run = fcft_rasterize_text_run_utf32(
@@ -231,8 +233,8 @@ render_prompt(const struct render *render, struct buffer *buf,
     for (size_t i = 0; i < prompt_len + text_len; i++) {
         char32_t wc = i < prompt_len
             ? pprompt[i]
-            : (conf->password != 0
-               ? conf->password
+            : (conf->password_mode.enabled
+               ? conf->password_mode.character
                : ptext[i - prompt_len]);
 
         const struct fcft_glyph *glyph = fcft_rasterize_char_utf32(
@@ -621,12 +623,6 @@ render_match_list(const struct render *render, struct buffer *buf,
     bool render_icons = mtx_trylock(render->icon_lock) == thrd_success;
 
     for (size_t i = 0; i < match_count; i++) {
-        if (y + font->descent > buf->height - y_margin - border_size) {
-            /* Window too small - happens if the compositor doesn't
-             * respect our requested size */
-            break;
-        }
-
         const struct match *match = matches_get(matches, i);
 
         if (i == selected) {
@@ -666,7 +662,7 @@ render_match_list(const struct render *render, struct buffer *buf,
         double max_x = buf->width - border_size - x_margin;
 
 #if 0 /* Render the icon+text bounding box */
-        pixman_color_t sc = rgba2pixman(render->conf->match_color);
+        pixman_color_t sc = rgba2pixman(render->conf->colors.match);
         pixman_image_fill_rectangles(
             PIXMAN_OP_SRC, buf->pix, &sc, 1,
             &(pixman_rectangle16_t){

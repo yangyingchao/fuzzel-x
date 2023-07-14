@@ -48,6 +48,7 @@ struct icon {
 };
 
 typedef tll(char32_t *) char32_list_t;
+typedef tll(char *) char_list_t;
 
 struct application {
     char *id; /* Desktop File ID, as defined in the Desktop Entry specicication
