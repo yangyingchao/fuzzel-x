@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [1.9.2](#1-9-2)
 * [1.9.1](#1-9-1)
 * [1.9.0](#1-9-0)
 * [1.8.2](#1-8-2)
@@ -22,7 +22,8 @@
 * [1.4.1](#1-4-1)
 
 
-## Unreleased
+## 1.9.2
+
 ### Added
 
 * Added a new option `--filter-desktop` which toggles filtering of desktop
@@ -31,6 +32,7 @@
   off by default. To disable filtering set in the config from the command line,
   use --filter-desktop=no
 
+
 ### Changed
 
 * Output scaling is now applied to the border radius ([#236][236]).
@@ -38,8 +40,6 @@
 [236]: https://codeberg.org/dnkl/fuzzel/issues/236
 
 
-### Deprecated
-### Removed
 ### Fixed
 
 * Last line sometimes not being rendered ([#234][234]).
@@ -53,8 +53,12 @@
 [241]: https://codeberg.org/dnkl/fuzzel/issues/241
 
 
-### Security
 ### Contributors
+
+* complex2liu
+* Mark Stosberg
+* Ronan Pigott
+
 
 ## 1.9.1
 
