@@ -29,6 +29,13 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* Ignore whitespace in `.desktop` files’ key and name values
+  ([#248][248]).
+
+[248]: https://codeberg.org/dnkl/fuzzel/issues/248
+
+
 ### Security
 ### Contributors
 

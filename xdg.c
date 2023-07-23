@@ -1,5 +1,6 @@
 #include "xdg.h"
 
+#include <ctype.h>
 #include <errno.h>
 #include <limits.h>
 #include <locale.h>
@@ -118,6 +119,18 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename,
             len--;
         }
 
+        /* Strip leading whitespace */
+        while (len > 0 && isspace(line[0])) {
+            line++;
+            len--;
+        }
+
+        /* Strip trailing whitespace */
+        while (len > 0 && isspace(line[len - 1])) {
+            line[len - 1] = '\0';
+            len--;
+        }
+
         if (len == 0) {
             free(line);
             continue;
@@ -185,7 +198,17 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename,
         int locale_score = 1;  /* Default, locale not specified in key */
 
         if (key != NULL && value != NULL) {
-            const size_t key_len = strlen(key);
+            size_t key_len = strlen(key);
+
+            /* Strip trailing whitespace from the key name */
+            while (key_len > 1 && isspace(key[key_len - 1])) {
+                key[key_len - 1] = '\0';
+                key_len--;
+            }
+
+            /* Strip leading whitespace from value */
+            while (value[0] != '\0' && isspace(value[0]))
+                value++;
 
             if (key[key_len - 1] == ']') {
                 char *locale = strchr(key, '[');
