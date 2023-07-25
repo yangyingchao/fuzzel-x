@@ -1461,6 +1461,8 @@ add_default_key_bindings(struct config *conf)
     static const struct config_key_binding bindings[] = {
         {BIND_ACTION_CANCEL, m_none, {{XKB_KEY_Escape}}},
         {BIND_ACTION_CANCEL, m_ctrl, {{XKB_KEY_g}}},
+        {BIND_ACTION_CANCEL, m_ctrl, {{XKB_KEY_c}}},
+        {BIND_ACTION_CANCEL, m_ctrl, {{XKB_KEY_bracketleft}}},
 
         {BIND_ACTION_CURSOR_HOME, m_none, {{XKB_KEY_Home}}},
         {BIND_ACTION_CURSOR_HOME, m_ctrl, {{XKB_KEY_a}}},
@@ -1481,8 +1483,10 @@ add_default_key_bindings(struct config *conf)
         {BIND_ACTION_CURSOR_RIGHT_WORD, m_ctrl, {{XKB_KEY_Right}}},
 
         {BIND_ACTION_DELETE_PREV, m_none, {{XKB_KEY_BackSpace}}},
+        {BIND_ACTION_DELETE_PREV, m_ctrl, {{XKB_KEY_h}}},
 
         {BIND_ACTION_DELETE_PREV_WORD, m_ctrl, {{XKB_KEY_BackSpace}}},
+        {BIND_ACTION_DELETE_PREV_WORD, m_ctrl, {{XKB_KEY_w}}},
         {BIND_ACTION_DELETE_PREV_WORD, m_alt, {{XKB_KEY_BackSpace}}},
 
         {BIND_ACTION_DELETE_NEXT, m_none, {{XKB_KEY_Delete}}},
