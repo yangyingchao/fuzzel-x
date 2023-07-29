@@ -103,12 +103,22 @@ wscanner_prog = find_program(
 
 wl_proto_headers = []
 wl_proto_src = []
-foreach prot : [
+
+wl_proto_xml = [
   'external/wlr-layer-shell-unstable-v1.xml',
   wayland_protocols_datadir + '/stable/xdg-shell/xdg-shell.xml',
   wayland_protocols_datadir + '/unstable/xdg-output/xdg-output-unstable-v1.xml',
-  wayland_protocols_datadir + '/staging/xdg-activation/xdg-activation-v1.xml']
+  wayland_protocols_datadir + '/staging/xdg-activation/xdg-activation-v1.xml'
+  ]
 
+if wayland_protocols.version().version_compare('>=1.32')
+  add_project_arguments('-DHAVE_CURSOR_SHAPE=1', language: 'c')
+  wl_proto_xml += [
+    wayland_protocols_datadir + '/staging/cursor-shape/cursor-shape-v1.xml',
+    wayland_protocols_datadir + '/unstable/tablet/tablet-unstable-v2.xml']
+endif
+
+foreach prot : wl_proto_xml
   wl_proto_headers += custom_target(
     prot.underscorify() + '-client-header',
     output: '@BASENAME@.h',
