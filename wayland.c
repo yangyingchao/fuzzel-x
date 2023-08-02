@@ -21,15 +21,12 @@
 #include <xkbcommon/xkbcommon-compose.h>
 #include <fontconfig/fontconfig.h>
 
-#include <xdg-output-unstable-v1.h>
+#include <cursor-shape-v1.h>
 #include <wlr-layer-shell-unstable-v1.h>
 #include <xdg-activation-v1.h>
+#include <xdg-output-unstable-v1.h>
 
 #include <tllist.h>
-
-#ifdef HAVE_CURSOR_SHAPE
-#include <cursor-shape-v1.h>
-#endif
 
 #define LOG_MODULE "wayland"
 #define LOG_ENABLE_DBG 0
@@ -187,10 +184,7 @@ struct wayland {
     struct wl_shm *shm;
     struct zxdg_output_manager_v1 *xdg_output_manager;
     struct xdg_activation_v1 *xdg_activation_v1;
-
-#ifdef HAVE_CURSOR_SHAPE
     struct wp_cursor_shape_manager_v1 *cursor_shape_manager;
-#endif
 
     tll(struct monitor) monitors;
     const struct monitor *monitor;
@@ -981,19 +975,19 @@ static const struct wl_keyboard_listener keyboard_listener = {
     .repeat_info = &keyboard_repeat_info,
 };
 
-static bool attempt_cursor_shape(struct wayland *wayl, struct wl_pointer *wl_pointer,
-                                 uint32_t serial) {
-#ifdef HAVE_CURSOR_SHAPE
+static bool
+attempt_cursor_shape(struct wayland *wayl, struct wl_pointer *wl_pointer,
+                     uint32_t serial)
+{
     if (wayl->cursor_shape_manager) {
         struct wp_cursor_shape_device_v1 *device =
             wp_cursor_shape_manager_v1_get_pointer(
                 wayl->cursor_shape_manager, wl_pointer);
-        wp_cursor_shape_device_v1_set_shape(device, serial,
-            WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT);
+        wp_cursor_shape_device_v1_set_shape(
+            device, serial, WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT);
         wp_cursor_shape_device_v1_destroy(device);
         return true;
     }
-#endif
 
     return false;
 }
@@ -1640,7 +1634,6 @@ handle_global(void *data, struct wl_registry *registry,
             wayl->registry, name, &xdg_activation_v1_interface, required);
     }
 
-#ifdef HAVE_CURSOR_SHAPE
     else if (strcmp(interface, wp_cursor_shape_manager_v1_interface.name) == 0) {
         const uint32_t required = 1;
         if (!verify_iface_version(interface, version, required))
@@ -1649,7 +1642,6 @@ handle_global(void *data, struct wl_registry *registry,
         wayl->cursor_shape_manager = wl_registry_bind(
             wayl->registry, name, &wp_cursor_shape_manager_v1_interface, required);
     }
-#endif
 }
 
 static void
@@ -2166,12 +2158,8 @@ wayl_destroy(struct wayland *wayl)
         zxdg_output_manager_v1_destroy(wayl->xdg_output_manager);
     if (wayl->xdg_activation_v1 != NULL)
         xdg_activation_v1_destroy(wayl->xdg_activation_v1);
-
-#ifdef HAVE_CURSOR_SHAPE
     if (wayl->cursor_shape_manager != NULL)
         wp_cursor_shape_manager_v1_destroy(wayl->cursor_shape_manager);
-#endif
-
     if (wayl->layer_surface != NULL)
         zwlr_layer_surface_v1_destroy(wayl->layer_surface);
     if (wayl->layer_shell != NULL)
