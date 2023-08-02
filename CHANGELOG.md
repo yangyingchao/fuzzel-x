@@ -25,6 +25,10 @@
 
 ## Unreleased
 ### Added
+
+* Support for the `cursor-shape-v1` Wayland protocol.
+
+
 ### Changed
 ### Deprecated
 ### Removed
