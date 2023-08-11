@@ -32,6 +32,9 @@
 ### Changed
 
 * Minimum required version of _wayland-protocols_ is now 1.32
+* Selection color is now painted over background color ([#255][255]).
+
+[255]: https://codeberg.org/dnkl/fuzzel/issues/255
 
 
 ### Deprecated

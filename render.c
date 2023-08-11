@@ -649,7 +649,7 @@ render_match_list(const struct render *render, struct buffer *buf,
 
             pixman_color_t sc = rgba2pixman(render->conf->colors.selection);
             pixman_image_fill_rectangles(
-                PIXMAN_OP_SRC, buf->pix, &sc, 1,
+                PIXMAN_OP_OVER, buf->pix, &sc, 1,
                 &(pixman_rectangle16_t){
                     x_margin - sel_margin,
                     first_row + i * row_height,
