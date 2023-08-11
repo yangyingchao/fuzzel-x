@@ -367,10 +367,7 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename,
     tll_foreach(actions, it) {
         struct action *a = &it->item;
 
-        if (!(is_desktop_entry &&
-              a->name != NULL &&
-              a->exec != NULL))
-        {
+        if (!is_desktop_entry) {
             free(a->name);
             free(a->generic_name);
             free(a->app_id);
@@ -387,6 +384,9 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename,
 
             continue;
         }
+
+        if (a->name == NULL)
+            a->name = ambstoc32("<no title>");
 
         if (a->use_terminal && terminal != NULL) {
             char *exec_with_terminal = malloc(

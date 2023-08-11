@@ -630,7 +630,7 @@ execute_binding(struct seat *seat, const struct key_binding *binding, bool *refr
                     wayl->prompt, chars, strlen(chars));
                 free(chars);
             }
-        } else {
+        } else if (match->application->exec != NULL) {
             *refresh = prompt_insert_chars(
                 wayl->prompt,
                 match->application->exec,
