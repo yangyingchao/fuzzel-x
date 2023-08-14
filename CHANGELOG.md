@@ -33,8 +33,11 @@
 
 * Minimum required version of _wayland-protocols_ is now 1.32
 * Selection color is now painted over background color ([#255][255]).
+* Exact matches (of the application title) are now sorted first
+  ([#259][259]).
 
 [255]: https://codeberg.org/dnkl/fuzzel/issues/255
+[259]: https://codeberg.org/dnkl/fuzzel/issues/259
 
 
 ### Deprecated

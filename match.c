@@ -403,15 +403,38 @@ match_compar(const void *_a, const void *_b)
     const struct match *b = _b;
 
     /*
-     * Exact matches are preferred over fuzzy matches. I.e. an exact
-     * match is considered to be “less” than a fuzzy match.
+     * Exact mathes (of the application title) is always preferred.
+     *
+     * If neither match is an exact match, non-fuzzy matches are
+     * preferred over fuzzy matches. I.e. a non-fuzzy match is
+     * considered to be “less” than a fuzzy match.
      *
      * If the two matches have the same match type, prefer the one
      * with the highest launch count. That is, a *high* launch count
      * is considered to be “less” than a low launch count.
      */
 
-    if (a->matched_type == MATCHED_FUZZY && b->matched_type == MATCHED_EXACT)
+    const bool a_is_exact_match =
+        a->application->title != NULL &&
+        a->matched_type == MATCHED_EXACT &&
+        a->pos_count == 1 &&
+        a->pos[0].start == 0 &&
+        a->pos[0].len == c32len(a->application->title);
+    const bool b_is_exact_match =
+        b->application->title != NULL &&
+        b->matched_type == MATCHED_EXACT &&
+        b->pos_count == 1 &&
+        b->pos[0].start == 0 &&
+        b->pos[0].len == c32len(b->application->title);
+
+
+    if (a_is_exact_match && !b_is_exact_match)
+        return -1;
+
+    else if (!a_is_exact_match && b_is_exact_match)
+        return 1;
+
+    else if (a->matched_type == MATCHED_FUZZY && b->matched_type == MATCHED_EXACT)
         return 1;
 
     else if (a->matched_type == MATCHED_EXACT && b->matched_type == MATCHED_FUZZY)
