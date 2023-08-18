@@ -403,7 +403,7 @@ match_compar(const void *_a, const void *_b)
     const struct match *b = _b;
 
     /*
-     * Exact mathes (of the application title) is always preferred.
+     * Exact matches (of the application title) is always preferred.
      *
      * If neither match is an exact match, non-fuzzy matches are
      * preferred over fuzzy matches. I.e. a non-fuzzy match is
