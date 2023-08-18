@@ -129,7 +129,7 @@ application_execute(const struct application *app, const struct prompt *prompt,
     const char *id = app != NULL ? app->id : NULL;
 
     if (execute == NULL) {
-        LOG_ERR("%ls: entry has no Exec field", app->title);
+        LOG_ERR("%ls: entry has no Exec field", (const wchar_t *)app->title);
         return false;
     }
 
