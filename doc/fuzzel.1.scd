@@ -341,5 +341,6 @@ _$XDG_RUNTIME_DIR/fuzzel-$WAYLAND_DISPLAY.lock_
 
 # SEE ALSO
 
-*fuzzel.ini*(5),
-*https://specifications.freedesktop.org/desktop-entry-spec/desktop-entry-spec-latest.html*
+- *fuzzel.ini*(5)
+- *https://specifications.freedesktop.org/desktop-entry-spec/desktop-entry-spec-latest.html*
+- *https://codeberg.org/dnkl/fuzzel*

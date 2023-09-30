@@ -421,5 +421,6 @@ done by setting _action=none_; e.g. *delete-line=none*.
 
 # SEE ALSO
 
-*fuzzel*(1),
-*https://specifications.freedesktop.org/desktop-entry-spec/desktop-entry-spec-latest.html*
+- *fuzzel*(1)
+- *https://specifications.freedesktop.org/desktop-entry-spec/desktop-entry-spec-latest.html*
+- *https://codeberg.org/dnkl/fuzzel*
