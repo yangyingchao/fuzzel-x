@@ -260,7 +260,7 @@ or command line options:
 
 *--log-level*={*info*,*warning*,*error*,*none*}
 	Log level, used both for log output on stderr as well as
-	syslog. Default: _info_.
+	syslog. Default: _warning_.
 
 *--log-colorize*=[{*never*,*always*,*auto*}]
 	Enables or disables colorization of log output on stderr.

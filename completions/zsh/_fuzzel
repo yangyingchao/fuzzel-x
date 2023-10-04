@@ -41,7 +41,7 @@ _arguments \
     '--dmenu0[dmenu compatibility mode; entries are read from stdin, NUL separated]' \
     "--index[print selected entry's index instead of its text (dmenu mode only)]" \
     '(-R --no-run-if-empty)'{-R,--no-run-if-empty}'[exit immediately without showing the UI if stdin is empty (dmenu mode only)]' \
-    '--log-level[log level (info)]:loglevel:(info warning error none)' \
+    '--log-level[log level (warning)]:loglevel:(info warning error none)' \
     '--log-colorize[enable or disable colorization of log output on stderr]:logcolor:(never always auto)' \
     '--log-no-syslog[disable syslog logging]'
 

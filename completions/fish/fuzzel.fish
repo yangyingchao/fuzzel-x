@@ -49,7 +49,7 @@ complete -c fuzzel    -s d -l dmenu                                             
 complete -c fuzzel         -l dmenu0                                                                            -d "dmenu compatibility mode; entries are read from stdin, NUL separated"
 complete -c fuzzel         -l index                                                                             -d "print selected entry's index instead of its text (dmenu mode only)"
 complete -c fuzzel    -s R -l no-run-if-empty                                                                   -d "exit immediately without showing the UI if stdin is empty (dmenu mode only)"
-complete -c fuzzel -x -s d -l log-level          -a "info warning error none"                                   -d "log-level (info)"
+complete -c fuzzel -x -s d -l log-level          -a "info warning error none"                                   -d "log-level (warning)"
 complete -c fuzzel -x -s l -l log-colorize       -a "always never auto"                                         -d "enable or disable colorization of log output on stderr"
 complete -c fuzzel    -s S -l log-no-syslog                                                                     -d "disable syslog logging"
 complete -c fuzzel    -s v -l version                                                                           -d "show the version number and quit"

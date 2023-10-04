@@ -286,7 +286,7 @@ print_usage(const char *prog_name)
            "  -R,--no-run-if-empty           exit immediately without showing UI if stdin\n"
            "                                 is empty (dmenu mode only)\n"
            "     --log-level={info|warning|error|none}\n"
-           "                                 log level (info)\n"
+           "                                 log level (warning)\n"
            "     --log-colorize=[never|always|auto]\n"
            "                                 enable/disable colorization of log output on\n"
            "                                 stderr\n"
@@ -596,7 +596,7 @@ main(int argc, char *const *argv)
     };
 
     const char *config_path = NULL;
-    enum log_class log_level = LOG_CLASS_INFO;
+    enum log_class log_level = LOG_CLASS_WARNING;
     enum log_colorize log_colorize = LOG_COLORIZE_AUTO;
     bool log_syslog = true;
 
