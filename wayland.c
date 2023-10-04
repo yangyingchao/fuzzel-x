@@ -1309,8 +1309,8 @@ output_update_ppi(struct monitor *mon)
     if (mon->dim.mm.width == 0 || mon->dim.mm.height == 0)
         return;
 
-    int x_inches = mon->dim.mm.width * 0.03937008;
-    int y_inches = mon->dim.mm.height * 0.03937008;
+    float x_inches = mon->dim.mm.width * 0.03937008;
+    float y_inches = mon->dim.mm.height * 0.03937008;
 
     mon->ppi.real.x = mon->dim.px_real.width / x_inches;
     mon->ppi.real.y = mon->dim.px_real.height / y_inches;
@@ -1321,7 +1321,7 @@ output_update_ppi(struct monitor *mon)
     case WL_OUTPUT_TRANSFORM_270:
     case WL_OUTPUT_TRANSFORM_FLIPPED_90:
     case WL_OUTPUT_TRANSFORM_FLIPPED_270: {
-        int swap = x_inches;
+        float swap = x_inches;
         x_inches = y_inches;
         y_inches = swap;
         break;
