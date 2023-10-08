@@ -52,6 +52,7 @@ static const char *const binding_action_map[] = {
     [BIND_ACTION_INSERT_SELECTED] = "insert-selected",
     [BIND_ACTION_MATCHES_EXECUTE] = "execute",
     [BIND_ACTION_MATCHES_EXECUTE_OR_NEXT] = "execute-or-next",
+    [BIND_ACTION_MATCHES_EXECUTE_INPUT] = "execute-input",
     [BIND_ACTION_MATCHES_PREV] = "prev",
     [BIND_ACTION_MATCHES_PREV_WITH_WRAP] = "prev-with-wrap",
     [BIND_ACTION_MATCHES_PREV_PAGE] = "prev-page",
@@ -1376,6 +1377,9 @@ add_default_key_bindings(struct config *conf)
         {BIND_ACTION_MATCHES_EXECUTE, m_ctrl, {{XKB_KEY_y}}},
 
         {BIND_ACTION_MATCHES_EXECUTE_OR_NEXT, m_none, {{XKB_KEY_Tab}}},
+
+        {BIND_ACTION_MATCHES_EXECUTE_INPUT, m_shift, {{XKB_KEY_Return}}},
+        {BIND_ACTION_MATCHES_EXECUTE_INPUT, m_shift, {{XKB_KEY_KP_Enter}}},
 
         {BIND_ACTION_MATCHES_PREV, m_none, {{XKB_KEY_Up}}},
         {BIND_ACTION_MATCHES_PREV, m_ctrl, {{XKB_KEY_p}}},

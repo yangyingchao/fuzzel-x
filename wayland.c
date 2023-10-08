@@ -508,15 +508,14 @@ get_xdg_activation_token(struct seat *seat, const char *app_id,
 }
 
 static void
-execute_selected(struct seat *seat, int custom_success_exit_code)
+execute_selected(struct seat *seat, bool as_is, int custom_success_exit_code)
 {
     struct wayland *wayl = seat->wayl;
     wayl->status = EXIT;
 
-    const struct match *match = matches_get_match(wayl->matches);
+    const struct match *match = !as_is ? matches_get_match(wayl->matches) : NULL;
     struct application *app = match != NULL ? match->application : NULL;
     ssize_t index = match != NULL ? match->index : -1;
-
 
     if (wayl->conf->dmenu.enabled) {
         dmenu_execute(app, index, wayl->prompt, wayl->conf->dmenu.mode);
@@ -544,7 +543,6 @@ execute_selected(struct seat *seat, int custom_success_exit_code)
         }
     }
 }
-
 
 static bool
 execute_binding(struct seat *seat, const struct key_binding *binding, bool *refresh)
@@ -643,14 +641,18 @@ execute_binding(struct seat *seat, const struct key_binding *binding, bool *refr
     }
 
     case BIND_ACTION_MATCHES_EXECUTE:
-        execute_selected(seat, -1);
+        execute_selected(seat, false, -1);
         return true;
 
     case BIND_ACTION_MATCHES_EXECUTE_OR_NEXT:
         if (matches_get_total_count(wayl->matches) == 1)
-            execute_selected(seat, -1);
+            execute_selected(seat, false, -1);
         else
             *refresh = matches_selected_next(wayl->matches, true);
+        return true;
+
+    case BIND_ACTION_MATCHES_EXECUTE_INPUT:
+        execute_selected(seat, true, -1);
         return true;
 
     case BIND_ACTION_MATCHES_PREV:
@@ -705,7 +707,7 @@ execute_binding(struct seat *seat, const struct key_binding *binding, bool *refr
     case BIND_ACTION_CUSTOM_18:
     case BIND_ACTION_CUSTOM_19: {
         const size_t idx = action - BIND_ACTION_CUSTOM_1;
-        execute_selected(seat, 10 + idx);
+        execute_selected(seat, false, 10 + idx);
         return true;
     }
 

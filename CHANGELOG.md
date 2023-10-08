@@ -32,9 +32,13 @@
   positioned), such as `top`, `top-left`, `bottom-right`, `center`,
   etc. Defaults to `center` ([#130][130]).
 * `--check-config` command line option ([#264][264]).
+* New key binding: `execute-input` (mapped to shift+return by
+  default). This key binding executes the raw input as is, regardless
+  of whether it matches anything in the list or not ([#252][252]).
 
 [130]: https://codeberg.org/dnkl/fuzzel/issues/130
 [264]: https://codeberg.org/dnkl/fuzzel/issues/264
+[252]: https://codeberg.org/dnkl/fuzzel/issues/252
 
 
 ### Changed

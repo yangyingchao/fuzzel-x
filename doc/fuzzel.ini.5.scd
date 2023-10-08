@@ -299,6 +299,11 @@ done by setting _action=none_; e.g. *delete-line=none*.
 	match, select the next entry. Wraps around when the last entry has
 	been reached. Default: _Tab_.
 
+*execute-input*
+	Execute the raw input as is, regardless of whether it matches
+	anything in the list or not. Default: _Shift+Return
+	Shift+KP_Enter_.
+
 *cursor-left*
 	Moves the cursor one **character** to the left. Default: _Left
 	Control+b_.
