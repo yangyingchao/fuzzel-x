@@ -10,11 +10,11 @@ _arguments \
     '(-D --dpi-aware)'{-D,--dpi-aware}"[scale fonts using the monitor's DPI (auto)]:dpi_aware:(no yes auto)" \
     '--icon-theme[icon theme name (hicolor)]:theme:->icon_theme' \
     '(-I --no-icons)'{-I,--no-icons}'[do not render any icons]' \
-    '(-F --fields)'{-F,--fields}'[comma separated list of XDG Desktop entry fields to match ]:fields:->fields' \
+    '(-F --fields)'{-F,--fields}'[comma separated list of XDG Desktop entry fields to match ]:fields:(filename name generic exec categories keywords comment)' \
     '(-p --prompt)'{-p,--prompt}'[string to use as input prompt ("> ")]:()' \
     '--password[render all input using either "*", or the specified character]:()' \
     '(-T --terminal)'{-T,--terminal}'[terminal command, with arguments ($TERMINAL -e)]:terminal:_command_names -e' \
-    '(-a --anchor)'{-a,--anchor}'[set window anchor (center)]:anchors:->anchors' \
+    '(-a --anchor)'{-a,--anchor}'[set window anchor (center)]:anchors:(top-left top top-right left center right bottom-left bottom bottom-right)' \
     '(-l --lines)'{-l,--lines}'[maximum number of matches to display (15)]:()' \
     '(-w --width)'{-w,--width}'[window width, in characters (30)]:()' \
     '(-x --horizontal-pad)'{-x,--horizontal-pad}'[horizontal padding, in pixels (40)]:()' \
@@ -63,13 +63,5 @@ case "${state}" in
         elif command -v swaymsg > /dev/null; then
             _values 'outputs' $(swaymsg -t get_outputs --raw|grep name|cut -d '"' -f 4)
         fi
-        ;;
-
-    fields)
-        _values -s , 'Desktop entry fields' filename name generic exec categories keywords comment
-        ;;
-
-    anchors)
-        _values -s , 'Window anchor' top-left top top-right left center right bottom-left bottom bottom-right
         ;;
 esac
