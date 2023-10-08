@@ -33,6 +33,31 @@ struct levenshtein_matrix {
     enum choice { UNSET, FIRST, SECOND, THIRD } choice;
 };
 
+static char32_t *
+c32casestr(const char32_t *haystack, const char32_t *needle)
+{
+    const size_t hay_len = c32len(haystack);
+    const size_t needle_len = c32len(needle);
+
+    if (needle_len > hay_len)
+        return NULL;
+
+    for (size_t i = 0; i < hay_len - needle_len + 1; i++) {
+        bool matched = true;
+        for (size_t j = 0; j < needle_len; j++) {
+            if (toc32lower(haystack[i + j]) != toc32lower(needle[j])) {
+                matched = false;
+                break;
+            }
+        }
+
+        if (matched)
+            return (char32_t *)&haystack[i];
+    }
+
+    return NULL;
+}
+
 static void
 levenshtein_distance(const char32_t *a, size_t alen,
                      const char32_t *b, size_t blen,
@@ -313,6 +338,28 @@ matches_get_match_index(const struct matches *matches)
 }
 
 bool
+matches_selected_select(struct matches *matches, const char *_string)
+{
+    if (_string == NULL)
+        return false;
+
+    char32_t *string = ambstoc32(_string);
+    if (string == NULL)
+        return false;
+
+    for (size_t i = 0; i < matches->match_count; i++) {
+        if (c32casestr(matches->matches[i].application->title, string) != NULL) {
+            matches->selected = i;
+            free(string);
+            return true;
+        }
+    }
+
+    free(string);
+    return false;
+}
+
+bool
 matches_selected_first(struct matches *matches)
 {
     if (matches->match_count <= 0 || matches->selected <= 0)
@@ -448,31 +495,6 @@ match_compar(const void *_a, const void *_b)
 
     else
         return 0;
-}
-
-static char32_t *
-c32casestr(const char32_t *haystack, const char32_t *needle)
-{
-    const size_t hay_len = c32len(haystack);
-    const size_t needle_len = c32len(needle);
-
-    if (needle_len > hay_len)
-        return NULL;
-
-    for (size_t i = 0; i < hay_len - needle_len + 1; i++) {
-        bool matched = true;
-        for (size_t j = 0; j < needle_len; j++) {
-            if (toc32lower(haystack[i + j]) != toc32lower(needle[j])) {
-                matched = false;
-                break;
-            }
-        }
-
-        if (matched)
-            return (char32_t *)&haystack[i];
-    }
-
-    return NULL;
 }
 
 void

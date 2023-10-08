@@ -121,6 +121,10 @@ or command line options:
 	
 	Default: _center_
 
+*select*=_STRING_
+	Select the first entry that matches the given string (case
+	insensitive).
+
 *-l*,*--lines*=COUNT
 	The (maximum) number of matches to display. This dictates the
 	window height. Default: _15_.

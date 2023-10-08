@@ -16,6 +16,7 @@ _arguments \
     '--password[render all input using either "*", or the specified character]:()' \
     '(-T --terminal)'{-T,--terminal}'[terminal command, with arguments ($TERMINAL -e)]:terminal:_command_names -e' \
     '(-a --anchor)'{-a,--anchor}'[set window anchor (center)]:anchors:(top-left top top-right left center right bottom-left bottom bottom-right)' \
+    '--select[select the first entry that matches the given string]:()' \
     '(-l --lines)'{-l,--lines}'[maximum number of matches to display (15)]:()' \
     '(-w --width)'{-w,--width}'[window width, in characters (30)]:()' \
     '(-x --horizontal-pad)'{-x,--horizontal-pad}'[horizontal padding, in pixels (40)]:()' \

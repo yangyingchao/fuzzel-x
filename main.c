@@ -51,6 +51,8 @@ struct context {
     int icon_size;
     mtx_t *icon_lock;
 
+    const char *select_initial;
+
 #if 0
     /* TODO: can we use a struct config ptr instead? */
     struct {
@@ -247,6 +249,7 @@ print_usage(const char *prog_name)
            "                                 'terminal' programs, e.g. \"xterm -e\".\n"
            "                                 Not used in dmenu mode (not set)\n"
            "  -a,--anchor                    window anchor (center)\n"
+           "     --select=STRING             select first entry that matches the given string\n"
            "  -l,--lines                     number of matches to show\n"
            "  -w,--width                     window width, in characters (margins and\n"
            "                                 borders not included)\n"
@@ -500,12 +503,14 @@ fdm_apps_populated(struct fdm *fdm, int fd, int events, void *data)
     struct application_list *apps = ctx->apps;
     struct matches *matches = ctx->matches;
     struct prompt *prompt = ctx->prompt;
+    const char *select = ctx->select_initial;
 
     switch (event) {
     case EVENT_APPS_LOADED:
         /* Update matches list, then refresh the GUI */
         matches_set_applications(matches, apps);
         matches_update(matches, prompt);
+        matches_selected_select(matches, select);
         break;
 
     case EVENT_ICONS_LOADED:
@@ -544,6 +549,7 @@ main(int argc, char *const *argv)
     #define OPT_DMENU_NULL                   273
     #define OPT_FILTER_DESKTOP               274
     #define OPT_CHECK_CONFIG                 275
+    #define OPT_SELECT                       276
 
     static const struct option longopts[] = {
         {"config",               required_argument, 0,  OPT_CONFIG},
@@ -556,6 +562,7 @@ main(int argc, char *const *argv)
         {"fields",               required_argument, 0, 'F'},
         {"password",             optional_argument, 0, OPT_PASSWORD},
         {"anchor",               required_argument, 0, 'a'},
+        {"select",               required_argument, 0, OPT_SELECT},
         {"lines",                required_argument, 0, 'l'},
         {"width",                required_argument, 0, 'w'},
         {"tabs",                 required_argument, 0, OPT_TABS},
@@ -605,6 +612,7 @@ main(int argc, char *const *argv)
     enum log_class log_level = LOG_CLASS_WARNING;
     enum log_colorize log_colorize = LOG_COLORIZE_AUTO;
     bool log_syslog = true;
+    const char *select = NULL;
 
     struct {
         struct config conf;
@@ -810,6 +818,10 @@ main(int argc, char *const *argv)
             cmdline_overrides.anchor_set = true;
             break;
         }
+
+        case OPT_SELECT:
+            select = optarg;
+            break;
 
         case 'l':
             if (sscanf(optarg, "%u", &cmdline_overrides.conf.lines) != 1) {
@@ -1391,6 +1403,7 @@ main(int argc, char *const *argv)
 
             matches_set_applications(matches, apps);
             matches_update(matches, prompt);
+            matches_selected_select(matches, select);
         }
 
         else {
@@ -1410,6 +1423,7 @@ main(int argc, char *const *argv)
         .apps = apps,
         .themes = &themes,
         .icon_lock = &icon_lock,
+        .select_initial = select,
         .event_fd = -1,
         .dmenu_abort_fd = dmenu_abort_fd,
     };
