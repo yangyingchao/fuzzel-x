@@ -31,8 +31,10 @@
   (i.e. where on the screen the window should generally be
   positioned), such as `top`, `top-left`, `bottom-right`, `center`,
   etc. Defaults to `center` ([#130][130]).
+* `--check-config` command line option ([#264][264]).
 
 [130]: https://codeberg.org/dnkl/fuzzel/issues/130
+[264]: https://codeberg.org/dnkl/fuzzel/issues/264
 
 
 ### Changed

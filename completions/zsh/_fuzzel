@@ -3,6 +3,7 @@
 _arguments \
     -s \
     '--config[path to configuration file (XDG_CONFIG_HOME/fuzzel/fuzzel.ini)]:config:_files' \
+    '--check-config[verify configuration and exit with 0 if ok, otherwise exit with 1]' \
     '(-v --version)'{-v,--version}'[show the version number and quit]' \
     '(-h --help)'{-h,--help}'[show help message and quit]' \
     '(-o --output)'{-o,--output}'[output (monitor) to display on (none)]:output:->outputs' \

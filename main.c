@@ -232,6 +232,7 @@ print_usage(const char *prog_name)
     printf("\n");
     printf("Options:\n");
     printf("     --config=PATH               load configuration from PATH (XDG_CONFIG_HOME/fuzzel/fuzzel.ini)\n"
+           "     --check-config              verify configuration, exit with 0 if ok, otherwise exit with 1\n"
            "  -o,--output=OUTPUT             output (monitor) to display on (none)\n"
            "  -f,--font=FONT                 font name and style, in FontConfig format\n"
            "                                 (monospace)\n"
@@ -542,9 +543,11 @@ main(int argc, char *const *argv)
     #define OPT_TABS                         272
     #define OPT_DMENU_NULL                   273
     #define OPT_FILTER_DESKTOP               274
+    #define OPT_CHECK_CONFIG                 275
 
     static const struct option longopts[] = {
         {"config",               required_argument, 0,  OPT_CONFIG},
+        {"check-config",         no_argument,       0,  OPT_CHECK_CONFIG},
         {"output"  ,             required_argument, 0, 'o'},
         {"font",                 required_argument, 0, 'f'},
         {"dpi-aware",            required_argument, 0, 'D'},
@@ -597,6 +600,7 @@ main(int argc, char *const *argv)
         {NULL,                   no_argument,       0, 0},
     };
 
+    bool check_config = false;
     const char *config_path = NULL;
     enum log_class log_level = LOG_CLASS_WARNING;
     enum log_colorize log_colorize = LOG_COLORIZE_AUTO;
@@ -665,6 +669,10 @@ main(int argc, char *const *argv)
         switch (c) {
         case OPT_CONFIG:
             config_path = optarg;
+            break;
+
+        case OPT_CHECK_CONFIG:
+            check_config = true;
             break;
 
         case 'o':
@@ -1179,10 +1187,15 @@ main(int argc, char *const *argv)
     int ret = EXIT_FAILURE;
 
     struct config conf = {0};
-    bool conf_successful = config_load(&conf, config_path, NULL, true);
+    bool conf_successful = config_load(&conf, config_path, NULL, check_config);
     if (!conf_successful) {
         config_free(&conf);
         return ret;
+    }
+
+    if (check_config) {
+        config_free(&conf);
+        return EXIT_SUCCESS;
     }
 
     /* Apply command line overrides */
