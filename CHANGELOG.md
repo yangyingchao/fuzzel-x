@@ -27,9 +27,12 @@
 ### Added
 
 * Support for the `cursor-shape-v1` Wayland protocol.
-* New option `--anchor` allows setting the window position anchor (i.e. where
-  on the screen the window should generally be positioned), such as `top`,
-  `top-left`, `bottom-right`, `center`, etc. Defaults to `center`
+* New option `--anchor` allows setting the window position anchor
+  (i.e. where on the screen the window should generally be
+  positioned), such as `top`, `top-left`, `bottom-right`, `center`,
+  etc. Defaults to `center` ([#130][130]).
+
+[130]: https://codeberg.org/dnkl/fuzzel/issues/130
 
 
 ### Changed
