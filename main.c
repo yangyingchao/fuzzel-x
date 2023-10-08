@@ -783,7 +783,7 @@ main(int argc, char *const *argv)
             cmdline_overrides.conf.terminal = optarg;
             break;
 
-        case 'a':
+        case 'a': {
             uint32_t anchor = 0;
 
             for (size_t i = 0; anchors_map[i].name != NULL; i++) {
@@ -801,6 +801,7 @@ main(int argc, char *const *argv)
             cmdline_overrides.conf.anchor = anchor;
             cmdline_overrides.anchor_set = true;
             break;
+        }
 
         case 'l':
             if (sscanf(optarg, "%u", &cmdline_overrides.conf.lines) != 1) {
