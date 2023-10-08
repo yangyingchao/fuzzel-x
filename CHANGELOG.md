@@ -37,11 +37,13 @@
   of whether it matches anything in the list or not ([#252][252]).
 * `--select=STRING` command line option. Selects the first entry that
   matches the given string ([#237][237]).
+* `include=<path>` option to `fuzzel.ini` ([#205][205]).
 
 [130]: https://codeberg.org/dnkl/fuzzel/issues/130
 [264]: https://codeberg.org/dnkl/fuzzel/issues/264
 [252]: https://codeberg.org/dnkl/fuzzel/issues/252
 [237]: https://codeberg.org/dnkl/fuzzel/issues/237
+[205]: https://codeberg.org/dnkl/fuzzel/issues/205
 
 
 ### Changed

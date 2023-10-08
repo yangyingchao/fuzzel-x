@@ -136,6 +136,36 @@ log_contextual(struct context *ctx, enum log_class log_class,
     free(formatted_msg);
 }
 
+static void __attribute__((format(printf, 4, 5)))
+log_contextual_errno(struct context *ctx, const char *file, int lineno,
+                     const char *fmt, ...)
+{
+    va_list va;
+    va_start(va, fmt);
+    char *formatted_msg;
+    int ret = vasprintf(&formatted_msg, fmt, va);
+    va_end(va);
+
+    if (ret < 0)
+        return;
+
+    bool print_dot = ctx->key != NULL;
+    bool print_colon = ctx->value != NULL;
+
+    if (!print_dot)
+        ctx->key = "";
+
+    if (!print_colon)
+        ctx->value = "";
+
+    log_errno(
+        LOG_CLASS_ERROR, LOG_MODULE, file, lineno, "%s:%d: [%s]%s%s%s%s: %s",
+        ctx->path, ctx->lineno, ctx->section, print_dot ? "." : "",
+        ctx->key, print_colon ? ": " : "", ctx->value, formatted_msg);
+
+    free(formatted_msg);
+}
+
 struct config_file {
     char *path;       /* Full, absolute, path */
     int fd;           /* FD of file, O_RDONLY */
@@ -680,8 +710,52 @@ parse_section_main(struct context *ctx)
     struct config *conf = ctx->conf;
     const char *key = ctx->key;
     const char *value = ctx->value;
+    bool errors_are_fatal = ctx->errors_are_fatal;
 
-    if (strcmp(key, "output") == 0)
+    if (strcmp(key, "include") == 0) {
+        char *_include_path = NULL;
+        const char *include_path = NULL;
+
+        if (value[0] == '~' && value[1] == '/') {
+            const char *home_dir = getenv("HOME");
+
+            if (home_dir == NULL) {
+                LOG_CONTEXTUAL_ERRNO("failed to expand '~'");
+                return false;
+            }
+
+            if (asprintf(&_include_path, "%s/%s", home_dir, value + 2) < 0) {
+                LOG_ERRNO("failed to allocate path for include directive");
+                return false;
+            }
+            include_path = _include_path;
+        } else
+            include_path = value;
+
+        if (include_path[0] != '/') {
+            LOG_CONTEXTUAL_ERR("not an absolute path");
+            free(_include_path);
+            return false;
+        }
+
+        FILE *include = fopen(include_path, "r");
+
+        if (include == NULL) {
+            LOG_CONTEXTUAL_ERRNO("failed to open");
+            free(_include_path);
+            return false;
+        }
+
+        bool ret = parse_config_file(
+            include, conf, include_path, errors_are_fatal);
+        fclose(include);
+
+        LOG_INFO("imported sub-configuration from %s", include_path);
+        free(_include_path);
+        return ret;
+    }
+
+    else if (strcmp(key, "output") == 0)
         return value_to_str(ctx, &conf->output);
 
     else if (strcmp(key, "font") == 0)

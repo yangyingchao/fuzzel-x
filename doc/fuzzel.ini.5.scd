@@ -25,6 +25,20 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 
 # SECTION: main
 
+*include*
+	Absolute path to configuration file to import.
+	
+	The import file has its own section scope. I.e. the including
+	configuration is still in the default section after the include,
+	regardless of which section the included file ends in.
+	
+		- The path must be an absolute path, or start with *~/*.
+		- Multiple include directives are allowed, but only one path per
+		  directive.
+		- Nested imports are allowed.
+	
+	Default: _not set_.
+
 *output*
 	Output (monitor) to display on. You can list the available outputs
 	with *wlr-randr* or with Sway using *swaymsg -t get_outputs*.
