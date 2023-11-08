@@ -309,14 +309,15 @@ done by setting _action=none_; e.g. *delete-line=none*.
 	selected entry on stdout. Default: _Return KP_Enter Control+y_.
 
 *execute-or-next*
-	If there is a single match, execute it. If there are more than one
-	match, select the next entry. Wraps around when the last entry has
-	been reached. Default: _Tab_.
+	If there is a single match, execute it. Or, in dmenu mode, print
+	the selected entry on stdout. If there are more than one match,
+	select the next entry. Wraps around when the last entry has been
+	reached. Default: _Tab_.
 
 *execute-input*
 	Execute the raw input as is, regardless of whether it matches
-	anything in the list or not. Default: _Shift+Return
-	Shift+KP_Enter_.
+	anything in the list or not. In dmenu mode, prints the selected
+	entry on stdout instead. Default: _Shift+Return Shift+KP_Enter_.
 
 *cursor-left*
 	Moves the cursor one **character** to the left. Default: _Left
