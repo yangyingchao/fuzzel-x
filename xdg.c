@@ -401,13 +401,13 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename,
         char32_t *title = a->name;
         if (a != default_action) {
             size_t title_len = c32len(default_action->name) +
-                3 +  /* “ - “ */
+                3 +  /* “ — ” */
                 c32len(a->name) +
                 1;
             title = malloc(title_len * sizeof(char32_t));
 
             c32cpy(title, default_action->name);
-            c32cat(title, U" - ");
+            c32cat(title, U" — ");
             c32cat(title, a->name);
             free(a->name);
         }
