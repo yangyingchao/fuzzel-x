@@ -162,6 +162,8 @@ struct config {
 
     enum zwlr_layer_shell_v1_layer layer;
     bool exit_on_kb_focus_loss;
+
+    bool list_executables_in_path;
 };
 
 typedef tll(char *) config_override_t;

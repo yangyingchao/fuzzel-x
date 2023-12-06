@@ -782,6 +782,9 @@ parse_section_main(struct context *ctx)
     else if (strcmp(key, "icons-enabled") == 0)
         return value_to_bool(ctx, &conf->icons_enabled);
 
+    else if (strcmp(key, "list-executables-in-path") == 0)
+        return value_to_bool(ctx, &conf->list_executables_in_path);
+
     else if (strcmp(key, "fields") == 0) {
         _Static_assert(sizeof(conf->match_fields) == sizeof(int),
             "enum is not 32-bit");
@@ -1556,6 +1559,7 @@ config_load(struct config *conf, const char *conf_path,
         .letter_spacing = {0},
         .layer = ZWLR_LAYER_SHELL_V1_LAYER_TOP,
         .exit_on_kb_focus_loss = true,
+        .list_executables_in_path = false,
     };
 
     add_default_key_bindings(conf);

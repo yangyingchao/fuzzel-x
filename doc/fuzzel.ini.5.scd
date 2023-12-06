@@ -147,6 +147,10 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	terminal command to use when launching 'terminal' programs,
 	e.g. \"xterm -e\". Default: _$TERMINAL -e_.
 
+*list-executables-in-path*
+	Boolean. When enabled, the list will include executables
+	from the PATH environment variable. Default: _no_.
+
 *launch-prefix*
 	Prefix to add before argv of executed program.
 	If set, fuzzel will pass the Desktop File ID of the chosen application

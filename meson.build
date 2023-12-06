@@ -147,6 +147,7 @@ executable(
   'log.c', 'log.h',
   'main.c',
   'match.c', 'match.h',
+  'path.c', 'path.h',
   'png.c', 'png-fuzzel.h',
   'prompt.c', 'prompt.h',
   'render.c', 'render.h',

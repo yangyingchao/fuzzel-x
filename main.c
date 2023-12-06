@@ -36,6 +36,7 @@
 #include "version.h"
 #include "wayland.h"
 #include "xdg.h"
+#include "path.h"
 
 #define max(x, y) ((x) > (y) ? (x) : (y))
 
@@ -288,6 +289,7 @@ print_usage(const char *prog_name)
            "                                 instead of newline separated\n"
            "     --index                     print selected entry's index instead of of the \n"
            "                                 entry's text (dmenu mode only)\n"
+           "     --list-executables-in-path  include executables from PATH in the list\n"
            "  -R,--no-run-if-empty           exit immediately without showing UI if stdin\n"
            "                                 is empty (dmenu mode only)\n"
            "     --log-level={info|warning|error|none}\n"
@@ -425,6 +427,7 @@ populate_apps(void *_ctx)
     bool icons_enabled = conf->icons_enabled;
     char dmenu_delim = conf->dmenu.delim;
     bool filter_desktop = conf->filter_desktop;
+    bool list_exec_in_path = conf->list_executables_in_path;
     char_list_t desktops = tll_init();
     char *saveptr = NULL;
 
@@ -446,6 +449,8 @@ populate_apps(void *_ctx)
         dmenu_load_entries(apps, dmenu_delim, ctx->dmenu_abort_fd);
     else {
         xdg_find_programs(terminal, actions_enabled, filter_desktop, &desktops, apps);
+        if (list_exec_in_path)
+            path_find_programs(apps);
         read_cache(apps);
     }
     tll_free_and_free(desktops, free);
@@ -550,6 +555,7 @@ main(int argc, char *const *argv)
     #define OPT_FILTER_DESKTOP               274
     #define OPT_CHECK_CONFIG                 275
     #define OPT_SELECT                       276
+    #define OPT_LIST_EXECS_IN_PATH           277
 
     static const struct option longopts[] = {
         {"config",               required_argument, 0,  OPT_CONFIG},
@@ -591,6 +597,7 @@ main(int argc, char *const *argv)
         {"launch-prefix",        required_argument, 0, OPT_LAUNCH_PREFIX},
         {"layer",                required_argument, 0, OPT_LAYER},
         {"no-exit-on-keyboard-focus-loss", no_argument, 0, OPT_NO_EXIT_ON_KB_LOSS},
+        {"list-executables-in-path",       no_argument, 0, OPT_LIST_EXECS_IN_PATH},
 
         /* dmenu mode */
         {"dmenu",                no_argument,       0, 'd'},
@@ -1084,6 +1091,10 @@ main(int argc, char *const *argv)
             cmdline_overrides.fuzzy_max_distance_set = true;
             break;
 
+        case OPT_LIST_EXECS_IN_PATH:
+            cmdline_overrides.conf.list_executables_in_path = true;
+            break;
+
         case 'H': { /* line-height */
             if (!pt_or_px_from_string(optarg, &cmdline_overrides.conf.line_height))
                 return EXIT_FAILURE;
@@ -1317,6 +1328,8 @@ main(int argc, char *const *argv)
         conf.dmenu.mode = cmdline_overrides.conf.dmenu.mode;
     if (cmdline_overrides.dmenu_exit_immediately_if_empty_set)
         conf.dmenu.exit_immediately_if_empty = cmdline_overrides.conf.dmenu.exit_immediately_if_empty;
+    if (cmdline_overrides.conf.list_executables_in_path)
+        conf.list_executables_in_path = cmdline_overrides.conf.list_executables_in_path;
 
     _Static_assert((int)LOG_CLASS_ERROR == (int)FCFT_LOG_CLASS_ERROR,
                    "fcft log level enum offset");

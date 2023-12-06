@@ -38,12 +38,15 @@
 * `--select=STRING` command line option. Selects the first entry that
   matches the given string ([#237][237]).
 * `include=<path>` option to `fuzzel.ini` ([#205][205]).
+* New option `--list-executables-in-path` add executables presents in
+  the $PATH variable to the list ([#284][284]).
 
 [130]: https://codeberg.org/dnkl/fuzzel/issues/130
 [264]: https://codeberg.org/dnkl/fuzzel/issues/264
 [252]: https://codeberg.org/dnkl/fuzzel/issues/252
 [237]: https://codeberg.org/dnkl/fuzzel/issues/237
 [205]: https://codeberg.org/dnkl/fuzzel/issues/205
+[284]: https://codeberg.org/dnkl/fuzzel/pulls/284
 
 
 ### Changed
