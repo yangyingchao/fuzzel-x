@@ -239,7 +239,7 @@ print_usage(const char *prog_name)
            "  -f,--font=FONT                 font name and style, in FontConfig format\n"
            "                                 (monospace)\n"
            "  -D,--dpi-aware=no|yes|auto     enable or disable DPI aware rendering (auto)\n"
-           "  -i,--icon-theme=NAME           icon theme name (\"hicolor\")\n"
+           "     --icon-theme=NAME           icon theme name (\"hicolor\")\n"
            "  -I,--no-icons                  do not render any icons\n"
            "  -F,--fields=FIELDS             comma separated list of XDG Desktop entry\n"
            "                                 fields to match\n"
