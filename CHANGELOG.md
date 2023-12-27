@@ -70,10 +70,12 @@
 * Crash when compositor sends a `keyboard::modifiers` event without
   first sending a `keyboard::keymap` event (with a valid keymap)
   ([#293][293]).
+* Quoted empty (`""`) arguments being ignored ([#285][285]).
 
 [248]: https://codeberg.org/dnkl/fuzzel/issues/248
 [253]: https://codeberg.org/dnkl/fuzzel/issues/253
 [293]: https://codeberg.org/dnkl/fuzzel/issues/293
+[285]: https://codeberg.org/dnkl/fuzzel/issues/285
 
 
 ### Security

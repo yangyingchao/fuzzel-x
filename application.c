@@ -69,20 +69,47 @@ tokenize_cmdline(char *cmdline, char ***argv)
             /* ignore the other cases */
         } else {
             if (open_quote == 0 && (*p == '\'' || *p == '"')) {
-                /* open a quote, delete the opening character but
-                 * remember that we have one open */
+                /*
+                 * Open a quote.
+                 *
+                 * Set search_start (i.e. argument start) to the next
+                 * character. Yes, this means the previous argument is
+                 * "lost" if it wasn't space separated from the quoted
+                 * argument.
+                 *
+                 * This is ok, because the spec says arguments have to
+                 * be quoted in whole. That is, foo"bar" does *not*
+                 * translate to the argument 'foobar' - it's invalid.
+                 *
+                 * Room for improvement: log warning/error message if
+                 * the previous character is not a space.
+                 */
                 open_quote = *p;
-                memmove(p, p + 1, strlen(p + 1) + 1);
-                continue; /* don't increment p */
+                search_start = p + 1;
             } else if (*p == open_quote) {
-                /* close the quote, delete the closing character */
+                /*
+                 * Close the quote, and create an argument from the
+                 * string between the opening and closing quote (as is
+                 * - unescaping is done later).
+                 *
+                 * Note that text following the quote will be treated
+                 * as a separate argument, regardless of whether
+                 * they're space separated or not.
+                 *
+                 * Room for improvement: log warning/error message if
+                 * the next character is not a space (or the end of
+                 * the string).
+                 */
                 open_quote = 0;
-                memmove(p, p + 1, strlen(p + 1) + 1);
-                continue; /* don't increment p */
+                *p = '\0';
+
+                if (!push_argv(argv, &argv_size, search_start, &idx))
+                    goto err;
+
+                search_start = p + 1;
             } else if (*p == ' ' && open_quote == 0) {
-                /* we must not be in an argument rn
-                 * check if we can close the arg at p (exclusive)
-                 * note: passing empty quotes doesn't count as an argument */
+                /* we must not be in an argument right now
+                 * check if we can close the arg at p (exclusive) */
                 if (p > search_start) {
                     *p = '\0';
                     if (!push_argv(argv, &argv_size, search_start, &idx))
