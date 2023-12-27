@@ -954,8 +954,10 @@ keyboard_modifiers(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
     LOG_DBG("modifiers: depressed=0x%x, latched=0x%x, locked=0x%x, group=%u",
             mods_depressed, mods_latched, mods_locked, group);
 
-    xkb_state_update_mask(
-        seat->kbd.xkb_state, mods_depressed, mods_latched, mods_locked, 0, 0, group);
+    if (seat->kbd.xkb_state != NULL) {
+        xkb_state_update_mask(
+            seat->kbd.xkb_state, mods_depressed, mods_latched, mods_locked, 0, 0, group);
+    }
 }
 
 static void

@@ -67,9 +67,13 @@
   ([#248][248]).
 * Desktop entries with `NoDisplay=true` being ignored unless they also
   had `Name` and `Exec` set ([#253][253]).
+* Crash when compositor sends a `keyboard::modifiers` event without
+  first sending a `keyboard::keymap` event (with a valid keymap)
+  ([#293][293]).
 
 [248]: https://codeberg.org/dnkl/fuzzel/issues/248
 [253]: https://codeberg.org/dnkl/fuzzel/issues/253
+[293]: https://codeberg.org/dnkl/fuzzel/issues/293
 
 
 ### Security
