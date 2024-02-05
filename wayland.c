@@ -596,6 +596,12 @@ execute_binding(struct seat *seat, const struct key_binding *binding, bool *refr
             matches_update(wayl->matches, wayl->prompt);
         return true;
 
+    case BIND_ACTION_DELETE_LINE_BACKWARD:
+        *refresh = prompt_erase_before_cursor(wayl->prompt);
+        if (*refresh)
+            matches_update(wayl->matches, wayl->prompt);
+        return true;
+
     case BIND_ACTION_DELETE_NEXT:
         *refresh = prompt_erase_next_char(wayl->prompt);
         if (*refresh)
@@ -608,7 +614,7 @@ execute_binding(struct seat *seat, const struct key_binding *binding, bool *refr
             matches_update(wayl->matches, wayl->prompt);
         return true;
 
-    case BIND_ACTION_DELETE_LINE:
+    case BIND_ACTION_DELETE_LINE_FORWARD:
         *refresh = prompt_erase_after_cursor(wayl->prompt);
         if (*refresh)
             matches_update(wayl->matches, wayl->prompt);

@@ -301,8 +301,8 @@ Note that *Alt* is usually called *Mod1*.
 
 A key combination can only be mapped to *one* action. Lets say you
 want to bind *Control+k* to *next*. Since this is the default shortcut
-for *delete-line*, you must unmap the default binding. This can be
-done by setting _action=none_; e.g. *delete-line=none*.
+for *delete-line-forward*, you must unmap the default binding. This can be
+done by setting _action=none_; e.g. *delete-line-forward=none*.
 
 *cancel*
 	Quite fuzzel without executing anythingDefault: _Control+g
@@ -354,6 +354,9 @@ done by setting _action=none_; e.g. *delete-line=none*.
 	Deletes the **word before** the cursor. Default: _Mod1+BackSpace
 	Control+BackSpace_.
 
+*delete-line-backward*
+	Deletes everything before the cursor. Default: _Control+u_.
+
 *delete-next*
 	Deletes the **character after** the cursor. Default: _Delete_.
 
@@ -361,7 +364,7 @@ done by setting _action=none_; e.g. *delete-line=none*.
 	Deletes the **word after** the cursor. Default: _Mod1+d
 	Control+Delete_.
 
-*delete-line*
+*delete-line-forward*
 	Deletes everything after the cursor. Default: _Control+k_.
 
 *insert-selected*
