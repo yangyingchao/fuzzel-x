@@ -64,7 +64,6 @@
 [255]: https://codeberg.org/dnkl/fuzzel/issues/255
 [259]: https://codeberg.org/dnkl/fuzzel/issues/259
 [266]: https://codeberg.org/dnkl/fuzzel/pulls/266
-[307]: https://codeberg.org/dnkl/fuzzel/pulls/307
 
 
 ### Deprecated
