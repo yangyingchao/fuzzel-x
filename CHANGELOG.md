@@ -42,6 +42,8 @@
   the $PATH variable to the list ([#284][284]).
 * New key binding: `delete-line-backward` which corresponds to C-u in bash.
   Also renames `delete-line` to `delete-line-forward` ([#307][307]).
+* The ID of the selected `.desktop` file, and executed command line
+  are now logged, at info level ([#302][302]).
 
 [130]: https://codeberg.org/dnkl/fuzzel/issues/130
 [264]: https://codeberg.org/dnkl/fuzzel/issues/264
@@ -50,7 +52,7 @@
 [205]: https://codeberg.org/dnkl/fuzzel/issues/205
 [284]: https://codeberg.org/dnkl/fuzzel/pulls/284
 [307]: https://codeberg.org/dnkl/fuzzel/pulls/307
-
+[302]: https://codeberg.org/dnkl/fuzzel/issues/302
 
 ### Changed
 
