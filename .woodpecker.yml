@@ -1,5 +1,5 @@
 steps:
-  codespell:
+  - name: codespell
     when:
       branch:
         - master
@@ -13,7 +13,7 @@ steps:
       - pip install codespell
       - codespell README.md CHANGELOG.md *.c *.h doc/*.scd
 
-  subprojects:
+  - name: subprojects
     when:
       branch:
         - master
@@ -26,12 +26,12 @@ steps:
       - git clone https://codeberg.org/dnkl/fcft.git
       - cd ..
 
-  x64:
+  - name: x64
     when:
       branch:
         - master
         - releases/*
-    group: build
+    depends_on: [subprojects]
     image: alpine:edge
     commands:
       - apk update
@@ -64,12 +64,12 @@ steps:
       - ninja -C bld/no-cairo-no-icons -k0
       - bld/no-cairo-no-icons/fuzzel --version
 
-  x86:
+  - name: x86
     when:
       branch:
         - master
         - releases/*
-    group: build
+    depends_on: [subprojects]
     image: i386/alpine:edge
     commands:
       - apk update
