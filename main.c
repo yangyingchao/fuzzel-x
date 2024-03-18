@@ -786,7 +786,12 @@ main(int argc, char *const *argv)
             char32_t password_char = U'\0';
             if (optarg != NULL) {
                 char32_t *wide_optarg = ambstoc32(optarg);
-                if (c32len(wide_optarg) != 1) {
+                if (wide_optarg == NULL){
+                    fprintf(stderr, "%s: invalid password character\n", optarg);
+                    return EXIT_FAILURE;
+                }
+
+                if (c32len(wide_optarg) > 1) {
                     fprintf(
                         stderr,
                         "%s: password character must be a single character\n",
@@ -794,9 +799,12 @@ main(int argc, char *const *argv)
                     free(wide_optarg);
                     return EXIT_FAILURE;
                 }
+
                 password_char = wide_optarg[0];
                 free(wide_optarg);
+                cmdline_overrides.conf.password_mode.character_set = true;
             }
+
             cmdline_overrides.conf.password_mode.enabled = true;
             cmdline_overrides.conf.password_mode.character = password_char;
             break;
@@ -1233,11 +1241,11 @@ main(int argc, char *const *argv)
     if (cmdline_overrides.conf.password_mode.enabled) {
         conf.password_mode.enabled = true;
         conf.password_mode.character =
-            cmdline_overrides.conf.password_mode.character != U'\0'
-            ? cmdline_overrides.conf.password_mode.character
-            : conf.password_mode.character != U'\0'
-            ? conf.password_mode.character
-            : U'*';
+            cmdline_overrides.conf.password_mode.character_set
+                ? cmdline_overrides.conf.password_mode.character
+                : conf.password_mode.character_set
+                    ? conf.password_mode.character
+                    : U'*';
     }
     if (cmdline_overrides.conf.terminal != NULL) {
         free(conf.terminal);

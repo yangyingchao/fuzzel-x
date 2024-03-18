@@ -97,6 +97,7 @@ struct config {
     struct {
         char32_t character;
         bool enabled;
+        bool character_set;
     } password_mode;
 
     char *terminal;

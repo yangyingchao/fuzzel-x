@@ -62,10 +62,13 @@
   ([#259][259]).
 * Set default log level to warning ([#266][266]).
 * Rename `delete-line` binding to `delete-line-forward` ([#307][307]).
+* `password-character` can now be set to the empty string
+  ([#263][263]).
 
 [255]: https://codeberg.org/dnkl/fuzzel/issues/255
 [259]: https://codeberg.org/dnkl/fuzzel/issues/259
 [266]: https://codeberg.org/dnkl/fuzzel/pulls/266
+[263]: https://codeberg.org/dnkl/fuzzel/issues/263
 
 
 ### Deprecated

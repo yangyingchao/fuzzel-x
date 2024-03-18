@@ -840,13 +840,20 @@ parse_section_main(struct context *ctx)
 
     else if (strcmp(key, "password-character") == 0) {
         char32_t *password_chars = ambstoc32(value);
-        if (password_chars == NULL || c32len(password_chars) != 1) {
+        if (password_chars == NULL) {
             LOG_CONTEXTUAL_ERR("invalid password character");
+            return false;
+        }
+
+        if (c32len(password_chars) > 1) {
+            LOG_CONTEXTUAL_ERR(
+                "password character must be a single character, or empty");
             free(password_chars);
             return false;
         }
 
         conf->password_mode.character = password_chars[0];
+        conf->password_mode.character_set = true;
         free(password_chars);
         return true;
     }
