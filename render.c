@@ -26,7 +26,7 @@ struct render {
     struct fcft_font *font;
     enum fcft_subpixel subpixel;
 
-    int scale;
+    float scale;
     float dpi;
     bool size_font_by_dpi;
 
@@ -778,7 +778,7 @@ render_set_subpixel(struct render *render, enum fcft_subpixel subpixel)
 
 bool
 render_set_font(struct render *render, struct fcft_font *font,
-                int scale, float dpi, bool size_font_by_dpi,
+                float scale, float dpi, bool size_font_by_dpi,
                 int *new_width, int *new_height)
 {
     if (font != NULL) {

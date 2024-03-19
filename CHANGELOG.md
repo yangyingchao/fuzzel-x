@@ -44,6 +44,8 @@
   Also renames `delete-line` to `delete-line-forward` ([#307][307]).
 * The ID of the selected `.desktop` file, and executed command line
   are now logged, at info level ([#302][302]).
+* Support for `wp_fractional_scale_v1` (i.e. true fractional scaling)
+  ([#320][320]).
 
 [130]: https://codeberg.org/dnkl/fuzzel/issues/130
 [264]: https://codeberg.org/dnkl/fuzzel/issues/264
@@ -53,6 +55,8 @@
 [284]: https://codeberg.org/dnkl/fuzzel/pulls/284
 [307]: https://codeberg.org/dnkl/fuzzel/pulls/307
 [302]: https://codeberg.org/dnkl/fuzzel/issues/302
+[320]: https://codeberg.org/dnkl/fuzzel/issues/320
+
 
 ### Changed
 

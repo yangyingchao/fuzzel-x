@@ -111,6 +111,8 @@ wl_proto_xml = [
   wayland_protocols_datadir + '/staging/xdg-activation/xdg-activation-v1.xml',
   wayland_protocols_datadir + '/staging/cursor-shape/cursor-shape-v1.xml',
   wayland_protocols_datadir + '/unstable/tablet/tablet-unstable-v2.xml',
+  wayland_protocols_datadir + '/stable/viewporter/viewporter.xml',
+  wayland_protocols_datadir + '/staging/fractional-scale/fractional-scale-v1.xml',
 ]
 
 foreach prot : wl_proto_xml

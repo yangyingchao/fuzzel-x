@@ -22,6 +22,8 @@
 #include <fontconfig/fontconfig.h>
 
 #include <cursor-shape-v1.h>
+#include <fractional-scale-v1.h>
+#include <viewporter.h>
 #include <wlr-layer-shell-unstable-v1.h>
 #include <xdg-activation-v1.h>
 #include <xdg-output-unstable-v1.h>
@@ -29,7 +31,7 @@
 #include <tllist.h>
 
 #define LOG_MODULE "wayland"
-#define LOG_ENABLE_DBG 0
+#define LOG_ENABLE_DBG 1
 #include "log.h"
 #include "dmenu.h"
 #include "icon.h"
@@ -37,6 +39,8 @@
 #include "prompt.h"
 #include "render.h"
 #include "shm.h"
+
+#define min(x, y) ((x) < (y) ? (x) : (y))
 
 struct font_spec {
     char *pattern;
@@ -140,9 +144,10 @@ struct seat {
         int y;
 
         struct wl_surface *surface;
+        struct wp_viewport *viewport;
         struct wl_cursor_theme *theme;
         struct wl_cursor *cursor;
-        int scale;
+        float scale;
     } pointer;
 };
 
@@ -164,7 +169,9 @@ struct wayland {
     bool render_first_frame_transparent;
     int width;
     int height;
-    int scale;
+    int preferred_buffer_scale;         /* Legacy - from wl_surface v6 */
+    float preferred_fractional_scale;   /* New - from wp_fractional_scale_v1 */
+    float scale;
     float dpi;
     enum fcft_subpixel subpixel;
     bool font_is_sized_by_dpi;
@@ -178,9 +185,17 @@ struct wayland {
     struct wl_display *display;
     struct wl_registry *registry;
     struct wl_compositor *compositor;
+    bool has_wl_compositor_v6;
+
+    struct wp_fractional_scale_manager_v1 *fractional_scale_manager;
+    struct wp_viewporter *viewporter;
+
     struct wl_surface *surface;
     struct zwlr_layer_shell_v1 *layer_shell;
     struct zwlr_layer_surface_v1 *layer_surface;
+    struct wp_viewport *viewport;
+    struct wp_fractional_scale_v1 *fractional_scale;
+
     struct wl_shm *shm;
     struct zxdg_output_manager_v1 *xdg_output_manager;
     struct xdg_activation_v1 *xdg_activation_v1;
@@ -260,6 +275,8 @@ seat_destroy(struct seat *seat)
     if (seat->wl_keyboard != NULL)
         wl_keyboard_release(seat->wl_keyboard);
 
+    if (seat->pointer.viewport != NULL)
+        wp_viewport_destroy(seat->pointer.viewport);
     if (seat->pointer.theme != NULL)
         wl_cursor_theme_destroy(seat->pointer.theme);
     if (seat->pointer.surface != NULL)
@@ -291,8 +308,23 @@ update_cursor_surface(struct seat *seat)
 
     struct wl_cursor_image *image = seat->pointer.cursor->images[0];
 
-    const int scale = seat->pointer.scale;
-    wl_surface_set_buffer_scale(seat->pointer.surface, scale);
+    const struct wayland *wayl = seat->wayl;
+    const float scale = seat->pointer.scale;
+
+    if (wayl->preferred_fractional_scale > 0) {
+        LOG_DBG("scaling cursor pointer by a factor of %.2f "
+                "using fractional scaling", scale);
+
+        wl_surface_set_buffer_scale(seat->pointer.surface, 1);
+        wp_viewport_set_destination(seat->pointer.viewport,
+                                    roundf(image->width / scale),
+                                    roundf(image->height / scale));
+    } else {
+        LOG_DBG("scaling cursor pointer by a factor of %.2f "
+                "using legacy mode", scale);
+
+        wl_surface_set_buffer_scale(seat->pointer.surface, scale);
+    }
 
     wl_surface_attach(
         seat->pointer.surface, wl_cursor_image_get_buffer(image), 0, 0);
@@ -308,7 +340,7 @@ update_cursor_surface(struct seat *seat)
 }
 
 static bool
-reload_cursor_theme(struct seat *seat, int new_scale)
+reload_cursor_theme(struct seat *seat, float new_scale)
 {
     assert(seat->pointer.surface != NULL);
 
@@ -333,7 +365,7 @@ reload_cursor_theme(struct seat *seat, int new_scale)
         }
     }
 
-    LOG_INFO("cursor theme: %s, size: %u, scale: %d",
+    LOG_INFO("cursor theme: %s, size: %u, scale: %0.2f",
              xcursor_theme, xcursor_size, new_scale);
 
     seat->pointer.theme = wl_cursor_theme_load(
@@ -1106,6 +1138,19 @@ seat_handle_capabilities(void *data, struct wl_seat *wl_seat,
                 return;
             }
 
+            if (seat->wayl->viewporter != NULL) {
+                assert(seat->pointer.viewport == NULL);
+                seat->pointer.viewport = wp_viewporter_get_viewport(
+                    seat->wayl->viewporter, seat->pointer.surface);
+
+                if (seat->pointer.viewport == NULL) {
+                    LOG_ERR("%s: failed to create pointer viewport", seat->name);
+                    wl_surface_destroy(seat->pointer.surface);
+                    seat->pointer.surface = NULL;
+                    return;
+                }
+            }
+
             seat->wl_pointer = wl_seat_get_pointer(wl_seat);
             wl_pointer_add_listener(seat->wl_pointer, &pointer_listener, seat);
         }
@@ -1113,6 +1158,11 @@ seat_handle_capabilities(void *data, struct wl_seat *wl_seat,
         if (seat->wl_pointer != NULL) {
             wl_pointer_release(seat->wl_pointer);
             wl_surface_destroy(seat->pointer.surface);
+
+            if (seat->pointer.viewport != NULL) {
+                wp_viewport_destroy(seat->pointer.viewport);
+                seat->pointer.viewport = NULL;
+            }
 
             if (seat->pointer.theme != NULL)
                 wl_cursor_theme_destroy(seat->pointer.theme);
@@ -1138,14 +1188,14 @@ static const struct wl_seat_listener seat_listener = {
     .name = seat_handle_name,
 };
 
-static int
+static float
 guess_scale(const struct wayland *wayl)
 {
     if (tll_length(wayl->monitors) == 0)
         return 1;
 
     bool all_have_same_scale = true;
-    int last_scale = -1;
+    float last_scale = -1;
 
     tll_foreach(wayl->monitors, it) {
         if (last_scale == -1)
@@ -1161,7 +1211,7 @@ guess_scale(const struct wayland *wayl)
         return last_scale;
     }
 
-    return 1;
+    return 1.;
 }
 
 static enum fcft_subpixel
@@ -1195,7 +1245,7 @@ size_font_using_dpi(const struct wayland *wayl)
 }
 
 static bool
-reload_font(struct wayland *wayl, float new_dpi, unsigned new_scale)
+reload_font(struct wayland *wayl, float new_dpi, float new_scale)
 {
     struct fcft_font *font = NULL;
 
@@ -1209,7 +1259,7 @@ reload_font(struct wayland *wayl, float new_dpi, unsigned new_scale)
          : wayl->scale != new_scale);
 
     LOG_DBG(
-        "font reload: scale: %u -> %u, dpi: %.2f -> %.2f size method: %s -> %s",
+        "font reload: scale: %.2f -> %0.2f, dpi: %.2f -> %.2f size method: %s -> %s",
         wayl->scale, new_scale, wayl->dpi, new_dpi,
         was_sized_using_dpi ? "DPI" : "scaling factor",
         will_size_using_dpi ? "DPI" : "scaling factor");
@@ -1223,13 +1273,13 @@ reload_font(struct wayland *wayl, float new_dpi, unsigned new_scale)
         for (size_t i = 0; i < wayl->font_count; i++) {
             const struct font_spec *spec = &wayl->fonts[i];
             const bool use_px_size = spec->px_size > 0;
-            const int scale = wayl->font_is_sized_by_dpi ? 1 : new_scale;
+            const float scale = wayl->font_is_sized_by_dpi ? 1. : new_scale;
 
             char size[64];
             size_t size_len;
             if (use_px_size) {
                 size_len = snprintf(
-                    size, sizeof(size), ":pixelsize=%d", spec->px_size * scale);
+                    size, sizeof(size), ":pixelsize=%d", (int)roundf(spec->px_size * scale));
             } else {
                 size_len = snprintf(
                     size, sizeof(size), ":size=%.2f", spec->pt_size * scale);
@@ -1291,7 +1341,13 @@ static void
 update_size(struct wayland *wayl)
 {
     const struct monitor *mon = wayl->monitor;
-    const int scale = mon != NULL ? mon->scale : guess_scale(wayl);
+    const float scale = wayl->preferred_fractional_scale > 0
+        ? wayl->preferred_fractional_scale
+        : wayl->preferred_buffer_scale > 0
+            ? wayl->preferred_buffer_scale
+            : mon != NULL
+                ? mon->scale
+                : guess_scale(wayl);
     const float dpi = wayl_ppi(wayl);
 
     if (scale == wayl->scale && dpi == wayl->dpi)
@@ -1535,8 +1591,15 @@ handle_global(void *data, struct wl_registry *registry,
         if (!verify_iface_version(interface, version, required))
             return;
 
+#if defined(WL_SURFACE_PREFERRED_BUFFER_SCALE_SINCE_VERSION)
+        const uint32_t preferred = WL_SURFACE_PREFERRED_BUFFER_SCALE_SINCE_VERSION;
+        wayl->has_wl_compositor_v6 = version >= WL_SURFACE_PREFERRED_BUFFER_SCALE_SINCE_VERSION;
+#else
+        const uint32_t preferred = required;
+#endif
+
         wayl->compositor = wl_registry_bind(
-            wayl->registry, name, &wl_compositor_interface, required);
+            wayl->registry, name, &wl_compositor_interface, min(version, preferred));
     }
 
     else if (strcmp(interface, wl_shm_interface.name) == 0) {
@@ -1655,6 +1718,25 @@ handle_global(void *data, struct wl_registry *registry,
         wayl->cursor_shape_manager = wl_registry_bind(
             wayl->registry, name, &wp_cursor_shape_manager_v1_interface, required);
     }
+
+    else if (strcmp(interface, wp_fractional_scale_manager_v1_interface.name) == 0) {
+        const uint32_t required = 1;
+        if (!verify_iface_version(interface, version, required))
+            return;
+
+        wayl->fractional_scale_manager = wl_registry_bind(
+            wayl->registry, name,
+            &wp_fractional_scale_manager_v1_interface, required);
+    }
+
+    else if (strcmp(interface, wp_viewporter_interface.name) == 0) {
+        const uint32_t required = 1;
+        if (!verify_iface_version(interface, version, required))
+            return;
+
+        wayl->viewporter = wl_registry_bind(
+            wayl->registry, name, &wp_viewporter_interface, required);
+    }
 }
 
 static void
@@ -1742,6 +1824,26 @@ static const struct zwlr_layer_surface_v1_listener layer_surface_listener = {
     .closed = &layer_surface_closed,
 };
 
+static void
+fractional_scale_preferred_scale(
+    void *data, struct wp_fractional_scale_v1 *wp_fractional_scale_v1,
+    uint32_t scale)
+{
+    struct wayland *wayl = data;
+    const float new_scale = (float)scale / 120.;
+
+    if (wayl->scale == new_scale)
+        return;
+
+    LOG_DBG("fractional scale: %.2f -> %.2f", wayl->scale, new_scale);
+    wayl->preferred_fractional_scale = new_scale;
+    update_size(wayl);
+}
+
+static const struct wp_fractional_scale_v1_listener fractional_scale_listener = {
+    .preferred_scale = &fractional_scale_preferred_scale,
+};
+
 static void frame_callback(
     void *data, struct wl_callback *wl_callback, uint32_t callback_data);
 
@@ -1754,9 +1856,30 @@ commit_buffer(struct wayland *wayl, struct buffer *buf)
 {
     assert(buf->busy);
 
-    assert(wayl->scale >= 1);
+    const float scale = wayl->scale;
+    assert(scale >= 1);
 
-    wl_surface_set_buffer_scale(wayl->surface, wayl->scale);
+    if (wayl->preferred_fractional_scale > 0) {
+        LOG_DBG("scaling by a factor of %.2f using fractional scaling", scale);
+
+        assert(wayl->viewport != NULL);
+
+        assert((int)roundf(scale * (int)roundf(buf->width / scale)) ==
+               buf->width);
+        assert((int)roundf(scale * (int)roundf(buf->height / scale)) ==
+               buf->height);
+
+        wl_surface_set_buffer_scale(wayl->surface, 1);
+        wp_viewport_set_destination(wayl->viewport, roundf(buf->width / scale), roundf(buf->height / scale));
+    } else {
+        LOG_DBG("scaling by a factor of %.2f using legacy mode", scale);
+
+        assert(scale == floorf(scale));
+        assert(buf->width % (int)floorf(scale) == 0);
+        assert(buf->height % (int)floorf(scale) == 0);
+        wl_surface_set_buffer_scale(wayl->surface, wayl->scale);
+    }
+
     wl_surface_attach(wayl->surface, buf->wl_buf, 0, 0);
     wl_surface_damage_buffer(wayl->surface, 0, 0, buf->width, buf->height);
 
@@ -1898,9 +2021,37 @@ surface_leave(void *data, struct wl_surface *wl_surface,
     wayl->monitor = NULL;
 }
 
+#if defined(WL_SURFACE_PREFERRED_BUFFER_SCALE_SINCE_VERSION)
+static void
+surface_preferred_buffer_scale(void *data, struct wl_surface *surface,
+                               int32_t scale)
+{
+    struct wayland *wayl = data;
+
+    if (wayl->preferred_buffer_scale == scale)
+        return;
+
+    LOG_DBG("wl_surface preferred scale: %d -> %d",
+            wayl->preferred_buffer_scale, scale);
+
+    wayl->preferred_buffer_scale = scale;
+    update_size(wayl);
+}
+
+static void
+surface_preferred_buffer_transform(void *data, struct wl_surface *surface,
+                                   uint32_t transform)
+{
+}
+#endif
+
 static const struct wl_surface_listener surface_listener = {
     .enter = &surface_enter,
     .leave = &surface_leave,
+#if defined(WL_SURFACE_PREFERRED_BUFFER_SCALE_SINCE_VERSION)
+    .preferred_buffer_scale = &surface_preferred_buffer_scale,
+    .preferred_buffer_transform = &surface_preferred_buffer_transform,
+#endif
 };
 
 static bool
@@ -2097,20 +2248,6 @@ wayl_init(const struct config *conf, struct fdm *fdm,
 
     wl_surface_add_listener(wayl->surface, &surface_listener, wayl);
 
-#if 0
-    wayl->pointer.surface = wl_compositor_create_surface(wayl->compositor);
-    if (wayl->pointer.surface == NULL) {
-        LOG_ERR("failed to create cursor surface");
-        goto out;
-    }
-
-    wayl->pointer.theme = wl_cursor_theme_load(NULL, 24, wayl->shm);
-    if (wayl->pointer.theme == NULL) {
-        LOG_ERR("failed to load cursor theme");
-        goto out;
-    }
-#endif
-
     wayl->layer_surface = zwlr_layer_shell_v1_get_layer_surface(
         wayl->layer_shell, wayl->surface,
         wayl->monitor != NULL ? wayl->monitor->output : NULL,
@@ -2119,6 +2256,17 @@ wayl_init(const struct config *conf, struct fdm *fdm,
     if (wayl->layer_surface == NULL) {
         LOG_ERR("failed to create layer shell surface");
         goto out;
+    }
+
+    if (wayl->fractional_scale_manager != NULL && wayl->viewporter != NULL) {
+        wayl->viewport =
+            wp_viewporter_get_viewport(wayl->viewporter, wayl->surface);
+
+        wayl->fractional_scale =
+            wp_fractional_scale_manager_v1_get_fractional_scale(
+                wayl->fractional_scale_manager, wayl->surface);
+        wp_fractional_scale_v1_add_listener(
+            wayl->fractional_scale, &fractional_scale_listener, wayl);
     }
 
     zwlr_layer_surface_v1_set_keyboard_interactivity(wayl->layer_surface, 1);
@@ -2171,14 +2319,22 @@ wayl_destroy(struct wayland *wayl)
         zxdg_output_manager_v1_destroy(wayl->xdg_output_manager);
     if (wayl->xdg_activation_v1 != NULL)
         xdg_activation_v1_destroy(wayl->xdg_activation_v1);
-    if (wayl->cursor_shape_manager != NULL)
-        wp_cursor_shape_manager_v1_destroy(wayl->cursor_shape_manager);
+    if (wayl->fractional_scale != NULL)
+        wp_fractional_scale_v1_destroy(wayl->fractional_scale);
+    if (wayl->viewport != NULL)
+        wp_viewport_destroy(wayl->viewport);
     if (wayl->layer_surface != NULL)
         zwlr_layer_surface_v1_destroy(wayl->layer_surface);
     if (wayl->layer_shell != NULL)
         zwlr_layer_shell_v1_destroy(wayl->layer_shell);
     if (wayl->surface != NULL)
         wl_surface_destroy(wayl->surface);
+    if (wayl->fractional_scale_manager != NULL)
+        wp_fractional_scale_manager_v1_destroy(wayl->fractional_scale_manager);
+    if (wayl->viewporter != NULL)
+        wp_viewporter_destroy(wayl->viewporter);
+    if (wayl->cursor_shape_manager != NULL)
+        wp_cursor_shape_manager_v1_destroy(wayl->cursor_shape_manager);
     if (wayl->compositor != NULL)
         wl_compositor_destroy(wayl->compositor);
     if (wayl->shm != NULL)
