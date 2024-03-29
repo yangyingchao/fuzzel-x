@@ -305,7 +305,7 @@ for *delete-line-forward*, you must unmap the default binding. This can be
 done by setting _action=none_; e.g. *delete-line-forward=none*.
 
 *cancel*
-	Quite fuzzel without executing anythingDefault: _Control+g
+	Quit fuzzel without executing anything. Default: _Control+g
 	Control+c Escape_.
 
 *execute*
