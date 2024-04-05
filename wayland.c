@@ -1832,7 +1832,7 @@ fractional_scale_preferred_scale(
     struct wayland *wayl = data;
     const float new_scale = (float)scale / 120.;
 
-    if (wayl->scale == new_scale)
+    if (wayl->preferred_fractional_scale == new_scale)
         return;
 
     LOG_DBG("fractional scale: %.2f -> %.2f", wayl->scale, new_scale);
