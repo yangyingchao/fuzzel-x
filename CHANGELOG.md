@@ -87,6 +87,7 @@
   first sending a `keyboard::keymap` event (with a valid keymap)
   ([#293][293]).
 * Quoted empty (`""`) arguments being ignored ([#285][285]).
+* Log-level not respected by syslog.
 
 [248]: https://codeberg.org/dnkl/fuzzel/issues/248
 [253]: https://codeberg.org/dnkl/fuzzel/issues/253
