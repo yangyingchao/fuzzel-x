@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [1.10.0](#1-10-0)
 * [1.9.2](#1-9-2)
 * [1.9.1](#1-9-1)
 * [1.9.0](#1-9-0)
@@ -23,7 +23,8 @@
 * [1.4.1](#1-4-1)
 
 
-## Unreleased
+## 1.10.0
+
 ### Added
 
 * Support for the `cursor-shape-v1` Wayland protocol.
@@ -75,8 +76,6 @@
 [263]: https://codeberg.org/dnkl/fuzzel/issues/263
 
 
-### Deprecated
-### Removed
 ### Fixed
 
 * Ignore whitespace in `.desktop` files’ key and name values
@@ -95,8 +94,19 @@
 [285]: https://codeberg.org/dnkl/fuzzel/issues/285
 
 
-### Security
 ### Contributors
+
+* Alexander Orzechowski
+* Grzegorz Szymaszek
+* Gurvan
+* Jakub Fišer
+* Mark Stosberg
+* Mehrad Mahmoudian
+* otaj
+* Sertonix
+* tet
+* Thomas Voss
+* Zi How Poh
 
 
 ## 1.9.2
