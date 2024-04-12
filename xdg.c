@@ -100,24 +100,26 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename,
     struct action *default_action = action;
 
     while (true) {
-        char *line = NULL;
+        char *raw_line = NULL;
         size_t sz = 0;
-        ssize_t len = getline(&line, &sz, f);
+        ssize_t len = getline(&raw_line, &sz, f);
 
         if (len == -1) {
-            free(line);
+            free(raw_line);
             break;
         }
 
         if (len == 0) {
-            free(line);
+            free(raw_line);
             continue;
         }
 
-        if (line[len - 1] == '\n') {
-            line[len - 1] = '\0';
+        if (raw_line[len - 1] == '\n') {
+            raw_line[len - 1] = '\0';
             len--;
         }
+
+        char *line = raw_line;
 
         /* Strip leading whitespace */
         while (len > 0 && isspace(line[0])) {
@@ -132,14 +134,14 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename,
         }
 
         if (len == 0) {
-            free(line);
+            free(raw_line);
             continue;
         }
 
         if (line[0] == '[' && line[len - 1] == ']') {
             if (strncasecmp(&line[1], "desktop entry", len - 2) == 0) {
                 is_desktop_entry = true;
-                free(line);
+                free(raw_line);
                 continue;
             }
 
@@ -179,7 +181,7 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename,
                     }
                 }
 
-                free(line);
+                free(raw_line);
                 if (action_is_valid)
                     continue;
                 else
@@ -187,7 +189,7 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename,
             }
 
             else {
-                free(line);
+                free(raw_line);
                 break;
             }
         }
@@ -359,7 +361,7 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename,
                     action->use_terminal = true;
             }
         }
-        free(line);
+        free(raw_line);
     }
 
     fclose(f);

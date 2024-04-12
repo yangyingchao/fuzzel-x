@@ -214,7 +214,7 @@ application_execute(const struct application *app, const struct prompt *prompt,
       }
     }
 
-    LOG_INFO("executing %s: \"%s\"", app->id, unescaped);
+    LOG_INFO("executing %s: \"%s\"", id, unescaped);
 
     char **argv;
     if (!tokenize_cmdline(unescaped, &argv)) {

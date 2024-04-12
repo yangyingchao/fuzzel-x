@@ -1,5 +1,6 @@
 # Changelog
 
+* [Unreleased](#unreleased)
 * [1.10.0](#1-10-0)
 * [1.9.2](#1-9-2)
 * [1.9.1](#1-9-1)
@@ -21,6 +22,27 @@
 * [1.5.0](#1-5-0)
 * [1.4.2](#1-4-2)
 * [1.4.1](#1-4-1)
+
+
+## Unreleased
+### Added
+### Changed
+### Deprecated
+### Removed
+### Fixed
+
+* Crash when executing the command line as is, i.e. when there is no
+  matching entry.
+* Crash when parsing a `.desktop` file with lines beginning with
+  whitespace ([#328][328], [#329][329]).
+
+
+[328]: https://codeberg.org/dnkl/fuzzel/issues/328
+[329]: https://codeberg.org/dnkl/fuzzel/issues/329
+
+
+### Security
+### Contributors
 
 
 ## 1.10.0

@@ -250,6 +250,9 @@ or command line options:
 	environment variables.  Example: _swaymsg exec --_.
 	Default: _not set_.
 
+*--list-executables-in-path*
+	Include executables from the PATH environment variable.
+
 *-d*,*--dmenu*
 	dmenu compatibility mode. In this mode, the list entries are read
 	from stdin (newline separated). The selected entry is printed to
