@@ -30,6 +30,11 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* Crash when executing the command line as is, i.e. when there is no
+  matching entry.
+
+
 ### Security
 ### Contributors
 
