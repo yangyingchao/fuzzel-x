@@ -33,6 +33,12 @@
 
 * Crash when executing the command line as is, i.e. when there is no
   matching entry.
+* Crash when parsing a `.desktop` file with lines beginning with
+  whitespace ([#328][328], [#329][329]).
+
+
+[328]: https://codeberg.org/dnkl/fuzzel/issues/328
+[329]: https://codeberg.org/dnkl/fuzzel/issues/329
 
 
 ### Security
