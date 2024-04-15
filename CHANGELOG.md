@@ -34,8 +34,10 @@
 
 * Crash when `terminal=yes` (in `fuzzel.ini`), and a `.desktop` file
   has `Terminal=True` but no `Exec` key ([#331][331]).
+* `--anchor=center` not working on some compositors ([#330][330]).
 
 [331]: https://codeberg.org/dnkl/fuzzel/issues/331
+[330]: https://codeberg.org/dnkl/fuzzel/issues/330
 
 
 ### Security
