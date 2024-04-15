@@ -874,7 +874,7 @@ parse_section_main(struct context *ctx)
         return value_to_str(ctx, &conf->launch_prefix);
 
     else if (strcmp(key, "anchor") == 0) {
-        uint32_t anchor;
+        enum anchors anchor;
         bool valid_anchor = false;
 
         for (size_t i = 0; anchors_map[i].name != NULL; i++) {

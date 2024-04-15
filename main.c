@@ -815,7 +815,7 @@ main(int argc, char *const *argv)
             break;
 
         case 'a': {
-            uint32_t anchor;
+            enum anchors anchor;
             bool valid_anchor = false;
 
             for (size_t i = 0; anchors_map[i].name != NULL; i++) {
