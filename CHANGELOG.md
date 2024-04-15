@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [1.10.2](#1-10-2)
 * [1.10.1](#1-10-1)
 * [1.10.0](#1-10-0)
 * [1.9.2](#1-9-2)
@@ -25,11 +25,8 @@
 * [1.4.1](#1-4-1)
 
 
-## Unreleased
-### Added
-### Changed
-### Deprecated
-### Removed
+## 1.10.2
+
 ### Fixed
 
 * Crash when `terminal=yes` (in `fuzzel.ini`), and a `.desktop` file
@@ -38,10 +35,6 @@
 
 [331]: https://codeberg.org/dnkl/fuzzel/issues/331
 [330]: https://codeberg.org/dnkl/fuzzel/issues/330
-
-
-### Security
-### Contributors
 
 
 ## 1.10.1
