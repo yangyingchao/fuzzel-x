@@ -31,6 +31,13 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* Crash when `terminal=yes` (in `fuzzel.ini`), and a `.desktop` file
+  has `Terminal=True` but no `Exec` key ([#331][331]).
+
+[331]: https://codeberg.org/dnkl/fuzzel/issues/331
+
+
 ### Security
 ### Contributors
 

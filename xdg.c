@@ -390,7 +390,7 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename,
         if (a->name == NULL)
             a->name = ambstoc32("<no title>");
 
-        if (a->use_terminal && terminal != NULL) {
+        if (a->use_terminal && terminal != NULL && a->exec != NULL) {
             char *exec_with_terminal = malloc(
                 strlen(terminal) + 1 + strlen(a->exec) + 1);
             strcpy(exec_with_terminal, terminal);
