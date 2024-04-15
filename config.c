@@ -874,16 +874,18 @@ parse_section_main(struct context *ctx)
         return value_to_str(ctx, &conf->launch_prefix);
 
     else if (strcmp(key, "anchor") == 0) {
-        uint32_t anchor = 0;
+        uint32_t anchor;
+        bool valid_anchor = false;
 
         for (size_t i = 0; anchors_map[i].name != NULL; i++) {
             if (strcmp(value, anchors_map[i].name) == 0) {
                 anchor = anchors_map[i].value;
+                valid_anchor = true;
                 break;
             }
         }
 
-        if (anchor == 0) {
+        if (!valid_anchor) {
             LOG_CONTEXTUAL_ERR(
                 "invalid anchor \"%s\", "
                 "must be one of: "
