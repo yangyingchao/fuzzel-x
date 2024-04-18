@@ -32,6 +32,10 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* PNG images being way too dark.
+
+
 ### Security
 ### Contributors
 
