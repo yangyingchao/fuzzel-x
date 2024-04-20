@@ -34,6 +34,8 @@
 ### Fixed
 
 * PNG images being way too dark.
+* Crash when the cache contains strings that are not valid in the
+  current locale ([#337][337]).
 
 
 ### Security

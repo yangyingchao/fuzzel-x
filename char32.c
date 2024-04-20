@@ -109,7 +109,7 @@ done:
     return chars;
 
 err:
-    return (char32_t)-1;
+    return (size_t)-1;
 }
 
 size_t
@@ -161,7 +161,7 @@ done:
     return bytes;
 
 err:
-    return (char32_t)-1;
+    return (size_t)-1;
 }
 
 size_t
