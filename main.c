@@ -68,6 +68,11 @@ struct context {
     int dmenu_abort_fd;
 };
 
+struct cache_entry {
+    char *id;
+    size_t count;
+};
+
 static void
 read_cache(struct application_list *apps)
 {
@@ -105,7 +110,7 @@ read_cache(struct application_list *apps)
         return;
     }
 
-    size_t app_idx = 0;
+    tll(struct cache_entry) cache_entries = tll_init();
 
     /* Loop lines */
     char *lineptr = NULL;
@@ -115,10 +120,10 @@ read_cache(struct application_list *apps)
     {
         /* Parse each line ("<title>|<count>") */
         char *ptr = NULL;
-        const char *title = strtok_r(line, "|", &ptr);
+        const char *id = strtok_r(line, "|", &ptr);
         const char *count_str = strtok_r(NULL, "|", &ptr);
 
-        if (title == NULL || count_str == NULL) {
+        if (id == NULL || count_str == NULL) {
             LOG_ERR("invalid cache entry (cache corrupt?): %s", line);
             continue;
         }
@@ -126,23 +131,34 @@ read_cache(struct application_list *apps)
         int count;
         sscanf(count_str, "%u", &count);
 
-        size_t wlen = mbstoc32(NULL, title, 0);
-        if (wlen == (size_t)-1)
-            continue;
+        struct cache_entry entry = {
+            .id = strdup(id),
+            .count = count,
+        };
+        tll_push_back(cache_entries, entry);
+    }
 
-        char32_t wtitle[wlen + 1];
-        mbstoc32(wtitle, title, wlen + 1);
+    /* Loop all applications, and search for a matching cache entry */
+    for (size_t i = 0; i < apps->count; i++) {
+        struct application *app = &apps->v[i];
 
-        for (; app_idx < apps->count; app_idx++) {
-            int cmp = c32cmp(apps->v[app_idx].title, wtitle);
+        tll_foreach(cache_entries, it) {
+            const struct cache_entry *e = &it->item;
 
-            if (cmp == 0) {
-                apps->v[app_idx].count = count;
-                app_idx++;
+            if (strcmp(app->id, e->id) == 0) {
+                app->count = e->count;
+
+                free(e->id);
+                tll_remove(cache_entries, it);
                 break;
-            } else if (cmp > 0)
-                break;
+            }
         }
+    }
+
+    /* Free all un-matched cache entries */
+    tll_foreach(cache_entries, it) {
+        free(it->item.id);
+        tll_remove(cache_entries, it);
     }
 
     munmap(text, st.st_size);
@@ -178,12 +194,10 @@ write_cache(const struct application_list *apps)
         char count_as_str[11];
         sprintf(count_as_str, "%u", apps->v[i].count);
         const size_t count_len = strlen(count_as_str);
+        const char *id = apps->v[i].id;
+        const size_t id_len = strlen(id);
 
-        size_t c32len = c32tombs(NULL, apps->v[i].title, 0);
-        char ctitle[c32len + 1];
-        c32tombs(ctitle, apps->v[i].title, c32len + 1);
-
-        if (write(fd, ctitle, c32len) != c32len ||
+        if (write(fd, id, id_len) != id_len ||
             write(fd, "|", 1) != 1 ||
             write(fd, count_as_str, count_len) != count_len ||
             write(fd, "\n", 1) != 1)
