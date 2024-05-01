@@ -191,6 +191,9 @@ write_cache(const struct application_list *apps)
         if (apps->v[i].count == 0)
             continue;
 
+        if (!apps->v[i].visible)
+            continue;
+
         char count_as_str[11];
         sprintf(count_as_str, "%u", apps->v[i].count);
         const size_t count_len = strlen(count_as_str);
