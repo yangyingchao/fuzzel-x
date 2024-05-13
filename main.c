@@ -267,6 +267,8 @@ print_usage(const char *prog_name)
            "                                 'terminal' programs, e.g. \"xterm -e\".\n"
            "                                 Not used in dmenu mode (not set)\n"
            "  -a,--anchor                    window anchor (center)\n"
+           "     --x-margin=MARGIN           horizontal margin, in pixels (0)\n"
+           "     --y-margin=MARGIN           vertical margin, in pixels (0)\n"
            "     --select=STRING             select first entry that matches the given string\n"
            "  -l,--lines                     number of matches to show\n"
            "  -w,--width                     window width, in characters (margins and\n"
@@ -573,6 +575,8 @@ main(int argc, char *const *argv)
     #define OPT_CHECK_CONFIG                 275
     #define OPT_SELECT                       276
     #define OPT_LIST_EXECS_IN_PATH           277
+    #define OPT_X_MARGIN                     278
+    #define OPT_Y_MARGIN                     279
 
     static const struct option longopts[] = {
         {"config",               required_argument, 0,  OPT_CONFIG},
@@ -585,6 +589,8 @@ main(int argc, char *const *argv)
         {"fields",               required_argument, 0, 'F'},
         {"password",             optional_argument, 0, OPT_PASSWORD},
         {"anchor",               required_argument, 0, 'a'},
+        {"x-margin",             required_argument, 0, OPT_X_MARGIN},
+        {"y-margin",             required_argument, 0, OPT_Y_MARGIN},
         {"select",               required_argument, 0, OPT_SELECT},
         {"lines",                required_argument, 0, 'l'},
         {"width",                required_argument, 0, 'w'},
@@ -645,6 +651,8 @@ main(int argc, char *const *argv)
         bool match_fields_set:1;
         bool icons_disabled_set:1;
         bool anchor_set:1;
+        bool x_margin_set : 1;
+        bool y_margin_set : 1;
         bool lines_set:1;
         bool chars_set:1;
         bool tabs_set:1;
@@ -852,6 +860,22 @@ main(int argc, char *const *argv)
             cmdline_overrides.anchor_set = true;
             break;
         }
+
+        case OPT_X_MARGIN:
+          if (sscanf(optarg, "%u", &cmdline_overrides.conf.margin.x) != 1) {
+            fprintf(stderr, "%s: invalid horizontal margin\n", optarg);
+            return EXIT_FAILURE;
+          }
+          cmdline_overrides.x_margin_set = true;
+          break;
+
+        case OPT_Y_MARGIN:
+          if (sscanf(optarg, "%u", &cmdline_overrides.conf.margin.y) != 1) {
+            fprintf(stderr, "%s: invalid vertical margin\n", optarg);
+            return EXIT_FAILURE;
+          }
+          cmdline_overrides.y_margin_set = true;
+          break;
 
         case OPT_SELECT:
             select = optarg;
@@ -1290,6 +1314,10 @@ main(int argc, char *const *argv)
         conf.icons_enabled = cmdline_overrides.conf.icons_enabled;
     if (cmdline_overrides.anchor_set)
         conf.anchor = cmdline_overrides.conf.anchor;
+    if (cmdline_overrides.x_margin_set)
+        conf.margin.x = cmdline_overrides.conf.margin.x;
+    if (cmdline_overrides.y_margin_set)
+        conf.margin.y = cmdline_overrides.conf.margin.y;
     if (cmdline_overrides.lines_set)
         conf.lines = cmdline_overrides.conf.lines;
     if (cmdline_overrides.chars_set)

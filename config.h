@@ -131,6 +131,11 @@ struct config {
 
     enum anchors anchor;
 
+    struct {
+        unsigned x;
+        unsigned y;
+    } margin;
+
     unsigned lines;
     unsigned chars;
     unsigned tabs;  /* Tab stop every number of #spaces */

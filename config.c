@@ -899,6 +899,11 @@ parse_section_main(struct context *ctx)
         conf->anchor = anchor;
         return true;
     }
+    else if (strcmp(key, "x-margin") == 0)
+      return value_to_uint32(ctx, 10, &conf->margin.x);
+  
+    else if (strcmp(key, "y-margin") == 0)
+      return value_to_uint32(ctx, 10, &conf->margin.y);
 
     else if (strcmp(key, "lines") == 0)
         return value_to_uint32(ctx, 10, &conf->lines);
@@ -1544,6 +1549,10 @@ config_load(struct config *conf, const char *conf_path,
             .delim = '\n',
         },
         .anchor = ANCHOR_CENTER,
+        .margin = {
+            .x = 0,
+            .y = 0,
+        },
         .lines = 15,
         .chars = 30,
         .tabs = 8,

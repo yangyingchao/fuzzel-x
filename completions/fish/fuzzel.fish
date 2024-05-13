@@ -24,6 +24,8 @@ complete -c fuzzel         -l password           -a "" -d "render all input usin
 complete -c fuzzel -x -s T -l terminal           -a "(__fish_complete_subcommand)"                              -d "terminal command, with arguments ($TERMINAL -e)"
 
 complete -c fuzzel -x -s a -l anchor             -a "top-left top top-right left center right bottom-left bottom bottom-right" -d "set window anchor (center)"
+complete -c fuzzel -x      -l x-margin                                                                          -d "horizontal margin away from the anchor point in pixels (0)"
+complete -c fuzzel -x      -l y-margin                                                                          -d "vertical margin away from the anchor point in pixels (0)"
 complete -c fuzzel -x      -l select                                                                            -d "select the first entry that matches the given string"
 complete -c fuzzel -x -s l -l lines                                                                             -d "maximum number of matches to displayh (15)"
 complete -c fuzzel -x -s w -l width                                                                             -d "window width, in characters (30)"

@@ -1364,6 +1364,10 @@ update_size(struct wayland *wayl)
     zwlr_layer_surface_v1_set_size(
         wayl->layer_surface, wayl->width / scale, wayl->height / scale);
 
+    zwlr_layer_surface_v1_set_margin(
+        wayl->layer_surface, wayl->conf->margin.y, wayl->conf->margin.x,
+        wayl->conf->margin.y, wayl->conf->margin.x);
+
     zwlr_layer_surface_v1_set_anchor(
         wayl->layer_surface, wayl->conf->anchor);
 
