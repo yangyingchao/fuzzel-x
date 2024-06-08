@@ -203,6 +203,36 @@ load_theme_in(const char *dir, struct icon_theme *theme,
     return true;
 }
 
+static bool
+already_loaded_theme(const char *theme_name, icon_theme_list_t themes)
+{
+    tll_foreach(themes, it) {
+        if (strcasecmp(it->item.name, theme_name) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static void
+discover_and_load_theme(const char *theme_name, xdg_data_dirs_t dirs,
+                        theme_names_t *themes_to_load,
+                        icon_theme_list_t *themes)
+{
+    tll_foreach(dirs, dir_it) {
+        char path[strlen(dir_it->item.path) + 1 +
+                  strlen("icons") + 1 +
+                  strlen(theme_name) + 1];
+        sprintf(path, "%s/icons/%s", dir_it->item.path, theme_name);
+
+        struct icon_theme theme = {0};
+        if (load_theme_in(path, &theme, themes_to_load)) {
+            theme.name = strdup(theme_name);
+            tll_push_back(*themes, theme);
+        }
+    }
+}
+
 icon_theme_list_t
 icon_load_theme(const char *name)
 {
@@ -222,37 +252,34 @@ icon_load_theme(const char *name)
 
         /*
          * Check if we've already loaded this theme. Example:
-         * "Arc" inherits "Moka,Faba,elementary,Adwaita,ghome,hicolor
+         * "Arc" inherits "Moka,Faba,elementary,Adwaita,gnome,hicolor
          * "Moka" inherits "Faba"
          * "Faba" inherits "elementary,gnome,hicolor"
          */
-        bool theme_already_loaded = false;
-        tll_foreach(themes, it) {
-            if (strcasecmp(it->item.name, theme_name) == 0) {
-                theme_already_loaded = true;
-                break;
-            }
-        }
-
-        if (theme_already_loaded) {
+        if (already_loaded_theme(theme_name, themes)) {
             free(theme_name);
             continue;
         }
 
-        tll_foreach(dirs, dir_it) {
-            char path[strlen(dir_it->item.path) + 1 +
-                      strlen("icons") + 1 +
-                      strlen(theme_name) + 1];
-            sprintf(path, "%s/icons/%s", dir_it->item.path, theme_name);
-
-            struct icon_theme theme = {0};
-            if (load_theme_in(path, &theme, &themes_to_load)) {
-                theme.name = strdup(theme_name);
-                tll_push_back(themes, theme);
-            }
-        }
-
+        discover_and_load_theme(theme_name, dirs, &themes_to_load, &themes);
         free(theme_name);
+    }
+
+    /*
+     * According to the freedesktop.org icon theme spec,
+     * implementation are required to always fallback on hicolor, even
+     * if it is not explicitely set in inheritance chain.  See
+     * https://specifications.freedesktop.org/icon-theme-spec/icon-theme-spec-latest.html
+     *
+     * Thus, we add it in the end of the list, if it has not been
+     * already added as part of the theme inheritance.
+     */
+    if (!already_loaded_theme("hicolor", themes)) {
+        /*
+         * hicolor has no dependency, thus the themes_to_load here is
+         * assumed to stay empty and will be disregarded.
+         */
+        discover_and_load_theme("hicolor", dirs, &themes_to_load, &themes);
     }
 
     xdg_data_dirs_destroy(dirs);

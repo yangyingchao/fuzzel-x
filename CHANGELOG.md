@@ -42,6 +42,7 @@
 * The cache now stores desktop file **IDs** instead of the application
   titles. This way, we do not store multiple cache entries with the
   same value (title) ([#339][339]).
+* Always fallback on the icon theme `hicolor`.
 
 [339]: https://codeberg.org/dnkl/fuzzel/issues/339
 
