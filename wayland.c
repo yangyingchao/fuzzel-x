@@ -2197,7 +2197,7 @@ wayl_init(const struct config *conf, struct fdm *fdm,
         goto out;
     }
     if (wayl->layer_shell == NULL) {
-        LOG_ERR("no layer shell interface");
+        LOG_ERR("compositor is missing support for the Wayland layer surface protocol");
         goto out;
     }
     if (wayl->shm == NULL) {
