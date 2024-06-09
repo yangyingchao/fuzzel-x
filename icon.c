@@ -268,7 +268,7 @@ icon_load_theme(const char *name)
     /*
      * According to the freedesktop.org icon theme spec,
      * implementation are required to always fallback on hicolor, even
-     * if it is not explicitely set in inheritance chain.  See
+     * if it is not explicitly set in inheritance chain.  See
      * https://specifications.freedesktop.org/icon-theme-spec/icon-theme-spec-latest.html
      *
      * Thus, we add it in the end of the list, if it has not been
