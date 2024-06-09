@@ -66,7 +66,7 @@ struct config_key_modifiers {
 };
 
 struct config_key_binding {
-    int action;  /* One of the varios bind_action_* enums from wayland.h */
+    int action;  /* One of the various bind_action_* enums from wayland.h */
     struct config_key_modifiers modifiers;
     union {
         /* Key bindings */
