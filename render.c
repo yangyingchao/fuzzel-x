@@ -332,7 +332,9 @@ render_match_text(struct buffer *buf, double *_x, double _y, double max_x,
                 fcft_rasterize_char_utf32(font, U' ', subpixel);
 
             if (space != NULL) {
-                const size_t chars_to_next_tab_stop = tabs - (clusters[i] % tabs);
+                const size_t chars_to_next_tab_stop = tabs == 0
+                    ? 0
+                    : tabs - (clusters[i] % tabs);
                 x += chars_to_next_tab_stop * space->advance.x;
             }
 

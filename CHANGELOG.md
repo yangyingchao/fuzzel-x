@@ -54,6 +54,9 @@
 * PNG images being way too dark.
 * Crash when the cache contains strings that are not valid in the
   current locale ([#337][337]).
+* Crash when `tabs` (in `fuzzel.ini`) is set to `0` ([#348][348]).
+
+[348]: https://codeberg.org/dnkl/fuzzel/issues/348
 
 
 ### Security
