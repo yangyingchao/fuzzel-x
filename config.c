@@ -172,15 +172,6 @@ struct config_file {
     int fd;           /* FD of file, O_RDONLY */
 };
 
-static const char *
-get_user_home_dir(void)
-{
-    const struct passwd *passwd = getpwuid(getuid());
-    if (passwd == NULL)
-        return NULL;
-    return passwd->pw_dir;
-}
-
 static struct config_file
 open_config(void)
 {
@@ -189,7 +180,7 @@ open_config(void)
 
     const char *xdg_config_home = getenv("XDG_CONFIG_HOME");
     const char *xdg_config_dirs = getenv("XDG_CONFIG_DIRS");
-    const char *home_dir = get_user_home_dir();
+    const char *home_dir = getenv("HOME");
     char *xdg_config_dirs_copy = NULL;
 
     /* First, check XDG_CONFIG_HOME (or .config, if unset) */
