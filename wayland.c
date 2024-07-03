@@ -590,6 +590,8 @@ execute_binding(struct seat *seat, const struct key_binding *binding, bool *refr
 
     case BIND_ACTION_CANCEL:
         wayl->status = EXIT;
+        if (wayl->conf->dmenu.enabled)
+            wayl->exit_code = 2;
         return true;
 
     case BIND_ACTION_CURSOR_HOME:

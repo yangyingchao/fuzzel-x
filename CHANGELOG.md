@@ -43,6 +43,8 @@
   titles. This way, we do not store multiple cache entries with the
   same value (title) ([#339][339]).
 * Always fallback on the icon theme `hicolor`.
+* Quitting without executing an entry in dmenu mode now exits with
+  code 2 instead of 1 ([#353][353]).
 
 [339]: https://codeberg.org/dnkl/fuzzel/issues/339
 
