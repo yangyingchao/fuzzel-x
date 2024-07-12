@@ -142,6 +142,11 @@ read_cache(struct application_list *apps)
     for (size_t i = 0; i < apps->count; i++) {
         struct application *app = &apps->v[i];
 
+        if (app->id == NULL) {
+            /* E.g. plain binaries, from --list-executables-in-path */
+            continue;
+        }
+
         tll_foreach(cache_entries, it) {
             const struct cache_entry *e = &it->item;
 

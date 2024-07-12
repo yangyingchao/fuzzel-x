@@ -55,8 +55,11 @@
 * Crash when the cache contains strings that are not valid in the
   current locale ([#337][337]).
 * Crash when `tabs` (in `fuzzel.ini`) is set to `0` ([#348][348]).
+* Crash while loading the cache, when `--list-executables-in-path` is
+  used ([#356][356])
 
 [348]: https://codeberg.org/dnkl/fuzzel/issues/348
+[356]: https://codeberg.org/dnkl/fuzzel/issues/356
 
 
 ### Security
