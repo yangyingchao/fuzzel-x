@@ -261,7 +261,8 @@ or command line options:
 	Default: _not set_.
 
 *--list-executables-in-path*
-	Include executables from the PATH environment variable.
+	Include executables from the PATH environment variable. Applies to
+	the normal application mode, not the dmenu mode.
 
 *-d*,*--dmenu*
 	dmenu compatibility mode. In this mode, the list entries are read
