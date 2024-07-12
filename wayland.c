@@ -1810,9 +1810,11 @@ layer_surface_configure(void *data, struct zwlr_layer_surface_v1 *surface,
     zwlr_layer_surface_v1_ack_configure(surface, serial);
 
     if (w > 0 && h > 0) {
-        if (w * wayl->scale != wayl->width || h * wayl->scale != wayl->height) {
-            wayl->width = w * wayl->scale;
-            wayl->height = h * wayl->scale;
+        if (roundf(w * wayl->scale) != wayl->width ||
+            roundf(h * wayl->scale) != wayl->height)
+        {
+            wayl->width = roundf(w * wayl->scale);
+            wayl->height = roundf(h * wayl->scale);
             wayl_refresh(wayl);
         }
     }
