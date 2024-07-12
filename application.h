@@ -66,6 +66,7 @@ struct application {
     char32_list_t categories;
     struct icon icon;
     bool visible;
+    bool startup_notify;
     unsigned count;
     struct fcft_text_run *shaped;
 };

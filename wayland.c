@@ -556,7 +556,7 @@ execute_selected(struct seat *seat, bool as_is, int custom_success_exit_code)
             : EXIT_SUCCESS;
     } else {
         char *xdg_activation_token = NULL;
-        if (wayl->xdg_activation_v1 != NULL && app != NULL)
+        if (wayl->xdg_activation_v1 != NULL && app != NULL && app->startup_notify)
             get_xdg_activation_token(seat, app->app_id, &xdg_activation_token);
 
         bool success = application_execute(

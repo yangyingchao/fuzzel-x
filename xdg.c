@@ -54,6 +54,7 @@ struct action {
     char *path;
     bool visible;
     bool use_terminal;
+    bool no_startup_notify;
 };
 
 static bool
@@ -274,6 +275,11 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename,
                 }
             }
 
+            else if (strcmp(key, "StartupNotify") == 0) {
+                if (strcmp(value, "false"))
+                    action->no_startup_notify = true;
+            }
+
             else if (strcmp(key, "StartupWMClass") == 0) {
                 free(action->app_id);
                 action->app_id = strdup(value);
@@ -423,6 +429,7 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename,
                 .basename = c32dup(file_basename),
                 .wexec = a->wexec,
                 .title = title,
+                .startup_notify = !a->no_startup_notify,
                 .app_id = a->app_id,
                 .generic_name = a->generic_name,
                 .comment = a->comment,
