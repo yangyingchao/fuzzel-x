@@ -431,6 +431,9 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename,
                 .icon = {.name = a->icon},
                 .visible = a->visible && (!filter_desktops || filter_desktop_entry(a, desktops)),
                 .count = 0}));
+
+        tll_free_and_free(a->onlyshowin, free);
+        tll_free_and_free(a->notshowin, free);
     }
 
     free(id);
