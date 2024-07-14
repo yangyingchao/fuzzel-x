@@ -33,6 +33,7 @@
 * New options `--x-margin` `--y-margin` which place the launcher some
   distance away from the anchor point, in pixels. Default to 0
   ([#344][344]).
+* Support for the `StartupNotify` key in `.desktop` files.
 
 [344]: https://codeberg.org/dnkl/fuzzel/issues/344
 
@@ -59,6 +60,7 @@
 * Crash when `tabs` (in `fuzzel.ini`) is set to `0` ([#348][348]).
 * Crash while loading the cache, when `--list-executables-in-path` is
   used ([#356][356])
+* Rounding of window size when fractional scaling is used.
 
 [348]: https://codeberg.org/dnkl/fuzzel/issues/348
 [356]: https://codeberg.org/dnkl/fuzzel/issues/356
