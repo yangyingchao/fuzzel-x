@@ -610,7 +610,8 @@ matches_update(struct matches *matches, const struct prompt *prompt)
         }
     }
 
-    if (tokens[tok_count - 1][0] == U'\0') {
+    assert(tok_count > 0);
+    if (tok_count > 0 && tokens[tok_count - 1][0] == U'\0') {
         /* Don’t count trailing spaces as a token */
         tok_count--;
     }
