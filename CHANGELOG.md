@@ -36,6 +36,9 @@
 * Support for the `StartupNotify` key in `.desktop` files.
 * Log output now respects the [`NO_COLOR`](http://no-color.org/)
   environment variable.
+* Rounded corners without cairo. With this, the **only** time cairo is
+  needed is when you want to use the librsvg SVG backend. For nanosvg
+  builds, there is no longer any need to link against cairo.
 
 [344]: https://codeberg.org/dnkl/fuzzel/issues/344
 
