@@ -74,6 +74,8 @@
   ([#81][81]).
 * When `--no-fuzzy` is used, fuzzel will now do a fzf-style search
   ([#305][305]).
+* The `GenericName` field in `.desktop` files are no longer matched by
+  default. Use the `--fields` command line option if you need this.
 
 [339]: https://codeberg.org/dnkl/fuzzel/issues/339
 [81]: https://codeberg.org/dnkl/fuzzel/issues/81

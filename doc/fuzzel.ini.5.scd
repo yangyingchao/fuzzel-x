@@ -123,7 +123,7 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	- keywords
 	- comment
 	
-	Default: _filename,name,generic_.
+	Default: _filename,name_.
 
 *password-character*
 	Default character to use with the command line option

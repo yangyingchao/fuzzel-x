@@ -1526,7 +1526,7 @@ config_load(struct config *conf, const char *conf_path,
     *conf = (struct config) {
         .output = NULL,
         .prompt = c32dup(U"> "),
-        .match_fields = MATCH_FILENAME | MATCH_NAME | MATCH_GENERIC,
+        .match_fields = MATCH_FILENAME | MATCH_NAME,
         .password_mode = {
             .character = U'\0',
             .enabled = false,
