@@ -34,6 +34,8 @@
   distance away from the anchor point, in pixels. Default to 0
   ([#344][344]).
 * Support for the `StartupNotify` key in `.desktop` files.
+* Log output now respects the [`NO_COLOR`](http://no-color.org/)
+  environment variable.
 
 [344]: https://codeberg.org/dnkl/fuzzel/issues/344
 
