@@ -37,6 +37,8 @@ enum match_fields {
     MATCH_CATEGORIES = 0x10,
     MATCH_KEYWORDS =   0x20,
     MATCH_COMMENT =    0x40,
+
+    MATCH_END = MATCH_COMMENT + 1,
 };
 
 enum anchors {

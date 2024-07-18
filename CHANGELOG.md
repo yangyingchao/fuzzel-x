@@ -72,9 +72,12 @@
 * The default `layer` is now `overlay` instead of `top`. This means
   fuzzel now renders on top of fullscreen windows by default
   ([#81][81]).
+* When `--no-fuzzy` is used, fuzzel will now do a fzf-style search
+  ([#305][305]).
 
 [339]: https://codeberg.org/dnkl/fuzzel/issues/339
 [81]: https://codeberg.org/dnkl/fuzzel/issues/81
+[305]: https://codeberg.org/dnkl/fuzzel/issues/305
 
 
 ### Deprecated
