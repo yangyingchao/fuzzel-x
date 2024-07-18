@@ -60,6 +60,8 @@ wayland_protocols = dependency('wayland-protocols', version: '>=1.32')
 wayland_client = dependency('wayland-client')
 wayland_cursor = dependency('wayland-cursor')
 xkb = dependency('xkbcommon')
+system_nanosvg = cc.find_library('nanosvg', required: get_option('system-nanosvg'))
+system_nanosvgrast = cc.find_library('nanosvgrast', required: get_option('system-nanosvg'))
 
 tllist = dependency('tllist', version: '>=1.0.1', fallback: 'tllist')
 fcft = dependency('fcft', version: ['>=3.0.0', '<4.0.0'], fallback: 'fcft')
@@ -81,14 +83,21 @@ if cairo.found() and get_option('svg-backend') == 'librsvg'
   svg_backend = 'librsvg'
   add_project_arguments('-DFUZZEL_ENABLE_SVG_LIBRSVG=1', language: 'c')
 elif get_option('svg-backend') == 'nanosvg'
-  librsvg = declare_dependency()
-  nanosvg = declare_dependency(
-    sources: ['nanosvg.c', '3rd-party/nanosvg/src/nanosvg.h',
-              'nanosvgrast.c', '3rd-party/nanosvg/src/nanosvgrast.h'],
-    include_directories: '3rd-party/nanosvg/src',
-    dependencies: math)
-  svg_backend = 'nanosvg'
+  if system_nanosvg.found() and system_nanosvgrast.found()
+    nanosvg = declare_dependency(
+      dependencies: [system_nanosvg, system_nanosvgrast]
+    )
+    svg_backend = 'nanosvg (system)'
+  else
+    nanosvg = declare_dependency(
+      sources: ['nanosvg.c', '3rd-party/nanosvg/src/nanosvg.h',
+                'nanosvgrast.c', '3rd-party/nanosvg/src/nanosvgrast.h'],
+      include_directories: '.',
+      dependencies: math)
+    svg_backend = 'nanosvg (bundled)'
+  endif
   add_project_arguments('-DFUZZEL_ENABLE_SVG_NANOSVG=1', language: 'c')
+  librsvg = declare_dependency()
 else
   svg_backend = 'none'
   librsvg = declare_dependency()

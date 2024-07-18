@@ -7,7 +7,7 @@
 #include <fcft/fcft.h>
 
 #if defined(FUZZEL_ENABLE_SVG_NANOSVG)
- #include <nanosvgrast.h>
+ #include <nanosvg/nanosvgrast.h>
 #endif
 
 #define LOG_MODULE "render"

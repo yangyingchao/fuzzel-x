@@ -20,7 +20,7 @@
 #endif
 
 #if defined(FUZZEL_ENABLE_SVG_NANOSVG)
- #include <nanosvg.h>
+ #include <nanosvg/nanosvg.h>
 #endif
 
 #include <tllist.h>

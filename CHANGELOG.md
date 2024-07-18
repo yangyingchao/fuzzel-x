@@ -39,6 +39,9 @@
 * Rounded corners without cairo. With this, the **only** time cairo is
   needed is when you want to use the librsvg SVG backend. For nanosvg
   builds, there is no longer any need to link against cairo.
+* Support for linking against a system provided nanosvg library. See
+  the new `-Dsystem-nanosvg` meson option. Default's to `disabled`
+  (i.e. use the bundled version).
 
 [344]: https://codeberg.org/dnkl/fuzzel/issues/344
 
