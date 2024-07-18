@@ -37,10 +37,14 @@ _Fuzzel, with transparency, on top of a browser window showing a diff of a fuzze
 * pixman
 * wayland (_client_ and _cursor_ libraries)
 * xkbcommon
-* cairo (optional)
+* cairo (optional, required by librsvg)
 * libpng (optional)
-* librsvg (optional)
+* librsvg (optional, for enhanced SVG icon support)
 * [fcft](https://codeberg.org/dnkl/fcft) [^1]
+
+Fuzzel uses the builtin nanosvg backend to render SVG icons by
+default. Since nanosvg is somewhat limited, we also offer a librsvg
+backend for SVG icons. Note that librsvg also requires cairo.
 
 [^1]: can also be built as subprojects, in which case they are
     statically linked.
