@@ -75,27 +75,47 @@ pt_or_px_as_pixels(const struct render *render, const struct pt_or_px *pt_or_px)
         : pt_or_px->px;
 }
 
+static void
+fill_rounded_rectangle(pixman_op_t op, pixman_image_t* dest,
+                       const pixman_color_t* color, int16_t x, int16_t y,
+                       uint16_t width, uint16_t height, uint16_t radius)
+{
+    int rect_count = ( radius + radius ) + 1;
+    pixman_rectangle16_t rects[rect_count];
+
+    for (int i = 0; i <= radius; i++){
+        uint16_t ydist = radius - i;
+        uint16_t curve = sqrt(radius * radius - ydist * ydist);
+
+        rects[i] = (pixman_rectangle16_t){
+            x + radius - curve, y + i, width - radius * 2 + curve * 2, 1
+        };
+
+        rects[radius + i] = (pixman_rectangle16_t){
+            x + radius - curve, y + height - i, width - radius * 2 + curve * 2, 1
+        };
+    }
+
+    rects[(radius * 2)] = (pixman_rectangle16_t){
+        x, y + radius, width, height + 1 - radius * 2
+    };
+    pixman_image_fill_rectangles(op, dest, color,rect_count, rects);
+}
+
 void
 render_background(const struct render *render, struct buffer *buf)
 {
-    bool use_pixman =
-#if defined(FUZZEL_ENABLE_CAIRO)
-        render->conf->border.radius == 0
-#else
-        true
-#endif
-        ;
+    unsigned bw = render->conf->border.size;
 
-    if (use_pixman) {
-        unsigned bw = render->conf->border.size;
+    pixman_color_t bg = rgba2pixman(render->conf->colors.background);
+    pixman_color_t border_color = rgba2pixman(render->conf->colors.border);
 
-        pixman_color_t bg = rgba2pixman(render->conf->colors.background);
+    if (render->conf->border.radius == 0) {
         pixman_image_fill_rectangles(
             PIXMAN_OP_SRC, buf->pix, &bg,
             1, &(pixman_rectangle16_t){
                 bw, bw, buf->width - 2 * bw, buf->height - 2 * bw});
 
-        pixman_color_t border_color = rgba2pixman(render->conf->colors.border);
         pixman_image_fill_rectangles(
             PIXMAN_OP_SRC, buf->pix, &border_color,
             4, (pixman_rectangle16_t[]){
@@ -105,54 +125,43 @@ render_background(const struct render *render, struct buffer *buf)
                 {0, buf->height - bw, buf->width, bw}            /* bottom */
             });
     } else {
-#if defined(FUZZEL_ENABLE_CAIRO)
-        /* Erase */
-        cairo_set_operator(buf->cairo, CAIRO_OPERATOR_CLEAR);
-        cairo_rectangle(buf->cairo, 0, 0, buf->width, buf->height);
-        cairo_fill(buf->cairo);
+        const int msaa_scale = 2;
+        const double brd_sz_scaled = bw * msaa_scale;
+        const double brd_rad_scaled = render->conf->border.radius * msaa_scale;
+        int w = buf->width * msaa_scale;
+        int h = buf->height * msaa_scale;
 
-        /*
-         * Lines in cairo are *between* pixels.
-         *
-         * To get a sharp 1px line, we need to draw it with
-         * line-width=2.
-         *
-         * Thus, we need to draw the path offset:ed with half that
-         * (=actual border width).
-         */
-        const double b = render->border_size;
-        const double w = max(buf->width - 2 * b, 0.);
-        const double h = max(buf->height - 2 * b, 0.);
-
-        const double from_degree = M_PI / 180;
-        const double radius = render->conf->border.radius * render->scale;
-
-        /* Path describing an arc:ed rectangle */
-        cairo_new_path(buf->cairo);
-        cairo_arc(buf->cairo, b + w - radius, b + h - radius, radius,
-                  0.0 * from_degree, 90.0 * from_degree);
-        cairo_arc(buf->cairo, b + radius, b + h - radius, radius,
-                  90.0 * from_degree, 180.0 * from_degree);
-        cairo_arc(buf->cairo, b + radius, b + radius, radius,
-                  180.0 * from_degree, 270.0 * from_degree);
-        cairo_arc(buf->cairo, b + w - radius, b + radius, radius,
-                  270.0 * from_degree, 360.0 * from_degree);
-        cairo_close_path(buf->cairo);
+        pixman_image_t *bg_img;
+        if (msaa_scale != 1){
+            bg_img = pixman_image_create_bits(PIXMAN_a8r8g8b8, w, h, NULL, w*4);
+        } else {
+            bg_img = buf->pix;
+        }
 
         /* Border */
-        const struct rgba *bc = &render->conf->colors.border;
-        cairo_set_operator(buf->cairo, CAIRO_OPERATOR_SOURCE);
-        cairo_set_line_width(buf->cairo, 2 * b);
-        cairo_set_source_rgba(buf->cairo, bc->r, bc->g, bc->b, bc->a);
-        cairo_stroke_preserve(buf->cairo);
+        fill_rounded_rectangle(
+            PIXMAN_OP_SRC, bg_img, &border_color, 0, 0, w, h, brd_rad_scaled);
 
         /* Background */
-        const struct rgba *bg = &render->conf->colors.background;
-        cairo_set_source_rgba(buf->cairo, bg->r, bg->g, bg->b, bg->a);
-        cairo_fill(buf->cairo);
-#else
-        assert(false);
-#endif
+        fill_rounded_rectangle(
+            PIXMAN_OP_SRC, bg_img, &bg, brd_sz_scaled, brd_sz_scaled,
+            w-(brd_sz_scaled*2),
+            h-(brd_sz_scaled*2),
+            brd_rad_scaled - brd_sz_scaled);
+
+        if (msaa_scale != 1){
+            pixman_f_transform_t ftrans;
+            pixman_transform_t trans;
+            pixman_f_transform_init_scale(&ftrans, msaa_scale, msaa_scale);
+            pixman_transform_from_pixman_f_transform(&trans, &ftrans);
+            pixman_image_set_transform(bg_img, &trans);
+            pixman_image_set_filter(bg_img, PIXMAN_FILTER_BILINEAR, NULL, 0);
+
+            pixman_image_composite32(
+                PIXMAN_OP_SRC, bg_img, NULL, buf->pix, 0, 0, 0, 0, 0, 0,
+                buf->width, buf->height);
+            pixman_image_unref(bg_img);
+        }
     }
 }
 
