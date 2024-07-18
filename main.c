@@ -1495,6 +1495,11 @@ main(int argc, char *const *argv)
     if (cmdline_overrides.conf.list_executables_in_path)
         conf.list_executables_in_path = cmdline_overrides.conf.list_executables_in_path;
 
+    if (conf.dmenu.enabled) {
+        /* We don't have any meta data in dmenu mode */
+        conf.match_fields = MATCH_NAME;
+    }
+
     _Static_assert((int)LOG_CLASS_ERROR == (int)FCFT_LOG_CLASS_ERROR,
                    "fcft log level enum offset");
     _Static_assert((int)LOG_COLORIZE_ALWAYS == (int)FCFT_LOG_COLORIZE_ALWAYS,
