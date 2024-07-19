@@ -483,6 +483,7 @@ match_compar(const void *_a, const void *_b)
         a->pos_count == 1 &&
         a->pos[0].start == 0 &&
         a->pos[0].len == c32len(a->application->title);
+
     const bool b_is_exact_match =
         b->application->title != NULL &&
         b->matched_type == MATCHED_EXACT &&
@@ -490,25 +491,26 @@ match_compar(const void *_a, const void *_b)
         b->pos[0].start == 0 &&
         b->pos[0].len == c32len(b->application->title);
 
-
     if (a_is_exact_match && !b_is_exact_match)
         return -1;
-
     else if (!a_is_exact_match && b_is_exact_match)
         return 1;
-
     else if (a->matched_type == MATCHED_FUZZY && b->matched_type == MATCHED_EXACT)
         return 1;
-
     else if (a->matched_type == MATCHED_EXACT && b->matched_type == MATCHED_FUZZY)
         return -1;
-
+    else if (a->score > b->score)
+        return -1;
+    else if (a->score < b->score)
+        return 1;
+    else if (a->pos_count < b->pos_count)
+        return -1;
+    else if (a->pos_count > b->pos_count)
+        return 1;
     else if (a->application->count > b->application->count)
         return -1;
-
     else if (a->application->count < b->application->count)
         return 1;
-
     else
         return 0;
 }
@@ -645,6 +647,7 @@ matches_update(struct matches *matches, const struct prompt *prompt)
         tll_foreach(app->keywords, it) {
             tll_push_back(keywords, it->item);
         }
+
         tll_foreach(app->categories, it) {
             tll_push_back(categories, it->item);
         }
@@ -678,18 +681,26 @@ matches_update(struct matches *matches, const struct prompt *prompt)
                 }
 
                 if (match_len > 0) {
-                    size_t new_pos_count = pos_count + 1;
-                    struct match_substring *new_pos = realloc(
-                        pos, new_pos_count * sizeof(new_pos[0]));
+                    if (pos_count > 0 &&
+                        m == &app->title[pos[pos_count - 1].start +
+                                         pos[pos_count - 1].len])
+                    {
+                        /* Extend last match position */
+                        pos[pos_count - 1].len += match_len;
+                    } else {
+                        size_t new_pos_count = pos_count + 1;
+                        struct match_substring *new_pos = realloc(
+                            pos, new_pos_count * sizeof(new_pos[0]));
 
-                    if (new_pos != NULL) {
-                        pos = new_pos;
-                        pos_count = new_pos_count;
+                        if (new_pos != NULL) {
+                            pos = new_pos;
+                            pos_count = new_pos_count;
 
-                        pos[pos_count - 1].start = m - app->title;
-                        pos[pos_count - 1].len = match_len;
+                            pos[pos_count - 1].start = m - app->title;
+                            pos[pos_count - 1].len = match_len;
 
-                        match->pos = pos;
+                            match->pos = pos;
+                        }
                     }
 
                     title = m + match_len;
@@ -881,6 +892,7 @@ matches_update(struct matches *matches, const struct prompt *prompt)
         }
 
         enum matched_type match_type_keywords_final = MATCHED_NONE;
+
         if (match_keywords) {
             for (size_t k = 0; k < tll_length(app->keywords); k++) {
                 for (size_t j = 0; j < tok_count; j++) {
@@ -903,6 +915,7 @@ matches_update(struct matches *matches, const struct prompt *prompt)
         }
 
         enum matched_type match_type_categories_final = MATCHED_NONE;
+
         if (match_categories) {
             for (size_t k = 0; k < tll_length(app->categories); k++) {
                 for (size_t j = 0; j < tok_count; j++) {
@@ -925,6 +938,25 @@ matches_update(struct matches *matches, const struct prompt *prompt)
         }
 
         enum matched_type app_match_type = MATCHED_NONE;
+
+        /*
+         * For now, only track score for the application title. The
+         * longer consecutive match, the higher the score.
+         *
+         * This means searching for 'oo' will sort 'foot' before
+         * 'firefox browser', for example.
+         */
+        size_t score = 0;
+        if (match_name) {
+            size_t longest_match = 0;
+            for (size_t k = 0; k < pos_count; k++) {
+                if (pos[k].len > longest_match)
+                    longest_match = pos[k].len;
+            }
+
+
+            score = longest_match;
+        }
 
         if (match_type_name[tok_count]!= MATCHED_NONE)
             app_match_type = match_type_name[tok_count];
@@ -953,6 +985,7 @@ matches_update(struct matches *matches, const struct prompt *prompt)
             .pos = pos,
             .pos_count = pos_count,
             .index = i,
+            .score = score,
         };
 
         matches->match_count++;

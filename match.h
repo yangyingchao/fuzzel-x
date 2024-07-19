@@ -24,6 +24,7 @@ struct match {
     struct match_substring *pos;
     size_t pos_count;
     size_t index;
+    size_t score;
 };
 
 struct matches;
