@@ -16,6 +16,7 @@
 #include <wayland-cursor.h>
 #include <wayland-util.h>
 
+#include <linux/input-event-codes.h>
 #include <xkbcommon/xkbcommon.h>
 #include <xkbcommon/xkbcommon-keysyms.h>
 #include <xkbcommon/xkbcommon-compose.h>
@@ -142,6 +143,7 @@ struct seat {
 
         int x;
         int y;
+        size_t hovered_row_idx;
 
         struct wl_surface *surface;
         struct wp_viewport *viewport;
@@ -704,7 +706,7 @@ execute_binding(struct seat *seat, const struct key_binding *binding, bool *refr
         return true;
 
     case BIND_ACTION_MATCHES_PREV_PAGE:
-        *refresh = matches_selected_prev_page(wayl->matches);
+        *refresh = matches_selected_prev_page(wayl->matches, false);
         return true;
 
     case BIND_ACTION_MATCHES_NEXT:
@@ -716,7 +718,7 @@ execute_binding(struct seat *seat, const struct key_binding *binding, bool *refr
         return true;
 
     case BIND_ACTION_MATCHES_NEXT_PAGE:
-        *refresh = matches_selected_next_page(wayl->matches);
+        *refresh = matches_selected_next_page(wayl->matches, false);
         return true;
 
     case BIND_ACTION_MATCHES_FIRST:
@@ -1059,21 +1061,74 @@ wl_pointer_leave(void *data, struct wl_pointer *wl_pointer,
 }
 
 static void
+select_hovered_match(struct seat *seat, bool refresh_always)
+{
+    struct wayland *wayl = seat->wayl;
+    bool refresh = false;
+
+    size_t hovered_row =
+        render_get_row_num(wayl->render,
+                seat->pointer.y,
+                wayl->matches);
+ 
+    if (hovered_row != seat->pointer.hovered_row_idx) {
+        seat->pointer.hovered_row_idx = hovered_row;
+        refresh = matches_idx_select(wayl->matches,hovered_row);
+    }
+
+    if (refresh_always || refresh) {
+        wayl_refresh(wayl);
+    }
+}
+
+static void
 wl_pointer_motion(void *data, struct wl_pointer *wl_pointer,
                   uint32_t time, wl_fixed_t surface_x, wl_fixed_t surface_y)
 {
+	struct seat *seat = data;
+
+    seat->pointer.x = wl_fixed_to_int(surface_x);
+    seat->pointer.y = wl_fixed_to_int(surface_y);
+ 
+    select_hovered_match(seat, false);
 }
 
 static void
 wl_pointer_button(void *data, struct wl_pointer *wl_pointer,
                   uint32_t serial, uint32_t time, uint32_t button, uint32_t state)
 {
+    struct seat *seat = data;
+    struct wayland *wayl = seat->wayl;
+
+    if (state == WL_POINTER_BUTTON_STATE_RELEASED) {
+        if (button == BTN_LEFT && seat->pointer.hovered_row_idx != -1) {
+            execute_selected(seat, false, -1);
+        } else if (button == BTN_RIGHT) {
+            // Same as pressing ESC
+            wayl->status = EXIT;
+            if (wayl->conf->dmenu.enabled)
+                wayl->exit_code = 2;
+        }
+    }
 }
 
 static void
 wl_pointer_axis(void *data, struct wl_pointer *wl_pointer,
                 uint32_t time, uint32_t axis, wl_fixed_t value)
 {
+    struct seat *seat = data;
+    struct wayland *wayl = seat->wayl;
+    bool refresh = false;
+
+    if (value < 0) {
+        refresh = matches_selected_prev_page(wayl->matches, true);
+    } else if (value > 0) {
+        refresh = matches_selected_next_page(wayl->matches, true);
+    }
+
+    if (refresh) {
+        select_hovered_match(seat, true);
+    }
 }
 
 static void

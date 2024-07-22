@@ -53,6 +53,7 @@ size_t matches_get_total_count(const struct matches *matches);
 size_t matches_get_match_index(const struct matches *matches);
 
 bool matches_selected_select(struct matches *matches, const char *string);
+bool matches_idx_select(struct matches *matches, size_t idx);
 
 bool matches_selected_first(struct matches *matches);
 bool matches_selected_last(struct matches *matches);
@@ -60,5 +61,5 @@ bool matches_selected_last(struct matches *matches);
 bool matches_selected_prev(struct matches *matches, bool wrap);
 bool matches_selected_next(struct matches *matches, bool wrap);
 
-bool matches_selected_prev_page(struct matches *matches);
-bool matches_selected_next_page(struct matches *matches);
+bool matches_selected_prev_page(struct matches *matches, bool scrolling);
+bool matches_selected_next_page(struct matches *matches, bool scrolling);

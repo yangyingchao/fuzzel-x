@@ -278,8 +278,8 @@ matches_get_page(const struct matches *matches)
         : matches->selected;
 }
 
-const struct match *
-matches_get(const struct matches *matches, size_t idx)
+size_t
+match_get_idx(const struct matches *matches, size_t idx)
 {
     const size_t page_no = matches_get_page(matches);
     const size_t items_on_page __attribute__((unused)) = matches_get_count(matches);
@@ -294,7 +294,13 @@ matches_get(const struct matches *matches, size_t idx)
     idx += page_no * matches->max_matches_per_page;
 
     assert(idx < matches->match_count);
-    return &matches->matches[idx];
+    return idx;
+}
+
+const struct match *
+matches_get(const struct matches *matches, size_t idx)
+{
+    return &matches->matches[match_get_idx(matches, idx)];
 }
 
 const struct match *
@@ -360,6 +366,16 @@ matches_selected_select(struct matches *matches, const char *_string)
 }
 
 bool
+matches_idx_select(struct matches *matches, size_t idx)
+{
+    if (idx == -1)
+        return false;
+
+    matches->selected = match_get_idx(matches, idx);
+    return true;
+}
+
+bool
 matches_selected_first(struct matches *matches)
 {
     if (matches->match_count <= 0 || matches->selected <= 0)
@@ -411,14 +427,14 @@ matches_selected_next(struct matches *matches, bool wrap)
 }
 
 bool
-matches_selected_prev_page(struct matches *matches)
+matches_selected_prev_page(struct matches *matches, bool scrolling)
 {
     const size_t page_no = matches_get_page(matches);
     if (page_no > 0) {
         assert(matches->selected >= matches->max_matches_per_page);
         matches->selected -= matches->max_matches_per_page;
         return true;
-    } else if (matches->selected > 0) {
+    } else if (!scrolling && matches->selected > 0) {
         matches->selected = 0;
         return true;
     }
@@ -427,7 +443,7 @@ matches_selected_prev_page(struct matches *matches)
 }
 
 bool
-matches_selected_next_page(struct matches *matches)
+matches_selected_next_page(struct matches *matches, bool scrolling)
 {
     const size_t page_no = matches_get_page(matches);
     if (page_no + 1 < matches->page_count) {
@@ -435,7 +451,7 @@ matches_selected_next_page(struct matches *matches)
             matches->selected + matches->max_matches_per_page,
             matches->match_count - 1);
         return true;
-    } else if (matches->selected < matches->match_count - 1) {
+    } else if (!scrolling && matches->selected < matches->match_count - 1) {
         matches->selected = matches->match_count - 1;
         return true;
     }
