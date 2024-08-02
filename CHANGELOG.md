@@ -42,8 +42,12 @@
 * Support for linking against a system provided nanosvg library. See
   the new `-Dsystem-nanosvg` meson option. Default's to `disabled`
   (i.e. use the bundled version).
+* Mouse support. Left click selects/launches, right click quits
+  fuzzel, wheel scrolls (a page at at time). This is, for the time
+  being, not configurable ([#131][131])
 
 [344]: https://codeberg.org/dnkl/fuzzel/issues/344
+[131]: https://codeberg.org/dnkl/fuzzel/issues/131
 
 
 ### Changed
