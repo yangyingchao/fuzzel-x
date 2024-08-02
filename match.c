@@ -941,8 +941,7 @@ matches_update(struct matches *matches, const struct prompt *prompt)
 
         /*
          * For now, only track score for the application title. The
-         * longer consecutive match, relative to the length of the
-         * title, the higher the score.
+         * longer consecutive match, the higher the score.
          *
          * This means searching for 'oo' will sort 'foot' before
          * 'firefox browser', for example.
@@ -955,8 +954,8 @@ matches_update(struct matches *matches, const struct prompt *prompt)
                     longest_match = pos[k].len;
             }
 
-            const size_t title_len = c32len(app->title);
-            score = title_len > 0 ? 100 * longest_match / title_len : 0;
+
+            score = longest_match;
         }
 
         if (match_type_name[tok_count]!= MATCHED_NONE)
