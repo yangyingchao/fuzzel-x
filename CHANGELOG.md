@@ -75,6 +75,7 @@
 * Rounding of window size when fractional scaling is used.
 * Dmenu mode failing with _"failed to read from stdin: Resource
   temporarily unavailable"_.
+* First frame flickers when fractional scaling is used.
 
 [348]: https://codeberg.org/dnkl/fuzzel/issues/348
 [356]: https://codeberg.org/dnkl/fuzzel/issues/356

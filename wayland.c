@@ -2292,13 +2292,17 @@ wayl_init(const struct config *conf, struct fdm *fdm,
      *
      *   - we have more than one monitor (in which case there’s a
      *    chance we guess the scaling factor, or DPI, wrong).
-     *
      * and
-     *
      *   - the user hasn’t selected a specific output.
+     *
+     * or
+     * - the compositor implements fractional scaling, in which case
+     *   we may have the wrong scale even if there's just a single
+     *   monitor.
      */
     wayl->render_first_frame_transparent =
-        tll_length(wayl->monitors) > 1 && wayl->monitor == NULL;
+        (tll_length(wayl->monitors) > 1 && wayl->monitor == NULL) ||
+        wayl->fractional_scale_manager != NULL;
 
     LOG_DBG("using the first-frame-is-transparent trick: %s",
             wayl->render_first_frame_transparent ? "yes"  :"no");
