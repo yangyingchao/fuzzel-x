@@ -64,8 +64,12 @@
 * Always fallback on the icon theme `hicolor`.
 * Quitting without executing an entry in dmenu mode now exits with
   code 2 instead of 1 ([#353][353]).
+* The default `layer` is now `overlay` instead of `top`. This means
+  fuzzel now renders on top of fullscreen windows by default
+  ([#81][81]).
 
 [339]: https://codeberg.org/dnkl/fuzzel/issues/339
+[81]: https://codeberg.org/dnkl/fuzzel/issues/81
 
 
 ### Deprecated

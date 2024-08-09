@@ -1573,7 +1573,7 @@ config_load(struct config *conf, const char *conf_path,
         .image_size_ratio = 0.5,
         .line_height = {-1, 0.0},
         .letter_spacing = {0},
-        .layer = ZWLR_LAYER_SHELL_V1_LAYER_TOP,
+        .layer = ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY,
         .exit_on_kb_focus_loss = true,
         .list_executables_in_path = false,
     };

@@ -229,7 +229,7 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	the same layer. Since e.g. lock screens typically use *overlay*,
 	that means fuzzel may or may not appear on top of a lock screen.
 	
-	Default: _top_
+	Default: _overlay_
 
 *exit-on-keyboard-focus-loss*
 	Boolean. If true, exit when the fuzzel window loses keyboard focus.
