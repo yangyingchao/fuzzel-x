@@ -1417,11 +1417,13 @@ update_size(struct wayland *wayl)
     wayl->scale = scale;
     wayl->dpi = dpi;
 
-    wayl->width /= scale; wayl->width *= scale;
-    wayl->height /= scale; wayl->height *= scale;
+    wayl->width = roundf(roundf(wayl->width / scale) * scale);
+    wayl->height = roundf(roundf(wayl->height / scale) * scale);
 
     zwlr_layer_surface_v1_set_size(
-        wayl->layer_surface, wayl->width / scale, wayl->height / scale);
+        wayl->layer_surface,
+        roundf(wayl->width / scale),
+        roundf(wayl->height / scale));
 
     zwlr_layer_surface_v1_set_margin(
         wayl->layer_surface, wayl->conf->margin.y, wayl->conf->margin.x,
