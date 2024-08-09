@@ -18,7 +18,7 @@ struct matches {
     enum match_fields fields;
     struct match *matches;
     size_t match_count;
-    bool fuzzy;
+    enum match_mode mode;
     size_t page_count;
     size_t selected;
     size_t max_matches_per_page;
@@ -92,7 +92,7 @@ static const char32_t *
 match_levenshtein(struct matches *matches,
                   const char32_t *src, const char32_t *pat, size_t *_match_len)
 {
-    if (!matches->fuzzy)
+    if (matches->mode != MATCH_MODE_FUZZY)
         return NULL;
 
     const size_t src_len = c32len(src);
@@ -189,15 +189,16 @@ match_levenshtein(struct matches *matches,
 }
 
 struct matches *
-matches_init(enum match_fields fields, bool fuzzy, size_t fuzzy_min_length,
-             size_t fuzzy_max_length_discrepancy, size_t fuzzy_max_distance)
+matches_init(enum match_fields fields, enum match_mode mode,
+             size_t fuzzy_min_length, size_t fuzzy_max_length_discrepancy,
+             size_t fuzzy_max_distance)
 {
     struct matches *matches = malloc(sizeof(*matches));
     *matches = (struct matches) {
         .applications = NULL,
         .fields = fields,
         .matches = NULL,
-        .fuzzy = fuzzy,
+        .mode = mode,
         .page_count = 0,
         .match_count = 0,
         .selected = 0,
@@ -582,7 +583,7 @@ matches_update(struct matches *matches, const struct prompt *prompt)
     size_t tok_count = 0;
     char32_t **tokens = NULL;
 
-    if (!matches->fuzzy) {
+    if (matches->mode != MATCH_MODE_FUZZY) {
         tok_count = c32len(ptext);
         tokens = malloc(tok_count * sizeof(tokens[0]));
         for (size_t i = 0; i < tok_count; i++) {
@@ -991,7 +992,7 @@ matches_update(struct matches *matches, const struct prompt *prompt)
         matches->match_count++;
     }
 
-    if (!matches->fuzzy) {
+    if (matches->mode != MATCH_MODE_FUZZY) {
         /* Each token is malloc:ed */
         for (size_t i = 0; i < tok_count; i++)
             free(tokens[i]);

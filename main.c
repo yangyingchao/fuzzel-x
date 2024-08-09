@@ -621,7 +621,7 @@ main(int argc, char *const *argv)
     #define OPT_LETTER_SPACING               256
     #define OPT_LAUNCH_PREFIX                257
     #define OPT_SHOW_ACTIONS                 258
-    #define OPT_NO_FUZZY                     259
+    #define OPT_MATCH_MODE                   259
     #define OPT_FUZZY_MIN_LENGTH             260
     #define OPT_FUZZY_MAX_LENGTH_DISCREPANCY 261
     #define OPT_FUZZY_MAX_DISTANCE           262
@@ -682,7 +682,7 @@ main(int argc, char *const *argv)
         {"terminal",             required_argument, 0, 'T'},
         {"show-actions",         no_argument,       0, OPT_SHOW_ACTIONS},
         {"filter-desktop",       optional_argument, 0, OPT_FILTER_DESKTOP},
-        {"no-fuzzy",             no_argument,       0, OPT_NO_FUZZY},
+        {"match-mode",           required_argument, 0, OPT_MATCH_MODE},
         {"fuzzy-min-length",     required_argument, 0, OPT_FUZZY_MIN_LENGTH},
         {"fuzzy-max-length-discrepancy", required_argument, 0, OPT_FUZZY_MAX_LENGTH_DISCREPANCY},
         {"fuzzy-max-distance",   required_argument, 0, OPT_FUZZY_MAX_DISTANCE},
@@ -744,7 +744,7 @@ main(int argc, char *const *argv)
         bool border_radius_set:1;
         bool actions_enabled_set:1;
         bool filter_desktop_set:1;
-        bool fuzzy_set:1;
+        bool match_mode_set:1;
         bool fuzzy_min_length_set:1;
         bool fuzzy_max_length_discrepancy_set:1;
         bool fuzzy_max_distance_set:1;
@@ -1216,9 +1216,19 @@ main(int argc, char *const *argv)
                 cmdline_overrides.conf.filter_desktop = true;
             break;
 
-        case OPT_NO_FUZZY:
-            cmdline_overrides.conf.fuzzy.enabled = false;
-            cmdline_overrides.fuzzy_set = true;
+        case OPT_MATCH_MODE:
+            if (strcmp(optarg, "exact") == 0)
+                cmdline_overrides.conf.match_mode = MATCH_MODE_EXACT;
+            else if (strcmp(optarg, "fzf") == 0)
+                cmdline_overrides.conf.match_mode = MATCH_MODE_FZF;
+            else if (strcmp(optarg, "fuzzy") == 0)
+                cmdline_overrides.conf.match_mode = MATCH_MODE_FUZZY;
+            else {
+                fprintf(stderr, "%s: invalid match-mode\n", optarg);
+                return EXIT_FAILURE;
+            }
+
+            cmdline_overrides.match_mode_set = true;
             break;
 
         case OPT_FUZZY_MIN_LENGTH:
@@ -1468,8 +1478,8 @@ main(int argc, char *const *argv)
         conf.filter_desktop = cmdline_overrides.conf.filter_desktop;
     if (cmdline_overrides.actions_enabled_set)
         conf.actions_enabled = cmdline_overrides.conf.actions_enabled;
-    if (cmdline_overrides.fuzzy_set)
-        conf.fuzzy.enabled = cmdline_overrides.conf.fuzzy.enabled;
+    if (cmdline_overrides.match_mode_set)
+        conf.match_mode = cmdline_overrides.conf.match_mode;
     if (cmdline_overrides.fuzzy_min_length_set)
         conf.fuzzy.min_length = cmdline_overrides.conf.fuzzy.min_length;
     if (cmdline_overrides.fuzzy_max_length_discrepancy_set)
@@ -1556,7 +1566,7 @@ main(int argc, char *const *argv)
         goto out;
 
     if ((matches = matches_init(
-             conf.match_fields, conf.fuzzy.enabled, conf.fuzzy.min_length,
+             conf.match_fields, conf.match_mode, conf.fuzzy.min_length,
              conf.fuzzy.max_length_discrepancy,
              conf.fuzzy.max_distance)) == NULL)
         goto out;

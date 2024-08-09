@@ -29,6 +29,12 @@ enum dmenu_mode {
     DMENU_MODE_INDEX,
 };
 
+enum match_mode {
+    MATCH_MODE_EXACT,
+    MATCH_MODE_FZF,
+    MATCH_MODE_FUZZY,
+};
+
 enum match_fields {
     MATCH_FILENAME =   0x01,
     MATCH_NAME =       0x02,
@@ -117,11 +123,11 @@ struct config {
 
     struct config_key_binding_list key_bindings;
 
+    enum match_mode match_mode;
     struct {
         size_t min_length;
         size_t max_length_discrepancy;
         size_t max_distance;
-        bool enabled;
     } fuzzy;
 
     struct {

@@ -854,8 +854,15 @@ parse_section_main(struct context *ctx)
     else if (strcmp(key, "filter-desktop") == 0)
         return value_to_bool(ctx, &conf->filter_desktop);
 
-    else if (strcmp(key, "fuzzy") == 0)
-        return value_to_bool(ctx, &conf->fuzzy.enabled);
+    else if (strcmp(key, "match-mode") == 0) {
+        _Static_assert(sizeof(conf->match_mode) == sizeof(int),
+                       "enum is not 32-bit");
+
+        return value_to_enum(
+            ctx,
+            (const char *[]){"exact", "fzf", "fuzzy", NULL},
+            (int *)&conf->match_mode);
+    }
 
     else if (strcmp(key, "show-actions") == 0)
         return value_to_bool(ctx, &conf->actions_enabled);
@@ -1538,11 +1545,11 @@ config_load(struct config *conf, const char *conf_path,
         .icons_enabled = true,
         .icon_theme = strdup("hicolor"),
         .actions_enabled = false,
+        .match_mode = MATCH_MODE_FZF,
         .fuzzy = {
             .min_length = 3,
             .max_length_discrepancy = 2,
             .max_distance = 1,
-            .enabled = true,
         },
         .dmenu = {
             .enabled = false,
