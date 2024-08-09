@@ -788,9 +788,9 @@ render_set_subpixel(struct render *render, enum fcft_subpixel subpixel)
 }
 
 bool
-render_set_font(struct render *render, struct fcft_font *font,
-                float scale, float dpi, bool size_font_by_dpi,
-                int *new_width, int *new_height)
+render_set_font_and_update_sizes(struct render *render, struct fcft_font *font,
+                                 float scale, float dpi, bool size_font_by_dpi,
+                                 int *new_width, int *new_height)
 {
     if (font != NULL) {
         fcft_destroy(render->font);
@@ -824,7 +824,7 @@ render_set_font(struct render *render, struct fcft_font *font,
         y_margin +
         row_height +                         /* The prompt */
         inner_pad +                          /* Padding between prompt and matches */
-        render->conf->lines * row_height + /* Matches */
+        render->conf->lines * row_height +   /* Matches */
         y_margin +
         border_size;                         /* Bottom border */
 
@@ -885,7 +885,7 @@ render_get_row_num(const struct render *render, int y,
     const int row_height = render->row_height;
     const int first_row = 1 * border_size + y_margin + row_height + inner_pad;
     const size_t match_count = matches_get_count(matches);
-    const size_t last_row = first_row + match_count*row_height;
+    const size_t last_row = first_row + match_count * row_height;
 
     y = floor(scale * y);
 

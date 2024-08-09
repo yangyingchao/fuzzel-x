@@ -1039,28 +1039,6 @@ attempt_cursor_shape(struct wayland *wayl, struct wl_pointer *wl_pointer,
 }
 
 static void
-wl_pointer_enter(void *data, struct wl_pointer *wl_pointer,
-                 uint32_t serial, struct wl_surface *surface,
-                 wl_fixed_t surface_x, wl_fixed_t surface_y)
-{
-    struct seat *seat = data;
-    seat->pointer.serial = serial;
-
-    if (!attempt_cursor_shape(seat->wayl, wl_pointer, serial)) {
-        reload_cursor_theme(seat, seat->wayl->scale);
-        update_cursor_surface(seat);
-    }
-}
-
-static void
-wl_pointer_leave(void *data, struct wl_pointer *wl_pointer,
-                 uint32_t serial, struct wl_surface *surface)
-{
-    struct seat *seat = data;
-    seat->pointer.serial = serial;
-}
-
-static void
 select_hovered_match(struct seat *seat, bool refresh_always)
 {
     struct wayland *wayl = seat->wayl;
@@ -1079,6 +1057,33 @@ select_hovered_match(struct seat *seat, bool refresh_always)
     if (refresh_always || refresh) {
         wayl_refresh(wayl);
     }
+}
+
+static void
+wl_pointer_enter(void *data, struct wl_pointer *wl_pointer,
+                 uint32_t serial, struct wl_surface *surface,
+                 wl_fixed_t surface_x, wl_fixed_t surface_y)
+{
+    struct seat *seat = data;
+    seat->pointer.serial = serial;
+
+    seat->pointer.x = wl_fixed_to_int(surface_x);
+    seat->pointer.y = wl_fixed_to_int(surface_y);
+
+    if (!attempt_cursor_shape(seat->wayl, wl_pointer, serial)) {
+        reload_cursor_theme(seat, seat->wayl->scale);
+        update_cursor_surface(seat);
+    }
+
+    select_hovered_match(seat, false);
+}
+
+static void
+wl_pointer_leave(void *data, struct wl_pointer *wl_pointer,
+                 uint32_t serial, struct wl_surface *surface)
+{
+    struct seat *seat = data;
+    seat->pointer.serial = serial;
 }
 
 static void
@@ -1361,19 +1366,16 @@ reload_font(struct wayland *wayl, float new_dpi, float new_scale)
 
         if (font == NULL)
             return false;
-
-        bool ret = render_set_font(
-            wayl->render, font, new_scale, new_dpi,
-            wayl->font_is_sized_by_dpi, &wayl->width, &wayl->height);
-
-        if (wayl->font_reloaded.cb != NULL)
-            wayl->font_reloaded.cb(wayl, font, wayl->font_reloaded.data);
-
-        return ret;
     }
 
-    return true;
+    bool ret = render_set_font_and_update_sizes(
+        wayl->render, font, new_scale, new_dpi,
+        wayl->font_is_sized_by_dpi, &wayl->width, &wayl->height);
 
+    if (wayl->font_reloaded.cb != NULL)
+        wayl->font_reloaded.cb(wayl, font, wayl->font_reloaded.data);
+
+    return ret;
 }
 
 static float

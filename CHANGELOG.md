@@ -76,6 +76,11 @@
 * Dmenu mode failing with _"failed to read from stdin: Resource
   temporarily unavailable"_.
 * First frame flickers when fractional scaling is used.
+* Borders, padding etc not updated on scale changes when
+  `dpi-aware=yes`. This mostly affected setups using fractional
+  scaling, but all setups were affected in one way or another.
+* Mouse selection not working correctly (wrong item selected) when
+  `dpi-aware=yes` and desktop scaling was enabled.
 
 [348]: https://codeberg.org/dnkl/fuzzel/issues/348
 [356]: https://codeberg.org/dnkl/fuzzel/issues/356
