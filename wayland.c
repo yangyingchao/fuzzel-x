@@ -180,6 +180,7 @@ struct wayland {
 
     enum { KEEP_RUNNING, EXIT_UPDATE_CACHE, EXIT} status;
     int exit_code;
+    bool force_cache_update;
 
     struct wl_callback *frame_cb;
     struct buffer *pending;
@@ -556,6 +557,8 @@ execute_selected(struct seat *seat, bool as_is, int custom_success_exit_code)
         wayl->exit_code = custom_success_exit_code >= 0
             ? custom_success_exit_code
             : EXIT_SUCCESS;
+        wayl->status = EXIT_UPDATE_CACHE;
+        app->count++;
     } else {
         char *xdg_activation_token = NULL;
         if (wayl->xdg_activation_v1 != NULL && app != NULL && app->startup_notify)
@@ -571,9 +574,10 @@ execute_selected(struct seat *seat, bool as_is, int custom_success_exit_code)
                : EXIT_SUCCESS)
             : EXIT_FAILURE;
 
-        if (success && match != NULL) {
+        if (success) {
             wayl->status = EXIT_UPDATE_CACHE;
-            app->count++;
+            if (app != NULL)
+                app->count++;
         }
     }
 }
@@ -679,6 +683,18 @@ execute_binding(struct seat *seat, const struct key_binding *binding, bool *refr
 
         if (*refresh)
             matches_update(wayl->matches, wayl->prompt);
+        return true;
+    }
+
+    case BIND_ACTION_EXPUNGE: {
+        const struct match *match = matches_get_match(wayl->matches);
+        if (match != NULL) {
+            match->application->count = 0;
+            matches_update(wayl->matches, wayl->prompt);
+            wayl->force_cache_update = true;
+            *refresh = true;
+        } else
+            *refresh = false;
         return true;
     }
 
@@ -2439,5 +2455,5 @@ wayl_exit_code(const struct wayland *wayl)
 bool
 wayl_update_cache(const struct wayland *wayl)
 {
-    return wayl->status == EXIT_UPDATE_CACHE;
+    return wayl->force_cache_update || wayl->status == EXIT_UPDATE_CACHE;
 }

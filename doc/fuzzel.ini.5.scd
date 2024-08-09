@@ -382,6 +382,10 @@ done by setting _action=none_; e.g. *delete-line-forward=none*.
 	prompt. In application mode, the *Exec* line is inserted, and in
 	dmenu mode the entry itself is used. Default: _Control+Tab_.
 
+*expunge*
+	Removes the currently selected entry from the cache (of most
+	commonly launched applications). Default: _Shift+Delete_.
+
 *prev*
 	Select the previous entry. Does *not* wrap around when the first
 	entry has been reached. Default: _Up Control+p_.

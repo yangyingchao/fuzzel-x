@@ -20,6 +20,22 @@ or command line options:
 *--config*=_PATH_
 	Path to configuration file, see *fuzzel.ini*(5) for details.
 
+*--check-config*
+	Verify configuration and then exit with 0 if ok, otherwise exit
+	with 1.
+
+*--cache*=_PATH_
+	Use a custom cache location. Fuzzel uses this file to cache the
+	most commonly launched applications (to be able to sort them at
+	the top).
+	
+	You can also use this option to enable caching of dmenu
+	entries. It is recommended that you use a separate cache file for
+	each "type" of dmenu invokation; i.e. one for the browser history,
+	another for emojis etc.
+	
+	Default: _XDG_CACHE_HOME/fuzzel_
+
 *-o*,*--output*=_OUTPUT_
 	Specifies the monitor to display the window on. Autocompletion is available
 	for zsh and fish, or you can list the available outputs with *wlr-randr* or

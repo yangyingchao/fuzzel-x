@@ -789,8 +789,12 @@ xdg_cache_dir(void)
     if (xdg_cache_home != NULL && xdg_cache_home[0] != '\0')
         return xdg_cache_home;
 
-    static char path[PATH_MAX];
-    const struct passwd *pw = getpwuid(getuid());
-    snprintf(path, sizeof(path), "%s/.cache", pw->pw_dir);
-    return path;
+    const char *home = getenv("HOME");
+    if (home != NULL && home[0] != '\0') {
+        static char path[PATH_MAX];
+        snprintf(path, sizeof(path), "%s/.cache", home);
+        return path;
+    }
+
+    return NULL;
 }

@@ -45,9 +45,15 @@
 * Mouse support. Left click selects/launches, right click quits
   fuzzel, wheel scrolls (a page at at time). This is, for the time
   being, not configurable ([#131][131])
+* `--cache=PATH` command line option, allowing a custom cache location
+  to be used ([#189][189], [#219][219]).
+* `expunge` key binding, to remove an entry from the cache. Mapped to
+  shift+delete by default.
 
 [344]: https://codeberg.org/dnkl/fuzzel/issues/344
 [131]: https://codeberg.org/dnkl/fuzzel/issues/131
+[189]: https://codeberg.org/dnkl/fuzzel/issues/189
+[219]: https://codeberg.org/dnkl/fuzzel/issues/219
 
 
 ### Changed

@@ -17,9 +17,9 @@ struct matches {
     const struct application_list *applications;
     enum match_fields fields;
     struct match *matches;
+    size_t match_count;
     bool fuzzy;
     size_t page_count;
-    size_t match_count;
     size_t selected;
     size_t max_matches_per_page;
     size_t fuzzy_min_length;

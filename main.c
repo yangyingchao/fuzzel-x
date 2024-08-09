@@ -42,6 +42,7 @@
 
 struct context {
     const struct config *conf;
+    const char *cache_path;
     struct wayland *wayl;
     struct render *render;
     struct matches *matches;
@@ -54,70 +55,87 @@ struct context {
 
     const char *select_initial;
 
-#if 0
-    /* TODO: can we use a struct config ptr instead? */
-    struct {
-        const char *icon_theme;
-        const char *terminal;
-        bool icons_enabled;
-        bool actions_enabled;
-        bool dmenu_mode;
-    } options;
-#endif
     int event_fd;
     int dmenu_abort_fd;
 };
 
 struct cache_entry {
     char *id;
+    char32_t *title;
     size_t count;
 };
 
 static void
-read_cache(struct application_list *apps)
+read_cache(const char *path, struct application_list *apps, bool dmenu)
 {
-    const char *path = xdg_cache_dir();
-    if (path == NULL) {
-        LOG_WARN("failed to get cache directory: not saving popularity cache");
-        return;
-    }
-
-    int cache_dir_fd = open(path, O_DIRECTORY);
-    if (cache_dir_fd == -1) {
-        LOG_ERRNO("%s: failed to open", path);
+    if (path == NULL && dmenu) {
+        /* Don't thrash "normal" cache in dmenu mode */
         return;
     }
 
     struct stat st;
-    int fd = -1;
+    FILE *f = NULL;
 
-    if (fstatat(cache_dir_fd, "fuzzel", &st, 0) == -1 ||
-        (fd = openat(cache_dir_fd, "fuzzel", O_RDONLY)) == -1)
-    {
+    if (path == NULL) {
+        path = xdg_cache_dir();
+        if (path == NULL) {
+            LOG_WARN("failed to get cache directory: not saving popularity cache");
+            return;
+        }
+
+        int cache_dir_fd = open(path, O_DIRECTORY);
+        if (cache_dir_fd == -1) {
+            LOG_ERRNO("%s: failed to open", path);
+            return;
+        }
+
+        int fd = -1;
+        if (fstatat(cache_dir_fd, "fuzzel", &st, 0) < 0 ||
+            (fd = openat(cache_dir_fd, "fuzzel", O_RDONLY)) < 0 ||
+            (f = fdopen(fd, "r")) == NULL)
+        {
+            close(cache_dir_fd);
+            if (fd >= 0)
+                close(fd);
+
+            if (errno != ENOENT)
+                LOG_ERRNO("%s/fuzzel: failed to open", path);
+            return;
+        }
         close(cache_dir_fd);
-        if (errno != ENOENT)
-            LOG_ERRNO("%s/fuzzel: failed to open", path);
-        return;
-    }
-    close(cache_dir_fd);
-
-    char *text = mmap(
-        NULL, st.st_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
-    close(fd);
-
-    if (text == MAP_FAILED) {
-        LOG_ERRNO("%s/fuzzel: failed to mmap", path);
-        return;
+    } else {
+        if (stat(path, &st) < 0 || (f = fopen(path, "r")) == NULL)
+        {
+            if (errno != ENOENT)
+                LOG_ERRNO("%s: failed to open", path);
+            return;
+        }
     }
 
     tll(struct cache_entry) cache_entries = tll_init();
 
-    /* Loop lines */
-    char *lineptr = NULL;
-    for (char *line = strtok_r(text, "\n", &lineptr);
-         line != NULL;
-         line = strtok_r(NULL, "\n", &lineptr))
-    {
+    size_t line_sz = 0;
+    char *line = NULL;
+
+    while (true) {
+        errno = 0;
+        ssize_t bytes = getline(&line, &line_sz, f);
+
+        if (bytes < 0) {
+            if (errno != 0) {
+                LOG_ERRNO("failed to read cache");
+                fclose(f);
+                free(line);
+                return;
+            }
+
+            /* Done */
+            break;
+        }
+
+        if (line[bytes - 1] == '\n')
+            line[bytes - 1] = '\0';
+
         /* Parse each line ("<title>|<count>") */
         char *ptr = NULL;
         const char *id = strtok_r(line, "|", &ptr);
@@ -132,28 +150,36 @@ read_cache(struct application_list *apps)
         sscanf(count_str, "%u", &count);
 
         struct cache_entry entry = {
-            .id = strdup(id),
+            .id = dmenu ? NULL : strdup(id),
+            .title = dmenu ? ambstoc32(id) : NULL,
             .count = count,
         };
         tll_push_back(cache_entries, entry);
     }
 
+    free(line);
+    fclose(f);
+
     /* Loop all applications, and search for a matching cache entry */
     for (size_t i = 0; i < apps->count; i++) {
         struct application *app = &apps->v[i];
 
-        if (app->id == NULL) {
-            /* E.g. plain binaries, from --list-executables-in-path */
+        if ((!dmenu && app->id == NULL) || (dmenu && app->title == NULL)) {
             continue;
         }
 
         tll_foreach(cache_entries, it) {
             const struct cache_entry *e = &it->item;
+            if ((!dmenu && e->id == NULL) || (dmenu && e->title == NULL))
+                continue;
 
-            if (strcmp(app->id, e->id) == 0) {
+            if ((!dmenu && strcmp(app->id, e->id) == 0) ||
+                (dmenu && c32cmp(app->title, e->title) == 0))
+            {
                 app->count = e->count;
 
                 free(e->id);
+                free(e->title);
                 tll_remove(cache_entries, it);
                 break;
             }
@@ -165,27 +191,36 @@ read_cache(struct application_list *apps)
         free(it->item.id);
         tll_remove(cache_entries, it);
     }
-
-    munmap(text, st.st_size);
 }
 
 static void
-write_cache(const struct application_list *apps)
+write_cache(const char *path, const struct application_list *apps, bool dmenu)
 {
-    const char *path = xdg_cache_dir();
+    if (path == NULL && dmenu) {
+        /* Don't thrash "normal" cache in dmenu mode */
+        return;
+    }
+
+    int fd = -1;
+
     if (path == NULL) {
-        LOG_WARN("failed to get cache directory: not saving popularity cache");
-        return;
-    }
+        path = xdg_cache_dir();
+        if (path == NULL) {
+            LOG_WARN("failed to get cache directory: not saving popularity cache");
+            return;
+        }
 
-    int cache_dir_fd = open(path, O_DIRECTORY);
-    if (cache_dir_fd == -1) {
-        LOG_ERRNO("%s: failed to open", path);
-        return;
-    }
+        int cache_dir_fd = open(path, O_DIRECTORY);
+        if (cache_dir_fd == -1) {
+            LOG_ERRNO("%s: failed to open", path);
+            return;
+        }
 
-    int fd = openat(cache_dir_fd, "fuzzel", O_WRONLY | O_CREAT | O_TRUNC, 0644);
-    close(cache_dir_fd);
+        fd = openat(cache_dir_fd, "fuzzel", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        close(cache_dir_fd);
+    } else {
+        fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    }
 
     if (fd == -1) {
         LOG_ERRNO("%s/fuzzel: failed to open", path);
@@ -199,14 +234,34 @@ write_cache(const struct application_list *apps)
         if (!apps->v[i].visible)
             continue;
 
+        if (!dmenu || apps->v[i].id == NULL) {
+            const char *id = apps->v[i].id;
+            const size_t id_len = strlen(id);
+
+            if (write(fd, id, id_len) != id_len) {
+                LOG_ERRNO("failed to write cache");
+                break;
+            }
+        } else {
+            const char32_t *title = apps->v[i].title;
+            char *u8_title = ac32tombs(title);
+
+            if (u8_title != NULL) {
+                const size_t title_len = strlen(u8_title);
+                if (write(fd, u8_title, title_len) != title_len) {
+                    LOG_ERRNO("failed to write cache");
+                    break;
+                }
+
+                free(u8_title);
+            }
+        }
+
         char count_as_str[11];
         sprintf(count_as_str, "%u", apps->v[i].count);
         const size_t count_len = strlen(count_as_str);
-        const char *id = apps->v[i].id;
-        const size_t id_len = strlen(id);
 
-        if (write(fd, id, id_len) != id_len ||
-            write(fd, "|", 1) != 1 ||
+        if (write(fd, "|", 1) != 1 ||
             write(fd, count_as_str, count_len) != count_len ||
             write(fd, "\n", 1) != 1)
         {
@@ -258,6 +313,7 @@ print_usage(const char *prog_name)
     printf("Options:\n");
     printf("     --config=PATH               load configuration from PATH (XDG_CONFIG_HOME/fuzzel/fuzzel.ini)\n"
            "     --check-config              verify configuration, exit with 0 if ok, otherwise exit with 1\n"
+           "     --cache=PATH                load most recently launched applications from PATH (XDG_CACHE_HOME/fuzzel)\n"
            "  -o,--output=OUTPUT             output (monitor) to display on (none)\n"
            "  -f,--font=FONT                 font name and style, in FontConfig format\n"
            "                                 (monospace)\n"
@@ -442,6 +498,7 @@ static int
 populate_apps(void *_ctx)
 {
     struct context *ctx = _ctx;
+    const char *cache_path = ctx->cache_path;
     struct application_list *apps = ctx->apps;
     const struct config *conf = ctx->conf;
     const char *icon_theme = conf->icon_theme;
@@ -469,13 +526,14 @@ populate_apps(void *_ctx)
         }
     }
 
-    if (dmenu_enabled)
+    if (dmenu_enabled) {
         dmenu_load_entries(apps, dmenu_delim, ctx->dmenu_abort_fd);
-    else {
+        read_cache(cache_path, apps, true);
+    } else {
         xdg_find_programs(terminal, actions_enabled, filter_desktop, &desktops, apps);
         if (list_exec_in_path)
             path_find_programs(apps);
-        read_cache(apps);
+        read_cache(cache_path, apps, false);
     }
     tll_free_and_free(desktops, free);
 
@@ -582,10 +640,12 @@ main(int argc, char *const *argv)
     #define OPT_LIST_EXECS_IN_PATH           277
     #define OPT_X_MARGIN                     278
     #define OPT_Y_MARGIN                     279
+    #define OPT_CACHE                        280
 
     static const struct option longopts[] = {
-        {"config",               required_argument, 0,  OPT_CONFIG},
-        {"check-config",         no_argument,       0,  OPT_CHECK_CONFIG},
+        {"config",               required_argument, 0, OPT_CONFIG},
+        {"check-config",         no_argument,       0, OPT_CHECK_CONFIG},
+        {"cache",                required_argument, 0, OPT_CACHE},
         {"output"  ,             required_argument, 0, 'o'},
         {"font",                 required_argument, 0, 'f'},
         {"dpi-aware",            required_argument, 0, 'D'},
@@ -644,6 +704,7 @@ main(int argc, char *const *argv)
 
     bool check_config = false;
     const char *config_path = NULL;
+    const char *cache_path = NULL;
     enum log_class log_level = LOG_CLASS_WARNING;
     enum log_colorize log_colorize = LOG_COLORIZE_AUTO;
     bool log_syslog = true;
@@ -718,6 +779,10 @@ main(int argc, char *const *argv)
 
         case OPT_CHECK_CONFIG:
             check_config = true;
+            break;
+
+        case OPT_CACHE:
+            cache_path = optarg;
             break;
 
         case 'o':
@@ -1490,6 +1555,7 @@ main(int argc, char *const *argv)
 
     struct context ctx = {
         .conf = &conf,
+        .cache_path = cache_path,
         .render = render,
         .matches = matches,
         .prompt = prompt,
@@ -1540,7 +1606,7 @@ main(int argc, char *const *argv)
     }
 
     if (wayl_update_cache(wayl))
-        write_cache(apps);
+        write_cache(cache_path, apps, conf.dmenu.enabled);
 
     ret = wayl_exit_code(wayl);
 
