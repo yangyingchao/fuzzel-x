@@ -580,11 +580,6 @@ matches_update(struct matches *matches, const struct prompt *prompt)
 
     LOG_DBG("match update begin");
 
-    const size_t tok_count = 1;
-    const char32_t *const tokens[1] = {ptext};
-
-    assert(tok_count > 0);
-
     for (size_t i = 0; i < matches->applications->count; i++) {
         struct application *app = &matches->applications->v[i];
 
@@ -595,13 +590,13 @@ matches_update(struct matches *matches, const struct prompt *prompt)
         struct match *match = &matches->matches[matches->match_count];
         struct match_substring *pos = match->pos;
 
-        enum matched_type match_type_name[tok_count + 1];
-        enum matched_type match_type_filename[tok_count + 1];
-        enum matched_type match_type_generic[tok_count + 1];
-        enum matched_type match_type_exec[tok_count + 1];
-        enum matched_type match_type_comment[tok_count + 1];
-        enum matched_type match_type_keywords[tll_length(app->keywords)][tok_count + 1];
-        enum matched_type match_type_categories[tll_length(app->categories)][tok_count + 1];
+        enum matched_type match_type_name = MATCHED_NONE;;
+        enum matched_type match_type_filename = MATCHED_NONE;
+        enum matched_type match_type_generic = MATCHED_NONE;
+        enum matched_type match_type_exec = MATCHED_NONE;;
+        enum matched_type match_type_comment = MATCHED_NONE;;
+        enum matched_type match_type_keywords[tll_length(app->keywords)];
+        enum matched_type match_type_categories[tll_length(app->categories)];
 
         const char32_t *title = app->title;
         const char32_t *basename = app->basename;
@@ -619,242 +614,183 @@ matches_update(struct matches *matches, const struct prompt *prompt)
             tll_push_back(categories, it->item);
         }
 
-        for (size_t j = 0; j < tok_count + 1; j++) {
-            match_type_name[j] = MATCHED_NONE;
-            match_type_filename[j] = MATCHED_NONE;
-            match_type_generic[j] = MATCHED_NONE;
-            match_type_exec[j] = MATCHED_NONE;
-            match_type_comment[j] = MATCHED_NONE;
-            for (size_t k = 0; k < tll_length(app->keywords); k++)
-                match_type_keywords[k][j] = MATCHED_NONE;
-            for (size_t k = 0; k < tll_length(app->categories); k++)
-                match_type_categories[k][j] = MATCHED_NONE;
+        for (size_t k = 0; k < tll_length(app->keywords); k++)
+            match_type_keywords[k] = MATCHED_NONE;
+        for (size_t k = 0; k < tll_length(app->categories); k++)
+            match_type_categories[k] = MATCHED_NONE;
+
+        const char32_t *token = ptext;
+
+        if (match_name) {
+            const char32_t *m = c32casestr(title, token);
+            size_t match_len = 0;
+
+            if (m != NULL) {
+                match_type_name = MATCHED_EXACT;
+                match_len = c32len(token);
+                LOG_DBG("%ls: exact title", (const wchar_t *)title);
+            } else if ((m = match_levenshtein(matches, title, token, &match_len)) != NULL) {
+                match_type_name = MATCHED_FUZZY;
+                LOG_DBG("%ls: fuzzy title", (const wchar_t *)title);
+            }
+
+            if (match_len > 0) {
+                if (pos_count > 0 && m == &app->title[pos[pos_count - 1].start +
+                                                      pos[pos_count - 1].len]) {
+                    /* Extend last match position */
+                    pos[pos_count - 1].len += match_len;
+                } else {
+                    size_t new_pos_count = pos_count + 1;
+                    struct match_substring *new_pos =
+                        realloc(pos, new_pos_count * sizeof(new_pos[0]));
+
+                    if (new_pos != NULL) {
+                        pos = new_pos;
+                        pos_count = new_pos_count;
+
+                        pos[pos_count - 1].start = m - app->title;
+                        pos[pos_count - 1].len = match_len;
+
+                        match->pos = pos;
+                    }
+                }
+
+                title = m + match_len;
+            }
         }
 
-        for (size_t j = 0; j < tok_count; j++) {
-            const char32_t *token = tokens[j];
+        if (match_filename && app->basename != NULL) {
+            const char32_t *m = c32casestr(basename, token);
+            size_t match_len = 0;
 
-            if (match_name && (j == 0 || (match_type_name[j - 1] != MATCHED_NONE))) {
-                const char32_t *m = c32casestr(title, token);
+            if (m != NULL) {
+                match_type_filename = MATCHED_EXACT;
+                match_len = c32len(token);
+                LOG_DBG("%ls: exact filename: %ls", (const wchar_t *)app->title,
+                        (const wchar_t *)app->basename);
+            } else if ((m = match_levenshtein(matches, basename, token,
+                                              &match_len)) != NULL) {
+                match_type_filename = MATCHED_FUZZY;
+                LOG_DBG("%ls: fuzzy filename: %ls", (const wchar_t *)app->title,
+                        (const wchar_t *)app->basename);
+            }
+
+            if (match_len > 0)
+                basename = m + match_len;
+        }
+
+        if (match_generic && app->generic_name != NULL) {
+            const char32_t *m = c32casestr(generic_name, token);
+            size_t match_len = 0;
+
+            if (m != NULL) {
+                match_type_generic = MATCHED_EXACT;
+                match_len = c32len(token);
+                LOG_DBG("%ls: exact generic: %ls", (const wchar_t *)app->title,
+                        (const wchar_t *)app->generic_name);
+            } else if ((m = match_levenshtein(matches, generic_name, token,
+                                              &match_len)) != NULL) {
+                match_type_generic = MATCHED_FUZZY;
+                LOG_DBG("%ls: fuzzy generic: %ls", (const wchar_t *)app->title,
+                        (const wchar_t *)app->generic_name);
+            }
+
+            if (match_len > 0)
+                generic_name = m + match_len;
+        }
+
+        if (match_exec && app->wexec != NULL) {
+            const char32_t *m = c32casestr(wexec, token);
+            size_t match_len = 0;
+
+            if (m != NULL) {
+                match_type_exec = MATCHED_EXACT;
+                match_len = c32len(token);
+                LOG_DBG("%ls: exact exec: %ls", (const wchar_t *)app->title,
+                        (const wchar_t *)app->wexec);
+            } else if (match_levenshtein(matches, wexec, token, &match_len) !=
+                       NULL) {
+                match_type_exec = MATCHED_FUZZY;
+                LOG_DBG("%ls: fuzzy exec: %ls", (const wchar_t *)app->title,
+                        (const wchar_t *)app->wexec);
+            }
+
+            if (match_len > 0)
+                wexec = m + match_len;
+        }
+
+        if (match_comment && app->comment != NULL) {
+            const char32_t *m = c32casestr(comment, token);
+            size_t match_len = 0;
+
+            if (m != NULL) {
+                match_type_comment = MATCHED_EXACT;
+                match_len = c32len(token);
+                LOG_DBG("%ls: exact comment: %ls", (const wchar_t *)app->title,
+                        (const wchar_t *)app->comment);
+            } else if (match_levenshtein(matches, comment, token, &match_len) !=
+                       NULL) {
+                match_type_comment = MATCHED_FUZZY;
+                LOG_DBG("%ls: fuzzy comment: %ls", (const wchar_t *)app->title,
+                        (const wchar_t *)app->comment);
+            }
+
+            if (match_len > 0)
+                comment = m + match_len;
+        }
+
+        if (match_keywords) {
+            size_t k = 0;
+            tll_foreach(keywords, it) {
+                const char32_t *m = c32casestr(it->item, token);
                 size_t match_len = 0;
 
                 if (m != NULL) {
-                    match_type_name[j] = MATCHED_EXACT;
+                    match_type_keywords[k] = MATCHED_EXACT;
                     match_len = c32len(token);
-                    LOG_DBG("%ls: exact title", (const wchar_t *)title);
-                } else if ((m = match_levenshtein(matches, title, token, &match_len)) != NULL) {
-                    match_type_name[j] = MATCHED_FUZZY;
-                    LOG_DBG("%ls: fuzzy title", (const wchar_t *)title);
+                    LOG_DBG("%ls: exact keyword: %ls", (const wchar_t *)app->title,
+                            (const wchar_t *)it->item);
+                } else if (match_levenshtein(matches, it->item, token,
+                                             &match_len) != NULL) {
+                    match_type_keywords[k]= MATCHED_FUZZY;
+                    LOG_DBG("%ls: fuzzy keyword: %ls", (const wchar_t *)app->title,
+                            (const wchar_t *)it->item);
                 }
 
                 if (match_len > 0) {
-                    if (pos_count > 0 &&
-                        m == &app->title[pos[pos_count - 1].start +
-                                         pos[pos_count - 1].len])
-                    {
-                        /* Extend last match position */
-                        pos[pos_count - 1].len += match_len;
-                    } else {
-                        size_t new_pos_count = pos_count + 1;
-                        struct match_substring *new_pos = realloc(
-                            pos, new_pos_count * sizeof(new_pos[0]));
-
-                        if (new_pos != NULL) {
-                            pos = new_pos;
-                            pos_count = new_pos_count;
-
-                            pos[pos_count - 1].start = m - app->title;
-                            pos[pos_count - 1].len = match_len;
-
-                            match->pos = pos;
-                        }
-                    }
-
-                    title = m + match_len;
+                    /* Replace current entry */
+                    tll_insert_before(keywords, it, m + match_len);
+                    tll_remove(keywords, it);
                 }
-            }
 
-            if (match_filename && app->basename != NULL && (j == 0 || match_type_filename[j - 1] != MATCHED_NONE)) {
-                const char32_t *m = c32casestr(basename, token);
+                k++;
+            }
+        }
+
+        if (match_categories) {
+            size_t k = 0;
+            tll_foreach(categories, it) {
+                const char32_t *m = c32casestr(it->item, token);
                 size_t match_len = 0;
 
                 if (m != NULL) {
-                    match_type_filename[j] = MATCHED_EXACT;
+                    match_type_categories[k] = MATCHED_EXACT;
                     match_len = c32len(token);
-                    LOG_DBG("%ls: exact filename: %ls",
-                            (const wchar_t *)app->title, (const wchar_t *)app->basename);
-                } else if ((m = match_levenshtein(matches, basename, token, &match_len)) != NULL) {
-                    match_type_filename[j] = MATCHED_FUZZY;
-                    LOG_DBG("%ls: fuzzy filename: %ls",
-                            (const wchar_t *)app->title, (const wchar_t *)app->basename);
+                    LOG_DBG("%ls: exact category: %ls", (const wchar_t *)app->title,
+                            (const wchar_t *)it->item);
+                } else if (match_levenshtein(matches, it->item, token, NULL) !=
+                           NULL) {
+                    match_type_categories[k] = MATCHED_FUZZY;
+                    LOG_DBG("%ls: fuzzy category: %ls", (const wchar_t *)app->title,
+                            (const wchar_t *)it->item);
                 }
 
-                if (match_len > 0)
-                    basename = m + match_len;
-            }
-
-            if (match_generic && app->generic_name != NULL && (j == 0 || match_type_generic[j - 1] != MATCHED_NONE)) {
-                const char32_t *m = c32casestr(generic_name, token);
-                size_t match_len = 0;
-
-                if (m != NULL) {
-                    match_type_generic[j]= MATCHED_EXACT;
-                    match_len = c32len(token);
-                    LOG_DBG("%ls: exact generic: %ls",
-                            (const wchar_t *)app->title, (const wchar_t *)app->generic_name);
-                } else if ((m = match_levenshtein(matches, generic_name, token, &match_len)) != NULL) {
-                    match_type_generic[j] = MATCHED_FUZZY;
-                    LOG_DBG("%ls: fuzzy generic: %ls",
-                            (const wchar_t *)app->title, (const wchar_t *)app->generic_name);
+                if (match_len > 0) {
+                    tll_insert_before(categories, it, m + match_len);
+                    tll_remove(categories, it);
                 }
 
-                if (match_len > 0)
-                    generic_name = m + match_len;
-            }
-
-            if (match_exec && app->wexec != NULL && (j == 0 || match_type_exec[j - 1] != MATCHED_NONE)) {
-                const char32_t *m = c32casestr(wexec, token);
-                size_t match_len = 0;
-
-                if (m != NULL) {
-                    match_type_exec[j] = MATCHED_EXACT;
-                    match_len = c32len(token);
-                    LOG_DBG("%ls: exact exec: %ls",
-                            (const wchar_t *)app->title, (const wchar_t *)app->wexec);
-                } else if (match_levenshtein(matches, wexec, token, &match_len) != NULL) {
-                    match_type_exec[j] = MATCHED_FUZZY;
-                    LOG_DBG("%ls: fuzzy exec: %ls",
-                            (const wchar_t *)app->title, (const wchar_t *)app->wexec);
-                }
-
-                if (match_len > 0)
-                    wexec = m + match_len;
-            }
-
-            if (match_comment && app->comment != NULL && (j == 0 || match_type_comment[j - 1] != MATCHED_NONE)) {
-                const char32_t *m = c32casestr(comment, token);
-                size_t match_len = 0;
-
-                if (m != NULL) {
-                    match_type_comment[j] = MATCHED_EXACT;
-                    match_len = c32len(token);
-                    LOG_DBG("%ls: exact comment: %ls",
-                            (const wchar_t *)app->title, (const wchar_t *)app->comment);
-                } else if (match_levenshtein(matches, comment, token, &match_len) != NULL) {
-                    match_type_comment[j] = MATCHED_FUZZY;
-                    LOG_DBG("%ls: fuzzy comment: %ls",
-                            (const wchar_t *)app->title, (const wchar_t *)app->comment);
-                }
-
-                if (match_len > 0)
-                    comment = m + match_len;
-            }
-
-            if (match_keywords) {
-                size_t k = 0;
-                tll_foreach(keywords, it) {
-                    if (j == 0 || match_type_keywords[k][j - 1] != MATCHED_NONE) {
-                        const char32_t *m = c32casestr(it->item, token);
-                        size_t match_len = 0;
-
-                        if (m != NULL) {
-                            match_type_keywords[k][j] = MATCHED_EXACT;
-                            match_len = c32len(token);
-                            LOG_DBG("%ls: exact keyword: %ls",
-                                    (const wchar_t *)app->title, (const wchar_t *)it->item);
-                        } else if (match_levenshtein(matches, it->item, token, &match_len) != NULL) {
-                            match_type_keywords[k][j] = MATCHED_FUZZY;
-                            LOG_DBG("%ls: fuzzy keyword: %ls",
-                                    (const wchar_t *)app->title, (const wchar_t *)it->item);
-                        }
-
-                        if (match_len > 0) {
-                            /* Replace current entry */
-                            tll_insert_before(keywords, it, m + match_len);
-                            tll_remove(keywords, it);
-                        }
-                    }
-
-                    k++;
-                }
-            }
-
-            if (match_categories) {
-                size_t k = 0;
-                tll_foreach(categories, it) {
-                    if (j == 0 || match_type_categories[k][j - 1] != MATCHED_NONE) {
-                        const char32_t *m = c32casestr(it->item, token);
-                        size_t match_len = 0;
-
-                        if (m != NULL) {
-                            match_type_categories[k][j] = MATCHED_EXACT;
-                            match_len = c32len(token);
-                            LOG_DBG("%ls: exact category: %ls",
-                                    (const wchar_t *)app->title, (const wchar_t *)it->item);
-                        } else if (match_levenshtein(matches, it->item, token, NULL) != NULL) {
-                            match_type_categories[k][j] = MATCHED_FUZZY;
-                            LOG_DBG("%ls: fuzzy category: %ls",
-                                    (const wchar_t *)app->title, (const wchar_t *)it->item);
-                        }
-
-                        if (match_len > 0) {
-                            tll_insert_before(categories, it, m + match_len);
-                            tll_remove(categories, it);
-                        }
-                    }
-
-                    k++;
-                }
-            }
-        }
-
-        if (match_name) {
-            for (size_t j = 0; j < tok_count; j++) {
-                if (match_type_name[j] == MATCHED_NONE) {
-                    match_type_name[tok_count] = MATCHED_NONE;
-                    break;
-                } else if (match_type_name[tok_count] != MATCHED_FUZZY)
-                    match_type_name[tok_count] = match_type_name[j];
-            }
-        }
-
-        if (match_filename) {
-            for (size_t j = 0; j < tok_count; j++) {
-                if (match_type_filename[j] == MATCHED_NONE) {
-                    match_type_filename[tok_count] = MATCHED_NONE;
-                    break;
-                } else if (match_type_filename[tok_count] != MATCHED_FUZZY)
-                    match_type_filename[tok_count] = match_type_filename[j];
-            }
-        }
-
-        if (match_generic) {
-            for (size_t j = 0; j < tok_count; j++) {
-                if (match_type_generic[j] == MATCHED_NONE) {
-                    match_type_generic[tok_count] = MATCHED_NONE;
-                    break;
-                } else if (match_type_generic[tok_count] != MATCHED_FUZZY)
-                    match_type_generic[tok_count] = match_type_generic[j];
-            }
-        }
-
-        if (match_exec) {
-            for (size_t j = 0; j < tok_count; j++) {
-                if (match_type_exec[j] == MATCHED_NONE) {
-                    match_type_exec[tok_count] = MATCHED_NONE;
-                    break;
-                } else if (match_type_exec[tok_count] != MATCHED_FUZZY)
-                    match_type_exec[tok_count] = match_type_exec[j];
-            }
-        }
-
-        if (match_comment) {
-            for (size_t j = 0; j < tok_count; j++) {
-                if (match_type_comment[j] == MATCHED_NONE) {
-                    match_type_comment[tok_count] = MATCHED_NONE;
-                    break;
-                } else if (match_type_comment[tok_count] != MATCHED_FUZZY)
-                    match_type_comment[tok_count] = match_type_comment[j];
+                k++;
             }
         }
 
@@ -862,21 +798,13 @@ matches_update(struct matches *matches, const struct prompt *prompt)
 
         if (match_keywords) {
             for (size_t k = 0; k < tll_length(app->keywords); k++) {
-                for (size_t j = 0; j < tok_count; j++) {
-                    if (match_type_keywords[k][j] == MATCHED_NONE) {
-                        match_type_keywords[k][tok_count] = MATCHED_NONE;
-                        break;
-                    } else if (match_type_keywords[k][tok_count] != MATCHED_FUZZY)
-                        match_type_keywords[k][tok_count] = match_type_keywords[k][j];
-                }
-
-                if (match_type_keywords[k][tok_count] != MATCHED_NONE) {
+                if (match_type_keywords[k] != MATCHED_NONE) {
                     /* match_type_keywords_final represents the
                        combined result of all keywords; if a single
                        keyword matched exactly, treat the entire
                        keywords field as an exact match */
                     if (match_type_keywords_final != MATCHED_EXACT)
-                        match_type_keywords_final = match_type_keywords[k][tok_count];
+                        match_type_keywords_final = match_type_keywords[k];
                 }
             }
         }
@@ -885,21 +813,13 @@ matches_update(struct matches *matches, const struct prompt *prompt)
 
         if (match_categories) {
             for (size_t k = 0; k < tll_length(app->categories); k++) {
-                for (size_t j = 0; j < tok_count; j++) {
-                    if (match_type_categories[k][j] == MATCHED_NONE) {
-                        match_type_categories[k][tok_count] = MATCHED_NONE;
-                        break;
-                    } else if (match_type_categories[k][tok_count] != MATCHED_FUZZY)
-                        match_type_categories[k][tok_count] = match_type_categories[k][j];
-                }
-
-                if (match_type_categories[k][tok_count] != MATCHED_NONE) {
+                if (match_type_categories[k] != MATCHED_NONE) {
                     /* match_type_categories_final represents the
                        combined result of all keywords; if a single
                        keyword matched exactly, treat the entire
                        keywords field as an exact match */
                     if (match_type_categories_final != MATCHED_EXACT)
-                        match_type_categories_final = match_type_categories[k][tok_count];
+                        match_type_categories_final = match_type_categories[k];
                 }
             }
         }
@@ -925,16 +845,16 @@ matches_update(struct matches *matches, const struct prompt *prompt)
             score = longest_match;
         }
 
-        if (match_type_name[tok_count]!= MATCHED_NONE)
-            app_match_type = match_type_name[tok_count];
-        else if (match_type_filename[tok_count] != MATCHED_NONE)
-            app_match_type = match_type_filename[tok_count];
-        else if (match_type_generic[tok_count] != MATCHED_NONE)
-            app_match_type = match_type_generic[tok_count];
-        else if (match_type_exec[tok_count]!= MATCHED_NONE)
-            app_match_type = match_type_exec[tok_count];
-        else if (match_type_comment[tok_count]!= MATCHED_NONE)
-            app_match_type = match_type_comment[tok_count];
+        if (match_type_name != MATCHED_NONE)
+            app_match_type = match_type_name;
+        else if (match_type_filename != MATCHED_NONE)
+            app_match_type = match_type_filename;
+        else if (match_type_generic != MATCHED_NONE)
+            app_match_type = match_type_generic;
+        else if (match_type_exec != MATCHED_NONE)
+            app_match_type = match_type_exec;
+        else if (match_type_comment != MATCHED_NONE)
+            app_match_type = match_type_comment;
         else if (match_type_keywords_final != MATCHED_NONE)
             app_match_type = match_type_keywords_final;
         else if (match_type_categories_final != MATCHED_NONE)
