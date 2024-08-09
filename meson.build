@@ -9,14 +9,15 @@ project('fuzzel', 'c',
           'b_ndebug=if-release'])
 
 is_debug_build = get_option('buildtype').startswith('debug')
+cc = meson.get_compiler('c')
 
 add_project_arguments(
   ['-D_GNU_SOURCE'] +
-  (is_debug_build ? ['-D_DEBUG'] : []),
+  (is_debug_build
+   ? ['-D_DEBUG']
+   : [cc.get_supported_arguments('-fno-asynchronous-unwind-tables')]),
   language: 'c',
 )
-
-cc = meson.get_compiler('c')
 
 if cc.has_function('memfd_create',
                    args: ['-D_GNU_SOURCE=200809L'],
