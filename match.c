@@ -580,44 +580,10 @@ matches_update(struct matches *matches, const struct prompt *prompt)
 
     LOG_DBG("match update begin");
 
-    size_t tok_count = 0;
-    char32_t **tokens = NULL;
-
-    if (matches->mode != MATCH_MODE_FUZZY) {
-        tok_count = c32len(ptext);
-        tokens = malloc(tok_count * sizeof(tokens[0]));
-        for (size_t i = 0; i < tok_count; i++) {
-            tokens[i] = malloc(2 * sizeof(char32_t));
-            tokens[i][0] = ptext[i];
-            tokens[i][1] = U'\0';
-        }
-    } else {
-        char32_t *copy = c32dup(ptext);
-        tok_count = 1;
-        tokens = malloc(tok_count * sizeof(tokens[0]));
-        tokens[0] = copy;
-
-        for (char32_t *p = copy; *p != U'\0'; p++) {
-            if (*p != U' ')
-                continue;
-
-            *p = U'\0';
-            if ((ptrdiff_t)(p - tokens[tok_count - 1]) == 0) {
-                /* Collapse multiple spaces */
-                tokens[tok_count - 1] = p + 1;
-            } else {
-                tok_count++;
-                tokens = realloc(tokens, tok_count * sizeof(tokens[0]));
-                tokens[tok_count - 1] = p + 1;
-            }
-        }
-    }
+    const size_t tok_count = 1;
+    const char32_t *const tokens[1] = {ptext};
 
     assert(tok_count > 0);
-    if (tok_count > 0 && tokens[tok_count - 1][0] == U'\0') {
-        /* Don’t count trailing spaces as a token */
-        tok_count--;
-    }
 
     for (size_t i = 0; i < matches->applications->count; i++) {
         struct application *app = &matches->applications->v[i];
@@ -991,18 +957,6 @@ matches_update(struct matches *matches, const struct prompt *prompt)
 
         matches->match_count++;
     }
-
-    if (matches->mode != MATCH_MODE_FUZZY) {
-        /* Each token is malloc:ed */
-        for (size_t i = 0; i < tok_count; i++)
-            free(tokens[i]);
-    } else {
-        /* The input string is cloned, and each token points into
-           it. Free the clone by freeing the first token */
-        assert(tok_count > 0);
-        free(tokens[0]);
-    }
-    free(tokens);
 
     LOG_DBG("match update done");
 
