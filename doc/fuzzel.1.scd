@@ -31,7 +31,7 @@ or command line options:
 	
 	You can also use this option to enable caching of dmenu
 	entries. It is recommended that you use a separate cache file for
-	each "type" of dmenu invokation; i.e. one for the browser history,
+	each "type" of dmenu invocation; i.e. one for the browser history,
 	another for emojis etc.
 	
 	Default: _XDG_CACHE_HOME/fuzzel_
