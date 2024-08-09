@@ -72,15 +72,21 @@ match_fzf(const char32_t *haystack, const char32_t *needle,
 
     while (needle < needle_end) {
         if (haystack_search_start >= haystack_end) {
+            if (pos != NULL) {
+                free(*pos);
+                *pos = NULL;
+                *pos_count = 0;
+            }
+
             if (match_type != NULL)
                 *match_type = MATCHED_NONE;
+
             return;
         }
 
         size_t longest_match_len = 0;
         size_t longest_match_ofs = 0;
 
-        //for (size_t j = haystack_idx; j < haystack_len; j++) {
         for (const char32_t *start = haystack_search_start;
              start < haystack_end;
              start++)
@@ -89,7 +95,10 @@ match_fzf(const char32_t *haystack, const char32_t *needle,
             const char32_t *h = start;
 
             size_t match_len = 0;
-            while (n < needle_end && h < haystack_end && *n == *h) {
+            while (n < needle_end &&
+                   h < haystack_end &&
+                   toc32lower(*n) == toc32lower(*h))
+            {
                 match_len++;
                 n++;
                 h++;
@@ -110,14 +119,15 @@ match_fzf(const char32_t *haystack, const char32_t *needle,
         if (pos != NULL) {
             assert(pos_count != NULL);
             (*pos_count)++;
-            printf("POS COUNT: %zu\n", *pos_count);
             *pos = realloc(*pos, (*pos_count) * sizeof((*pos)[0]));
             (*pos)[*pos_count - 1].start = longest_match_ofs;
             (*pos)[*pos_count - 1].len = longest_match_len;
         }
 
         if (match_type != NULL)
-            *match_type = longest_match_len == haystack_len ? MATCHED_EXACT : MATCHED_FUZZY;
+            *match_type = longest_match_len == haystack_len
+                ? MATCHED_EXACT
+                : MATCHED_FUZZY;
 
         needle += longest_match_len;
         haystack_search_start = haystack + longest_match_ofs + longest_match_len;
@@ -684,6 +694,7 @@ matches_update(struct matches *matches, const struct prompt *prompt)
 
             case MATCH_MODE_FZF:
                 match_fzf(app->title, ptext, &pos, &pos_count, &match_type_name);
+                match->pos = pos;
                 break;
 
             case MATCH_MODE_FUZZY:
@@ -700,7 +711,7 @@ matches_update(struct matches *matches, const struct prompt *prompt)
             }
 
             if (match_len > 0) {
-                assert(matches->mode != MATCH_MODE_FUZZY);
+                assert(matches->mode != MATCH_MODE_FZF);
 
                 if (pos_count > 0 && m == &app->title[pos[pos_count - 1].start +
                                                       pos[pos_count - 1].len]) {
@@ -738,7 +749,7 @@ matches_update(struct matches *matches, const struct prompt *prompt)
                 break;
 
             case MATCH_MODE_FZF:
-                /* TODO */
+                match_fzf(app->basename, ptext, NULL, NULL, &match_type_filename);
                 break;
 
             case MATCH_MODE_FUZZY:
@@ -769,7 +780,7 @@ matches_update(struct matches *matches, const struct prompt *prompt)
                 break;
 
             case MATCH_MODE_FZF:
-                /* TODO */
+                match_fzf(app->generic_name, ptext, NULL, NULL, &match_type_generic);
                 break;
 
             case MATCH_MODE_FUZZY:
@@ -800,7 +811,7 @@ matches_update(struct matches *matches, const struct prompt *prompt)
                 break;
 
             case MATCH_MODE_FZF:
-                /* TODO */
+                match_fzf(app->wexec, ptext, NULL, NULL, &match_type_exec);
                 break;
 
             case MATCH_MODE_FUZZY:
@@ -831,7 +842,7 @@ matches_update(struct matches *matches, const struct prompt *prompt)
                 break;
 
             case MATCH_MODE_FZF:
-                /* TODO */
+                match_fzf(app->comment, ptext, NULL, NULL, &match_type_comment);
                 break;
 
             case MATCH_MODE_FUZZY:
@@ -864,7 +875,7 @@ matches_update(struct matches *matches, const struct prompt *prompt)
                     break;
 
                 case MATCH_MODE_FZF:
-                    /* TODO */
+                    match_fzf(it->item, ptext, NULL, NULL, &match_type_keywords[i]);
                     break;
 
                 case MATCH_MODE_FUZZY:
@@ -900,7 +911,7 @@ matches_update(struct matches *matches, const struct prompt *prompt)
                     break;
 
                 case MATCH_MODE_FZF:
-                    /* TODO */
+                    match_fzf(it->item, ptext, NULL, NULL, &match_type_categories[i]);
                     break;
 
                 case MATCH_MODE_FUZZY:
