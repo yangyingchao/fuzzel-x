@@ -134,8 +134,20 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 *filter-desktop*
 	Boolean. Filter desktop files based on the value of XDG_CURRENT_DESKTOP.
 
-*fuzzy*
-	Boolean. Enables or disables fuzzy matching. Default: _yes_.
+*match-mode*
+
+	One of *exact*, *fzf* and *fuzzy*.
+	
+	*exact*: what you type is matched exactly against each field in
+	the *fields* list.
+	
+	*fzf*: fzf-style matching, where substrings from what you have
+	typed are matched against each field in the *fields* list.
+	
+	*fuzzy*: levenshtein-based fuzzy matching of what you have typed
+	against each field in the *fields* list.
+	
+	Default: _fzf_
 
 *show-actions*
 	Boolean. Some desktop files define "actions", in addition to the

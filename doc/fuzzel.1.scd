@@ -228,9 +228,9 @@ or command line options:
 	XDG_CURRENT_DESKTOP. If the optional parameter is "no",
 	explicitly disables filtering.
 
-*--no-fuzzy*
-	Disables fuzzy matching. When disabled, only exact (case
-	insensitive) substring matches are considered.
+*--match-mode*=_exact_|_fzf_|_fuzzy_
+	Defines how what you type is matched. See *fuzzel.ini*(5) for
+	details. The default is *fzf*.
 
 *--fuzzy-min-length*=_VALUE_
 	Search strings shorter than this will not by fuzzy
