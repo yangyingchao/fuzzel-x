@@ -588,7 +588,11 @@ match_compar(const void *_a, const void *_b)
         return -1;
     else if (a->application->count < b->application->count)
         return 1;
-    else
+    else if (a->pos_count > 0 && b->pos_count > 0 &&
+             a->application->title != NULL && b->application->title != NULL)
+    {
+        return c32len(a->application->title) > c32len(b->application->title);
+    } else
         return 0;
 }
 
