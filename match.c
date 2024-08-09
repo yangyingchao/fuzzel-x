@@ -59,6 +59,72 @@ c32casestr(const char32_t *haystack, const char32_t *needle)
 }
 
 static void
+match_fzf(const char32_t *haystack, const char32_t *needle,
+          struct match_substring **pos, size_t *pos_count,
+          enum matched_type *match_type)
+{
+    const size_t haystack_len = c32len(haystack);
+    const size_t needle_len = c32len(needle);
+    const char32_t *const needle_end = &needle[needle_len];
+    const char32_t *const haystack_end = &haystack[haystack_len];
+
+    const char32_t *haystack_search_start = haystack;
+
+    while (needle < needle_end) {
+        if (haystack_search_start >= haystack_end) {
+            if (match_type != NULL)
+                *match_type = MATCHED_NONE;
+            return;
+        }
+
+        size_t longest_match_len = 0;
+        size_t longest_match_ofs = 0;
+
+        //for (size_t j = haystack_idx; j < haystack_len; j++) {
+        for (const char32_t *start = haystack_search_start;
+             start < haystack_end;
+             start++)
+        {
+            const char32_t *n = needle;
+            const char32_t *h = start;
+
+            size_t match_len = 0;
+            while (n < needle_end && h < haystack_end && *n == *h) {
+                match_len++;
+                n++;
+                h++;
+            }
+
+            if (match_len > longest_match_len) {
+                longest_match_len = match_len;
+                longest_match_ofs = start - haystack;
+            }
+        }
+
+        if (longest_match_len == 0) {
+            if (match_type != NULL)
+                *match_type = MATCHED_NONE;
+            return;
+        }
+
+        if (pos != NULL) {
+            assert(pos_count != NULL);
+            (*pos_count)++;
+            printf("POS COUNT: %zu\n", *pos_count);
+            *pos = realloc(*pos, (*pos_count) * sizeof((*pos)[0]));
+            (*pos)[*pos_count - 1].start = longest_match_ofs;
+            (*pos)[*pos_count - 1].len = longest_match_len;
+        }
+
+        if (match_type != NULL)
+            *match_type = longest_match_len == haystack_len ? MATCHED_EXACT : MATCHED_FUZZY;
+
+        needle += longest_match_len;
+        haystack_search_start = haystack + longest_match_ofs + longest_match_len;
+    }
+}
+
+static void
 levenshtein_distance(const char32_t *a, size_t alen,
                      const char32_t *b, size_t blen,
                      struct levenshtein_matrix **m)
@@ -617,7 +683,7 @@ matches_update(struct matches *matches, const struct prompt *prompt)
                 break;
 
             case MATCH_MODE_FZF:
-                /* TODO */
+                match_fzf(app->title, ptext, &pos, &pos_count, &match_type_name);
                 break;
 
             case MATCH_MODE_FUZZY:
@@ -634,6 +700,8 @@ matches_update(struct matches *matches, const struct prompt *prompt)
             }
 
             if (match_len > 0) {
+                assert(matches->mode != MATCH_MODE_FUZZY);
+
                 if (pos_count > 0 && m == &app->title[pos[pos_count - 1].start +
                                                       pos[pos_count - 1].len]) {
                     /* Extend last match position */
