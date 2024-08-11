@@ -660,6 +660,31 @@ matches_update(struct matches *matches, const struct prompt *prompt)
 
     LOG_DBG("match update begin");
 
+    char32_t *copy = c32dup(ptext);
+    const char32_t **tokens = malloc(sizeof(tokens[0]));
+    size_t tok_count = 1;
+    tokens[0] = copy;
+
+    for (char32_t *p = copy; *p != U'\0'; p++) {
+        if (*p != U' ')
+            continue;
+
+        *p = U'\0';
+        if ((ptrdiff_t)(p - tokens[tok_count - 1]) == 0) {
+            /* Collapse multiple spaces */
+            tokens[tok_count - 1] = p + 1;
+        } else {
+            tok_count++;
+            tokens = realloc(tokens, tok_count * sizeof(tokens[0]));
+            tokens[tok_count - 1] = p + 1;
+        }
+    }
+
+    if (tokens[tok_count - 1][0] == U'\0') {
+        /* Don’t count trailing spaces as a token */
+        tok_count--;
+    }
+
     for (size_t i = 0; i < matches->applications->count; i++) {
         struct application *app = &matches->applications->v[i];
 
@@ -683,256 +708,318 @@ matches_update(struct matches *matches, const struct prompt *prompt)
         for (size_t k = 0; k < tll_length(app->categories); k++)
             match_type_categories[k] = MATCHED_NONE;
 
-        if (match_name) {
-            const char32_t *m = NULL;
-            size_t match_len = 0;
+        for (size_t t = 0; t < tok_count; t++) {
+            const char32_t *tok = tokens[t];
 
-            switch (matches->mode) {
-            case MATCH_MODE_EXACT:
-                m = c32casestr(app->title, ptext);
-                if (m != NULL) {
-                    match_type_name = MATCHED_EXACT;
-                    match_len = c32len(ptext);
-                }
-                break;
-
-            case MATCH_MODE_FZF:
-                match_fzf(app->title, ptext, &pos, &pos_count, &match_type_name);
-                match->pos = pos;
-                break;
-
-            case MATCH_MODE_FUZZY:
-                m = c32casestr(app->title, ptext);
-                if (m != NULL) {
-                    match_type_name = MATCHED_EXACT;
-                    match_len = c32len(ptext);
-                } else {
-                    m = match_levenshtein(matches, app->title, ptext, &match_len);
-                    if (m != NULL)
-                        match_type_name = MATCHED_FUZZY;
-                }
-                break;
-            }
-
-            if (match_len > 0) {
-                assert(matches->mode != MATCH_MODE_FZF);
-
-                if (pos_count > 0 && m == &app->title[pos[pos_count - 1].start +
-                                                      pos[pos_count - 1].len]) {
-                    /* Extend last match position */
-                    pos[pos_count - 1].len += match_len;
-                } else {
-                    size_t new_pos_count = pos_count + 1;
-                    struct match_substring *new_pos =
-                        realloc(pos, new_pos_count * sizeof(new_pos[0]));
-
-                    if (new_pos != NULL) {
-                        pos = new_pos;
-                        pos_count = new_pos_count;
-
-                        pos[pos_count - 1].start = m - app->title;
-                        pos[pos_count - 1].len = match_len;
-
-                        match->pos = pos;
-                    }
-                }
-            }
-        }
-
-        if (match_filename && app->basename != NULL) {
-            const char32_t *m = NULL;
-            size_t match_len = 0;
-
-            switch (matches->mode) {
-            case MATCH_MODE_EXACT:
-                m = c32casestr(app->basename, ptext);
-                if (m != NULL) {
-                    match_type_filename = MATCHED_EXACT;
-                    match_len = c32len(ptext);
-                }
-                break;
-
-            case MATCH_MODE_FZF:
-                match_fzf(app->basename, ptext, NULL, NULL, &match_type_filename);
-                break;
-
-            case MATCH_MODE_FUZZY:
-                m = c32casestr(app->basename, ptext);
-                if (m != NULL) {
-                    match_type_filename = MATCHED_EXACT;
-                    match_len = c32len(ptext);
-                } else {
-                    m = match_levenshtein(matches, app->basename, ptext, &match_len);
-                    if (m != NULL)
-                        match_type_filename = MATCHED_FUZZY;
-                }
-                break;
-            }
-        }
-
-        if (match_generic && app->generic_name != NULL) {
-            const char32_t *m = NULL;
-            size_t match_len = 0;
-
-            switch (matches->mode) {
-            case MATCH_MODE_EXACT:
-                m = c32casestr(app->generic_name, ptext);
-                if (m != NULL) {
-                    match_type_generic = MATCHED_EXACT;
-                    match_len = c32len(ptext);
-                }
-                break;
-
-            case MATCH_MODE_FZF:
-                match_fzf(app->generic_name, ptext, NULL, NULL, &match_type_generic);
-                break;
-
-            case MATCH_MODE_FUZZY:
-                m = c32casestr(app->generic_name, ptext);
-                if (m != NULL) {
-                    match_type_generic = MATCHED_EXACT;
-                    match_len = c32len(ptext);
-                } else {
-                    m = match_levenshtein(matches, app->generic_name, ptext, &match_len);
-                    if (m != NULL)
-                        match_type_generic = MATCHED_FUZZY;
-                }
-                break;
-            }
-        }
-
-        if (match_exec && app->wexec != NULL) {
-            const char32_t *m = NULL;
-            size_t match_len = 0;
-
-            switch (matches->mode) {
-            case MATCH_MODE_EXACT:
-                m = c32casestr(app->wexec, ptext);
-                if (m != NULL) {
-                    match_type_exec = MATCHED_EXACT;
-                    match_len = c32len(ptext);
-                }
-                break;
-
-            case MATCH_MODE_FZF:
-                match_fzf(app->wexec, ptext, NULL, NULL, &match_type_exec);
-                break;
-
-            case MATCH_MODE_FUZZY:
-                m = c32casestr(app->wexec, ptext);
-                if (m != NULL) {
-                    match_type_exec = MATCHED_EXACT;
-                    match_len = c32len(ptext);
-                } else {
-                    m = match_levenshtein(matches, app->wexec, ptext, &match_len);
-                    if (m != NULL)
-                        match_type_exec = MATCHED_FUZZY;
-                }
-                break;
-            }
-        }
-
-        if (match_comment && app->comment != NULL) {
-            const char32_t *m = NULL;
-            size_t match_len = 0;
-
-            switch (matches->mode) {
-            case MATCH_MODE_EXACT:
-                m = c32casestr(app->comment, ptext);
-                if (m != NULL) {
-                    match_type_comment = MATCHED_EXACT;
-                    match_len = c32len(ptext);
-                }
-                break;
-
-            case MATCH_MODE_FZF:
-                match_fzf(app->comment, ptext, NULL, NULL, &match_type_comment);
-                break;
-
-            case MATCH_MODE_FUZZY:
-                m = c32casestr(app->comment, ptext);
-                if (m != NULL) {
-                    match_type_comment = MATCHED_EXACT;
-                    match_len = c32len(ptext);
-                } else {
-                    m = match_levenshtein(matches, app->comment, ptext, &match_len);
-                    if (m != NULL)
-                        match_type_comment = MATCHED_FUZZY;
-                }
-                break;
-            }
-        }
-
-        if (match_keywords) {
-            size_t k = 0;
-            tll_foreach(app->keywords, it) {
+            if (match_name) {
                 const char32_t *m = NULL;
                 size_t match_len = 0;
+                enum matched_type match_type = MATCHED_NONE;
 
                 switch (matches->mode) {
                 case MATCH_MODE_EXACT:
-                    m = c32casestr(it->item, ptext);
+                    m = c32casestr(app->title, tok);
                     if (m != NULL) {
-                        match_type_keywords[k] = MATCHED_EXACT;
-                        match_len = c32len(ptext);
+                        match_type = MATCHED_EXACT;
+                        match_len = c32len(tok);
                     }
                     break;
 
                 case MATCH_MODE_FZF:
-                    match_fzf(it->item, ptext, NULL, NULL, &match_type_keywords[i]);
+                    match_fzf(app->title, tok, &pos, &pos_count, &match_type);
+                    match->pos = pos;
                     break;
 
                 case MATCH_MODE_FUZZY:
-                    m = c32casestr(it->item, ptext);
+                    m = c32casestr(app->title, tok);
                     if (m != NULL) {
-                        match_type_keywords[k] = MATCHED_EXACT;
-                        match_len = c32len(ptext);
+                        match_type = MATCHED_EXACT;
+                        match_len = c32len(tok);
                     } else {
-                        m = match_levenshtein(matches, it->item, ptext, &match_len);
+                        m = match_levenshtein(matches, app->title, tok, &match_len);
                         if (m != NULL)
-                            match_type_keywords[k] = MATCHED_FUZZY;
+                            match_type = MATCHED_FUZZY;
                     }
                     break;
                 }
 
-                k++;
-            }
-        }
+                if (match_len > 0) {
+                    assert(matches->mode != MATCH_MODE_FZF);
 
-        if (match_categories) {
-            size_t k = 0;
-            tll_foreach(app->categories, it) {
+                    if (pos_count > 0 && m == &app->title[pos[pos_count - 1].start +
+                                                          pos[pos_count - 1].len]) {
+                        /* Extend last match position */
+                        pos[pos_count - 1].len += match_len;
+                    } else {
+                        size_t new_pos_count = pos_count + 1;
+                        struct match_substring *new_pos =
+                            realloc(pos, new_pos_count * sizeof(new_pos[0]));
+
+                        if (new_pos != NULL) {
+                            pos = new_pos;
+                            pos_count = new_pos_count;
+
+                            pos[pos_count - 1].start = m - app->title;
+                            pos[pos_count - 1].len = match_len;
+
+                            match->pos = pos;
+                        }
+                    }
+                }
+
+                if (t == 0)
+                    match_type_name = match_type;
+                else if (match_type == MATCHED_NONE)
+                    match_type_name = MATCHED_NONE;
+                else if (match_type_name == MATCHED_EXACT)
+                    match_type_name = match_type;
+            }
+
+            if (match_filename && app->basename != NULL) {
                 const char32_t *m = NULL;
                 size_t match_len = 0;
+                enum matched_type match_type = MATCHED_NONE;
 
                 switch (matches->mode) {
                 case MATCH_MODE_EXACT:
-                    m = c32casestr(it->item, ptext);
+                    m = c32casestr(app->basename, tok);
                     if (m != NULL) {
-                        match_type_categories[k] = MATCHED_EXACT;
-                        match_len = c32len(ptext);
+                        match_type = MATCHED_EXACT;
+                        match_len = c32len(tok);
                     }
                     break;
 
                 case MATCH_MODE_FZF:
-                    match_fzf(it->item, ptext, NULL, NULL, &match_type_categories[i]);
+                    match_fzf(app->basename, tok, NULL, NULL, &match_type);
                     break;
 
                 case MATCH_MODE_FUZZY:
-                    m = c32casestr(it->item, ptext);
+                    m = c32casestr(app->basename, tok);
                     if (m != NULL) {
-                        match_type_categories[k] = MATCHED_EXACT;
-                        match_len = c32len(ptext);
+                        match_type = MATCHED_EXACT;
+                        match_len = c32len(tok);
                     } else {
-                        m = match_levenshtein(matches, it->item, ptext, &match_len);
+                        m = match_levenshtein(matches, app->basename, tok, &match_len);
                         if (m != NULL)
-                            match_type_categories[k] = MATCHED_FUZZY;
+                            match_type = MATCHED_FUZZY;
                     }
                     break;
                 }
 
-                k++;
+                if (t == 0)
+                    match_type_filename = match_type;
+                else if (match_type == MATCHED_NONE)
+                    match_type_filename = MATCHED_NONE;
+                else if (match_type_filename == MATCHED_EXACT)
+                    match_type_filename = match_type;
             }
+
+            if (match_generic && app->generic_name != NULL) {
+                const char32_t *m = NULL;
+                size_t match_len = 0;
+                enum matched_type match_type = MATCHED_NONE;
+
+                switch (matches->mode) {
+                case MATCH_MODE_EXACT:
+                    m = c32casestr(app->generic_name, tok);
+                    if (m != NULL) {
+                        match_type = MATCHED_EXACT;
+                        match_len = c32len(tok);
+                    }
+                    break;
+
+                case MATCH_MODE_FZF:
+                    match_fzf(app->generic_name, tok, NULL, NULL, &match_type);
+                    break;
+
+                case MATCH_MODE_FUZZY:
+                    m = c32casestr(app->generic_name, tok);
+                    if (m != NULL) {
+                        match_type = MATCHED_EXACT;
+                        match_len = c32len(tok);
+                    } else {
+                        m = match_levenshtein(matches, app->generic_name, tok, &match_len);
+                        if (m != NULL)
+                            match_type = MATCHED_FUZZY;
+                    }
+                    break;
+                }
+
+                if (t == 0)
+                    match_type_generic = match_type;
+                else if (match_type == MATCHED_NONE)
+                    match_type_generic = MATCHED_NONE;
+                else if (match_type_generic == MATCHED_EXACT)
+                    match_type_generic = match_type;
+            }
+
+            if (match_exec && app->wexec != NULL) {
+                const char32_t *m = NULL;
+                size_t match_len = 0;
+                enum matched_type match_type = MATCHED_NONE;
+
+                switch (matches->mode) {
+                case MATCH_MODE_EXACT:
+                    m = c32casestr(app->wexec, tok);
+                    if (m != NULL) {
+                        match_type = MATCHED_EXACT;
+                        match_len = c32len(tok);
+                    }
+                    break;
+
+                case MATCH_MODE_FZF:
+                    match_fzf(app->wexec, tok, NULL, NULL, &match_type);
+                    break;
+
+                case MATCH_MODE_FUZZY:
+                    m = c32casestr(app->wexec, tok);
+                    if (m != NULL) {
+                        match_type = MATCHED_EXACT;
+                        match_len = c32len(tok);
+                    } else {
+                        m = match_levenshtein(matches, app->wexec, tok, &match_len);
+                        if (m != NULL)
+                            match_type = MATCHED_FUZZY;
+                    }
+                    break;
+                }
+
+                if (t == 0)
+                    match_type_exec = match_type;
+                else if (match_type == MATCHED_NONE)
+                    match_type_exec = MATCHED_NONE;
+                else if (match_type_exec == MATCHED_EXACT)
+                    match_type_exec = match_type;
+            }
+
+            if (match_comment && app->comment != NULL) {
+                const char32_t *m = NULL;
+                size_t match_len = 0;
+                enum matched_type match_type = MATCHED_NONE;
+
+                switch (matches->mode) {
+                case MATCH_MODE_EXACT:
+                    m = c32casestr(app->comment, tok);
+                    if (m != NULL) {
+                        match_type = MATCHED_EXACT;
+                        match_len = c32len(tok);
+                    }
+                    break;
+
+                case MATCH_MODE_FZF:
+                    match_fzf(app->comment, tok, NULL, NULL, &match_type);
+                    break;
+
+                case MATCH_MODE_FUZZY:
+                    m = c32casestr(app->comment, tok);
+                    if (m != NULL) {
+                        match_type = MATCHED_EXACT;
+                        match_len = c32len(tok);
+                    } else {
+                        m = match_levenshtein(matches, app->comment, tok, &match_len);
+                        if (m != NULL)
+                            match_type = MATCHED_FUZZY;
+                    }
+                    break;
+                }
+
+                if (t == 0)
+                    match_type_comment = match_type;
+                else if (match_type == MATCHED_NONE)
+                    match_type_comment = MATCHED_NONE;
+                else if (match_type_comment == MATCHED_EXACT)
+                    match_type_comment = match_type;
+            }
+
+            if (match_keywords) {
+                size_t k = 0;
+                tll_foreach(app->keywords, it) {
+                    const char32_t *m = NULL;
+                    size_t match_len = 0;
+                    enum matched_type match_type = MATCHED_NONE;
+
+                    switch (matches->mode) {
+                    case MATCH_MODE_EXACT:
+                        m = c32casestr(it->item, tok);
+                        if (m != NULL) {
+                            match_type = MATCHED_EXACT;
+                            match_len = c32len(tok);
+                        }
+                        break;
+
+                    case MATCH_MODE_FZF:
+                        match_fzf(it->item, tok, NULL, NULL, &match_type);
+                        break;
+
+                    case MATCH_MODE_FUZZY:
+                        m = c32casestr(it->item, tok);
+                        if (m != NULL) {
+                            match_type = MATCHED_EXACT;
+                            match_len = c32len(tok);
+                        } else {
+                            m = match_levenshtein(matches, it->item, tok, &match_len);
+                            if (m != NULL)
+                                match_type = MATCHED_FUZZY;
+                        }
+                        break;
+                    }
+
+                    if (t == 0)
+                        match_type_keywords[k] = match_type;
+                    else if (match_type == MATCHED_NONE)
+                        match_type_keywords[k] = MATCHED_NONE;
+                    else if (match_type_keywords[k] == MATCHED_EXACT)
+                        match_type_keywords[k] = match_type;
+
+                    k++;
+                }
+
+            }
+
+            if (match_categories) {
+                size_t k = 0;
+                tll_foreach(app->categories, it) {
+                    const char32_t *m = NULL;
+                    size_t match_len = 0;
+                    enum matched_type match_type = MATCHED_NONE;
+
+                    switch (matches->mode) {
+                    case MATCH_MODE_EXACT:
+                        m = c32casestr(it->item, tok);
+                        if (m != NULL) {
+                            match_type = MATCHED_EXACT;
+                            match_len = c32len(tok);
+                        }
+                        break;
+
+                    case MATCH_MODE_FZF:
+                        match_fzf(it->item, tok, NULL, NULL, &match_type);
+                        break;
+
+                    case MATCH_MODE_FUZZY:
+                        m = c32casestr(it->item, tok);
+                        if (m != NULL) {
+                            match_type = MATCHED_EXACT;
+                            match_len = c32len(tok);
+                        } else {
+                            m = match_levenshtein(matches, it->item, tok, &match_len);
+                            if (m != NULL)
+                                match_type = MATCHED_FUZZY;
+                        }
+                        break;
+                    }
+
+                    if (t == 0)
+                        match_type_categories[k] = match_type;
+                    else if (match_type == MATCHED_NONE)
+                        match_type_categories[k] = MATCHED_NONE;
+                    else if (match_type_categories[k] == MATCHED_EXACT)
+                        match_type_categories[k] = match_type;
+
+                    k++;
+                }
+            }
+
         }
 
         enum matched_type match_type_keywords_final = MATCHED_NONE;
@@ -1015,6 +1102,9 @@ matches_update(struct matches *matches, const struct prompt *prompt)
 
         matches->match_count++;
     }
+
+    free(tokens);
+    free(copy);
 
     LOG_DBG("match update done");
 
