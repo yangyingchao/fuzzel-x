@@ -108,6 +108,12 @@ match_fzf(const char32_t *haystack, const char32_t *needle,
                 longest_match_len = match_len;
                 longest_match_ofs = start - haystack;
             }
+
+            if (n >= needle_end) {
+                /* We've matched all of the search string; no need to
+                   look for any longer matches */
+                break;
+            }
         }
 
         if (longest_match_len == 0) {
