@@ -558,7 +558,8 @@ execute_selected(struct seat *seat, bool as_is, int custom_success_exit_code)
             ? custom_success_exit_code
             : EXIT_SUCCESS;
         wayl->status = EXIT_UPDATE_CACHE;
-        app->count++;
+        if (app != NULL)
+            app->count++;
     } else {
         char *xdg_activation_token = NULL;
         if (wayl->xdg_activation_v1 != NULL && app != NULL && app->startup_notify)
