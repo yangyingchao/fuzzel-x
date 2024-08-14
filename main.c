@@ -311,9 +311,12 @@ print_usage(const char *prog_name)
     printf("Usage: %s [OPTION]...\n", prog_name);
     printf("\n");
     printf("Options:\n");
-    printf("     --config=PATH               load configuration from PATH (XDG_CONFIG_HOME/fuzzel/fuzzel.ini)\n"
-           "     --check-config              verify configuration, exit with 0 if ok, otherwise exit with 1\n"
-           "     --cache=PATH                load most recently launched applications from PATH (XDG_CACHE_HOME/fuzzel)\n"
+    printf("     --config=PATH               load configuration from PATH\n"
+           "                                 (XDG_CONFIG_HOME/fuzzel/fuzzel.ini)\n"
+           "     --check-config              verify configuration, exit with 0 if ok,\n"
+           "                                 otherwise exit with 1\n"
+           "     --cache=PATH                load most recently launched applications from\n"
+           "                                 PATH (XDG_CACHE_HOME/fuzzel)\n"
            "  -o,--output=OUTPUT             output (monitor) to display on (none)\n"
            "  -f,--font=FONT                 font name and style, in FontConfig format\n"
            "                                 (monospace)\n"
@@ -323,6 +326,8 @@ print_usage(const char *prog_name)
            "  -F,--fields=FIELDS             comma separated list of XDG Desktop entry\n"
            "                                 fields to match\n"
            "  -p,--prompt=PROMPT             string to use as input prompt (\"> \")\n"
+           "     --prompt-only=PROMPT        same as --prompt, but in dmenu mode it does not\n"
+           "                                 wait for STDIN, and implies --lines=0\n"
            "     --password=[CHARACTER]      render all input as CHARACTER ('*' by default)\n"
            "  -T,--terminal                  terminal command to use when launching\n"
            "                                 'terminal' programs, e.g. \"xterm -e\".\n"
@@ -330,7 +335,8 @@ print_usage(const char *prog_name)
            "  -a,--anchor                    window anchor (center)\n"
            "     --x-margin=MARGIN           horizontal margin, in pixels (0)\n"
            "     --y-margin=MARGIN           vertical margin, in pixels (0)\n"
-           "     --select=STRING             select first entry that matches the given string\n"
+           "     --select=STRING             select first entry that matches the given\n"
+           "                                 string\n"
            "  -l,--lines                     number of matches to show\n"
            "  -w,--width                     window width, in characters (margins and\n"
            "                                 borders not included)\n"
@@ -346,7 +352,8 @@ print_usage(const char *prog_name)
            "  -m,--match-color=HEX           color of matched substring (cb4b16ff)\n"
            "  -s,--selection-color=HEX       background color of selected item (eee8d5dd)\n"
            "  -S,--selection-text-color=HEX  text color of selected item (657b83ff)\n"
-           "  -M,--selection-match-color=HEX color of matched substring in selection (cb4b16ff)\n"
+           "  -M,--selection-match-color=HEX color of matched substring in selection\n"
+           "                                 (cb4b16ff)\n"
            "  -B,--border-width=INT          width of border, in pixels (1)\n"
            "  -r,--border-radius=INT         amount of corner \"roundness\" (10)\n"
            "  -C,--border-color=HEX          border color (002b36ff)\n"
@@ -358,21 +365,22 @@ print_usage(const char *prog_name)
            "                                           between a fuzzy match and the search\n"
            "                                           criteria. Larger values mean more\n"
            "                                           fuzzy matches (2)\n"
-           "     --fuzzy-max-distance=VALUE  maximum levenshtein distance between a fuzzy (1)\n"
+           "     --fuzzy-max-distance=VALUE  maximum levenshtein distance between a fuzzy\n"
            "                                 match and the search criteria. Larger values\n"
            "                                 mean more fuzzy matches\n"
            "     --line-height=HEIGHT        override line height from font metrics\n"
            "     --letter-spacing=AMOUNT     additional letter spacing\n"
-           "     --layer=top|overlay         which layer to render the fuzzel window on (top)\n"
+           "     --layer=top|overlay         which layer to render the fuzzel window on\n"
+           "                                 (top)\n"
            "     --no-exit-on-keyboard-focus-loss  do not exit when losing keyboard focus\n"
            "     --launch-prefix=COMMAND     prefix to add before argv of executed program\n"
+           "     --list-executables-in-path  include executables from PATH in the list\n"
            "     --workers=N                 number of threads to use for rendering\n"
            "  -d,--dmenu                     dmenu compatibility mode\n"
            "     --dmenu0                    like --dmenu, but input is NUL separated\n"
            "                                 instead of newline separated\n"
            "     --index                     print selected entry's index instead of of the \n"
            "                                 entry's text (dmenu mode only)\n"
-           "     --list-executables-in-path  include executables from PATH in the list\n"
            "  -R,--no-run-if-empty           exit immediately without showing UI if stdin\n"
            "                                 is empty (dmenu mode only)\n"
            "     --log-level={info|warning|error|none}\n"
@@ -530,8 +538,10 @@ populate_apps(void *_ctx)
     }
 
     if (dmenu_enabled) {
-        dmenu_load_entries(apps, dmenu_delim, ctx->dmenu_abort_fd);
-        read_cache(cache_path, apps, true);
+        if (!conf->prompt_only) {
+            dmenu_load_entries(apps, dmenu_delim, ctx->dmenu_abort_fd);
+            read_cache(cache_path, apps, true);
+        }
     } else {
         xdg_find_programs(terminal, actions_enabled, filter_desktop, &desktops, apps);
         if (list_exec_in_path)
@@ -648,6 +658,7 @@ main(int argc, char *const *argv)
     #define OPT_WORKERS                      281
     #define OPT_PROMPT_COLOR                 282
     #define OPT_INPUT_COLOR                  283
+    #define OPT_PROMPT_ONLY                  284
 
     static const struct option longopts[] = {
         {"config",               required_argument, 0, OPT_CONFIG},
@@ -682,6 +693,7 @@ main(int argc, char *const *argv)
         {"border-radius",        required_argument, 0, 'r'},
         {"border-color",         required_argument, 0, 'C'},
         {"prompt",               required_argument, 0, 'p'},
+        {"prompt-only",          required_argument, 0, OPT_PROMPT_ONLY},
         {"terminal",             required_argument, 0, 'T'},
         {"show-actions",         no_argument,       0, OPT_SHOW_ACTIONS},
         {"filter-desktop",       optional_argument, 0, OPT_FILTER_DESKTOP},
@@ -761,6 +773,7 @@ main(int argc, char *const *argv)
         bool layer_set:1;
         bool no_exit_on_keyboard_focus_loss_set:1;
         bool workers_set:1;
+        bool prompt_only_set:1;
     } cmdline_overrides = {{0}};
 
     setlocale(LC_CTYPE, "");
@@ -1021,6 +1034,19 @@ main(int argc, char *const *argv)
                 return EXIT_FAILURE;
             }
 
+            break;
+
+        case OPT_PROMPT_ONLY:
+            free(cmdline_overrides.conf.prompt);
+            cmdline_overrides.conf.prompt = ambstoc32(optarg);
+
+            if (cmdline_overrides.conf.prompt == NULL) {
+                fprintf(stderr, "%s: invalid prompt\n", optarg);
+                return EXIT_FAILURE;
+            }
+
+            cmdline_overrides.prompt_only_set = true;
+            cmdline_overrides.conf.prompt_only = true;
             break;
 
         case 'b': {
@@ -1419,6 +1445,8 @@ main(int argc, char *const *argv)
     if (cmdline_overrides.conf.prompt != NULL) {
         free(conf.prompt);
         conf.prompt = cmdline_overrides.conf.prompt;
+        if (cmdline_overrides.prompt_only_set)
+            conf.prompt_only = cmdline_overrides.conf.prompt_only;
     }
     if (cmdline_overrides.conf.password_mode.enabled) {
         conf.password_mode.enabled = true;
@@ -1527,6 +1555,12 @@ main(int argc, char *const *argv)
     if (conf.dmenu.enabled) {
         /* We don't have any meta data in dmenu mode */
         conf.match_fields = MATCH_NAME;
+
+        if (conf.prompt_only) {
+            conf.lines = 0;
+            conf.dmenu.exit_immediately_if_empty = false;
+            close(STDIN_FILENO);  /* To catch reads */
+        }
     }
 
     _Static_assert((int)LOG_CLASS_ERROR == (int)FCFT_LOG_CLASS_ERROR,

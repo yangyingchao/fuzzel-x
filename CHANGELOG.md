@@ -57,6 +57,8 @@
 * Improved rendering performance, by using threads. See the new
   `--workers` command line option, and the new `workers` option in
   `fuzzel.ini`.
+* dmenu mode: `--prompt-only=PROMPT` command line option
+  ([#276][276]).
 
 [344]: https://codeberg.org/dnkl/fuzzel/issues/344
 [131]: https://codeberg.org/dnkl/fuzzel/issues/131
@@ -64,6 +66,7 @@
 [219]: https://codeberg.org/dnkl/fuzzel/issues/219
 [365]: https://codeberg.org/dnkl/fuzzel/issues/365
 [305]: https://codeberg.org/dnkl/fuzzel/issues/305
+[276]: https://codeberg.org/dnkl/fuzzel/issues/276
 
 
 ### Changed

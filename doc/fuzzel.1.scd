@@ -84,8 +84,14 @@ or command line options:
 *-p*,*--prompt*=_PROMPT_
 	Prompt to use. Default: _> _.
 
-*-i*
-	Ignored; for compatibility with other, similar utilities (where
+*--prompt-only*=_PROMPT_
+	Same as *--prompt*, but in *--dmenu* mode it also:
+	- does not read anything from STDIN
+	- sets *--lines* to 0
+	
+	In non-dmenu mode it behaves exactly like *--prompt*.
+
+*-i* Ignored; for compatibility with other, similar utilities (where
 	*-i* means "case insensitive search").
 
 *--icon-theme*=_NAME_

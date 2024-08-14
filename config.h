@@ -100,6 +100,7 @@ DEFINE_LIST(struct config_key_binding);
 struct config {
     char *output;
     char32_t *prompt;
+    bool prompt_only;
     enum match_fields match_fields;
 
     struct {
