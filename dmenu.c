@@ -165,8 +165,14 @@ dmenu_load_entries(struct application_list *applications, char delim,
                 continue;
             }
 
+            char32_t *lowercase = c32dup(wline);
+            for (size_t i = 0; i < c32len(lowercase); i++)
+                lowercase[i] = toc32lower(lowercase[i]);
+
             struct application app = {
                 .title = wline,
+                .title_lowercase = lowercase,
+                .title_len = c32len(lowercase),
                 .icon = {.name = icon_name},
                 .visible = true,
             };

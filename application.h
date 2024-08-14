@@ -55,15 +55,31 @@ struct application {
                  https://specifications.freedesktop.org/desktop-entry-spec/desktop-entry-spec-latest.html */
     char *path;
     char *exec;
-    char32_t *basename;
-    char32_t *wexec;  /* Same as ‘exec’, but for matching purposes */
+    char *app_id;
     char32_t *title;
     char32_t *render_title;
-    char32_t *generic_name;
-    char *app_id;
-    char32_t *comment;
-    char32_list_t keywords;
-    char32_list_t categories;
+
+    /*
+     * To get good search performance, we cache both the lower-case
+     * versions of metadata, and their (string) lengths. This way, we
+     * can avoid having to call c32len() and toc32lower() over and
+     * over and over again when searching...
+     */
+    char32_t *title_lowercase; /* Lower cased! */
+    char32_t *basename;        /* Lower cased! */
+    char32_t *wexec;           /* Lower cased! Same as ‘exec’, but for matching purposes */
+    char32_t *generic_name;    /* Lower cased! */
+    char32_t *comment;         /* Lower cased! */
+    char32_list_t keywords;    /* Lower cased! */
+    char32_list_t categories;  /* Lower cased! */
+
+    size_t title_len;
+    size_t basename_len;
+    size_t wexec_len;
+    size_t generic_name_len;
+    size_t comment_len;
+    /* keywords and categories lengths not cached */
+
     struct icon icon;
     bool visible;
     bool startup_notify;

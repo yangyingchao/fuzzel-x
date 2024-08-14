@@ -35,7 +35,7 @@ _Static_assert(
  #error "wchar_t does not use UTF-32"
 #endif
 
-size_t
+size_t __attribute__((pure))
 c32len(const char32_t *s)
 {
     return wcslen((const wchar_t *)s);
@@ -244,7 +244,12 @@ ac32tombs(const char32_t *src)
 
         if (bytes + rc > allocated) {
             allocated *= 2;
-            ret = realloc(ret, allocated);
+            char *new_ret = realloc(ret, allocated);
+            if (new_ret == NULL) {
+                free(ret);
+                return NULL;
+            }
+            ret = new_ret;
             out = &ret[bytes];
         }
 
@@ -255,7 +260,9 @@ ac32tombs(const char32_t *src)
     }
 
     assert(ret[bytes - 1] == '\0');
-    ret = realloc(ret, bytes);
+    char *new_ret = realloc(ret, bytes);
+    if (new_ret != NULL)
+        ret = new_ret;
     return ret;
 
 err:
@@ -263,19 +270,19 @@ err:
     return NULL;
 }
 
-char32_t
+char32_t __attribute__((const))
 toc32lower(char32_t c)
 {
     return (char32_t)towlower((wint_t)c);
 }
 
-char32_t
+char32_t __attribute__((const))
 toc32upper(char32_t c)
 {
     return (char32_t)towupper((wint_t)c);
 }
 
-bool
+bool __attribute__((const))
 isc32space(char32_t c32)
 {
     return iswspace((wint_t)c32);

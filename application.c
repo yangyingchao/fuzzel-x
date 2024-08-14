@@ -328,12 +328,13 @@ applications_destroy(struct application_list *apps)
         free(app->id);
         free(app->path);
         free(app->exec);
-        free(app->basename);
-        free(app->wexec);
         free(app->app_id);
         free(app->title);
         if (app->render_title != app->title)
             free(app->render_title);
+        free(app->title_lowercase);
+        free(app->basename);
+        free(app->wexec);
         free(app->generic_name);
         free(app->comment);
         free(app->icon.name);

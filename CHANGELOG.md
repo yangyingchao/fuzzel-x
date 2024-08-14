@@ -53,12 +53,14 @@
   text/foreground color of the prompt ([#365][365]).
 * `--input-color` and `colors.input`, controlling the text/foreground
   color of the input string ([#365][365]).
+* Much improved performance with large amounts of input ([#305][305]).
 
 [344]: https://codeberg.org/dnkl/fuzzel/issues/344
 [131]: https://codeberg.org/dnkl/fuzzel/issues/131
 [189]: https://codeberg.org/dnkl/fuzzel/issues/189
 [219]: https://codeberg.org/dnkl/fuzzel/issues/219
 [365]: https://codeberg.org/dnkl/fuzzel/issues/365
+[305]: https://codeberg.org/dnkl/fuzzel/issues/305
 
 
 ### Changed
@@ -79,7 +81,6 @@
 
 [339]: https://codeberg.org/dnkl/fuzzel/issues/339
 [81]: https://codeberg.org/dnkl/fuzzel/issues/81
-[305]: https://codeberg.org/dnkl/fuzzel/issues/305
 
 
 ### Deprecated

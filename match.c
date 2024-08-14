@@ -25,6 +25,7 @@ struct matches {
     size_t fuzzy_min_length;
     size_t fuzzy_max_length_discrepancy;
     size_t fuzzy_max_distance;
+    bool have_icons;
 };
 
 
@@ -34,18 +35,16 @@ struct levenshtein_matrix {
 };
 
 static char32_t *
-c32casestr(const char32_t *haystack, const char32_t *needle)
+c32casestr(const char32_t *haystack, size_t haystack_len,
+           const char32_t *needle, size_t needle_len)
 {
-    const size_t hay_len = c32len(haystack);
-    const size_t needle_len = c32len(needle);
-
-    if (needle_len > hay_len)
+    if (needle_len > haystack_len)
         return NULL;
 
-    for (size_t i = 0; i < hay_len - needle_len + 1; i++) {
+    for (size_t i = 0; i < haystack_len - needle_len + 1; i++) {
         bool matched = true;
         for (size_t j = 0; j < needle_len; j++) {
-            if (toc32lower(haystack[i + j]) != toc32lower(needle[j])) {
+            if (haystack[i + j] != needle[j]) {
                 matched = false;
                 break;
             }
@@ -59,12 +58,11 @@ c32casestr(const char32_t *haystack, const char32_t *needle)
 }
 
 static void
-match_fzf(const char32_t *haystack, const char32_t *needle,
+match_fzf(const char32_t *haystack, size_t haystack_len,
+          const char32_t *needle, size_t needle_len,
           struct match_substring **pos, size_t *pos_count,
           enum matched_type *match_type)
 {
-    const size_t haystack_len = c32len(haystack);
-    const size_t needle_len = c32len(needle);
     const char32_t *const needle_end = &needle[needle_len];
     const char32_t *const haystack_end = &haystack[haystack_len];
 
@@ -96,8 +94,7 @@ match_fzf(const char32_t *haystack, const char32_t *needle,
 
             size_t match_len = 0;
             while (n < needle_end &&
-                   h < haystack_end &&
-                   toc32lower(*n) == toc32lower(*h))
+                   h < haystack_end && *n == *h)
             {
                 match_len++;
                 n++;
@@ -152,7 +149,7 @@ levenshtein_distance(const char32_t *a, size_t alen,
 
     for (size_t i = 1; i <= blen; i++) {
         for (size_t j = 1; j <= alen; j++) {
-            const size_t cost = towlower(a[j - 1]) == towlower(b[i - 1]) ? 0 : 1;
+            const size_t cost = a[j - 1] == b[i - 1] ? 0 : 1;
             const size_t first = m[i - 1][j].distance + 1;
             const size_t second = m[i][j - 1].distance + 1;
             const size_t third = m[i - 1][j - 1].distance + cost;
@@ -172,13 +169,11 @@ levenshtein_distance(const char32_t *a, size_t alen,
 
 static const char32_t *
 match_levenshtein(struct matches *matches,
-                  const char32_t *src, const char32_t *pat, size_t *_match_len)
+                  const char32_t *src, size_t src_len,
+                  const char32_t *pat, size_t pat_len, size_t *_match_len)
 {
     if (matches->mode != MATCH_MODE_FUZZY)
         return NULL;
-
-    const size_t src_len = c32len(src);
-    const size_t pat_len = c32len(pat);
 
     if (pat_len < matches->fuzzy_min_length)
         return NULL;
@@ -317,20 +312,25 @@ matches_set_applications(struct matches *matches,
     matches->applications = applications;
     matches->matches = calloc(
         applications->count, sizeof(matches->matches[0]));
+    matches_icons_loaded(matches);
+}
+
+void
+matches_icons_loaded(struct matches *matches)
+{
+    matches->have_icons = false;
+    for (size_t i = 0; i < matches->applications->count; i++) {
+        if (matches->applications->v[i].icon.name != NULL) {
+            matches->have_icons = true;
+            break;
+        }
+    }
 }
 
 bool
 matches_have_icons(const struct matches *matches)
 {
-    if (matches->applications == NULL)
-        return false;
-
-    for (size_t i = 0; i < matches->applications->count; i++) {
-        if (matches->applications->v[i].icon.name != NULL)
-            return true;
-    }
-
-    return false;
+    return matches->have_icons;
 }
 
 size_t
@@ -437,7 +437,10 @@ matches_selected_select(struct matches *matches, const char *_string)
         return false;
 
     for (size_t i = 0; i < matches->match_count; i++) {
-        if (c32casestr(matches->matches[i].application->title, string) != NULL) {
+        if (c32casestr(matches->matches[i].application->title,
+                       matches->matches[i].application->title_len,
+                       string, c32len(string)) != NULL)
+        {
             matches->selected = i;
             free(string);
             return true;
@@ -565,14 +568,14 @@ match_compar(const void *_a, const void *_b)
         a->matched_type == MATCHED_EXACT &&
         a->pos_count == 1 &&
         a->pos[0].start == 0 &&
-        a->pos[0].len == c32len(a->application->title);
+        a->pos[0].len == a->application->title_len;
 
     const bool b_is_exact_match =
         b->application->title != NULL &&
         b->matched_type == MATCHED_EXACT &&
         b->pos_count == 1 &&
         b->pos[0].start == 0 &&
-        b->pos[0].len == c32len(b->application->title);
+        b->pos[0].len == b->application->title_len;
 
     if (a_is_exact_match && !b_is_exact_match)
         return -1;
@@ -597,13 +600,13 @@ match_compar(const void *_a, const void *_b)
     else if (a->pos_count > 0 && b->pos_count > 0 &&
              a->application->title != NULL && b->application->title != NULL)
     {
-        return c32len(a->application->title) > c32len(b->application->title);
+        return a->application->title_len > b->application->title_len;
     } else
         return 0;
 }
 
-void
-matches_update(struct matches *matches, const struct prompt *prompt)
+static void
+matches_update_internal(struct matches *matches, const struct prompt *prompt, bool incremental)
 {
     if (matches->applications == NULL)
         return;
@@ -611,8 +614,7 @@ matches_update(struct matches *matches, const struct prompt *prompt)
     const char32_t *ptext = prompt_text(prompt);
 
     /* Nothing entered; all programs found matches */
-    if (c32len(ptext) == 0) {
-
+    if (ptext[0] == '\0') {
         matches->match_count = 0;
         for (size_t i = 0; i < matches->applications->count; i++) {
             if (!matches->applications->v[i].visible)
@@ -662,18 +664,30 @@ matches_update(struct matches *matches, const struct prompt *prompt)
         match_keywords ? "yes" : "no",
         match_comment ? "yes" : "no");
 
-    matches->match_count = 0;
-
     LOG_DBG("match update begin");
 
     char32_t *copy = c32dup(ptext);
-    const char32_t **tokens = malloc(sizeof(tokens[0]));
+    char32_t **tokens = malloc(sizeof(tokens[0]));
+    size_t *tok_lengths = malloc(sizeof(tok_lengths[0]));
+
+    if (copy == NULL || tokens == NULL || tok_lengths == NULL) {
+        LOG_ERR("failed to allocate tokens");
+        free(copy);
+        free(tokens);
+        free(tok_lengths);
+        return;
+    }
+
     size_t tok_count = 1;
     tokens[0] = copy;
+    tok_lengths[0] = 0;
 
     for (char32_t *p = copy; *p != U'\0'; p++) {
-        if (*p != U' ')
+        if (*p != U' ') {
+            *p = toc32lower(*p);
+            tok_lengths[tok_count - 1]++;
             continue;
+        }
 
         *p = U'\0';
         if ((ptrdiff_t)(p - tokens[tok_count - 1]) == 0) {
@@ -681,8 +695,29 @@ matches_update(struct matches *matches, const struct prompt *prompt)
             tokens[tok_count - 1] = p + 1;
         } else {
             tok_count++;
-            tokens = realloc(tokens, tok_count * sizeof(tokens[0]));
+
+            char32_t **new_tokens = realloc(
+                tokens, tok_count * sizeof(tokens[0]));
+            size_t *new_tok_lengths = realloc(
+                tok_lengths, tok_count * sizeof(tok_lengths[0]));
+
+            if (new_tokens == NULL || new_tok_lengths == NULL) {
+                if (new_tokens != NULL)
+                    free(new_tokens);
+                else
+                    free(tokens);
+                if (new_tok_lengths != NULL)
+                    free(new_tok_lengths);
+                else
+                    free(tok_lengths);
+                free(copy);
+                return;
+            }
+
+            tokens = new_tokens;
+            tok_lengths = new_tok_lengths;
             tokens[tok_count - 1] = p + 1;
+            tok_lengths[tok_count - 1] = 0;
         }
     }
 
@@ -691,11 +726,28 @@ matches_update(struct matches *matches, const struct prompt *prompt)
         tok_count--;
     }
 
-    for (size_t i = 0; i < matches->applications->count; i++) {
-        struct application *app = &matches->applications->v[i];
+#if defined(_DEBUG)
+    for (size_t i = 0; i < tok_count; i++)
+        assert(c32len(tokens[i]) == tok_lengths[i]);
+#endif
 
-        if (!app->visible)
-            continue;
+    const size_t search_count =
+        incremental ? matches->match_count : matches->applications->count;
+
+    matches->match_count = 0;
+
+    for (size_t i = 0; i < search_count; i++) {
+        struct application *app = NULL;
+
+        if (incremental) {
+            app = matches->matches[i].application;
+            assert(app->visible);
+        } else {
+            app = &matches->applications->v[i];
+
+            if (!app->visible)
+                continue;
+        }
 
         size_t pos_count = 0;
         struct match *match = &matches->matches[matches->match_count];
@@ -715,34 +767,40 @@ matches_update(struct matches *matches, const struct prompt *prompt)
             match_type_categories[k] = MATCHED_NONE;
 
         for (size_t t = 0; t < tok_count; t++) {
-            const char32_t *tok = tokens[t];
+            const char32_t *const tok = tokens[t];
+            const size_t tok_len = tok_lengths[t];
 
-            if (match_name) {
+            if (match_name && (t == 0 || match_type_name != MATCHED_NONE)) {
                 const char32_t *m = NULL;
                 size_t match_len = 0;
                 enum matched_type match_type = MATCHED_NONE;
 
                 switch (matches->mode) {
                 case MATCH_MODE_EXACT:
-                    m = c32casestr(app->title, tok);
+                    m = c32casestr(app->title_lowercase, app->title_len,
+                                   tok, tok_len);
                     if (m != NULL) {
                         match_type = MATCHED_EXACT;
-                        match_len = c32len(tok);
+                        match_len = tok_len;
                     }
                     break;
 
                 case MATCH_MODE_FZF:
-                    match_fzf(app->title, tok, &pos, &pos_count, &match_type);
+                    match_fzf(app->title_lowercase, app->title_len,
+                              tok, tok_len, &pos, &pos_count, &match_type);
                     match->pos = pos;
                     break;
 
                 case MATCH_MODE_FUZZY:
-                    m = c32casestr(app->title, tok);
+                    m = c32casestr(app->title_lowercase, app->title_len,
+                                   tok, tok_len);
                     if (m != NULL) {
                         match_type = MATCHED_EXACT;
-                        match_len = c32len(tok);
+                        match_len = tok_len;
                     } else {
-                        m = match_levenshtein(matches, app->title, tok, &match_len);
+                        m = match_levenshtein(
+                            matches, app->title_lowercase, app->title_len,
+                            tok, tok_len, &match_len);
                         if (m != NULL)
                             match_type = MATCHED_FUZZY;
                     }
@@ -752,8 +810,8 @@ matches_update(struct matches *matches, const struct prompt *prompt)
                 if (match_len > 0) {
                     assert(matches->mode != MATCH_MODE_FZF);
 
-                    if (pos_count > 0 && m == &app->title[pos[pos_count - 1].start +
-                                                          pos[pos_count - 1].len]) {
+                    if (pos_count > 0 && m == &app->title_lowercase[pos[pos_count - 1].start +
+                                                                    pos[pos_count - 1].len]) {
                         /* Extend last match position */
                         pos[pos_count - 1].len += match_len;
                     } else {
@@ -765,7 +823,7 @@ matches_update(struct matches *matches, const struct prompt *prompt)
                             pos = new_pos;
                             pos_count = new_pos_count;
 
-                            pos[pos_count - 1].start = m - app->title;
+                            pos[pos_count - 1].start = m - app->title_lowercase;
                             pos[pos_count - 1].len = match_len;
 
                             match->pos = pos;
@@ -781,31 +839,38 @@ matches_update(struct matches *matches, const struct prompt *prompt)
                     match_type_name = match_type;
             }
 
-            if (match_filename && app->basename != NULL) {
+            if (match_filename && app->basename != NULL &&
+                (t == 0 || match_type_filename != MATCHED_NONE))
+            {
                 const char32_t *m = NULL;
                 size_t match_len = 0;
                 enum matched_type match_type = MATCHED_NONE;
 
                 switch (matches->mode) {
                 case MATCH_MODE_EXACT:
-                    m = c32casestr(app->basename, tok);
+                    m = c32casestr(app->basename, app->basename_len,
+                                   tok, tok_len);
                     if (m != NULL) {
                         match_type = MATCHED_EXACT;
-                        match_len = c32len(tok);
+                        match_len = tok_len;
                     }
                     break;
 
                 case MATCH_MODE_FZF:
-                    match_fzf(app->basename, tok, NULL, NULL, &match_type);
+                    match_fzf(app->basename, app->basename_len, tok, tok_len,
+                              NULL, NULL, &match_type);
                     break;
 
                 case MATCH_MODE_FUZZY:
-                    m = c32casestr(app->basename, tok);
+                    m = c32casestr(app->basename, app->basename_len,
+                                   tok, tok_len);
                     if (m != NULL) {
                         match_type = MATCHED_EXACT;
-                        match_len = c32len(tok);
+                        match_len = tok_len;
                     } else {
-                        m = match_levenshtein(matches, app->basename, tok, &match_len);
+                        m = match_levenshtein(
+                            matches, app->basename, app->basename_len,
+                            tok, tok_len, &match_len);
                         if (m != NULL)
                             match_type = MATCHED_FUZZY;
                     }
@@ -820,31 +885,38 @@ matches_update(struct matches *matches, const struct prompt *prompt)
                     match_type_filename = match_type;
             }
 
-            if (match_generic && app->generic_name != NULL) {
+            if (match_generic && app->generic_name != NULL &&
+                (t == 0 || match_type_generic != MATCHED_NONE))
+            {
                 const char32_t *m = NULL;
                 size_t match_len = 0;
                 enum matched_type match_type = MATCHED_NONE;
 
                 switch (matches->mode) {
                 case MATCH_MODE_EXACT:
-                    m = c32casestr(app->generic_name, tok);
+                    m = c32casestr(app->generic_name, app->generic_name_len,
+                                   tok, tok_len);
                     if (m != NULL) {
                         match_type = MATCHED_EXACT;
-                        match_len = c32len(tok);
+                        match_len = tok_len;
                     }
                     break;
 
                 case MATCH_MODE_FZF:
-                    match_fzf(app->generic_name, tok, NULL, NULL, &match_type);
+                    match_fzf(app->generic_name, app->generic_name_len,
+                              tok, tok_len, NULL, NULL, &match_type);
                     break;
 
                 case MATCH_MODE_FUZZY:
-                    m = c32casestr(app->generic_name, tok);
+                    m = c32casestr(app->generic_name, app->generic_name_len,
+                                   tok, tok_len);
                     if (m != NULL) {
                         match_type = MATCHED_EXACT;
-                        match_len = c32len(tok);
+                        match_len = tok_len;
                     } else {
-                        m = match_levenshtein(matches, app->generic_name, tok, &match_len);
+                        m = match_levenshtein(
+                            matches, app->generic_name, app->generic_name_len,
+                            tok, tok_len, &match_len);
                         if (m != NULL)
                             match_type = MATCHED_FUZZY;
                     }
@@ -859,31 +931,36 @@ matches_update(struct matches *matches, const struct prompt *prompt)
                     match_type_generic = match_type;
             }
 
-            if (match_exec && app->wexec != NULL) {
+            if (match_exec && app->wexec != NULL &&
+                (t == 0 || match_type_exec != MATCHED_NONE))
+            {
                 const char32_t *m = NULL;
                 size_t match_len = 0;
                 enum matched_type match_type = MATCHED_NONE;
 
                 switch (matches->mode) {
                 case MATCH_MODE_EXACT:
-                    m = c32casestr(app->wexec, tok);
+                    m = c32casestr(app->wexec, app->wexec_len, tok, tok_len);
                     if (m != NULL) {
                         match_type = MATCHED_EXACT;
-                        match_len = c32len(tok);
+                        match_len = tok_len;
                     }
                     break;
 
                 case MATCH_MODE_FZF:
-                    match_fzf(app->wexec, tok, NULL, NULL, &match_type);
+                    match_fzf(app->wexec, app->wexec_len, tok, tok_len,
+                              NULL, NULL, &match_type);
                     break;
 
                 case MATCH_MODE_FUZZY:
-                    m = c32casestr(app->wexec, tok);
+                    m = c32casestr(app->wexec, app->wexec_len, tok, tok_len);
                     if (m != NULL) {
                         match_type = MATCHED_EXACT;
-                        match_len = c32len(tok);
+                        match_len = tok_len;
                     } else {
-                        m = match_levenshtein(matches, app->wexec, tok, &match_len);
+                        m = match_levenshtein(
+                            matches, app->wexec, app->wexec_len,
+                            tok, tok_len, &match_len);
                         if (m != NULL)
                             match_type = MATCHED_FUZZY;
                     }
@@ -898,31 +975,38 @@ matches_update(struct matches *matches, const struct prompt *prompt)
                     match_type_exec = match_type;
             }
 
-            if (match_comment && app->comment != NULL) {
+            if (match_comment && app->comment != NULL &&
+                (t == 0 || match_type_comment != MATCHED_NONE))
+            {
                 const char32_t *m = NULL;
                 size_t match_len = 0;
                 enum matched_type match_type = MATCHED_NONE;
 
                 switch (matches->mode) {
                 case MATCH_MODE_EXACT:
-                    m = c32casestr(app->comment, tok);
+                    m = c32casestr(app->comment, app->comment_len,
+                                   tok, tok_len);
                     if (m != NULL) {
                         match_type = MATCHED_EXACT;
-                        match_len = c32len(tok);
+                        match_len = tok_len;
                     }
                     break;
 
                 case MATCH_MODE_FZF:
-                    match_fzf(app->comment, tok, NULL, NULL, &match_type);
+                    match_fzf(app->comment, app->comment_len, tok, tok_len,
+                              NULL, NULL, &match_type);
                     break;
 
                 case MATCH_MODE_FUZZY:
-                    m = c32casestr(app->comment, tok);
+                    m = c32casestr(app->comment, app->comment_len,
+                                   tok, tok_len);
                     if (m != NULL) {
                         match_type = MATCHED_EXACT;
-                        match_len = c32len(tok);
+                        match_len = tok_len;
                     } else {
-                        m = match_levenshtein(matches, app->comment, tok, &match_len);
+                        m = match_levenshtein(
+                            matches, app->comment, app->comment_len,
+                            tok, tok_len, &match_len);
                         if (m != NULL)
                             match_type = MATCHED_FUZZY;
                     }
@@ -940,30 +1024,37 @@ matches_update(struct matches *matches, const struct prompt *prompt)
             if (match_keywords) {
                 size_t k = 0;
                 tll_foreach(app->keywords, it) {
+                    if (!(t == 0 || match_type_keywords[k] != MATCHED_NONE))
+                        continue;
+
                     const char32_t *m = NULL;
                     size_t match_len = 0;
                     enum matched_type match_type = MATCHED_NONE;
 
                     switch (matches->mode) {
                     case MATCH_MODE_EXACT:
-                        m = c32casestr(it->item, tok);
+                        m = c32casestr(it->item, c32len(it->item),
+                                       tok, tok_len);
                         if (m != NULL) {
                             match_type = MATCHED_EXACT;
-                            match_len = c32len(tok);
+                            match_len = tok_len;
                         }
                         break;
 
                     case MATCH_MODE_FZF:
-                        match_fzf(it->item, tok, NULL, NULL, &match_type);
+                        match_fzf(it->item, c32len(it->item), tok, tok_len,
+                                  NULL, NULL, &match_type);
                         break;
 
                     case MATCH_MODE_FUZZY:
-                        m = c32casestr(it->item, tok);
+                        m = c32casestr(it->item, c32len(it->item), tok, tok_len);
                         if (m != NULL) {
                             match_type = MATCHED_EXACT;
-                            match_len = c32len(tok);
+                            match_len = tok_len;
                         } else {
-                            m = match_levenshtein(matches, it->item, tok, &match_len);
+                            m = match_levenshtein(
+                                matches, it->item, c32len(it->item),
+                                tok, tok_len, &match_len);
                             if (m != NULL)
                                 match_type = MATCHED_FUZZY;
                         }
@@ -985,30 +1076,38 @@ matches_update(struct matches *matches, const struct prompt *prompt)
             if (match_categories) {
                 size_t k = 0;
                 tll_foreach(app->categories, it) {
+                    if (!(t == 0 || match_type_categories[k] != MATCHED_NONE))
+                        continue;
+
                     const char32_t *m = NULL;
                     size_t match_len = 0;
                     enum matched_type match_type = MATCHED_NONE;
 
                     switch (matches->mode) {
                     case MATCH_MODE_EXACT:
-                        m = c32casestr(it->item, tok);
+                        m = c32casestr(it->item, c32len(it->item),
+                                       tok, tok_len);
                         if (m != NULL) {
                             match_type = MATCHED_EXACT;
-                            match_len = c32len(tok);
+                            match_len = tok_len;
                         }
                         break;
 
                     case MATCH_MODE_FZF:
-                        match_fzf(it->item, tok, NULL, NULL, &match_type);
+                        match_fzf(it->item, c32len(it->item), tok, tok_len,
+                                  NULL, NULL, &match_type);
                         break;
 
                     case MATCH_MODE_FUZZY:
-                        m = c32casestr(it->item, tok);
+                        m = c32casestr(it->item, c32len(it->item),
+                                       tok, tok_len);
                         if (m != NULL) {
                             match_type = MATCHED_EXACT;
-                            match_len = c32len(tok);
+                            match_len = tok_len;
                         } else {
-                            m = match_levenshtein(matches, it->item, tok, &match_len);
+                            m = match_levenshtein(
+                                matches, it->item, c32len(it->item),
+                                tok, tok_len, &match_len);
                             if (m != NULL)
                                 match_type = MATCHED_FUZZY;
                         }
@@ -1109,6 +1208,7 @@ matches_update(struct matches *matches, const struct prompt *prompt)
         matches->match_count++;
     }
 
+    free(tok_lengths);
     free(tokens);
     free(copy);
 
@@ -1124,4 +1224,20 @@ matches_update(struct matches *matches, const struct prompt *prompt)
 
     if (matches->selected >= matches->match_count && matches->selected > 0)
         matches->selected = matches->match_count - 1;
+}
+
+void
+matches_update(struct matches *matches, const struct prompt *prompt)
+{
+    matches_update_internal(matches, prompt, false);
+}
+
+void
+matches_update_incremental(struct matches *matches, const struct prompt *prompt)
+{
+    const size_t plen = c32len(prompt_text(prompt));
+    const bool need_full_update = matches->mode == MATCH_MODE_FUZZY &&
+                                  plen == matches->fuzzy_min_length;
+
+    matches_update_internal(matches, prompt, !need_full_update);
 }

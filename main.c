@@ -604,6 +604,7 @@ fdm_apps_populated(struct fdm *fdm, int fd, int events, void *data)
 
     case EVENT_ICONS_LOADED:
         /* Just need to refresh the GUI */
+        matches_icons_loaded(matches);
         break;
 
     default:

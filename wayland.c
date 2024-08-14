@@ -992,7 +992,7 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
     if (!prompt_insert_chars(wayl->prompt, buf, count))
         return;
 
-    matches_update(wayl->matches, wayl->prompt);
+    matches_update_incremental(wayl->matches, wayl->prompt);
     wayl_refresh(wayl);
 
 maybe_repeat:

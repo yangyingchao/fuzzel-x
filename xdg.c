@@ -81,7 +81,7 @@ filter_desktop_entry(const struct action *act, const char_list_t *desktops)
 }
 
 static void
-parse_desktop_file(int fd, char *id, const char32_t *file_basename,
+parse_desktop_file(int fd, char *id, const char32_t *file_basename_lowercase,
                    const char *terminal, bool include_actions,
                    bool filter_desktops, char_list_t *desktops,
                    const struct locale_variants *lc_messages,
@@ -420,23 +420,62 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename,
             free(a->name);
         }
 
+        const size_t title_len = c32len(title);
+        const size_t basename_len = file_basename_lowercase != NULL
+            ? c32len(file_basename_lowercase)
+            : 0;
+        const size_t wexec_len = action->wexec != NULL
+            ? c32len(action->wexec)
+            : 0;
+        const size_t generic_name_len = action->generic_name != NULL
+            ? c32len(action->generic_name)
+            : 0;
+        const size_t comment_len = action->comment != NULL
+            ? c32len(action->comment)
+            : 0;
+
+        char32_t *title_lowercase = c32dup(title);
+        for (size_t i = 0; i < title_len; i++)
+            title_lowercase[i] = toc32lower(title_lowercase[i]);
+
+        for (size_t i = 0; i < wexec_len; i++)
+            action->wexec[i] = toc32lower(action->wexec[i]);
+        for (size_t i = 0; i < generic_name_len; i++)
+            action->generic_name[i] = toc32lower(action->generic_name[i]);
+        for (size_t i = 0; i < comment_len; i++)
+            action->comment[i] = toc32lower(action->comment[i]);
+        tll_foreach(a->keywords, it) {
+            for (size_t i = 0; i < c32len(it->item); i++)
+                it->item[i] = toc32lower(it->item[i]);
+        }
+        tll_foreach(a->categories, it) {
+            for (size_t i = 0; i < c32len(it->item); i++)
+                it->item[i] = toc32lower(it->item[i]);
+        }
+
         tll_push_back(
             *applications,
             ((struct application){
                 .id = strdup(id),
                 .path = a->path,
                 .exec = a->exec,
-                .basename = c32dup(file_basename),
-                .wexec = a->wexec,
-                .title = title,
-                .startup_notify = !a->no_startup_notify,
                 .app_id = a->app_id,
+                .title = title,
+                .title_lowercase = title_lowercase,
+                .basename = c32dup(file_basename_lowercase),
+                .wexec = a->wexec,
                 .generic_name = a->generic_name,
                 .comment = a->comment,
                 .keywords = a->keywords,
                 .categories = a->categories,
+                .title_len = title_len,
+                .basename_len = basename_len,
+                .wexec_len = wexec_len,
+                .generic_name_len = generic_name_len,
+                .comment_len = comment_len,
                 .icon = {.name = a->icon},
                 .visible = a->visible && (!filter_desktops || filter_desktop_entry(a, desktops)),
+                .startup_notify = !a->no_startup_notify,
                 .count = 0}));
 
         tll_free_and_free(a->onlyshowin, free);
@@ -582,6 +621,9 @@ scan_dir(int base_fd, const char *terminal, bool include_actions,
                 char32_t wfile_basename[chars + 1];
                 mbsntoc32(wfile_basename, file_basename, extension - file_basename, chars);
                 wfile_basename[chars] = U'\0';
+
+                for (size_t i = 0; i < chars; i++)
+                    wfile_basename[i] = toc32lower(wfile_basename[i]);
 
                 char *id = new_id(base_id, e->d_name);
 

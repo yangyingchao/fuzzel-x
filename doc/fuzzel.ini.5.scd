@@ -135,7 +135,6 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	Boolean. Filter desktop files based on the value of XDG_CURRENT_DESKTOP.
 
 *match-mode*
-
 	One of *exact*, *fzf* and *fuzzy*.
 	
 	*exact*: what you type is matched exactly against each field in
