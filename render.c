@@ -19,7 +19,7 @@
 #if defined(FUZZEL_ENABLE_CAIRO)
 #include <cairo.h>
 #else
-#define cairo_surface_t void
+#define cairo_t void
 #endif
 
 #include <fcft/fcft.h>
@@ -429,7 +429,7 @@ render_match_text(pixman_image_t *pix, double *_x, double _y, double max_x,
 #if defined(FUZZEL_ENABLE_SVG_LIBRSVG)
 static void
 render_svg_librsvg(const struct icon *icon, int x, int y, int size,
-                   cairo_surface_t *cairo)
+                   cairo_t *cairo)
 {
     RsvgHandle *svg = icon->svg;
 
@@ -478,10 +478,10 @@ render_svg_librsvg(const struct icon *icon, int x, int y, int size,
 #if defined(FUZZEL_ENABLE_SVG_NANOSVG)
 static void
 render_svg_nanosvg(struct icon *icon, int x, int y, int size,
-                   pixman_image_t *pix, cairo_surface_t *cairo)
+                   pixman_image_t *pix, cairo_t *cairo)
 {
 #if defined(FUZZEL_ENABLE_CAIRO)
-    cairo_surface_flush(cairo);
+    cairo_surface_flush(cairo_get_target(cairo));
 #endif
 
     pixman_image_t *img = NULL;
@@ -542,14 +542,14 @@ render_svg_nanosvg(struct icon *icon, int x, int y, int size,
         PIXMAN_OP_OVER, img, NULL, pix, 0, 0, 0, 0, x, y, size, size);
 
 #if defined(FUZZEL_ENABLE_CAIRO)
-    cairo_surface_mark_dirty(cairo);
+    cairo_surface_mark_dirty(cairo_get_target(cairo));
 #endif
 }
 #endif /* FUZZEL_ENABLE_SVG_NANOSVG */
 
 static void
 render_svg(struct icon *icon, int x, int y, int size,
-           pixman_image_t *pix, cairo_surface_t *cairo)
+           pixman_image_t *pix, cairo_t *cairo)
 {
     assert(icon->type == ICON_SVG);
 
@@ -569,10 +569,10 @@ render_svg(struct icon *icon, int x, int y, int size,
 #if defined(FUZZEL_ENABLE_PNG_LIBPNG)
 static void
 render_png_libpng(struct icon *icon, int x, int y, int size,
-                  pixman_image_t *pix, cairo_surface_t *cairo)
+                  pixman_image_t *pix, cairo_t *cairo)
 {
 #if defined(FUZZEL_ENABLE_CAIRO)
-    cairo_surface_flush(cairo);
+    cairo_surface_flush(cairo_get_target(cairo));
 #endif
 
     pixman_image_t *png = icon->png;
@@ -631,13 +631,14 @@ render_png_libpng(struct icon *icon, int x, int y, int size,
         PIXMAN_OP_OVER, png, NULL, pix, 0, 0, 0, 0, x, y, width, height);
 
 #if defined(FUZZEL_ENABLE_CAIRO)
-    cairo_surface_mark_dirty(cairo);
+    cairo_surface_mark_dirty(cairo_get_target(cairo));
 #endif
 }
 #endif /* FUZZEL_ENABLE_PNG_LIBPNG */
 
 static void
-render_png(struct icon *icon, int x, int y, int size, pixman_image_t *pix, cairo_surface_t *cairo)
+render_png(struct icon *icon, int x, int y, int size, pixman_image_t *pix,
+           cairo_t *cairo)
 {
     assert(icon->type == ICON_PNG);
 
@@ -665,7 +666,7 @@ static void
 render_one_match_entry(const struct render *render, const struct matches *matches,
                        const struct match *match, bool render_icons,
                        int idx, bool is_selected, int width, int height,
-                       pixman_image_t *pix, cairo_surface_t *cairo)
+                       pixman_image_t *pix, cairo_t *cairo)
 {
     const enum fcft_subpixel subpixel =
         (render->conf->colors.background.a == 1. &&
@@ -822,7 +823,7 @@ render_match_list(struct render *render, struct buffer *buf,
                 render, matches, match, render_icons, i, i == selected,
                 buf->width, buf->height, buf->pix[0],
 #if defined(FUZZEL_ENABLE_CAIRO)
-                buf->cairo_surfaces[0]
+                buf->cairo[0]
 #else
                 NULL
 #endif
@@ -900,7 +901,7 @@ render_worker_thread(void *_ctx)
                     row_no, row_no == selected, buf->width, buf->height,
                     buf->pix[my_id],
 #if defined(FUZZEL_ENABLE_CAIRO)
-                    buf->cairo_surfaces[my_id]
+                    buf->cairo[my_id]
 #else
                     NULL
 #endif

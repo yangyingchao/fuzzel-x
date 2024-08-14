@@ -118,13 +118,16 @@ buffer_destroy_dont_close(struct buffer *buf)
     free(buf->pix);
 
 #if defined(FUZZEL_ENABLE_CAIRO)
-    if (buf->cairo_surfaces != NULL) {
+    if (buf->cairo != NULL) {
         for (size_t i = 0; i < buf->pix_instances; i++) {
-            if (buf->cairo_surfaces[i] != NULL)
-                cairo_surface_destroy(buf->cairo_surfaces[i]);
+            if (buf->cairo[i] != NULL) {
+                cairo_surface_destroy(cairo_get_target(buf->cairo[i]));
+                cairo_destroy(buf->cairo[i]);
+            }
         }
+
+        free(buf->cairo);
     }
-    free(buf->cairo_surfaces);
 #endif
 
     if (buf->wl_buf != NULL)
@@ -269,6 +272,7 @@ instantiate_offset(struct buffer_private *buf, off_t new_offset)
     pixman_image_t **pix = calloc(buf->public.pix_instances, sizeof(pix[0]));
 
 #if defined(FUZZEL_ENABLE_CAIRO)
+    cairo_t **cairos = calloc(buf->public.pix_instances, sizeof(cairos[0]));
     cairo_surface_t **cairo_surfs =
         calloc(buf->public.pix_instances, sizeof(cairo_surfs[0]));
 #endif
@@ -308,6 +312,13 @@ instantiate_offset(struct buffer_private *buf, off_t new_offset)
                 cairo_status_to_string(cairo_surface_status(cairo_surfs[i])));
             goto err;
         }
+
+        cairos[i] = cairo_create(cairo_surfs[i]);
+        if (cairo_status(cairos[i]) != CAIRO_STATUS_SUCCESS) {
+            LOG_ERR("failed to create cairo context: %s",
+                    cairo_status_to_string(cairo_status(cairos[i])));
+            goto err;
+        }
 #endif
     }
 
@@ -317,7 +328,8 @@ instantiate_offset(struct buffer_private *buf, off_t new_offset)
     buf->offset = new_offset;
 
 #if defined(FUZZEL_ENABLE_CAIRO)
-    buf->public.cairo_surfaces = cairo_surfs;
+    buf->public.cairo = cairos;
+    free(cairo_surfs);
 #endif
 
     wl_buffer_add_listener(wl_buf, &buffer_listener, buf);
@@ -333,13 +345,20 @@ err:
     free(pix);
 
 #if defined(FUZZEL_ENABLE_CAIRO)
+    if (cairos != NULL) {
+        for (size_t i = 0; i < buf->public.pix_instances; i++) {
+            if (cairos[i] != NULL)
+                cairo_destroy(cairos[i]);
+        }
+        free(cairos);
+    }
     if (cairo_surfs != NULL) {
         for (size_t i = 0; i < buf->public.pix_instances; i++) {
             if (cairo_surfs[i] != NULL)
                 cairo_surface_destroy(cairo_surfs[i]);
         }
+        free(cairo_surfs);
     }
-    free(cairo_surfs);
 #endif
 
     if (wl_buf != NULL)

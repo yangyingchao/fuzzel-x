@@ -25,7 +25,7 @@ struct buffer {
     struct wl_buffer *wl_buf;
     pixman_image_t **pix;
 #if defined(FUZZEL_ENABLE_CAIRO)
-    cairo_surface_t **cairo_surfaces;
+    cairo_t **cairo;
 #endif
     size_t pix_instances;
 

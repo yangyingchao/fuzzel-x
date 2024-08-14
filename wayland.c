@@ -2051,7 +2051,8 @@ wayl_refresh(struct wayland *wayl)
     render_match_list(wayl->render, buf, wayl->prompt, wayl->matches);
 
 #if defined(FUZZEL_ENABLE_CAIRO)
-    cairo_surface_flush(buf->cairo_surfaces[0]);
+    for (size_t i = 0; i < buf->pix_instances; i++)
+        cairo_surface_flush(cairo_get_target(buf->cairo[0]));
 #endif
 
 commit:
