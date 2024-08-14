@@ -340,7 +340,7 @@ done by setting _action=none_; e.g. *delete-line-forward=none*.
 
 *cancel*
 	Quit fuzzel without executing anything. Default: _Control+g
-	Control+c Control+[ Escape_.
+	Control+c Control+bracketleft Escape_.
 
 *execute*
 	Execute the currently selected entry. Or, in dmenu mode, print the
