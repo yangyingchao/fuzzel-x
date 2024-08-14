@@ -366,6 +366,7 @@ print_usage(const char *prog_name)
            "     --layer=top|overlay         which layer to render the fuzzel window on (top)\n"
            "     --no-exit-on-keyboard-focus-loss  do not exit when losing keyboard focus\n"
            "     --launch-prefix=COMMAND     prefix to add before argv of executed program\n"
+           "     --workers=N                 number of threads to use for rendering\n"
            "  -d,--dmenu                     dmenu compatibility mode\n"
            "     --dmenu0                    like --dmenu, but input is NUL separated\n"
            "                                 instead of newline separated\n"
@@ -644,6 +645,7 @@ main(int argc, char *const *argv)
     #define OPT_X_MARGIN                     278
     #define OPT_Y_MARGIN                     279
     #define OPT_CACHE                        280
+    #define OPT_WORKERS                      281
     #define OPT_PROMPT_COLOR                 282
     #define OPT_INPUT_COLOR                  283
 
@@ -693,6 +695,7 @@ main(int argc, char *const *argv)
         {"layer",                required_argument, 0, OPT_LAYER},
         {"no-exit-on-keyboard-focus-loss", no_argument, 0, OPT_NO_EXIT_ON_KB_LOSS},
         {"list-executables-in-path",       no_argument, 0, OPT_LIST_EXECS_IN_PATH},
+        {"workers",              required_argument, 0, OPT_WORKERS},
 
         /* dmenu mode */
         {"dmenu",                no_argument,       0, 'd'},
@@ -757,6 +760,7 @@ main(int argc, char *const *argv)
         bool dmenu_delim_set:1;
         bool layer_set:1;
         bool no_exit_on_keyboard_focus_loss_set:1;
+        bool workers_set:1;
     } cmdline_overrides = {{0}};
 
     setlocale(LC_CTYPE, "");
@@ -1360,6 +1364,18 @@ main(int argc, char *const *argv)
             log_syslog = false;
             break;
 
+        case OPT_WORKERS:
+            if (sscanf(optarg, "%hu", &cmdline_overrides.conf.render_worker_count) != 1) {
+                fprintf(
+                    stderr,
+                    "%s: invalid value for workers (must be an integer)\n",
+                    optarg);
+                return EXIT_FAILURE;
+            }
+
+            cmdline_overrides.workers_set = true;
+            break;
+
         case 'v':
             printf("fuzzel %s\n", version_and_features());
             return EXIT_SUCCESS;
@@ -1505,6 +1521,8 @@ main(int argc, char *const *argv)
         conf.dmenu.exit_immediately_if_empty = cmdline_overrides.conf.dmenu.exit_immediately_if_empty;
     if (cmdline_overrides.conf.list_executables_in_path)
         conf.list_executables_in_path = cmdline_overrides.conf.list_executables_in_path;
+    if (cmdline_overrides.workers_set)
+        conf.render_worker_count = cmdline_overrides.conf.render_worker_count;
 
     if (conf.dmenu.enabled) {
         /* We don't have any meta data in dmenu mode */

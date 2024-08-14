@@ -533,6 +533,19 @@ str_to_uint32(const char *s, int base, uint32_t *res)
 }
 
 static bool
+str_to_uint16(const char *s, int base, uint16_t *res)
+{
+    unsigned long v;
+    bool ret = str_to_ulong(s, base, &v);
+    if (!ret)
+        return false;
+    if (v > UINT16_MAX)
+        return false;
+    *res = v;
+    return true;
+}
+
+static bool
 value_to_str(struct context *ctx, char **res)
 {
     free(*res);
@@ -582,6 +595,17 @@ static bool
 value_to_uint32(struct context *ctx, int base, uint32_t *res)
 {
     if (!str_to_uint32(ctx->value, base, res)){
+        LOG_CONTEXTUAL_ERR(
+            "invalid integer value, or outside range 0-%u", UINT32_MAX);
+        return false;
+    }
+    return true;
+}
+
+static bool
+value_to_uint16(struct context *ctx, int base, uint16_t *res)
+{
+    if (!str_to_uint16(ctx->value, base, res)){
         LOG_CONTEXTUAL_ERR(
             "invalid integer value, or outside range 0-%u", UINT32_MAX);
         return false;
@@ -766,6 +790,9 @@ parse_section_main(struct context *ctx)
         }
         return true;
     }
+
+    else if (strcmp(key, "workers") == 0)
+        return value_to_uint16(ctx, 10, &conf->render_worker_count);
 
     else if (strcmp(key, "prompt") == 0)
         return value_to_wchars(ctx, &conf->prompt);
@@ -1542,6 +1569,7 @@ config_load(struct config *conf, const char *conf_path,
         .launch_prefix = NULL,
         .font = strdup("monospace"),
         .dpi_aware = DPI_AWARE_AUTO,
+        .render_worker_count = sysconf(_SC_NPROCESSORS_ONLN),
         .icons_enabled = true,
         .icon_theme = strdup("hicolor"),
         .actions_enabled = false,

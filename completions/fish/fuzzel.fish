@@ -54,6 +54,7 @@ complete -c fuzzel -x      -l fuzzy-max-distance                                
 complete -c fuzzel -x      -l line-height                                                                       -d "override the line height from font metrics, in points or pixels"
 complete -c fuzzel -x      -l letter-spacing                                                                    -d "additional letter spacing, in points or pixels"
 complete -c fuzzel -x      -l layer              -a "top overlay"                                               -d "which layer to render the fuzzel window on (top)"
+complete -c fuzzel -x      -l workers                                                                           -d "number of render worker threads"
 complete -c fuzzel    -s d -l dmenu                                                                             -d "dmenu compatibility mode; entries are read from stdin, newline separated"
 complete -c fuzzel         -l dmenu0                                                                            -d "dmenu compatibility mode; entries are read from stdin, NUL separated"
 complete -c fuzzel         -l index                                                                             -d "print selected entry's index instead of its text (dmenu mode only)"

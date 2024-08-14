@@ -1,8 +1,26 @@
 #include "render.h"
 
-#include <stdlib.h>
+#include <pthread.h>
+#include <semaphore.h>
+#include <signal.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <threads.h>
+
+#include "macros.h"
+#if HAS_INCLUDE(<pthread_np.h>)
+#include <pthread_np.h>
+#define pthread_setname_np(thread, name) (pthread_set_name_np(thread, name), 0)
+#elif defined(__NetBSD__)
+#define pthread_setname_np(thread, name) pthread_setname_np(thread, "%s", (void *)name)
+#endif
+
+#if defined(FUZZEL_ENABLE_CAIRO)
+#include <cairo.h>
+#else
+#define cairo_surface_t void
+#endif
 
 #include <fcft/fcft.h>
 
@@ -16,10 +34,15 @@
 #include "char32.h"
 #include "icon.h"
 #include "stride.h"
-#include "wayland.h"
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
 #define max(x, y) ((x) > (y) ? (x) : (y))
+
+struct render;
+struct thread_context {
+    struct render *render;
+    int my_id;
+};
 
 struct render {
     const struct config *conf;
@@ -46,6 +69,19 @@ struct render {
     unsigned border_size;
     unsigned row_height;
     unsigned icon_height;
+
+    struct {
+        uint16_t count;
+        sem_t start;
+        sem_t done;
+        mtx_t lock;
+        tll(int) queue;
+        thrd_t *threads;
+
+        const struct matches *matches;
+        struct buffer *buf;
+        bool render_icons;
+    } workers;
 
     mtx_t *icon_lock;
 };
@@ -114,12 +150,12 @@ render_background(const struct render *render, struct buffer *buf)
 
     if (render->conf->border.radius == 0) {
         pixman_image_fill_rectangles(
-            PIXMAN_OP_SRC, buf->pix, &bg,
+            PIXMAN_OP_SRC, buf->pix[0], &bg,
             1, &(pixman_rectangle16_t){
                 bw, bw, buf->width - 2 * bw, buf->height - 2 * bw});
 
         pixman_image_fill_rectangles(
-            PIXMAN_OP_SRC, buf->pix, &border_color,
+            PIXMAN_OP_SRC, buf->pix[0], &border_color,
             4, (pixman_rectangle16_t[]){
                 {0, 0, buf->width, bw},                          /* top */
                 {0, bw, bw, buf->height - 2 * bw},               /* left */
@@ -137,7 +173,7 @@ render_background(const struct render *render, struct buffer *buf)
         if (msaa_scale != 1){
             bg_img = pixman_image_create_bits(PIXMAN_a8r8g8b8, w, h, NULL, w*4);
         } else {
-            bg_img = buf->pix;
+            bg_img = buf->pix[0];
         }
 
         /* Border */
@@ -160,7 +196,7 @@ render_background(const struct render *render, struct buffer *buf)
             pixman_image_set_filter(bg_img, PIXMAN_FILTER_BILINEAR, NULL, 0);
 
             pixman_image_composite32(
-                PIXMAN_OP_SRC, bg_img, NULL, buf->pix, 0, 0, 0, 0, 0, 0,
+                PIXMAN_OP_SRC, bg_img, NULL, buf->pix[0], 0, 0, 0, 0, 0, 0,
                 buf->width, buf->height);
             pixman_image_unref(bg_img);
         }
@@ -219,7 +255,7 @@ render_prompt(const struct render *render, struct buffer *buf,
         if (run != NULL) {
             for (size_t i = 0; i < run->count; i++) {
                 const struct fcft_glyph *glyph = run->glyphs[i];
-                render_glyph(buf->pix, glyph, x, y, &render->pix_prompt_color);
+                render_glyph(buf->pix[0], glyph, x, y, &render->pix_prompt_color);
                 x += glyph->advance.x;
             }
             fcft_text_run_destroy(run);
@@ -228,7 +264,7 @@ render_prompt(const struct render *render, struct buffer *buf,
              * the cursor will be rendered by the loop below */
             if (prompt_cursor(prompt) == 0) {
                 pixman_image_fill_rectangles(
-                    PIXMAN_OP_SRC, buf->pix, &render->pix_input_color,
+                    PIXMAN_OP_SRC, buf->pix[0], &render->pix_input_color,
                     1, &(pixman_rectangle16_t){
                         x, y - font->ascent,
                         font->underline.thickness, font->ascent + font->descent});
@@ -267,7 +303,7 @@ render_prompt(const struct render *render, struct buffer *buf,
         fcft_kerning(font, prev, wc, &x_kern, NULL);
 
         x += x_kern;
-        render_glyph(buf->pix, glyph, x, y, &render->pix_input_color);
+        render_glyph(buf->pix[0], glyph, x, y, &render->pix_input_color);
         x += glyph->advance.x;
         if (i >= prompt_len)
             x += pt_or_px_as_pixels(render, &render->conf->letter_spacing);
@@ -275,7 +311,7 @@ render_prompt(const struct render *render, struct buffer *buf,
         /* Cursor */
         if (prompt_cursor(prompt) + prompt_len - 1 == i) {
             pixman_image_fill_rectangles(
-                PIXMAN_OP_SRC, buf->pix, &render->pix_input_color,
+                PIXMAN_OP_SRC, buf->pix[0], &render->pix_input_color,
                 1, &(pixman_rectangle16_t){
                     x, y - font->ascent,
                     font->underline.thickness, font->ascent + font->descent});
@@ -286,7 +322,7 @@ render_prompt(const struct render *render, struct buffer *buf,
 }
 
 static void
-render_match_text(struct buffer *buf, double *_x, double _y, double max_x,
+render_match_text(pixman_image_t *pix, double *_x, double _y, double max_x,
                   const char32_t *text, size_t match_count,
                   const struct match_substring matches[static match_count],
                   struct fcft_font *font, enum fcft_subpixel subpixel,
@@ -370,13 +406,13 @@ render_match_text(struct buffer *buf, double *_x, double _y, double max_x,
                 fcft_rasterize_char_utf32(font, U'…', subpixel);
 
             if (ellipses != NULL)
-                render_glyph(buf->pix, ellipses, x, y, &regular_color);
+                render_glyph(pix, ellipses, x, y, &regular_color);
 
             break;
         }
 
         x += kern != NULL ? kern[i] : 0;
-        render_glyph(buf->pix, glyphs[i], x, y, is_match ? &match_color : &regular_color);
+        render_glyph(pix, glyphs[i], x, y, is_match ? &match_color : &regular_color);
         x += glyphs[i]->advance.x + letter_spacing;
         y += glyphs[i]->advance.y;
     }
@@ -392,15 +428,16 @@ render_match_text(struct buffer *buf, double *_x, double _y, double max_x,
 
 #if defined(FUZZEL_ENABLE_SVG_LIBRSVG)
 static void
-render_svg_librsvg(const struct icon *icon, int x, int y, int size, struct buffer *buf)
+render_svg_librsvg(const struct icon *icon, int x, int y, int size,
+                   cairo_surface_t *cairo)
 {
     RsvgHandle *svg = icon->svg;
 
-    cairo_save(buf->cairo);
-    cairo_set_operator(buf->cairo, CAIRO_OPERATOR_ATOP);
+    cairo_save(cairo);
+    cairo_set_operator(cairo, CAIRO_OPERATOR_ATOP);
 
  #if LIBRSVG_CHECK_VERSION(2, 46, 0)
-    if (cairo_status(buf->cairo) == CAIRO_STATUS_SUCCESS) {
+    if (cairo_status(cairo) == CAIRO_STATUS_SUCCESS) {
         const RsvgRectangle viewport = {
             .x = x,
             .y = y,
@@ -408,10 +445,10 @@ render_svg_librsvg(const struct icon *icon, int x, int y, int size, struct buffe
             .height = size,
         };
 
-        cairo_rectangle(buf->cairo, x, y, size, size);
-        cairo_clip(buf->cairo);
+        cairo_rectangle(cairo, x, y, size, size);
+        cairo_clip(cairo);
 
-        rsvg_handle_render_document(svg, buf->cairo, &viewport, NULL);
+        rsvg_handle_render_document(svg, cairo, &viewport, NULL);
     }
  #else
     RsvgDimensionData dim;
@@ -424,26 +461,27 @@ render_svg_librsvg(const struct icon *icon, int x, int y, int size, struct buffe
     const double height = dim.height * scale;
     const double width = dim.width * scale;
 
-    cairo_rectangle(buf->cairo, x, y, height, width);
-    cairo_clip(buf->cairo);
+    cairo_rectangle(cairo, x, y, height, width);
+    cairo_clip(cairo);
 
     /* Translate + scale. Note: order matters! */
-    cairo_translate(buf->cairo, x, y);
-    cairo_scale(buf->cairo, scale, scale);
+    cairo_translate(cairo, x, y);
+    cairo_scale(cairo, scale, scale);
 
-    if (cairo_status(buf->cairo) == CAIRO_STATUS_SUCCESS)
-        rsvg_handle_render_cairo(svg, buf->cairo);
+    if (cairo_status(cairo) == CAIRO_STATUS_SUCCESS)
+        rsvg_handle_render_cairo(svg, cairo);
  #endif
-    cairo_restore(buf->cairo);
+    cairo_restore(cairo);
 }
 #endif /* FUZZEL_ENABLE_SVG_LIBRSVG */
 
 #if defined(FUZZEL_ENABLE_SVG_NANOSVG)
 static void
-render_svg_nanosvg(struct icon *icon, int x, int y, int size, struct buffer *buf)
+render_svg_nanosvg(struct icon *icon, int x, int y, int size,
+                   pixman_image_t *pix, cairo_surface_t *cairo)
 {
 #if defined(FUZZEL_ENABLE_CAIRO)
-    cairo_surface_flush(buf->cairo_surface);
+    cairo_surface_flush(cairo);
 #endif
 
     pixman_image_t *img = NULL;
@@ -501,16 +539,17 @@ render_svg_nanosvg(struct icon *icon, int x, int y, int size, struct buffer *buf
     }
 
     pixman_image_composite32(
-        PIXMAN_OP_OVER, img, NULL, buf->pix, 0, 0, 0, 0, x, y, size, size);
+        PIXMAN_OP_OVER, img, NULL, pix, 0, 0, 0, 0, x, y, size, size);
 
 #if defined(FUZZEL_ENABLE_CAIRO)
-    cairo_surface_mark_dirty(buf->cairo_surface);
+    cairo_surface_mark_dirty(cairo);
 #endif
 }
 #endif /* FUZZEL_ENABLE_SVG_NANOSVG */
 
 static void
-render_svg(struct icon *icon, int x, int y, int size, struct buffer *buf)
+render_svg(struct icon *icon, int x, int y, int size,
+           pixman_image_t *pix, cairo_surface_t *cairo)
 {
     assert(icon->type == ICON_SVG);
 
@@ -521,18 +560,19 @@ render_svg(struct icon *icon, int x, int y, int size, struct buffer *buf)
     }
 
 #if defined(FUZZEL_ENABLE_SVG_LIBRSVG)
-    render_svg_librsvg(icon, x, y, size, buf);
+    render_svg_librsvg(icon, x, y, size, cairo);
 #elif defined(FUZZEL_ENABLE_SVG_NANOSVG)
-    render_svg_nanosvg(icon, x, y, size, buf);
+    render_svg_nanosvg(icon, x, y, size, pix, cairo);
 #endif
 }
 
 #if defined(FUZZEL_ENABLE_PNG_LIBPNG)
 static void
-render_png_libpng(struct icon *icon, int x, int y, int size, struct buffer *buf)
+render_png_libpng(struct icon *icon, int x, int y, int size,
+                  pixman_image_t *pix, cairo_surface_t *cairo)
 {
 #if defined(FUZZEL_ENABLE_CAIRO)
-    cairo_surface_flush(buf->cairo_surface);
+    cairo_surface_flush(cairo);
 #endif
 
     pixman_image_t *png = icon->png;
@@ -588,16 +628,16 @@ render_png_libpng(struct icon *icon, int x, int y, int size, struct buffer *buf)
     }
 
     pixman_image_composite32(
-        PIXMAN_OP_OVER, png, NULL, buf->pix, 0, 0, 0, 0, x, y, width, height);
+        PIXMAN_OP_OVER, png, NULL, pix, 0, 0, 0, 0, x, y, width, height);
 
 #if defined(FUZZEL_ENABLE_CAIRO)
-    cairo_surface_mark_dirty(buf->cairo_surface);
+    cairo_surface_mark_dirty(cairo);
 #endif
 }
 #endif /* FUZZEL_ENABLE_PNG_LIBPNG */
 
 static void
-render_png(struct icon *icon, int x, int y, int size, struct buffer *buf)
+render_png(struct icon *icon, int x, int y, int size, pixman_image_t *pix, cairo_surface_t *cairo)
 {
     assert(icon->type == ICON_PNG);
 
@@ -608,160 +648,279 @@ render_png(struct icon *icon, int x, int y, int size, struct buffer *buf)
     }
 
 #if defined(FUZZEL_ENABLE_PNG_LIBPNG)
-    render_png_libpng(icon, x, y, size, buf);
+    render_png_libpng(icon, x, y, size, pix, cairo);
 #endif
 }
 
-void
-render_match_list(const struct render *render, struct buffer *buf,
-                  const struct prompt *prompt, const struct matches *matches)
+static int
+first_row_y(const struct render *render)
 {
-    struct fcft_font *font = render->font;
-    assert(font != NULL);
+    return (render->border_size +
+            render->y_margin +
+            render->row_height +
+            render->inner_pad);
+}
 
-    const int x_margin = render->x_margin;
-    const int y_margin = render->y_margin;
-    const int inner_pad = render->inner_pad;
-    const int border_size = render->border_size;
-    const size_t match_count = matches_get_count(matches);
-    const size_t selected = matches_get_match_index(matches);
+static void
+render_one_match_entry(const struct render *render, const struct matches *matches,
+                       const struct match *match, bool render_icons,
+                       int idx, bool is_selected, int width, int height,
+                       pixman_image_t *pix, cairo_surface_t *cairo)
+{
     const enum fcft_subpixel subpixel =
         (render->conf->colors.background.a == 1. &&
          render->conf->colors.selection.a == 1.)
-        ? render->subpixel : FCFT_SUBPIXEL_NONE;
+            ? render->subpixel : FCFT_SUBPIXEL_NONE;
     const struct fcft_glyph *ellipses =
-        fcft_rasterize_char_utf32(font, U'…', subpixel);
+        fcft_rasterize_char_utf32(render->font, U'…', subpixel);
+
+    const int first_row = first_row_y(render);
+    double cur_x = render->border_size + render->x_margin;
+    double max_x = width - render->border_size - render->x_margin;
+
+#if 0 /* Render the icon+text bounding box */
+    pixman_color_t sc = rgba2pixman(render->conf->colors.match);
+    pixman_image_fill_rectangles(
+        PIXMAN_OP_SRC, buf->pix[0], &sc, 1,
+        &(pixman_rectangle16_t){
+            cur_x, first_row + idx * render->row_height,
+            max_x - cur_x, render->row_height}
+        );
+#endif
+
+    if (is_selected) {
+        /* If currently selected item has a scalable icon, and if
+         * there's "enough" free space, render a large representation
+         * of the icon */
+
+        const double ratio = render->conf->image_size_ratio;
+        const double size = min(height * ratio, width * ratio);
+        const double img_x = (width - size) / 2.;
+        const double img_y_bottom = max(height - first_row, 0.);
+        const double img_y = max(img_y_bottom - size, 0.);
+        const size_t match_count = matches_get_count(matches);
+        const double list_end = first_row + match_count * render->row_height;
+
+        LOG_DBG("img_y=%f, list_end=%f", img_y, list_end);
+
+        if (render_icons &&
+            match->application->icon.type == ICON_SVG &&
+            img_y > list_end + render->row_height)
+        {
+            render_svg(&match->application->icon, img_x, img_y, size, pix, cairo);
+        }
+
+        const int sel_margin = render->x_margin / 3;
+
+        pixman_color_t sc = rgba2pixman(render->conf->colors.selection);
+        pixman_image_fill_rectangles(
+            PIXMAN_OP_OVER, pix, &sc, 1,
+            &(pixman_rectangle16_t){
+                render->x_margin - sel_margin,
+                first_row + idx * render->row_height,
+                width - 2 * (render->x_margin - sel_margin),
+                render->row_height}
+            );
+    }
+
+    if (render_icons) {
+        struct icon *icon = &match->application->icon;
+        const int size = render->icon_height;
+        const int img_x = cur_x;
+        const int img_y = first_row + idx * render->row_height + (render->row_height - size) / 2;
+
+        switch (icon->type) {
+        case ICON_NONE:
+            break;
+
+        case ICON_PNG:
+            render_png(icon, img_x, img_y, size, pix, cairo);
+            break;
+
+        case ICON_SVG:
+            render_svg(icon, img_x, img_y, size, pix, cairo);
+            break;
+        }
+    }
+
+    const struct fcft_glyph *space = fcft_rasterize_char_utf32(
+        render->font, U' ', subpixel);
+
+    cur_x +=
+        (render->conf->icons_enabled && matches_have_icons(matches)
+            ? (render->row_height +
+               (space != NULL ? space->advance.x : render->font->max_advance.x))
+            : 0) +
+        pt_or_px_as_pixels(render, &render->conf->letter_spacing);
+
+    /* Replace newlines in title, with spaces (basic support for
+     * multiline entries) */
+    if (match->application->render_title == NULL) {
+        char32_t *newline = c32chr(match->application->title, U'\n');
+
+        if (newline != NULL) {
+            char32_t *render_title = c32dup(match->application->title);
+
+            newline = render_title + (newline - match->application->title);
+            *newline = U' ';
+
+            while ((newline = c32chr(newline, U'\n')) != NULL)
+                *newline = U' ';
+
+            match->application->render_title = render_title;
+        } else {
+            /* No newlines, use title as-is */
+            match->application->render_title = match->application->title;
+        }
+    }
+
+    const int y = first_row + (render->row_height + render->font->height) / 2 - render->font->descent + idx * render->row_height;
+
+    /* Application title */
+    render_match_text(
+        pix, &cur_x, y, max_x - (ellipses != NULL ? ellipses->width : 0),
+        match->application->render_title, match->pos_count, match->pos,
+        render->font, subpixel,
+        pt_or_px_as_pixels(render, &render->conf->letter_spacing),
+        render->conf->tabs,
+        (is_selected
+            ? render->pix_selection_text_color
+            : render->pix_text_color),
+        (is_selected
+            ? render->pix_selection_match_color
+            : render->pix_match_color),
+        &match->application->shaped);
+}
+
+void
+render_match_list(struct render *render, struct buffer *buf,
+                  const struct prompt *prompt, const struct matches *matches)
+{
+    const size_t match_count = matches_get_count(matches);
+    const size_t selected = matches_get_match_index(matches);
 
     assert(match_count == 0 || selected < match_count);
 
-    const int row_height = render->row_height;
-    const int first_row = 1 * border_size + y_margin + row_height + inner_pad;
-    const int sel_margin = x_margin / 3;
-
-    int y = first_row + (row_height + font->height) / 2 - font->descent;
-
     bool render_icons = mtx_trylock(render->icon_lock) == thrd_success;
 
+    if (render->workers.count > 0) {
+        mtx_lock(&render->workers.lock);
+        render->workers.matches = matches;
+        render->workers.buf = buf;
+        render->workers.render_icons= render_icons;
+
+        for (size_t i = 0; i < render->workers.count; i++)
+            sem_post(&render->workers.start);
+
+        assert(tll_length(render->workers.queue) == 0);
+    }
+
     for (size_t i = 0; i < match_count; i++) {
-        const struct match *match = matches_get(matches, i);
-
-        if (i == selected) {
-            /* If currently selected item has a scalable icon, and if
-             * there's "enough" free space, render a large
-             * representation of the icon */
-
-            const double ratio = render->conf->image_size_ratio;
-            const double size = min(buf->height * ratio, buf->width * ratio);
-            const double img_x = (buf->width - size) / 2.;
-            const double img_y_bottom = max(buf->height - first_row, 0.);
-            const double img_y = max(img_y_bottom - size, 0.);
-
-            const double list_end = first_row + match_count * row_height;
-
-            LOG_DBG("img_y=%f, list_end=%f", img_y, list_end);
-
-            if (render_icons &&
-                match->application->icon.type == ICON_SVG &&
-                img_y > list_end + row_height)
-            {
-                render_svg(&match->application->icon, img_x, img_y, size, buf);
-            }
-
-            pixman_color_t sc = rgba2pixman(render->conf->colors.selection);
-            pixman_image_fill_rectangles(
-                PIXMAN_OP_OVER, buf->pix, &sc, 1,
-                &(pixman_rectangle16_t){
-                    x_margin - sel_margin,
-                    first_row + i * row_height,
-                    buf->width - 2 * (x_margin - sel_margin),
-                    row_height}
-                );
-        }
-
-        double cur_x = border_size + x_margin;
-        double max_x = buf->width - border_size - x_margin;
-
-#if 0 /* Render the icon+text bounding box */
-        pixman_color_t sc = rgba2pixman(render->conf->colors.match);
-        pixman_image_fill_rectangles(
-            PIXMAN_OP_SRC, buf->pix, &sc, 1,
-            &(pixman_rectangle16_t){
-                cur_x, first_row + i * row_height,
-                max_x - cur_x, row_height}
-            );
+        if (render->workers.count == 0) {
+            const struct match *match = matches_get(matches, i);
+            render_one_match_entry(
+                render, matches, match, render_icons, i, i == selected,
+                buf->width, buf->height, buf->pix[0],
+#if defined(FUZZEL_ENABLE_CAIRO)
+                buf->cairo_surfaces[0]
+#else
+                NULL
 #endif
-
-        if (render_icons) {
-            struct icon *icon = &match->application->icon;
-            const int size = render->icon_height;
-            const int img_x = cur_x;
-            const int img_y = first_row + i * row_height + (row_height - size) / 2;
-
-            switch (icon->type) {
-            case ICON_NONE:
-                break;
-
-            case ICON_PNG:
-                render_png(icon, img_x, img_y, size, buf);
-                break;
-
-            case ICON_SVG:
-                render_svg(icon, img_x, img_y, size, buf);
-                break;
-            }
+                );
+        } else {
+            tll_push_back(render->workers.queue, i);
         }
+    }
 
-        const struct fcft_glyph *space = fcft_rasterize_char_utf32(
-            font, U' ', subpixel);
+    if (render->workers.count > 0) {
+        for (size_t i = 0; i < render->workers.count; i++)
+            tll_push_back(render->workers.queue, -1);
+        mtx_unlock(&render->workers.lock);
 
-        cur_x +=
-            (render->conf->icons_enabled && matches_have_icons(matches)
-             ? (row_height +
-                (space != NULL ? space->advance.x : font->max_advance.x))
-             : 0) +
-            pt_or_px_as_pixels(render, &render->conf->letter_spacing);
+        for (size_t i = 0; i < render->workers.count; i++)
+            sem_wait(&render->workers.done);
 
-        /* Replace newlines in title, with spaces (basic support for
-         * multiline entries) */
-        if (match->application->render_title == NULL) {
-            char32_t *newline = c32chr(match->application->title, U'\n');
-
-            if (newline != NULL) {
-                char32_t *render_title = c32dup(match->application->title);
-
-                newline = render_title + (newline - match->application->title);
-                *newline = U' ';
-
-                while ((newline = c32chr(newline, U'\n')) != NULL)
-                    *newline = U' ';
-
-                match->application->render_title = render_title;
-            } else {
-                /* No newlines, use title as-is */
-                match->application->render_title = match->application->title;
-            }
-        }
-
-        /* Application title */
-        render_match_text(
-            buf, &cur_x, y, max_x - (ellipses != NULL ? ellipses->width : 0),
-            match->application->render_title, match->pos_count, match->pos,
-            font, subpixel,
-            pt_or_px_as_pixels(render, &render->conf->letter_spacing),
-            render->conf->tabs,
-            (i == selected
-             ? render->pix_selection_text_color
-             : render->pix_text_color),
-            (i == selected
-             ? render->pix_selection_match_color
-             : render->pix_match_color),
-            &match->application->shaped);
-
-        y += row_height;
+        render->workers.matches = NULL;
+        render->workers.buf = NULL;
+        render->workers.render_icons = false;
     }
 
     if (render_icons)
         mtx_unlock(render->icon_lock);
+}
+
+static int
+render_worker_thread(void *_ctx)
+{
+    struct thread_context *ctx = _ctx;
+    struct render *render = ctx->render;
+    const int my_id = ctx->my_id;
+    free(ctx);
+
+    sigset_t mask;
+    sigfillset(&mask);
+    pthread_sigmask(SIG_SETMASK, &mask, NULL);
+
+    char proc_title[16];
+    snprintf(proc_title, sizeof(proc_title), "fuzzel:rend:%d", my_id);
+
+    if (pthread_setname_np(pthread_self(), proc_title) < 0)
+        LOG_ERRNO("render worker %d: failed to set process title", my_id);
+
+    sem_t *start = &render->workers.start;
+    sem_t *done = &render->workers.done;
+    mtx_t *lock = &render->workers.lock;
+
+    while (true) {
+        sem_wait(start);
+
+        const struct matches *matches = render->workers.matches;
+        struct buffer *buf = render->workers.buf;
+        const bool render_icons = render->workers.render_icons;
+        const size_t selected = matches != NULL
+            ? matches_get_match_index(matches)
+            : 0;
+
+        bool frame_done = false;
+
+        while (!frame_done) {
+            mtx_lock(lock);
+            assert(tll_length(render->workers.queue) > 0);
+
+            int row_no = tll_pop_front(render->workers.queue);
+            mtx_unlock(lock);
+
+            switch (row_no) {
+            default: {
+                assert(buf != NULL);
+
+                const struct match *match = matches_get(matches, row_no);
+                render_one_match_entry(
+                    render, matches, match, render_icons,
+                    row_no, row_no == selected, buf->width, buf->height,
+                    buf->pix[my_id],
+#if defined(FUZZEL_ENABLE_CAIRO)
+                    buf->cairo_surfaces[my_id]
+#else
+                    NULL
+#endif
+                    );
+
+                break;
+            }
+
+            case -1:
+                frame_done = true;
+                sem_post(done);
+                break;
+
+            case -2:
+                return 0;
+            }
+        }
+    }
+
+    return -1;
 }
 
 struct render *
@@ -782,7 +941,62 @@ render_init(const struct config *conf, mtx_t *icon_lock)
     render->pix_selection_color = rgba2pixman(render->conf->colors.selection);
     render->pix_selection_text_color = rgba2pixman(render->conf->colors.selection_text);
     render->pix_selection_match_color = rgba2pixman(render->conf->colors.selection_match);
+
+    if (sem_init(&render->workers.start, 0, 0) < 0 ||
+        sem_init(&render->workers.done, 0, 0) < 0)
+    {
+        LOG_ERRNO("failed to instantiate render worker semaphores");
+        goto err_free_render;
+    }
+
+    int err;
+    if ((err = mtx_init(&render->workers.lock, mtx_plain)) != thrd_success) {
+        LOG_ERR("failed to instantiate render worker mutex: %d", err);
+        goto err_free_semaphores;
+        return NULL;
+    }
+
+    render->workers.threads = calloc(render->conf->render_worker_count,
+                                     sizeof(render->workers.threads[0]));
+    if (render->workers.threads == NULL) {
+        LOG_ERRNO("failed to allocate render worker threads array");
+        goto err_free_semaphores_and_lock;
+    }
+
+    for (size_t i = 0; i < render->conf->render_worker_count; i++) {
+        struct thread_context *ctx = malloc(sizeof(*ctx));
+        if (ctx == NULL) {
+            LOG_ERRNO("failed to allocate render worker thread context");
+            goto err_free_semaphores_and_lock;
+        }
+
+        *ctx = (struct thread_context){
+            .render = render,
+            .my_id = 1 + i,
+        };
+
+        int ret = thrd_create(
+            &render->workers.threads[i], &render_worker_thread, ctx);
+
+        if (ret != thrd_success) {
+            LOG_ERR("failed to create render worker thread: %d", ret);
+            render->workers.threads[i] = 0;
+            goto err_free_semaphores_and_lock;
+        }
+
+        render->workers.count++;
+    }
+
     return render;
+
+err_free_semaphores_and_lock:
+    mtx_destroy(&render->workers.lock);
+err_free_semaphores:
+    sem_destroy(&render->workers.start);
+    sem_destroy(&render->workers.done);
+err_free_render:
+    free(render);
+    return NULL;
 }
 
 void
@@ -873,6 +1087,30 @@ render_destroy(struct render *render)
 {
     if (render == NULL)
         return;
+
+    mtx_lock(&render->workers.lock);
+    {
+        assert(tll_length(render->workers.queue) == 0);
+
+        for (size_t i = 0; i < render->workers.count; i++) {
+            assert(render->workers.threads[i] != 0);
+            sem_post(&render->workers.start);
+            tll_push_back(render->workers.queue, -2);
+        }
+    }
+    mtx_unlock(&render->workers.lock);
+
+    for (size_t i = 0; i < render->workers.count; i++) {
+        assert(render->workers.threads[i] != 0);
+        thrd_join(render->workers.threads[i], NULL);
+    }
+
+    free(render->workers.threads);
+    mtx_destroy(&render->workers.lock);
+    sem_destroy(&render->workers.start);
+    sem_destroy(&render->workers.done);
+    assert(tll_length(render->workers.queue) == 0);
+    tll_free(render->workers.queue);
 
     fcft_destroy(render->font);
     free(render);

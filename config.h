@@ -113,6 +113,7 @@ struct config {
 
     char *font;
     enum dpi_aware dpi_aware;
+    uint16_t render_worker_count;
 
     bool filter_desktop;
 

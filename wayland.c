@@ -208,6 +208,8 @@ struct wayland {
     const struct monitor *monitor;
 
     tll(struct seat) seats;
+
+    struct buffer_chain *chain;
 };
 
 bool
@@ -1954,8 +1956,6 @@ static const struct wl_callback_listener frame_listener = {
 static void
 commit_buffer(struct wayland *wayl, struct buffer *buf)
 {
-    assert(buf->busy);
-
     const float scale = wayl->scale;
     assert(scale >= 1);
 
@@ -2018,17 +2018,25 @@ wayl_refresh(struct wayland *wayl)
         return;
     }
 
-    struct buffer *buf = shm_get_buffer(wayl->shm, wayl->width, wayl->height);
+    if (wayl->chain == NULL) {
+        wayl->chain =
+            shm_chain_new(wayl->shm, false, 1 + wayl->conf->render_worker_count);
+
+        if (wayl->chain == NULL)
+            abort();
+    }
+
+    struct buffer *buf = shm_get_buffer(wayl->chain, wayl->width, wayl->height, true);
 
     pixman_region32_t clip;
     pixman_region32_init_rect(&clip, 0, 0, buf->width, buf->height);
-    pixman_image_set_clip_region32(buf->pix, &clip);
+    pixman_image_set_clip_region32(buf->pix[0], &clip);
     pixman_region32_fini(&clip);
 
     if (wayl->render_first_frame_transparent) {
         pixman_color_t transparent = {0};
         pixman_image_fill_rectangles(
-            PIXMAN_OP_SRC, buf->pix, &transparent,
+            PIXMAN_OP_SRC, buf->pix[0], &transparent,
             1, &(pixman_rectangle16_t){0, 0, wayl->width, wayl->height});
         goto commit;
     }
@@ -2043,7 +2051,7 @@ wayl_refresh(struct wayland *wayl)
     render_match_list(wayl->render, buf, wayl->prompt, wayl->matches);
 
 #if defined(FUZZEL_ENABLE_CAIRO)
-    cairo_surface_flush(buf->cairo_surface);
+    cairo_surface_flush(buf->cairo_surfaces[0]);
 #endif
 
 commit:
@@ -2399,6 +2407,8 @@ wayl_destroy(struct wayland *wayl)
 {
     if (wayl == NULL)
         return;
+
+    shm_chain_free(wayl->chain);
 
     if (wayl->frame_cb != NULL)
         wl_callback_destroy(wayl->frame_cb);

@@ -46,6 +46,7 @@ _arguments \
     '--line-height[override line height from font metrics, in points or pixels]:()' \
     '--letter-spacing[additional letter spacing, in points or pixels]:()' \
     '--layer[which layer to render the fuzzel window on (top)]:layer:(top overlay)' \
+    '--workers[number of render worker threads]:workers:()' \
     '(-d --dmenu)'{-d,--dmenu}'[dmenu compatibility mode; entries are read from stdin, newline separated]' \
     '--dmenu0[dmenu compatibility mode; entries are read from stdin, NUL separated]' \
     "--index[print selected entry's index instead of its text (dmenu mode only)]" \

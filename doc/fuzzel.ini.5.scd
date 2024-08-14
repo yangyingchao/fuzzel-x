@@ -252,6 +252,12 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	
 	Default: _yes_
 
+*workers*
+	Number of threads to use for rendering. Set to 0 to disable
+	multithreading. Default: the number of available logical CPUs
+	(including SMT). Note that this is not always the best value. In
+	some cases, the number of physical _cores_ is better.
+
 # SECTION: colors
 
 All color values are in RGBA.

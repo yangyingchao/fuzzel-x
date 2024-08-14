@@ -54,6 +54,9 @@
 * `--input-color` and `colors.input`, controlling the text/foreground
   color of the input string ([#365][365]).
 * Much improved performance with large amounts of input ([#305][305]).
+* Improved rendering performance, by using threads. See the new
+  `--workers` command line option, and the new `workers` option in
+  `fuzzel.ini`.
 
 [344]: https://codeberg.org/dnkl/fuzzel/issues/344
 [131]: https://codeberg.org/dnkl/fuzzel/issues/131
