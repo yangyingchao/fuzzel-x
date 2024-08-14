@@ -183,7 +183,7 @@ struct wayland {
     bool force_cache_update;
 
     struct wl_callback *frame_cb;
-    struct buffer *pending;
+    bool need_refresh;
 
     struct wl_display *display;
     struct wl_registry *registry;
@@ -1998,9 +1998,9 @@ frame_callback(void *data, struct wl_callback *wl_callback, uint32_t callback_da
     wl_callback_destroy(wayl->frame_cb);
     wayl->frame_cb = NULL;
 
-    if (wayl->pending != NULL) {
-        commit_buffer(wayl, wayl->pending);
-        wayl->pending = NULL;
+    if (wayl->need_refresh) {
+        wayl->need_refresh = false;
+        wayl_refresh(wayl);
     }
 
     if (wayl->render_first_frame_transparent) {
@@ -2012,6 +2012,11 @@ frame_callback(void *data, struct wl_callback *wl_callback, uint32_t callback_da
 void
 wayl_refresh(struct wayland *wayl)
 {
+    if (wayl->frame_cb != NULL) {
+        wayl->need_refresh = true;
+        return;
+    }
+
     struct buffer *buf = shm_get_buffer(wayl->shm, wayl->width, wayl->height);
 
     pixman_region32_t clip;
@@ -2041,19 +2046,9 @@ wayl_refresh(struct wayland *wayl)
 #endif
 
 commit:
-    if (wayl->frame_cb != NULL) {
-        /* There's already a frame being drawn - delay current frame
-         * (overwriting any previous pending frame) */
-
-        if (wayl->pending != NULL)
-            wayl->pending->busy = false;
-
-        wayl->pending = buf;
-    } else {
-        /* No pending frames - render immediately */
-        assert(wayl->pending == NULL);
-        commit_buffer(wayl, buf);
-    }
+    /* No pending frames - render immediately */
+    assert(!wayl->need_refresh);
+    commit_buffer(wayl, buf);
 }
 
 static bool
