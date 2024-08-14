@@ -121,6 +121,10 @@ png_load(const char *path)
         LOG_DBG("RGBA");
         format = PIXMAN_a8r8g8b8;
         break;
+
+    default:
+        LOG_ERR("unhandled PNG color type: %d", color_type);
+        goto err;
     }
 
     png_read_update_info(png_ptr, info_ptr);
