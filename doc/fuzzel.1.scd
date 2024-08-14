@@ -180,6 +180,14 @@ or command line options:
 *-t*,*--text-color*=_HEX_
 	Text color. See *COLORS*. Default: _657b83ff_.
 
+*--prompt-color*=_HEX_
+	Text (foreground) color of prompt character(s). See
+	*COLORS*. Default: _586e75ff_.
+
+*--prompt-color*=_HEX_
+	Text (foreground) color of input string. See *COLORS*. Default:
+	_657b83ff_.
+
 *-m*,*--match-color*=_HEX_
 	The color of matching substring(s). As you start typing in the search
 	box, the matching part in each application's name is highlighted with

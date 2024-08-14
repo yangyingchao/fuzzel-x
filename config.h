@@ -150,6 +150,8 @@ struct config {
         struct rgba background;
         struct rgba border;
         struct rgba text;
+        struct rgba prompt;
+        struct rgba input;
         struct rgba match;
         struct rgba selection;
         struct rgba selection_text;

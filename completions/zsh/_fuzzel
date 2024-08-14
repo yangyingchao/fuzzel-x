@@ -27,6 +27,8 @@ _arguments \
     '(-P --inner-pad)'{-P,--inner-pad}'[vertical padding between prompt and matches, in pixels (0)]:()' \
     '(-b --background)'{-b,--background}'[background color (fdf6e3dd)]:background:()' \
     '(-t --text-color)'{-t,--text-color}'[text color (657b83ff)]:text-color:()' \
+    '--prompt-color[color of the prompt text (586e75ff)]:prompt-color:()' \
+    '--input-color[color of the input string (657b83ff)]:input-color:()' \
     '(-m --match-color)'{-m,--match-color}'[color of matched substring (cb4b16ff)]:match-color:()' \
     '(-s --selection-color)'{-s,--selection-color}'[background color of selected item (eee8d5dd)]:selection-color:()' \
     '(-S --selection-text-color)'{-S,--selection-text-color}'[text color of selected item (657b83ff)]:selection-text-color:()' \

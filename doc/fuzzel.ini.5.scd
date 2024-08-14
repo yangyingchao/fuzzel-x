@@ -252,6 +252,13 @@ All color values are in RGBA.
 	Text (foreground) color of unselected entries. Default:
 	_657b83ff_.
 
+*prompt*
+	Text (foreground) color of prompt character(s). Default:
+	_586e75ff_.
+
+*input*
+	Text (foreground) color of input string. Default: _657b83ff_.
+
 *match*
 	Text (foreground) color of the matched substring. Default:
 	_cb4b16ff_.

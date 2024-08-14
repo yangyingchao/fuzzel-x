@@ -35,6 +35,8 @@ complete -c fuzzel -x -s y -l vertical-pad                                      
 complete -c fuzzel -x -s P -l inner-pad                                                                         -d "vertical padding between prompt and matches, in pixels (0)"
 complete -c fuzzel -x -s b -l background                                                                        -d "background color (fdf6e3dd)"
 complete -c fuzzel -x -s t -l text-color                                                                        -d "text color (657b83ff)"
+complete -c fuzzel -x      -l prompt-color                                                                      -d "color of the prompt text (586e75ff)"
+complete -c fuzzel -x      -l input-color                                                                       -d "color of the input string (657b83ff)"
 complete -c fuzzel -x -s m -l match-color                                                                       -d "color of matched substring (cb4b16ff)"
 complete -c fuzzel -x -s s -l selection-color                                                                   -d "background color of selected item (eee8d5dd)"
 complete -c fuzzel -x -s S -l selection-text-color                                                              -d "text color of selected item (657b83ff)"

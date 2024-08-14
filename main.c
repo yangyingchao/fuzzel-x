@@ -339,15 +339,17 @@ print_usage(const char *prog_name)
            "  -y,--vertical-pad=PAD          vertical padding, in pixels (8)\n"
            "  -P,--inner-pad=PAD             vertical padding between prompt and match list,\n"
            "                                 in pixels (0)\n"
-           "  -b,--background-color=HEX      background color (000000ff)\n"
-           "  -t,--text-color=HEX            text color (ffffffff)\n"
-           "  -m,--match-color=HEX           color of matched substring (cc9393ff)\n"
-           "  -s,--selection-color=HEX       background color of selected item (333333ff)\n"
-           "  -S,--selection-text-color=HEX  text color of selected item (ffffffff)\n"
+           "  -b,--background-color=HEX      background color (fdf6e3dd)\n"
+           "  -t,--text-color=HEX            text color of matched entries (657b83ff)\n"
+           "     --prompt-color=HEX          text color of the prompt (586e75ff)\n"
+           "     --input-color=HEX           text color of the input string (657b83ff)\n"
+           "  -m,--match-color=HEX           color of matched substring (cb4b16ff)\n"
+           "  -s,--selection-color=HEX       background color of selected item (eee8d5dd)\n"
+           "  -S,--selection-text-color=HEX  text color of selected item (657b83ff)\n"
            "  -M,--selection-match-color=HEX color of matched substring in selection (cb4b16ff)\n"
            "  -B,--border-width=INT          width of border, in pixels (1)\n"
            "  -r,--border-radius=INT         amount of corner \"roundness\" (10)\n"
-           "  -C,--border-color=HEX          border color (ffffffff)\n"
+           "  -C,--border-color=HEX          border color (002b36ff)\n"
            "     --show-actions              include desktop actions in the list\n"
            "     --no-fuzzy                  disable fuzzy matching\n"
            "     --fuzzy-min-length=VALUE    search strings shorter than this will not be\n"
@@ -641,6 +643,8 @@ main(int argc, char *const *argv)
     #define OPT_X_MARGIN                     278
     #define OPT_Y_MARGIN                     279
     #define OPT_CACHE                        280
+    #define OPT_PROMPT_COLOR                 282
+    #define OPT_INPUT_COLOR                  283
 
     static const struct option longopts[] = {
         {"config",               required_argument, 0, OPT_CONFIG},
@@ -665,6 +669,8 @@ main(int argc, char *const *argv)
         {"inner-pad",            required_argument, 0, 'P'},
         {"background-color",     required_argument, 0, 'b'},
         {"text-color",           required_argument, 0, 't'},
+        {"prompt-color",         required_argument, 0, OPT_PROMPT_COLOR},
+        {"input-color",          required_argument, 0, OPT_INPUT_COLOR},
         {"match-color",          required_argument, 0, 'm'},
         {"selection-color",      required_argument, 0, 's'},
         {"selection-text-color", required_argument, 0, 'S'},
@@ -727,6 +733,8 @@ main(int argc, char *const *argv)
         bool pad_inner_set:1;
         bool background_color_set:1;
         bool text_color_set:1;
+        bool prompt_color_set:1;
+        bool input_color_set:1;
         bool match_color_set:1;
         bool selection_color_set:1;
         bool selection_text_color_set:1;
@@ -1043,6 +1051,40 @@ main(int argc, char *const *argv)
             }
             cmdline_overrides.conf.colors.text = conf_hex_to_rgba(text_color);
             cmdline_overrides.text_color_set = true;
+            break;
+        }
+
+        case OPT_PROMPT_COLOR: {
+            const char *clr_start = optarg;
+            if (clr_start[0] == '#')
+                clr_start++;
+
+            errno = 0;
+            char *end = NULL;
+            uint32_t prompt_color = strtoul(clr_start, &end, 16);
+            if (errno != 0 || end == NULL || *end != '\0' || (end - clr_start) != 8) {
+                fprintf(stderr, "prompt-color: %s: invalid color\n", optarg);
+                return EXIT_FAILURE;
+            }
+            cmdline_overrides.conf.colors.prompt = conf_hex_to_rgba(prompt_color);
+            cmdline_overrides.prompt_color_set = true;
+            break;
+        }
+
+        case OPT_INPUT_COLOR: {
+            const char *clr_start = optarg;
+            if (clr_start[0] == '#')
+                clr_start++;
+
+            errno = 0;
+            char *end = NULL;
+            uint32_t input_color = strtoul(clr_start, &end, 16);
+            if (errno != 0 || end == NULL || *end != '\0' || (end - clr_start) != 8) {
+                fprintf(stderr, "prompt-color: %s: invalid color\n", optarg);
+                return EXIT_FAILURE;
+            }
+            cmdline_overrides.conf.colors.input = conf_hex_to_rgba(input_color);
+            cmdline_overrides.input_color_set = true;
             break;
         }
 
@@ -1404,6 +1446,10 @@ main(int argc, char *const *argv)
         conf.colors.background = cmdline_overrides.conf.colors.background;
     if (cmdline_overrides.text_color_set)
         conf.colors.text = cmdline_overrides.conf.colors.text;
+    if (cmdline_overrides.prompt_color_set)
+        conf.colors.prompt = cmdline_overrides.conf.colors.prompt;
+    if (cmdline_overrides.input_color_set)
+        conf.colors.input = cmdline_overrides.conf.colors.input;
     if (cmdline_overrides.match_color_set)
         conf.colors.match = cmdline_overrides.conf.colors.match;
     if (cmdline_overrides.selection_color_set)

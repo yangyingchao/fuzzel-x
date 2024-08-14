@@ -49,11 +49,16 @@
   to be used ([#189][189], [#219][219]).
 * `expunge` key binding, to remove an entry from the cache. Mapped to
   shift+delete by default.
+* `--prompt-color` and `colors.prompt`, controlling the
+  text/foreground color of the prompt ([#365][365]).
+* `--input-color` and `colors.input`, controlling the text/foreground
+  color of the input string ([#365][365]).
 
 [344]: https://codeberg.org/dnkl/fuzzel/issues/344
 [131]: https://codeberg.org/dnkl/fuzzel/issues/131
 [189]: https://codeberg.org/dnkl/fuzzel/issues/189
 [219]: https://codeberg.org/dnkl/fuzzel/issues/219
+[365]: https://codeberg.org/dnkl/fuzzel/issues/365
 
 
 ### Changed

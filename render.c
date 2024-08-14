@@ -33,6 +33,8 @@ struct render {
     pixman_color_t pix_background_color;
     pixman_color_t pix_border_color;
     pixman_color_t pix_text_color;
+    pixman_color_t pix_prompt_color;
+    pixman_color_t pix_input_color;
     pixman_color_t pix_match_color;
     pixman_color_t pix_selection_color;
     pixman_color_t pix_selection_text_color;
@@ -217,7 +219,7 @@ render_prompt(const struct render *render, struct buffer *buf,
         if (run != NULL) {
             for (size_t i = 0; i < run->count; i++) {
                 const struct fcft_glyph *glyph = run->glyphs[i];
-                render_glyph(buf->pix, glyph, x, y, &render->pix_text_color);
+                render_glyph(buf->pix, glyph, x, y, &render->pix_prompt_color);
                 x += glyph->advance.x;
             }
             fcft_text_run_destroy(run);
@@ -226,7 +228,7 @@ render_prompt(const struct render *render, struct buffer *buf,
              * the cursor will be rendered by the loop below */
             if (prompt_cursor(prompt) == 0) {
                 pixman_image_fill_rectangles(
-                    PIXMAN_OP_SRC, buf->pix, &render->pix_text_color,
+                    PIXMAN_OP_SRC, buf->pix, &render->pix_input_color,
                     1, &(pixman_rectangle16_t){
                         x, y - font->ascent,
                         font->underline.thickness, font->ascent + font->descent});
@@ -265,7 +267,7 @@ render_prompt(const struct render *render, struct buffer *buf,
         fcft_kerning(font, prev, wc, &x_kern, NULL);
 
         x += x_kern;
-        render_glyph(buf->pix, glyph, x, y, &render->pix_text_color);
+        render_glyph(buf->pix, glyph, x, y, &render->pix_input_color);
         x += glyph->advance.x;
         if (i >= prompt_len)
             x += pt_or_px_as_pixels(render, &render->conf->letter_spacing);
@@ -273,7 +275,7 @@ render_prompt(const struct render *render, struct buffer *buf,
         /* Cursor */
         if (prompt_cursor(prompt) + prompt_len - 1 == i) {
             pixman_image_fill_rectangles(
-                PIXMAN_OP_SRC, buf->pix, &render->pix_text_color,
+                PIXMAN_OP_SRC, buf->pix, &render->pix_input_color,
                 1, &(pixman_rectangle16_t){
                     x, y - font->ascent,
                     font->underline.thickness, font->ascent + font->descent});
@@ -774,6 +776,8 @@ render_init(const struct config *conf, mtx_t *icon_lock)
     render->pix_background_color = rgba2pixman(render->conf->colors.background);
     render->pix_border_color = rgba2pixman(render->conf->colors.border);
     render->pix_text_color = rgba2pixman(render->conf->colors.text);
+    render->pix_prompt_color = rgba2pixman(render->conf->colors.prompt);
+    render->pix_input_color = rgba2pixman(render->conf->colors.input);
     render->pix_match_color = rgba2pixman(render->conf->colors.match);
     render->pix_selection_color = rgba2pixman(render->conf->colors.selection);
     render->pix_selection_text_color = rgba2pixman(render->conf->colors.selection_text);
