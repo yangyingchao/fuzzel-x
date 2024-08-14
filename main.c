@@ -1416,15 +1416,8 @@ main(int argc, char *const *argv)
         conf.colors.border = cmdline_overrides.conf.colors.border;
     if (cmdline_overrides.border_size_set)
         conf.border.size = cmdline_overrides.conf.border.size;
-    if (cmdline_overrides.border_radius_set) {
-#if defined(FUZZEL_ENABLE_CAIRO)
+    if (cmdline_overrides.border_radius_set)
         conf.border.radius = cmdline_overrides.conf.border.radius;
-#else
-        LOG_WARN("fuzzel compiled without cairo support, "
-                 "ignoring --border-radius=%d",
-                 cmdline_overrides.conf.border.radius);
-#endif
-    }
     if (cmdline_overrides.filter_desktop_set)
         conf.filter_desktop = cmdline_overrides.conf.filter_desktop;
     if (cmdline_overrides.actions_enabled_set)
