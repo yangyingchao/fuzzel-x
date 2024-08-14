@@ -79,7 +79,7 @@ steps:
       - apk add wayland-dev wayland-protocols wlroots-dev
       - apk add git
 
-      # Debug
+      # Debug (default: cairo, nanosvg(bundled), libpng)
       - mkdir -p bld/debug-x86
       - meson --buildtype=debug . bld/debug-x86
       - ninja -C bld/debug-x86 -k0
@@ -96,3 +96,9 @@ steps:
       - CC=clang meson --buildtype=release . bld/release-x86-clang
       - ninja -C bld/release-x86-clang -k0
       - bld/release-x86-clang/fuzzel --version
+
+      # Debug (cairo, librsvg, no png)
+      - mkdir -p bld/cairo-librsvg-no-png
+      - meson --buildtype=debug -Denable-cairo=enabled -Dpng-backend=none -Dsvg-backend=librsvg . bld/cairo-librsvg-no-png
+      - ninja -C bld/cairo-librsvg-no-png -k0
+      - bld/cairo-librsvg-no-png/fuzzel --version
