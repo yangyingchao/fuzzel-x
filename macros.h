@@ -73,3 +73,9 @@
 #else
     #define HOT
 #endif
+
+#if GNUC_AT_LEAST(4, 5) || HAS_BUILTIN(__builtin_unreachable)
+    #define UNREACHABLE() __builtin_unreachable()
+#else
+    #define UNREACHABLE()
+#endif
