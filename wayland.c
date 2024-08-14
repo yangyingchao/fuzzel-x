@@ -1060,11 +1060,9 @@ select_hovered_match(struct seat *seat, bool refresh_always)
     struct wayland *wayl = seat->wayl;
     bool refresh = false;
 
-    size_t hovered_row =
-        render_get_row_num(wayl->render,
-                seat->pointer.y,
-                wayl->matches);
- 
+    size_t hovered_row = render_get_row_num(
+        wayl->render, seat->pointer.y, wayl->matches);
+
     if (hovered_row != seat->pointer.hovered_row_idx) {
         seat->pointer.hovered_row_idx = hovered_row;
         refresh = matches_idx_select(wayl->matches,hovered_row);
@@ -1083,15 +1081,26 @@ wl_pointer_enter(void *data, struct wl_pointer *wl_pointer,
     struct seat *seat = data;
     seat->pointer.serial = serial;
 
-    seat->pointer.x = wl_fixed_to_int(surface_x);
-    seat->pointer.y = wl_fixed_to_int(surface_y);
+    /*
+     * Note: do *not* set seat->pointer.{x,y} here!
+     *
+     * We only use the coordinates to move the selection when the user
+     * moves the mouse.
+     *
+     * Since the compositor will send a) enter events if the mouse is
+     * where our layer appears even if the cursor is stationary, and
+     * b) since we might get motion events if we are forced to
+     * re-render the layer due to e.g. scale changes (or us guessing
+     * the scale wrong for the initial frame), the coordinates must
+     * remain 0,0 until the mouse is _actually_ moved.
+     *
+     * See wl_pointer_motion()
+     */
 
     if (!attempt_cursor_shape(seat->wayl, wl_pointer, serial)) {
         reload_cursor_theme(seat, seat->wayl->scale);
         update_cursor_surface(seat);
     }
-
-    select_hovered_match(seat, false);
 }
 
 static void
@@ -1106,12 +1115,19 @@ static void
 wl_pointer_motion(void *data, struct wl_pointer *wl_pointer,
                   uint32_t time, wl_fixed_t surface_x, wl_fixed_t surface_y)
 {
-	struct seat *seat = data;
+    struct seat *seat = data;
 
-    seat->pointer.x = wl_fixed_to_int(surface_x);
-    seat->pointer.y = wl_fixed_to_int(surface_y);
- 
-    select_hovered_match(seat, false);
+    const int x = wl_fixed_to_int(surface_x);
+    const int y = wl_fixed_to_int(surface_y);
+
+    const int old_x = seat->pointer.x;
+    const int old_y = seat->pointer.y;
+
+    seat->pointer.x = x;
+    seat->pointer.y = y;
+
+    if (old_x != 0 && old_y != 0)
+        select_hovered_match(seat, false);
 }
 
 static void
