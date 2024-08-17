@@ -153,7 +153,7 @@ or command line options:
 
 	Note: this option has no effect when anchor=center, left or right.
 
-*select*=_STRING_
+*--select*=_STRING_
 	Select the first entry that matches the given string (case
 	insensitive).
 
