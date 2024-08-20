@@ -1345,6 +1345,7 @@ static bool
 reload_font(struct wayland *wayl, float new_dpi, float new_scale)
 {
     struct fcft_font *font = NULL;
+    struct fcft_font *font_bold = NULL;
 
     bool was_sized_using_dpi = wayl->font_is_sized_by_dpi;
     bool will_size_using_dpi = size_font_using_dpi(wayl);
@@ -1393,7 +1394,14 @@ reload_font(struct wayland *wayl, float new_dpi, float new_scale)
         float dpi = will_size_using_dpi ? new_dpi : 96.;
         char attrs[256]; snprintf(attrs, sizeof(attrs), "dpi=%.2f", dpi);
 
+        char bold_attrs[512];
+        strcpy(bold_attrs, attrs);
+
+        if (wayl->conf->use_bold)
+            strcat(bold_attrs, ":weight=bold");
+
         font = fcft_from_name(wayl->font_count, (const char **)names, attrs);
+        font_bold = fcft_from_name(wayl->font_count, (const char **)names, bold_attrs);
 
         for (size_t i = 0; i < wayl->font_count; i++)
             free(names[i]);
@@ -1404,7 +1412,7 @@ reload_font(struct wayland *wayl, float new_dpi, float new_scale)
     }
 
     bool ret = render_set_font_and_update_sizes(
-        wayl->render, font, new_scale, new_dpi,
+        wayl->render, font, font_bold, new_scale, new_dpi,
         wayl->font_is_sized_by_dpi, &wayl->width, &wayl->height);
 
     if (wayl->font_reloaded.cb != NULL)

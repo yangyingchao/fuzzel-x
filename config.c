@@ -779,6 +779,9 @@ parse_section_main(struct context *ctx)
     else if (strcmp(key, "font") == 0)
         return value_to_str(ctx, &conf->font);
 
+    else if (strcmp(key, "use-bold") == 0)
+        return value_to_bool(ctx, &conf->use_bold);
+
     else if (strcmp(key, "dpi-aware") == 0) {
         if (strcmp(value, "auto") == 0)
             conf->dpi_aware = DPI_AWARE_AUTO;
@@ -1584,6 +1587,7 @@ config_load(struct config *conf, const char *conf_path,
         .terminal = NULL,
         .launch_prefix = NULL,
         .font = strdup("monospace"),
+        .use_bold = false,
         .dpi_aware = DPI_AWARE_AUTO,
         .render_worker_count = sysconf(_SC_NPROCESSORS_ONLN),
         .match_worker_count = sysconf(_SC_NPROCESSORS_ONLN),

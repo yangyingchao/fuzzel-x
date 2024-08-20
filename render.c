@@ -47,6 +47,7 @@ struct thread_context {
 struct render {
     const struct config *conf;
     struct fcft_font *font;
+    struct fcft_font *font_bold;
     enum fcft_subpixel subpixel;
 
     float scale;
@@ -794,8 +795,11 @@ render_one_match_entry(const struct render *render, const struct matches *matche
         (render->conf->colors.background.a == 1. &&
          render->conf->colors.selection.a == 1.)
             ? render->subpixel : FCFT_SUBPIXEL_NONE;
+
+    struct fcft_font *font =
+        is_selected ? render->font_bold : render->font;
     const struct fcft_glyph *ellipses =
-        fcft_rasterize_char_utf32(render->font, U'…', subpixel);
+        fcft_rasterize_char_utf32(font, U'…', subpixel);
 
     const int first_row = first_row_y(render);
     double cur_x = render->border_size + render->x_margin;
@@ -903,7 +907,7 @@ render_one_match_entry(const struct render *render, const struct matches *matche
     render_match_text(
         pix, &cur_x, y, max_x - (ellipses != NULL ? ellipses->width : 0),
         match->application->render_title, match->pos_count, match->pos,
-        render->font, subpixel,
+        font, subpixel,
         pt_or_px_as_pixels(render, &render->conf->letter_spacing),
         render->conf->tabs,
         (is_selected
@@ -912,7 +916,9 @@ render_one_match_entry(const struct render *render, const struct matches *matche
         (is_selected
             ? render->pix_selection_match_color
             : render->pix_match_color),
-        &match->application->shaped);
+        (is_selected
+            ? &match->application->shaped_bold
+            : &match->application->shaped));
 }
 
 void
@@ -1130,6 +1136,7 @@ render_set_subpixel(struct render *render, enum fcft_subpixel subpixel)
 
 bool
 render_set_font_and_update_sizes(struct render *render, struct fcft_font *font,
+                                 struct fcft_font *font_bold,
                                  float scale, float dpi, bool size_font_by_dpi,
                                  int *new_width, int *new_height)
 {
@@ -1139,6 +1146,14 @@ render_set_font_and_update_sizes(struct render *render, struct fcft_font *font,
     } else {
         assert(render->font != NULL);
         font = render->font;
+    }
+
+    if (font_bold != NULL) {
+        fcft_destroy(render->font_bold);
+        render->font_bold = font_bold;
+    } else {
+        assert(render->font_bold != NULL);
+        font_bold = render->font_bold;
     }
 
     render->scale = scale;

@@ -61,6 +61,10 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	
 	Default: _monospace_.
 
+*use-bold*
+	Boolean. When set, fuzzel may use bold fonts. For example, for the
+	currently selected item. Default: _no_
+
 *dpi-aware*
 	*auto*, *yes*, or *no*.
 	

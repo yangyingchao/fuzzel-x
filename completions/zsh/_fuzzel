@@ -10,6 +10,7 @@ _arguments \
     '(-o --output)'{-o,--output}'[output (monitor) to display on (none)]:output:->outputs' \
     '(-f --font)'{-f,--font}'[font name and style in fontconfig format (monospace)]:font:->fonts' \
     '(-D --dpi-aware)'{-D,--dpi-aware}"[scale fonts using the monitor's DPI (auto)]:dpi_aware:(no yes auto)" \
+    '--use-bold[allow fuzzel to use bold fonts]' \
     '--icon-theme[icon theme name (hicolor)]:theme:->icon_theme' \
     '(-I --no-icons)'{-I,--no-icons}'[do not render any icons]' \
     '(-F --fields)'{-F,--fields}'[comma separated list of XDG Desktop entry fields to match ]:fields:(filename name generic exec categories keywords comment)' \

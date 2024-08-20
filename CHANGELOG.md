@@ -70,6 +70,10 @@
 * `--count-color` and `colors.count`, controlling the color of the
   match count. The default value is `93a1a1ff` (_base1_ in the
   solarized palette).
+* The currently selected entry may now be rendered with a bold
+  font. It is disabled by default, and can be enabled either via the
+  new `--use-bold` command line option, or by setting `use-bold=yes`,
+  in `fuzzel.ini`.
 
 [344]: https://codeberg.org/dnkl/fuzzel/issues/344
 [131]: https://codeberg.org/dnkl/fuzzel/issues/131

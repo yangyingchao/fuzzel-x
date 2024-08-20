@@ -320,6 +320,7 @@ print_usage(const char *prog_name)
            "  -o,--output=OUTPUT             output (monitor) to display on (none)\n"
            "  -f,--font=FONT                 font name and style, in FontConfig format\n"
            "                                 (monospace)\n"
+           "     --use-bold                  allow fuzzel to use bold fonts\n"
            "  -D,--dpi-aware=no|yes|auto     enable or disable DPI aware rendering (auto)\n"
            "     --icon-theme=NAME           icon theme name (\"hicolor\")\n"
            "  -I,--no-icons                  do not render any icons\n"
@@ -698,6 +699,7 @@ main(int argc, char *const *argv)
     #define OPT_INPUT_COLOR                  283
     #define OPT_PROMPT_ONLY                  284
     #define OPT_COUNT_COLOR                  285
+    #define OPT_USE_BOLD                     286
     #define OPT_MATCH_WORKERS                287
     #define OPT_DELAYED_FILTER_MS            289
     #define OPT_DELAYED_FILTER_LIMIT         290
@@ -708,6 +710,7 @@ main(int argc, char *const *argv)
         {"cache",                required_argument, 0, OPT_CACHE},
         {"output"  ,             required_argument, 0, 'o'},
         {"font",                 required_argument, 0, 'f'},
+        {"use-bold",             no_argument,       0, OPT_USE_BOLD},
         {"dpi-aware",            required_argument, 0, 'D'},
         {"icon-theme",           required_argument, 0, OPT_ICON_THEME},
         {"no-icons",             no_argument,       0, 'I'},
@@ -823,6 +826,7 @@ main(int argc, char *const *argv)
         bool render_workers_set:1;
         bool match_workers_set:1;
         bool prompt_only_set:1;
+        bool use_bold_set:1;
         bool delayed_filter_ms_set:1;
         bool delayed_filter_limit_set:1;
     } cmdline_overrides = {{0}};
@@ -868,6 +872,11 @@ main(int argc, char *const *argv)
 
         case 'f':
             cmdline_overrides.conf.font = optarg;
+            break;
+
+        case OPT_USE_BOLD:
+            cmdline_overrides.conf.use_bold = true;
+            cmdline_overrides.use_bold_set = true;
             break;
 
         case 'D':
@@ -1569,6 +1578,8 @@ main(int argc, char *const *argv)
         free(conf.font);
         conf.font = strdup(cmdline_overrides.conf.font);
     }
+    if (cmdline_overrides.use_bold_set)
+        conf.use_bold = cmdline_overrides.conf.use_bold;
     if (cmdline_overrides.conf.icon_theme != NULL) {
         free(conf.icon_theme);
         conf.icon_theme = strdup(cmdline_overrides.conf.icon_theme);

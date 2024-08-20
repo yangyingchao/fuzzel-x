@@ -385,6 +385,7 @@ applications_destroy(struct application_list *apps)
         free(app->icon.path);
 
         fcft_text_run_destroy(app->shaped);
+        fcft_text_run_destroy(app->shaped_bold);
         free(app);
     }
 
@@ -398,6 +399,7 @@ applications_flush_text_run_cache(struct application_list *apps)
 {
     for (size_t i = 0; i < apps->count; i++) {
         fcft_text_run_destroy(apps->v[i]->shaped);
+        fcft_text_run_destroy(apps->v[i]->shaped_bold);
         apps->v[i]->shaped = NULL;
     }
 }

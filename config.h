@@ -113,7 +113,9 @@ struct config {
     char *launch_prefix;
 
     char *font;
+    bool use_bold;
     enum dpi_aware dpi_aware;
+
     uint16_t render_worker_count;
     uint16_t match_worker_count;
 

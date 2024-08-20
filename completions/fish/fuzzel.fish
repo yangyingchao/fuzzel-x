@@ -13,6 +13,7 @@ complete -c fuzzel -r -s c -l config                                            
 complete -c fuzzel -r      -l cache                                                                             -d "file to load most recently launched applications from (XDG_CACHE_HOME/fuzzel)"
 complete -c fuzzel         -l check-config                                                                      -d "verify configuration and exit with 0 if ok, otherwise exit with 1"
 complete -c fuzzel -x -s f -l font               -a "(fc-list : family | sed 's/,/\n/g' | sort | uniq)"         -d "font name and style in fontconfig format (monospace)"
+complete -c fuzzel         -l use-bold                                                                          -d "allow fuzzel to use bold fonts"
 complete -c fuzzel -x -s o -l output             -a "(__fish_complete_fuzzel_output)" -d "output (monitor) do display on (none)"
 complete -c fuzzel -x -s D -l dpi-aware          -a "no yes auto"                                               -d "scale fonts using the monitor's DPI (auto)"
 complete -c fuzzel -x      -l icon-theme         -a "(find /usr/share/icons -mindepth 1 -maxdepth 1 -type d -print0 | xargs -0 -n 1 basename | sort)" -d "icon theme name (hicolor)"

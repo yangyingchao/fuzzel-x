@@ -87,6 +87,7 @@ struct application {
     bool startup_notify;
     unsigned count;
     struct fcft_text_run *shaped;
+    struct fcft_text_run *shaped_bold;
 };
 
 bool application_execute(

@@ -49,6 +49,9 @@ or command line options:
 	Comma separated list of primary font, and fallback fonts, in
 	FontConfig format. See *FONT FORMAT*. Default: _monospace_.
 
+*--use-bold*
+	Allow fuzzel to use bold fonts.
+
 *-D*,*--dpi-aware*=_no|yes|auto_
 	When set to *yes*, fonts are sized using the monitor's DPI, making
 	a font of a given point size have the same physical size,
