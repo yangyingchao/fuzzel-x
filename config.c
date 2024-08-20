@@ -897,6 +897,9 @@ parse_section_main(struct context *ctx)
             (int *)&conf->match_mode);
     }
 
+    else if (strcmp(key, "sort-result") == 0)
+        return value_to_bool(ctx, &conf->sort_result);
+
     else if (strcmp(key, "delayed-filter-ms") == 0)
         return value_to_uint32(ctx, 10, &conf->delayed_filter_ms);
 
@@ -1595,6 +1598,7 @@ config_load(struct config *conf, const char *conf_path,
         .icon_theme = strdup("hicolor"),
         .actions_enabled = false,
         .match_mode = MATCH_MODE_FZF,
+        .sort_result = true,
         .delayed_filter_ms = 300,
         .delayed_filter_limit = 20000,
         .fuzzy = {

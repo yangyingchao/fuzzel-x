@@ -74,6 +74,8 @@
   font. It is disabled by default, and can be enabled either via the
   new `--use-bold` command line option, or by setting `use-bold=yes`,
   in `fuzzel.ini`.
+* `sort-result` option to `fuzzel.ini`, and `--no-sort` command line
+  option.
 
 [344]: https://codeberg.org/dnkl/fuzzel/issues/344
 [131]: https://codeberg.org/dnkl/fuzzel/issues/131

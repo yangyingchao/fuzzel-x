@@ -48,6 +48,7 @@ complete -c fuzzel -x -s r -l border-radius                                     
 complete -c fuzzel -x -s C -l border-color                                                                      -d "border color (002b36ff)"
 complete -c fuzzel         -l show-actions                                                                      -d "include desktop actions (e.g. \"New Window\") in the list"
 complete -c fuzzel -x      -l match-mode         -a "exact fzf fuzzy"                                           -d "how to match what you type against the entries"
+complete -c fuzzel         -l no-sort                                                                           -d "do not sort the result"
 complete -c fuzzel         -l filter-desktop                                                                    -d "filter desktop entries based on XDG_CURRENT_DESKTOP"
 complete -c fuzzel         -l list-executables-in-path                                                          -d "filter desktop entries based on XDG_CURRENT_DESKTOP"
 complete -c fuzzel -x      -l fuzzy-min-length                                                                  -d "list executables present in the path environment variable"

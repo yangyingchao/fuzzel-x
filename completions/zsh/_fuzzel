@@ -40,6 +40,7 @@ _arguments \
     '(-C --border-color)'{-C,--border-color}'[border color (002b36ff)]:border-color:()' \
     '--show-actions[include desktop actions (e.g "New Window") in the list]' \
     '--match-mode[how to match what you type against the entries (fzf)]:match_mode:(exact fzf fuzzy)' \
+    '--no-sort[do not sort the result]' \
     '--filter-desktop=-[filter desktop entries based on XDG_CURRENT_DESKTOP]: :(no)' \
     '--list-executables-in-path[list executables present in the PATH environment variable]'\
     '--fuzzy-min-length[search strings shorter than this will not be fuzzy matched (3)]:()' \

@@ -379,6 +379,7 @@ print_usage(const char *prog_name)
            "     --list-executables-in-path  include executables from PATH in the list\n"
            "     --render-workers=N          number of threads to use for rendering\n"
            "     --match-workers=N           number of threads to use for matching\n"
+           "     --no-sort                   do not sort the result\n"
            "     --delayed-filter-ms=TIME_MS time in ms before refiltering after a keystroke\n"
            "                                 (300)\n"
            "     --delayed-filter-limit=N    used delayed refiltering when the number of\n"
@@ -701,6 +702,7 @@ main(int argc, char *const *argv)
     #define OPT_COUNT_COLOR                  285
     #define OPT_USE_BOLD                     286
     #define OPT_MATCH_WORKERS                287
+    #define OPT_NO_SORT                      288
     #define OPT_DELAYED_FILTER_MS            289
     #define OPT_DELAYED_FILTER_LIMIT         290
 
@@ -827,6 +829,7 @@ main(int argc, char *const *argv)
         bool match_workers_set:1;
         bool prompt_only_set:1;
         bool use_bold_set:1;
+        bool no_sort_set:1;
         bool delayed_filter_ms_set:1;
         bool delayed_filter_limit_set:1;
     } cmdline_overrides = {{0}};
@@ -1493,6 +1496,11 @@ main(int argc, char *const *argv)
             cmdline_overrides.match_workers_set = true;
             break;
 
+        case OPT_NO_SORT:
+            cmdline_overrides.conf.sort_result = false;
+            cmdline_overrides.no_sort_set = true;
+            break;
+
         case OPT_DELAYED_FILTER_MS:
             if (sscanf(optarg, "%u", &cmdline_overrides.conf.delayed_filter_ms) != 1) {
                 fprintf(stderr, "%s: invalid delayed-filter-ms (must be an integer)\n",
@@ -1666,6 +1674,8 @@ main(int argc, char *const *argv)
         conf.render_worker_count = cmdline_overrides.conf.render_worker_count;
     if (cmdline_overrides.match_workers_set)
         conf.match_worker_count = cmdline_overrides.conf.match_worker_count;
+    if (cmdline_overrides.no_sort_set)
+        conf.sort_result = cmdline_overrides.conf.sort_result;
     if (cmdline_overrides.delayed_filter_ms_set)
         conf.delayed_filter_ms = cmdline_overrides.conf.delayed_filter_ms;
     if (cmdline_overrides.delayed_filter_limit_set)

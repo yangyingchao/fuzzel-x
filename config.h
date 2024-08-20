@@ -129,6 +129,7 @@ struct config {
     struct config_key_binding_list key_bindings;
 
     enum match_mode match_mode;
+    bool sort_result;
 
     uint32_t delayed_filter_ms;
     uint32_t delayed_filter_limit;

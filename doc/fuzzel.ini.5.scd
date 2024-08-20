@@ -135,9 +135,6 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	line, by explicitly specifying the character with
 	*--password=X*. Default: _\*_.
 
-*filter-desktop*
-	Boolean. Filter desktop files based on the value of XDG_CURRENT_DESKTOP.
-
 *match-mode*
 	One of *exact*, *fzf* and *fuzzy*.
 	
@@ -151,6 +148,21 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	against each field in the *fields* list.
 	
 	Default: _fzf_
+
+*sort-result*
+	Boolean. Whether to sort the result or not. Disabling sorting
+	means no comparisons will be made between match
+	results. I.e. launch count, match length, etc will be
+	ignored. This effectively disables the cache (though, the cache is
+	still updated on exit).
+
+	This can improve search latency when searching very large data
+	sets.
+	
+	Default: _yes_
+
+*filter-desktop*
+	Boolean. Filter desktop files based on the value of XDG_CURRENT_DESKTOP.
 
 *show-actions*
 	Boolean. Some desktop files define "actions", in addition to the
