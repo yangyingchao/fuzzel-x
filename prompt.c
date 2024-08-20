@@ -20,12 +20,14 @@ struct prompt *
 prompt_init(const char32_t *prompt_text, const char32_t *placeholder,
             const char32_t *text)
 {
+    const bool have_initial_text = text != NULL && text[0] != U'\0';
+
     struct prompt *prompt = malloc(sizeof(*prompt));
     *prompt = (struct prompt) {
         .prompt = c32dup(prompt_text),
-        .text = calloc(1, sizeof(char32_t)),
-        .cursor = 0,
         .placeholder = c32dup(placeholder),
+        .text = have_initial_text ? c32dup(text) : calloc(1, sizeof(char32_t)),
+        .cursor = have_initial_text ? c32len(text) : 0,
     };
 
     return prompt;

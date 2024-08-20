@@ -101,6 +101,7 @@ struct config {
     char *output;
     char32_t *prompt;
     char32_t *placeholder;
+    char32_t *search_text;
     bool prompt_only;
     enum match_fields match_fields;
 

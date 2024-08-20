@@ -98,6 +98,10 @@ or command line options:
 	Text to display as placeholder in the input box. Default: _type to
 	filter_.
 
+*--search*=_TEXT_
+	Initial search/filter string. This option pre-fills the input box
+	with the specified string, letting you pre-filter the result.
+
 *-i*
 	Ignored; for compatibility with other, similar utilities (where
 	*-i* means "case insensitive search").

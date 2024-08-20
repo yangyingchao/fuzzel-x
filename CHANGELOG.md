@@ -80,6 +80,8 @@
   `--placeholder`, `--placeholder-color` command line options, and the
   `placeholder` and `colors.placeholder` options in `fuzzel.ini`
   ([#188][188]).
+* `--search=TEXT` command line option, allowing you to "pre-filter"
+  the result ([#][274][274]).
 
 [344]: https://codeberg.org/dnkl/fuzzel/issues/344
 [131]: https://codeberg.org/dnkl/fuzzel/issues/131
@@ -89,6 +91,7 @@
 [305]: https://codeberg.org/dnkl/fuzzel/issues/305
 [276]: https://codeberg.org/dnkl/fuzzel/issues/276
 [188]: https://codeberg.org/dnkl/fuzzel/issues/188
+[274]: https://codeberg.org/dnkl/fuzzel/issues/274
 
 
 ### Changed

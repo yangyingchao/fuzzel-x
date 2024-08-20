@@ -330,6 +330,7 @@ print_usage(const char *prog_name)
            "     --prompt-only=PROMPT        same as --prompt, but in dmenu mode it does not\n"
            "                                 wait for STDIN, and implies --lines=0\n"
            "     --placeholder=TEXT          placeholder text in input box\n"
+           "     --search=TEXT               initial search/filter string\n"
            "     --password=[CHARACTER]      render all input as CHARACTER ('*' by default)\n"
            "  -T,--terminal                  terminal command to use when launching\n"
            "                                 'terminal' programs, e.g. \"xterm -e\".\n"
@@ -709,6 +710,7 @@ main(int argc, char *const *argv)
     #define OPT_DELAYED_FILTER_LIMIT         290
     #define OPT_PLACEHOLDER                  291
     #define OPT_PLACEHOLDER_COLOR            292
+    #define OPT_SEARCH_TEXT                  293
 
     static const struct option longopts[] = {
         {"config",               required_argument, 0, OPT_CONFIG},
@@ -748,6 +750,7 @@ main(int argc, char *const *argv)
         {"prompt",               required_argument, 0, 'p'},
         {"prompt-only",          required_argument, 0, OPT_PROMPT_ONLY},
         {"placeholder",          required_argument, 0, OPT_PLACEHOLDER},
+        {"search",               required_argument, 0, OPT_SEARCH_TEXT},
         {"terminal",             required_argument, 0, 'T'},
         {"show-actions",         no_argument,       0, OPT_SHOW_ACTIONS},
         {"filter-desktop",       optional_argument, 0, OPT_FILTER_DESKTOP},
@@ -1125,6 +1128,17 @@ main(int argc, char *const *argv)
 
             if (cmdline_overrides.conf.placeholder == NULL) {
                 fprintf(stderr, "%s: invalid placeholder\n", optarg);
+                return EXIT_FAILURE;
+            }
+
+            break;
+
+        case OPT_SEARCH_TEXT:
+            free(cmdline_overrides.conf.search_text);
+            cmdline_overrides.conf.search_text = ambstoc32(optarg);
+
+            if (cmdline_overrides.conf.search_text == NULL) {
+                fprintf(stderr, "%s: invalid search text\n", optarg);
                 return EXIT_FAILURE;
             }
 
@@ -1603,6 +1617,10 @@ main(int argc, char *const *argv)
     if (cmdline_overrides.conf.placeholder != NULL) {
         free(conf.placeholder);
         conf.placeholder = cmdline_overrides.conf.placeholder;
+    }
+    if (cmdline_overrides.conf.search_text != NULL) {
+        free(conf.search_text);
+        conf.search_text = cmdline_overrides.conf.search_text;
     }
     if (cmdline_overrides.conf.password_mode.enabled) {
         conf.password_mode.enabled = true;

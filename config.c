@@ -1590,6 +1590,7 @@ config_load(struct config *conf, const char *conf_path,
         .prompt = c32dup(U"> "),
         .match_fields = MATCH_FILENAME | MATCH_NAME,
         .placeholder = c32dup(U"type to filter"),
+        .search_text = c32dup(U""),
         .password_mode = {
             .character = U'\0',
             .enabled = false,
@@ -1719,6 +1720,7 @@ config_free(struct config *conf)
     free(conf->output);
     free(conf->prompt);
     free(conf->placeholder);
+    free(conf->search_text);
     free(conf->terminal);
     free(conf->launch_prefix);
     free(conf->font);

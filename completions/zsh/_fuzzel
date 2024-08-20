@@ -16,6 +16,7 @@ _arguments \
     '(-F --fields)'{-F,--fields}'[comma separated list of XDG Desktop entry fields to match ]:fields:(filename name generic exec categories keywords comment)' \
     '(-p --prompt)'{-p,--prompt}'[string to use as input prompt ("> ")]:()' \
     '--placeholder[placeholder text in the input box]:()' \
+    '--search[initial search/filter string]:()' \
     '--password[render all input using either "*", or the specified character]:()' \
     '(-T --terminal)'{-T,--terminal}'[terminal command, with arguments ($TERMINAL -e)]:terminal:_command_names -e' \
     '(-a --anchor)'{-a,--anchor}'[set window anchor (center)]:anchors:(top-left top top-right left center right bottom-left bottom bottom-right)' \
