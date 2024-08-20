@@ -985,6 +985,7 @@ render_match_list(struct render *render, struct buffer *buf,
         mtx_unlock(render->icon_lock);
 }
 
+/* THREAD */
 static int
 render_worker_thread(void *_ctx)
 {
