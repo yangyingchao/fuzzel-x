@@ -364,6 +364,7 @@ print_usage(const char *prog_name)
            "  -C,--border-color=HEX          border color (002b36ff)\n"
            "     --show-actions              include desktop actions in the list\n"
            "     --match-mode=exact|fzf|fuzzy how to match what you type against the entries\n"
+           "     --filter-desktop            filter desktop entries based on XDG_CURRENT\n"
            "     --fuzzy-min-length=VALUE    search strings shorter than this will not be\n"
            "                                 fuzzy matched (3)\n"
            "     --fuzzy-max-length-discrepancy=VALUE  maximum allowed length discrepancy\n"
@@ -753,8 +754,8 @@ main(int argc, char *const *argv)
         {"search",               required_argument, 0, OPT_SEARCH_TEXT},
         {"terminal",             required_argument, 0, 'T'},
         {"show-actions",         no_argument,       0, OPT_SHOW_ACTIONS},
-        {"filter-desktop",       optional_argument, 0, OPT_FILTER_DESKTOP},
         {"match-mode",           required_argument, 0, OPT_MATCH_MODE},
+        {"filter-desktop",       optional_argument, 0, OPT_FILTER_DESKTOP},
         {"fuzzy-min-length",     required_argument, 0, OPT_FUZZY_MIN_LENGTH},
         {"fuzzy-max-length-discrepancy", required_argument, 0, OPT_FUZZY_MAX_LENGTH_DISCREPANCY},
         {"fuzzy-max-distance",   required_argument, 0, OPT_FUZZY_MAX_DISTANCE},
