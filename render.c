@@ -291,7 +291,7 @@ render_match_count(const struct render *render, struct buffer *buf,
 
     const struct fcft_glyph **glyphs = malloc(chars * sizeof(glyphs[0]));
     long *x_kern = malloc(chars * sizeof(x_kern[0]));
-    char32_t prev;
+    char32_t prev = 0;
 
     width = 0;
     for (size_t i = 0; i < (size_t)chars; i++) {
