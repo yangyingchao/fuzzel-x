@@ -99,6 +99,9 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	
 	Default: _auto_.
 
+*placeholder*
+	Text to display as placeholder in the input box. Default: empty.
+
 *prompt*
 	String to use as input prompt. Note that trailing spaces are
 	trimmed, unless the string is quoted. Default: _"> "_.

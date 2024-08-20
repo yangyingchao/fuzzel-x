@@ -95,8 +95,7 @@ or command line options:
 	In non-dmenu mode it behaves exactly like *--prompt*.
 
 *--placeholder*=_TEXT_
-	Text to display as placeholder in the input box. Default: _type to
-	filter_.
+	Text to display as placeholder in the input box. Default: empty.
 
 *--search*=_TEXT_
 	Initial search/filter string. This option pre-fills the input box
