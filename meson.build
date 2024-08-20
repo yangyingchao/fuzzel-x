@@ -156,6 +156,7 @@ executable(
   'char32.c', 'char32.h',
   'debug.c', 'debug.h',
   'dmenu.c', 'dmenu.h',
+  'event.c', 'event.h',
   'fdm.c', 'fdm.h',
   'icon.c', 'icon.h',
   'key-binding.c', 'key-binding.h',

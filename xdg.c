@@ -22,7 +22,7 @@
 #include "char32.h"
 #include "icon.h"
 
-typedef tll(struct application) application_llist_t;
+typedef tll(struct application *) application_llist_t;
 
 struct locale_variants {
     char *lang_country_modifier;
@@ -453,31 +453,31 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename_lowercase,
                 it->item[i] = toc32lower(it->item[i]);
         }
 
-        tll_push_back(
-            *applications,
-            ((struct application){
-                .id = strdup(id),
-                .path = a->path,
-                .exec = a->exec,
-                .app_id = a->app_id,
-                .title = title,
-                .title_lowercase = title_lowercase,
-                .basename = c32dup(file_basename_lowercase),
-                .wexec = a->wexec,
-                .generic_name = a->generic_name,
-                .comment = a->comment,
-                .keywords = a->keywords,
-                .categories = a->categories,
-                .title_len = title_len,
-                .basename_len = basename_len,
-                .wexec_len = wexec_len,
-                .generic_name_len = generic_name_len,
-                .comment_len = comment_len,
-                .icon = {.name = a->icon},
-                .visible = a->visible && (!filter_desktops || filter_desktop_entry(a, desktops)),
-                .startup_notify = !a->no_startup_notify,
-                .count = 0}));
-
+        struct application *app = malloc(sizeof(*app));
+        *app = (struct application){
+            .id = strdup(id),
+            .path = a->path,
+            .exec = a->exec,
+            .app_id = a->app_id,
+            .title = title,
+            .title_lowercase = title_lowercase,
+            .basename = c32dup(file_basename_lowercase),
+            .wexec = a->wexec,
+            .generic_name = a->generic_name,
+            .comment = a->comment,
+            .keywords = a->keywords,
+            .categories = a->categories,
+            .title_len = title_len,
+            .basename_len = basename_len,
+            .wexec_len = wexec_len,
+            .generic_name_len = generic_name_len,
+            .comment_len = comment_len,
+            .icon = {.name = a->icon},
+            .visible = a->visible && (!filter_desktops || filter_desktop_entry(a, desktops)),
+            .startup_notify = !a->no_startup_notify,
+            .count = 0,
+        };
+        tll_push_back(*applications, app);
         tll_free_and_free(a->onlyshowin, free);
         tll_free_and_free(a->notshowin, free);
     }
@@ -629,7 +629,7 @@ scan_dir(int base_fd, const char *terminal, bool include_actions,
 
                 bool already_added = false;
                 tll_foreach(*applications, it) {
-                    if (strcmp(it->item.id, id) == 0) {
+                    if (strcmp(it->item->id, id) == 0) {
                         already_added = true;
                         break;
                     }
@@ -657,9 +657,9 @@ scan_dir(int base_fd, const char *terminal, bool include_actions,
 static int
 sort_application_by_title(const void *_a, const void *_b)
 {
-    const struct application *a = _a;
-    const struct application *b = _b;
-    return c32cmp(a->title, b->title);
+    const struct application *const *a = _a;
+    const struct application *const *b = _b;
+    return c32casecmp((*a)->title, (*b)->title);
 }
 
 void
@@ -681,6 +681,7 @@ xdg_find_programs(const char *terminal, bool include_actions,
         }
     }
 
+    mtx_lock(&applications->lock);
     applications->count = tll_length(apps);
     applications->v = malloc(tll_length(apps) * sizeof(applications->v[0]));
 
@@ -693,6 +694,7 @@ xdg_find_programs(const char *terminal, bool include_actions,
 
     qsort(applications->v, applications->count, sizeof(applications->v[0]),
           &sort_application_by_title);
+    mtx_unlock(&applications->lock);
 
     xdg_data_dirs_destroy(dirs);
 

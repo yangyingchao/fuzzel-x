@@ -28,15 +28,16 @@
 #include "char32.h"
 #include "config.h"
 #include "dmenu.h"
+#include "event.h"
 #include "fdm.h"
 #include "key-binding.h"
 #include "match.h"
+#include "path.h"
 #include "render.h"
 #include "shm.h"
 #include "version.h"
 #include "wayland.h"
 #include "xdg.h"
-#include "path.h"
 
 #define max(x, y) ((x) > (y) ? (x) : (y))
 
@@ -162,7 +163,7 @@ read_cache(const char *path, struct application_list *apps, bool dmenu)
 
     /* Loop all applications, and search for a matching cache entry */
     for (size_t i = 0; i < apps->count; i++) {
-        struct application *app = &apps->v[i];
+        struct application *app = apps->v[i];
 
         if ((!dmenu && app->id == NULL) || (dmenu && app->title == NULL)) {
             continue;
@@ -228,14 +229,14 @@ write_cache(const char *path, const struct application_list *apps, bool dmenu)
     }
 
     for (size_t i = 0; i < apps->count; i++) {
-        if (apps->v[i].count == 0)
+        if (apps->v[i]->count == 0)
             continue;
 
-        if (!apps->v[i].visible)
+        if (!apps->v[i]->visible)
             continue;
 
-        if (!dmenu || apps->v[i].id == NULL) {
-            const char *id = apps->v[i].id;
+        if (!dmenu || apps->v[i]->id != NULL) {
+            const char *id = apps->v[i]->id;
             const size_t id_len = strlen(id);
 
             if (write(fd, id, id_len) != id_len) {
@@ -243,7 +244,7 @@ write_cache(const char *path, const struct application_list *apps, bool dmenu)
                 break;
             }
         } else {
-            const char32_t *title = apps->v[i].title;
+            const char32_t *title = apps->v[i]->title;
             char *u8_title = ac32tombs(title);
 
             if (u8_title != NULL) {
@@ -258,7 +259,7 @@ write_cache(const char *path, const struct application_list *apps, bool dmenu)
         }
 
         char count_as_str[11];
-        sprintf(count_as_str, "%u", apps->v[i].count);
+        sprintf(count_as_str, "%u", apps->v[i]->count);
         const size_t count_len = strlen(count_as_str);
 
         if (write(fd, "|", 1) != 1 ||
@@ -489,21 +490,6 @@ acquire_file_lock(const char *path, int *fd)
     return true;
 }
 
-enum event_type { EVENT_APPS_LOADED = 1, EVENT_ICONS_LOADED = 2 };
-
-static int
-send_event(int fd, enum event_type event)
-{
-    ssize_t bytes = write(fd, &(uint64_t){event}, sizeof(uint64_t));
-
-    if (bytes < 0)
-        return -errno;
-    else if (bytes != (ssize_t)sizeof(uint64_t))
-        return 1;
-    return 0;
-}
-
-
 /* THREAD */
 static int
 populate_apps(void *_ctx)
@@ -539,7 +525,7 @@ populate_apps(void *_ctx)
 
     if (dmenu_enabled) {
         if (!conf->prompt_only) {
-            dmenu_load_entries(apps, dmenu_delim, ctx->dmenu_abort_fd);
+            dmenu_load_entries(apps, dmenu_delim, ctx->event_fd, ctx->dmenu_abort_fd);
             read_cache(cache_path, apps, true);
         }
     } else {
@@ -550,7 +536,7 @@ populate_apps(void *_ctx)
     }
     tll_free_and_free(desktops, free);
 
-    int r = send_event(ctx->event_fd, EVENT_APPS_LOADED);
+    int r = send_event(ctx->event_fd, EVENT_APPS_ALL_LOADED);
     if (r != 0)
         return r;
 
@@ -579,39 +565,43 @@ populate_apps(void *_ctx)
     return 0;
 }
 
-/*
- * Called when the application list has been populated
- */
 static bool
-fdm_apps_populated(struct fdm *fdm, int fd, int events, void *data)
+process_event(struct context *ctx, enum event_type event)
 {
-    if (events & EPOLLHUP)
-        return false;
-
-    uint64_t event;
-    ssize_t bytes = read(fd, &event, sizeof(event));
-    if (bytes != (ssize_t)sizeof(event)) {
-        if (bytes < 0)
-            LOG_ERRNO("failed to read event FD");
-        else
-            LOG_ERR("partial read from event FD");
-        return false;
-    }
-
-    struct context *ctx = data;
     struct wayland *wayl = ctx->wayl;
     struct application_list *apps = ctx->apps;
     struct matches *matches = ctx->matches;
-    struct prompt *prompt = ctx->prompt;
     const char *select = ctx->select_initial;
 
     switch (event) {
-    case EVENT_APPS_LOADED:
+    case EVENT_APPS_SOME_LOADED:
+    case EVENT_APPS_ALL_LOADED: {
         /* Update matches list, then refresh the GUI */
         matches_set_applications(matches, apps);
-        matches_update(matches, prompt);
-        matches_selected_select(matches, select);
+
+        if (event == EVENT_APPS_ALL_LOADED)
+            matches_all_applications_loaded(matches);
+
+#define UPDATE_MATCHES 1
+
+#if !UPDATE_MATCHES
+        const size_t match_count = matches_get_count(matches);
+        const size_t matches_per_page = matches_max_matches_per_page(matches);
+
+        if (event == EVENT_APPS_ALL_LOADED || match_count < matches_per_page) {
+#endif
+            /*
+             * Only update matches if
+             *   a) all applications have been loaded
+             *   b) a partial load will cause more matches to be displayed
+             */
+            matches_update_no_delay(matches);
+            matches_selected_select(matches, select);
+#if !UPDATE_MATCHES
+        }
+#endif
         break;
+    }
 
     case EVENT_ICONS_LOADED:
         /* Just need to refresh the GUI */
@@ -624,6 +614,49 @@ fdm_apps_populated(struct fdm *fdm, int fd, int events, void *data)
     }
 
     wayl_refresh(wayl);
+    return true;
+}
+
+/*
+ * Called when the application list has been populated
+ */
+static bool
+fdm_apps_populated(struct fdm *fdm, int fd, int events, void *data)
+{
+    struct context *ctx = data;
+    uint64_t last_event = EVENT_INVALID;
+    uint64_t event = EVENT_INVALID;
+
+    while (true) {
+        ssize_t bytes = read(fd, &event, sizeof(event));
+        if (bytes == 0) {
+            if (event != EVENT_INVALID)
+                process_event(ctx, event);
+            break;
+        }
+
+        if (bytes != (ssize_t)sizeof(event)) {
+            if (bytes < 0) {
+                if (errno == EAGAIN) {
+                    if (event != EVENT_INVALID)
+                        process_event(ctx, event);
+                    break;
+                }
+                LOG_ERRNO("failed to read event FD");
+            } else
+                LOG_ERR("partial read from event FD");
+            return false;
+        }
+
+        /* Coalesce multiple, identical events */
+        if (last_event != EVENT_INVALID) {
+            if (event != last_event)
+                process_event(ctx, last_event);
+        }
+
+        last_event = event;
+    }
+
     return true;
 }
 
@@ -1628,13 +1661,15 @@ main(int argc, char *const *argv)
     if ((apps = applications_init()) == NULL)
         goto out;
 
+    matches_set_applications(matches, apps);
+
     if (conf.dmenu.enabled) {
         if (conf.dmenu.exit_immediately_if_empty) {
             /*
              * If no_run_if_empty is set, we *must* load the entries
              * *before displaying the window.
              */
-            dmenu_load_entries(apps, conf.dmenu.delim, -1);
+            dmenu_load_entries(apps, conf.dmenu.delim, -1, -1);
             if (apps->count == 0)
                 goto out;
 

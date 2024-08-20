@@ -303,34 +303,77 @@ matches_destroy(struct matches *matches)
 }
 
 void
-matches_set_applications(struct matches *matches,
-                         const struct application_list *applications)
+matches_all_applications_loaded(struct matches *matches)
 {
-    assert(matches->applications == NULL);
-    assert(matches->matches == NULL);
+    matches->all_apps_loaded = true;
+#if defined(_DEBUG)
+    matches_lock(matches);
+    assert(matches->matches_size == matches->applications->count);
+    matches_unlock(matches);
+#endif
+}
+
+void
+matches_set_applications(struct matches *matches,
+                         struct application_list *applications)
+{
+    mtx_lock(&applications->lock);
+
+    assert(matches->matches == NULL || matches->matches_size > 0);
+    assert(applications->count >= matches->matches_size);
 
     matches->applications = applications;
-    matches->matches = calloc(
-        applications->count, sizeof(matches->matches[0]));
+
+    if (matches->matches == NULL && applications->count == 0) {
+        mtx_unlock(&applications->lock);
+        return;
+    }
+
+    matches->matches = reallocarray(
+        matches->matches, applications->count, sizeof(matches->matches[0]));
+
+    const size_t old_size = matches->matches_size;
+    const size_t diff = applications->count - old_size;
+
+    memset(&matches->matches[old_size], 0, diff * sizeof(matches->matches[0]));
+
+    matches->matches_size = applications->count;
+    mtx_unlock(&applications->lock);
     matches_icons_loaded(matches);
 }
 
 void
 matches_icons_loaded(struct matches *matches)
 {
-    matches->have_icons = false;
+    if (matches->have_icons)
+        return;
+
+    mtx_lock(&matches->applications->lock);
     for (size_t i = 0; i < matches->applications->count; i++) {
-        if (matches->applications->v[i].icon.name != NULL) {
+        if (matches->applications->v[i]->icon.name != NULL) {
             matches->have_icons = true;
             break;
         }
     }
+    mtx_unlock(&matches->applications->lock);
 }
 
 bool
 matches_have_icons(const struct matches *matches)
 {
     return matches->have_icons;
+}
+
+void
+matches_lock(struct matches *matches)
+{
+    mtx_lock(&matches->applications->lock);
+}
+
+void
+matches_unlock(struct matches *matches)
+{
+    mtx_unlock(&matches->applications->lock);
 }
 
 size_t

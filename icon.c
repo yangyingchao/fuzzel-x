@@ -507,7 +507,7 @@ lookup_icons(const icon_theme_list_t *themes, int icon_size,
     tll(struct icon_data) icons = tll_init();
 
     for (size_t i = 0; i < applications->count; i++) {
-        struct application *app = &applications->v[i];
+        struct application *app = applications->v[i];
         icon_reset(&app->icon);
 
         if (app->icon.name == NULL)

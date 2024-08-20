@@ -26,8 +26,8 @@ path_find_programs(struct application_list *applications)
 
     char *copy = strdup(_path);
     char *ctx = NULL;
-    tll(struct application) entries = tll_init();
-    
+    tll(struct application *) entries = tll_init();
+
     for (const char *tok = strtok_r(copy, ":", &ctx);
          tok != NULL;
          tok = strtok_r(NULL, ":", &ctx))
@@ -59,7 +59,7 @@ path_find_programs(struct application_list *applications)
                     continue;
                 bool already_exist = false;
                 tll_foreach(entries, it) {
-                    if (c32cmp(wtitle, it->item.title) == 0) {
+                    if (c32cmp(wtitle, it->item->title) == 0) {
                         already_exist = true;
                         break;
                     }
@@ -71,7 +71,8 @@ path_find_programs(struct application_list *applications)
                 size_t exec_size = path_size + 1 + strlen(e->d_name) + 1;
                 char *exec = malloc(exec_size);
                 snprintf(exec, exec_size, "%s/%s", tok, e->d_name);
-                struct application app = {
+                struct application *app = malloc(sizeof(*app));
+                *app = (struct application){
                     .title = wtitle,
                     .exec = exec,
                     .visible = true,

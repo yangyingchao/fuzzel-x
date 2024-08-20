@@ -16,15 +16,16 @@
 #define LOG_ENABLE_DBG 0
 #include "log.h"
 #include "char32.h"
+#include "event.h"
 
 void
 dmenu_load_entries(struct application_list *applications, char delim,
-                   int abort_fd)
+                   int event_fd, int abort_fd)
 {
-    tll(struct application) entries = tll_init();
+    tll(struct application *) entries = tll_init();
 
     size_t size = 0;
-    size_t alloc_size = 256;
+    size_t alloc_size = 16384;
     char *buffer = malloc(alloc_size);
 
     if (buffer == NULL) {
@@ -39,6 +40,8 @@ dmenu_load_entries(struct application_list *applications, char delim,
         LOG_ERRNO("failed to set O_NONBLOCK on stdin");
         goto out;
     }
+
+    size_t app_idx = 0;
 
     errno = 0;
     while (true) {
@@ -59,8 +62,10 @@ dmenu_load_entries(struct application_list *applications, char delim,
             break;
         }
 
-        if (fds[1].revents & (POLLIN | POLLHUP))
+        if (fds[1].revents & (POLLIN | POLLHUP)) {
+            LOG_WARN("aborted");
             break;
+        }
 
         /* Increase size of input buffer, if necessary */
         if (size >= alloc_size - 2) {
@@ -169,7 +174,8 @@ dmenu_load_entries(struct application_list *applications, char delim,
             for (size_t i = 0; i < c32len(lowercase); i++)
                 lowercase[i] = toc32lower(lowercase[i]);
 
-            struct application app = {
+            struct application *app = malloc(sizeof(*app));
+            *app = (struct application){
                 .title = wline,
                 .title_lowercase = lowercase,
                 .title_len = c32len(lowercase),
@@ -179,21 +185,48 @@ dmenu_load_entries(struct application_list *applications, char delim,
 
             tll_push_back(entries, app);
         }
+
+        if (event_fd >= 0) {
+            mtx_lock(&applications->lock);
+
+            const size_t new_count = applications->count + tll_length(entries);
+            applications->v = reallocarray(
+                applications->v, new_count, sizeof(applications->v[0]));
+
+            size_t i = applications->count;
+            tll_foreach(entries, it) {
+                applications->v[i++] = it->item;
+                tll_remove(entries, it);
+            }
+
+            assert(i == new_count);
+            applications->count = new_count;
+            send_event(event_fd, EVENT_APPS_SOME_LOADED);
+            mtx_unlock(&applications->lock);
+        }
     }
 
     free(buffer);
 
 out:
 
-    applications->v = calloc(tll_length(entries), sizeof(applications->v[0]));
-    applications->count = tll_length(entries);
+    if (tll_length(entries) == 0)
+        return;
 
-    /* Convert linked-list to regular array */
-    size_t i = 0;
+    mtx_lock(&applications->lock);
+
+    const size_t new_count = applications->count + tll_length(entries);
+    applications->v = reallocarray(
+        applications->v, new_count, sizeof(applications->v[0]));
+
+    size_t i = applications->count;
     tll_foreach(entries, it) {
         applications->v[i++] = it->item;
         tll_remove(entries, it);
     }
+
+    applications->count = new_count;
+    mtx_unlock(&applications->lock);
 
     tll_free(entries);
 }

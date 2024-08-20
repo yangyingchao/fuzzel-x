@@ -25,7 +25,7 @@ push_argv(char ***argv, size_t *size, char *arg, size_t *argc)
 
     if (*argc >= *size) {
         size_t new_size = *size > 0 ? 2 * *size : 10;
-        char **new_argv = realloc(*argv, new_size * sizeof(new_argv[0]));
+        char **new_argv = reallocarray(*argv, new_size, sizeof(new_argv[0]));
 
         if (new_argv == NULL)
             return false;
@@ -313,7 +313,17 @@ application_execute(const struct application *app, const struct prompt *prompt,
 struct application_list *
 applications_init(void)
 {
-    return calloc(1, sizeof(struct application_list));
+    struct application_list *ret = calloc(1, sizeof(*ret));
+    if (ret == NULL)
+        return NULL;
+
+    if (mtx_init(&ret->lock, mtx_plain) != thrd_success) {
+        LOG_ERR("failed to instantiate application list mutex");
+        free(ret);
+        return NULL;
+    }
+
+    return ret;
 }
 
 void
@@ -323,7 +333,7 @@ applications_destroy(struct application_list *apps)
         return;
 
     for (size_t i = 0; i < apps->count; i++) {
-        struct application *app = &apps->v[i];
+        struct application *app = apps->v[i];
 
         free(app->id);
         free(app->path);
@@ -375,8 +385,10 @@ applications_destroy(struct application_list *apps)
         free(app->icon.path);
 
         fcft_text_run_destroy(app->shaped);
+        free(app);
     }
 
+    mtx_destroy(&apps->lock);
     free(apps->v);
     free(apps);
 }
@@ -385,7 +397,7 @@ void
 applications_flush_text_run_cache(struct application_list *apps)
 {
     for (size_t i = 0; i < apps->count; i++) {
-        fcft_text_run_destroy(apps->v[i].shaped);
-        apps->v[i].shaped = NULL;
+        fcft_text_run_destroy(apps->v[i]->shaped);
+        apps->v[i]->shaped = NULL;
     }
 }

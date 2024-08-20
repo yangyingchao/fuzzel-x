@@ -47,6 +47,12 @@ c32cmp(const char32_t *s1, const char32_t *s2)
     return wcscmp((const wchar_t *)s1, (const wchar_t *)s2);
 }
 
+int
+c32casecmp(const char32_t *s1, const char32_t *s2)
+{
+    return wcscasecmp((const wchar_t *)s1, (const wchar_t *)s2);
+}
+
 char32_t *
 c32cpy(char32_t *dest, const char32_t *src)
 {
@@ -205,7 +211,7 @@ ambstoc32(const char *src)
 
     *out = U'\0';
 
-    ret = realloc(ret, (chars + 1) * sizeof(ret[0]));
+    ret = reallocarray(ret, chars + 1, sizeof(ret[0]));
     return ret;
 
 err:

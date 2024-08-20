@@ -59,6 +59,7 @@
   `fuzzel.ini`.
 * dmenu mode: `--prompt-only=PROMPT` command line option
   ([#276][276]).
+* dmenu mode: start rendering input before STDIN has been closed.
 
 [344]: https://codeberg.org/dnkl/fuzzel/issues/344
 [131]: https://codeberg.org/dnkl/fuzzel/issues/131

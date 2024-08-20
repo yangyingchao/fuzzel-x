@@ -92,8 +92,9 @@ bool application_execute(
     const char *launch_prefix, const char *xdg_activation_token);
 
 struct application_list {
-    struct application *v;
+    struct application **v;
     size_t count;
+    mtx_t lock;
 };
 
 struct application_list *applications_init(void);
