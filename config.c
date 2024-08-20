@@ -382,9 +382,9 @@ value_to_key_combos(struct context *ctx, int action,
 
     remove_from_key_bindings_list(bindings, action);
 
-    bindings->arr = realloc(
+    bindings->arr = reallocarray(
         bindings->arr,
-        (bindings->count + combo_count) * sizeof(bindings->arr[0]));
+        bindings->count + combo_count, sizeof(bindings->arr[0]));
 
     memcpy(&bindings->arr[bindings->count],
            new_combos,
@@ -791,8 +791,11 @@ parse_section_main(struct context *ctx)
         return true;
     }
 
-    else if (strcmp(key, "workers") == 0)
+    else if (strcmp(key, "render-workers") == 0)
         return value_to_uint16(ctx, 10, &conf->render_worker_count);
+
+    else if (strcmp(key, "match-workers") == 0)
+        return value_to_uint16(ctx, 10, &conf->match_worker_count);
 
     else if (strcmp(key, "prompt") == 0)
         return value_to_wchars(ctx, &conf->prompt);
@@ -890,6 +893,12 @@ parse_section_main(struct context *ctx)
             (const char *[]){"exact", "fzf", "fuzzy", NULL},
             (int *)&conf->match_mode);
     }
+
+    else if (strcmp(key, "delayed-filter-ms") == 0)
+        return value_to_uint32(ctx, 10, &conf->delayed_filter_ms);
+
+    else if (strcmp(key, "delayed-filter-limit") == 0)
+        return value_to_uint32(ctx, 10, &conf->delayed_filter_limit);
 
     else if (strcmp(key, "show-actions") == 0)
         return value_to_bool(ctx, &conf->actions_enabled);
@@ -1574,10 +1583,13 @@ config_load(struct config *conf, const char *conf_path,
         .font = strdup("monospace"),
         .dpi_aware = DPI_AWARE_AUTO,
         .render_worker_count = sysconf(_SC_NPROCESSORS_ONLN),
+        .match_worker_count = sysconf(_SC_NPROCESSORS_ONLN),
         .icons_enabled = true,
         .icon_theme = strdup("hicolor"),
         .actions_enabled = false,
         .match_mode = MATCH_MODE_FZF,
+        .delayed_filter_ms = 300,
+        .delayed_filter_limit = 20000,
         .fuzzy = {
             .min_length = 3,
             .max_length_discrepancy = 2,

@@ -55,11 +55,16 @@
   color of the input string ([#365][365]).
 * Much improved performance with large amounts of input ([#305][305]).
 * Improved rendering performance, by using threads. See the new
-  `--workers` command line option, and the new `workers` option in
-  `fuzzel.ini`.
+  `--render-workers` command line option, and the new `render-workers`
+  option in `fuzzel.ini`.
 * dmenu mode: `--prompt-only=PROMPT` command line option
   ([#276][276]).
 * dmenu mode: start rendering input before STDIN has been closed.
+* `--match-workers` command line option and the new `match-workers`
+  option in `fuzzel.ini`.
+* `delayed-filter-ms`, `delayed-filter-limit` options to `fuzzel.ini`,
+  and `--delayed-filter-ms` and `--delayed-filter-limit` command line
+  options.
 
 [344]: https://codeberg.org/dnkl/fuzzel/issues/344
 [131]: https://codeberg.org/dnkl/fuzzel/issues/131

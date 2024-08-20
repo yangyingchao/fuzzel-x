@@ -2,6 +2,7 @@
 
 #include <stdbool.h>
 #include <pixman.h>
+#include <threads.h>
 
 #if defined(FUZZEL_ENABLE_SVG_LIBRSVG)
  #include <librsvg/rsvg.h>
@@ -58,6 +59,7 @@ struct application {
     char *app_id;
     char32_t *title;
     char32_t *render_title;
+    size_t index;
 
     /*
      * To get good search performance, we cache both the lower-case

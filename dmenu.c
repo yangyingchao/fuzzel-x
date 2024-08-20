@@ -176,6 +176,7 @@ dmenu_load_entries(struct application_list *applications, char delim,
 
             struct application *app = malloc(sizeof(*app));
             *app = (struct application){
+                .index = app_idx++,
                 .title = wline,
                 .title_lowercase = lowercase,
                 .title_len = c32len(lowercase),

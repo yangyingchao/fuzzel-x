@@ -47,7 +47,6 @@ struct context {
     struct wayland *wayl;
     struct render *render;
     struct matches *matches;
-    struct prompt *prompt;
     struct application_list *apps;
 
     icon_theme_list_t *themes;
@@ -376,7 +375,12 @@ print_usage(const char *prog_name)
            "     --no-exit-on-keyboard-focus-loss  do not exit when losing keyboard focus\n"
            "     --launch-prefix=COMMAND     prefix to add before argv of executed program\n"
            "     --list-executables-in-path  include executables from PATH in the list\n"
-           "     --workers=N                 number of threads to use for rendering\n"
+           "     --render-workers=N          number of threads to use for rendering\n"
+           "     --match-workers=N           number of threads to use for matching\n"
+           "     --delayed-filter-ms=TIME_MS time in ms before refiltering after a keystroke\n"
+           "                                 (300)\n"
+           "     --delayed-filter-limit=N    used delayed refiltering when the number of\n"
+           "                                 matches exceeds this number (10000)\n"
            "  -d,--dmenu                     dmenu compatibility mode\n"
            "     --dmenu0                    like --dmenu, but input is NUL separated\n"
            "                                 instead of newline separated\n"
@@ -688,10 +692,13 @@ main(int argc, char *const *argv)
     #define OPT_X_MARGIN                     278
     #define OPT_Y_MARGIN                     279
     #define OPT_CACHE                        280
-    #define OPT_WORKERS                      281
+    #define OPT_RENDER_WORKERS               281
     #define OPT_PROMPT_COLOR                 282
     #define OPT_INPUT_COLOR                  283
     #define OPT_PROMPT_ONLY                  284
+    #define OPT_MATCH_WORKERS                287
+    #define OPT_DELAYED_FILTER_MS            289
+    #define OPT_DELAYED_FILTER_LIMIT         290
 
     static const struct option longopts[] = {
         {"config",               required_argument, 0, OPT_CONFIG},
@@ -740,7 +747,11 @@ main(int argc, char *const *argv)
         {"layer",                required_argument, 0, OPT_LAYER},
         {"no-exit-on-keyboard-focus-loss", no_argument, 0, OPT_NO_EXIT_ON_KB_LOSS},
         {"list-executables-in-path",       no_argument, 0, OPT_LIST_EXECS_IN_PATH},
-        {"workers",              required_argument, 0, OPT_WORKERS},
+        {"render-workers",       required_argument, 0, OPT_RENDER_WORKERS},
+        {"match-workers",        required_argument, 0, OPT_MATCH_WORKERS},
+        {"no-sort",              no_argument,       0, OPT_NO_SORT},
+        {"delayed-filter-ms",    required_argument, 0, OPT_DELAYED_FILTER_MS},
+        {"delayed-filter-limit", required_argument, 0, OPT_DELAYED_FILTER_LIMIT},
 
         /* dmenu mode */
         {"dmenu",                no_argument,       0, 'd'},
@@ -805,8 +816,11 @@ main(int argc, char *const *argv)
         bool dmenu_delim_set:1;
         bool layer_set:1;
         bool no_exit_on_keyboard_focus_loss_set:1;
-        bool workers_set:1;
+        bool render_workers_set:1;
+        bool match_workers_set:1;
         bool prompt_only_set:1;
+        bool delayed_filter_ms_set:1;
+        bool delayed_filter_limit_set:1;
     } cmdline_overrides = {{0}};
 
     setlocale(LC_CTYPE, "");
@@ -1423,16 +1437,46 @@ main(int argc, char *const *argv)
             log_syslog = false;
             break;
 
-        case OPT_WORKERS:
+        case OPT_RENDER_WORKERS:
             if (sscanf(optarg, "%hu", &cmdline_overrides.conf.render_worker_count) != 1) {
                 fprintf(
                     stderr,
-                    "%s: invalid value for workers (must be an integer)\n",
+                    "%s: invalid value for render-workers (must be an integer)\n",
                     optarg);
                 return EXIT_FAILURE;
             }
 
-            cmdline_overrides.workers_set = true;
+            cmdline_overrides.render_workers_set = true;
+            break;
+
+        case OPT_MATCH_WORKERS:
+            if (sscanf(optarg, "%hu", &cmdline_overrides.conf.match_worker_count) != 1) {
+                fprintf(
+                    stderr,
+                    "%s: invalid value for match-workers (must be an integer)\n",
+                    optarg);
+                return EXIT_FAILURE;
+            }
+
+            cmdline_overrides.match_workers_set = true;
+            break;
+
+        case OPT_DELAYED_FILTER_MS:
+            if (sscanf(optarg, "%u", &cmdline_overrides.conf.delayed_filter_ms) != 1) {
+                fprintf(stderr, "%s: invalid delayed-filter-ms (must be an integer)\n",
+                        optarg);
+                return EXIT_FAILURE;
+            }
+            cmdline_overrides.delayed_filter_ms_set = true;
+            break;
+
+        case OPT_DELAYED_FILTER_LIMIT:
+            if (sscanf(optarg, "%u", &cmdline_overrides.conf.delayed_filter_limit) != 1) {
+                fprintf(stderr, "%s: invalid delayed-filter-limit (must be an integer)\n",
+                        optarg);
+                return EXIT_FAILURE;
+            }
+            cmdline_overrides.delayed_filter_limit_set = true;
             break;
 
         case 'v':
@@ -1582,8 +1626,14 @@ main(int argc, char *const *argv)
         conf.dmenu.exit_immediately_if_empty = cmdline_overrides.conf.dmenu.exit_immediately_if_empty;
     if (cmdline_overrides.conf.list_executables_in_path)
         conf.list_executables_in_path = cmdline_overrides.conf.list_executables_in_path;
-    if (cmdline_overrides.workers_set)
+    if (cmdline_overrides.render_workers_set)
         conf.render_worker_count = cmdline_overrides.conf.render_worker_count;
+    if (cmdline_overrides.match_workers_set)
+        conf.match_worker_count = cmdline_overrides.conf.match_worker_count;
+    if (cmdline_overrides.delayed_filter_ms_set)
+        conf.delayed_filter_ms = cmdline_overrides.conf.delayed_filter_ms;
+    if (cmdline_overrides.delayed_filter_limit_set)
+        conf.delayed_filter_limit = cmdline_overrides.conf.delayed_filter_limit;
 
     if (conf.dmenu.enabled) {
         /* We don't have any meta data in dmenu mode */
@@ -1652,10 +1702,16 @@ main(int argc, char *const *argv)
         goto out;
 
     if ((matches = matches_init(
-             conf.match_fields, conf.match_mode, conf.fuzzy.min_length,
-             conf.fuzzy.max_length_discrepancy,
-             conf.fuzzy.max_distance)) == NULL)
+        fdm, prompt,
+        conf.match_fields, conf.match_mode, conf.sort_result,
+        conf.fuzzy.min_length,
+        conf.fuzzy.max_length_discrepancy,
+        conf.fuzzy.max_distance,
+        conf.match_worker_count,
+        conf.delayed_filter_ms, conf.delayed_filter_limit)) == NULL)
+    {
         goto out;
+    }
     matches_max_matches_per_page_set(matches, conf.lines);
 
     if ((apps = applications_init()) == NULL)
@@ -1682,7 +1738,7 @@ main(int argc, char *const *argv)
             }
 
             matches_set_applications(matches, apps);
-            matches_update(matches, prompt);
+            matches_update_no_delay(matches);
             matches_selected_select(matches, select);
         }
 
@@ -1700,7 +1756,6 @@ main(int argc, char *const *argv)
         .cache_path = cache_path,
         .render = render,
         .matches = matches,
-        .prompt = prompt,
         .apps = apps,
         .themes = &themes,
         .icon_lock = &icon_lock,
@@ -1717,6 +1772,7 @@ main(int argc, char *const *argv)
              &font_reloaded, &ctx)) == NULL)
         goto out;
 
+    matches_set_wayland(matches, wayl);
     ctx.wayl = wayl;
 
     /* Create thread that will populate the application list */

@@ -456,6 +456,7 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename_lowercase,
         struct application *app = malloc(sizeof(*app));
         *app = (struct application){
             .id = strdup(id),
+            .index = 0,  /* Not used in application mode */
             .path = a->path,
             .exec = a->exec,
             .app_id = a->app_id,

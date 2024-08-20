@@ -293,12 +293,26 @@ or command line options:
 	Include executables from the PATH environment variable. Applies to
 	the normal application mode, not the dmenu mode.
 
-*--workers*=_COUNT_
+*--render-workers*=_COUNT_
 	Number of threads to use for rendering. Set to 0 to disable
 	multithreading. Default: the number of available logical CPUs
 	(including SMT). Note that this is not always the best value. In
 	some cases, the number of physical _cores_ is better.
 
+*--match-workers*=_COUNT_
+	Number of threads to use for matching. Set to 0 to disable
+	multithreading. Default: the number of available logical CPUs
+	(including SMT). Note that this is not always the best value. In
+	some cases, the number of physical _cores_ is better.
+
+*--delayed-filter-ms*=_TIME\_MS_
+	Time, in milliseconds, to delay refiltering when there are more
+	matches than *--delayed-filter-limit*. Default: _300_.
+
+*--delayed-filter-limit*=_N_
+	When there are more matches than this, switch from immediate
+	refiltering to delayed refiltering (see
+	*--delayed-filter-ms*). Default: _20000_.
 *-d*,*--dmenu*
 	dmenu compatibility mode. In this mode, the list entries are read
 	from stdin (newline separated). The selected entry is printed to

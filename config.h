@@ -115,6 +115,7 @@ struct config {
     char *font;
     enum dpi_aware dpi_aware;
     uint16_t render_worker_count;
+    uint16_t match_worker_count;
 
     bool filter_desktop;
 
@@ -126,6 +127,10 @@ struct config {
     struct config_key_binding_list key_bindings;
 
     enum match_mode match_mode;
+
+    uint32_t delayed_filter_ms;
+    uint32_t delayed_filter_limit;
+
     struct {
         size_t min_length;
         size_t max_length_discrepancy;

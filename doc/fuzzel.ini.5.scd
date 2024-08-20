@@ -252,11 +252,26 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	
 	Default: _yes_
 
-*workers*
+*render-workers*
 	Number of threads to use for rendering. Set to 0 to disable
 	multithreading. Default: the number of available logical CPUs
 	(including SMT). Note that this is not always the best value. In
 	some cases, the number of physical _cores_ is better.
+
+*match-workers*
+	Number of threads to use for matching. Set to 0 to disable
+	multithreading. Default: the number of available logical CPUs
+	(including SMT). Note that this is not always the best value. In
+	some cases, the number of physical _cores_ is better.
+
+*delayed-filter-ms*
+	Time, in milliseconds, to delay refiltering when there are more
+	matches than *delayed-filter-limit*. Default: _300_.
+
+*delayed-filter-limit*
+	When there are more matches than this, switch from immediate
+	refiltering to delayed refiltering (see
+	*delayed-filter-ms*). Default: _20000_.
 
 # SECTION: colors
 

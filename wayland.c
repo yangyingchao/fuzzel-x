@@ -552,7 +552,7 @@ execute_selected(struct seat *seat, bool as_is, int custom_success_exit_code)
 
     const struct match *match = !as_is ? matches_get_match(wayl->matches) : NULL;
     struct application *app = match != NULL ? match->application : NULL;
-    ssize_t index = match != NULL ? match->index : -1;
+    ssize_t index = app != NULL ? app->index : -1;
 
     if (wayl->conf->dmenu.enabled) {
         dmenu_execute(app, index, wayl->prompt, wayl->conf->dmenu.mode);
@@ -630,37 +630,37 @@ execute_binding(struct seat *seat, const struct key_binding *binding, bool *refr
     case BIND_ACTION_DELETE_PREV:
         *refresh = prompt_erase_prev_char(wayl->prompt);
         if (*refresh)
-            matches_update(wayl->matches, wayl->prompt);
+            matches_update(wayl->matches);
         return true;
 
     case BIND_ACTION_DELETE_PREV_WORD:
         *refresh = prompt_erase_prev_word(wayl->prompt);
         if (*refresh)
-            matches_update(wayl->matches, wayl->prompt);
+            matches_update(wayl->matches);
         return true;
 
     case BIND_ACTION_DELETE_LINE_BACKWARD:
         *refresh = prompt_erase_before_cursor(wayl->prompt);
         if (*refresh)
-            matches_update(wayl->matches, wayl->prompt);
+            matches_update(wayl->matches);
         return true;
 
     case BIND_ACTION_DELETE_NEXT:
         *refresh = prompt_erase_next_char(wayl->prompt);
         if (*refresh)
-            matches_update(wayl->matches, wayl->prompt);
+            matches_update(wayl->matches);
         return true;
 
     case BIND_ACTION_DELETE_NEXT_WORD:
         *refresh = prompt_erase_next_word(wayl->prompt);
         if (*refresh)
-            matches_update(wayl->matches, wayl->prompt);
+            matches_update(wayl->matches);
         return true;
 
     case BIND_ACTION_DELETE_LINE_FORWARD:
         *refresh = prompt_erase_after_cursor(wayl->prompt);
         if (*refresh)
-            matches_update(wayl->matches, wayl->prompt);
+            matches_update(wayl->matches);
         return true;
 
     case BIND_ACTION_INSERT_SELECTED: {
@@ -685,7 +685,7 @@ execute_binding(struct seat *seat, const struct key_binding *binding, bool *refr
         }
 
         if (*refresh)
-            matches_update(wayl->matches, wayl->prompt);
+            matches_update(wayl->matches);
         return true;
     }
 
@@ -693,7 +693,7 @@ execute_binding(struct seat *seat, const struct key_binding *binding, bool *refr
         const struct match *match = matches_get_match(wayl->matches);
         if (match != NULL) {
             match->application->count = 0;
-            matches_update(wayl->matches, wayl->prompt);
+            matches_update(wayl->matches);
             wayl->force_cache_update = true;
             *refresh = true;
         } else
@@ -995,7 +995,7 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
     if (!prompt_insert_chars(wayl->prompt, buf, count))
         return;
 
-    matches_update_incremental(wayl->matches, wayl->prompt);
+    matches_update_incremental(wayl->matches);
     wayl_refresh(wayl);
 
 maybe_repeat:
@@ -2047,8 +2047,10 @@ wayl_refresh(struct wayland *wayl)
     render_background(wayl->render, buf);
 
     /* Window content */
-    render_prompt(wayl->render, buf, wayl->prompt);
+    matches_lock(wayl->matches);
+    render_prompt(wayl->render, buf, wayl->prompt, wayl->matches);
     render_match_list(wayl->render, buf, wayl->prompt, wayl->matches);
+    matches_unlock(wayl->matches);
 
 #if defined(FUZZEL_ENABLE_CAIRO)
     for (size_t i = 0; i < buf->pix_instances; i++)
