@@ -363,7 +363,7 @@ print_usage(const char *prog_name)
            "  -r,--border-radius=INT         amount of corner \"roundness\" (10)\n"
            "  -C,--border-color=HEX          border color (002b36ff)\n"
            "     --show-actions              include desktop actions in the list\n"
-           "     --no-fuzzy                  disable fuzzy matching\n"
+           "     --match-mode=exact|fzf|fuzzy how to match what you type against the entries\n"
            "     --fuzzy-min-length=VALUE    search strings shorter than this will not be\n"
            "                                 fuzzy matched (3)\n"
            "     --fuzzy-max-length-discrepancy=VALUE  maximum allowed length discrepancy\n"
