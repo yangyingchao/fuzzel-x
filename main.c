@@ -590,8 +590,11 @@ process_event(struct context *ctx, enum event_type event)
         /* Update matches list, then refresh the GUI */
         matches_set_applications(matches, apps);
 
-        if (event == EVENT_APPS_ALL_LOADED)
+        if (event == EVENT_APPS_ALL_LOADED) {
+            if (ctx->conf->dmenu.exit_immediately_if_empty && apps->count == 0)
+                return false;
             matches_all_applications_loaded(matches);
+        }
 
 #define UPDATE_MATCHES 1
 
@@ -641,16 +644,20 @@ fdm_apps_populated(struct fdm *fdm, int fd, int events, void *data)
     while (true) {
         ssize_t bytes = read(fd, &event, sizeof(event));
         if (bytes == 0) {
-            if (event != EVENT_INVALID)
-                process_event(ctx, event);
+            if (event != EVENT_INVALID) {
+                if (!process_event(ctx, event))
+                    return false;
+            }
             break;
         }
 
         if (bytes != (ssize_t)sizeof(event)) {
             if (bytes < 0) {
                 if (errno == EAGAIN) {
-                    if (event != EVENT_INVALID)
-                        process_event(ctx, event);
+                    if (event != EVENT_INVALID) {
+                        if (!process_event(ctx, event))
+                            return false;
+                    }
                     break;
                 }
                 LOG_ERRNO("failed to read event FD");
@@ -661,8 +668,10 @@ fdm_apps_populated(struct fdm *fdm, int fd, int events, void *data)
 
         /* Coalesce multiple, identical events */
         if (last_event != EVENT_INVALID) {
-            if (event != last_event)
-                process_event(ctx, last_event);
+            if (event != last_event) {
+                if (!process_event(ctx, last_event))
+                    return false;
+            }
         }
 
         last_event = event;
@@ -1826,34 +1835,10 @@ main(int argc, char *const *argv)
     matches_set_applications(matches, apps);
 
     if (conf.dmenu.enabled) {
-        if (conf.dmenu.exit_immediately_if_empty) {
-            /*
-             * If no_run_if_empty is set, we *must* load the entries
-             * *before displaying the window.
-             */
-            dmenu_load_entries(apps, conf.dmenu.delim, -1, -1);
-            if (apps->count == 0)
-                goto out;
-
-            if (conf.icons_enabled) {
-                themes = icon_load_theme(conf.icon_theme);
-                if (tll_length(themes) > 0)
-                    LOG_INFO("theme: %s", tll_front(themes).name);
-                else
-                    LOG_WARN("%s: icon theme not found", conf.icon_theme);
-            }
-
-            matches_set_applications(matches, apps);
-            matches_update_no_delay(matches);
-            matches_selected_select(matches, select);
-        }
-
-        else {
-            dmenu_abort_fd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
-            if (dmenu_abort_fd < 0) {
-                LOG_ERRNO("failed to create event FD for dmenu mode");
-                goto out;
-            }
+        dmenu_abort_fd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
+        if (dmenu_abort_fd < 0) {
+            LOG_ERRNO("failed to create event FD for dmenu mode");
+            goto out;
         }
     }
 
@@ -1882,26 +1867,25 @@ main(int argc, char *const *argv)
     ctx.wayl = wayl;
 
     /* Create thread that will populate the application list */
-    if (!conf.dmenu.enabled || !conf.dmenu.exit_immediately_if_empty) {
-        if (pipe2(event_pipe, O_CLOEXEC | O_NONBLOCK) < 0) {
-            LOG_ERRNO("failed to create event pipe");
-            goto out;
-        }
-
-        ctx.event_fd = event_pipe[1];
-
-        if (!fdm_add(fdm, event_pipe[0], EPOLLIN, &fdm_apps_populated, &ctx))
-            goto out;
-
-        if (thrd_create(&app_thread_id, &populate_apps, &ctx) != thrd_success) {
-            LOG_ERR("failed to create thread");
-            goto out;
-        }
-
-        join_app_thread = true;
+    if (pipe2(event_pipe, O_CLOEXEC | O_NONBLOCK) < 0) {
+        LOG_ERRNO("failed to create event pipe");
+        goto out;
     }
 
-    wayl_refresh(wayl);
+    ctx.event_fd = event_pipe[1];
+
+    if (!fdm_add(fdm, event_pipe[0], EPOLLIN, &fdm_apps_populated, &ctx))
+        goto out;
+
+    if (thrd_create(&app_thread_id, &populate_apps, &ctx) != thrd_success) {
+        LOG_ERR("failed to create thread");
+        goto out;
+    }
+
+    join_app_thread = true;
+
+    if (!conf.dmenu.exit_immediately_if_empty)
+        wayl_refresh(wayl);
 
     while (true) {
         wayl_flush(wayl);
