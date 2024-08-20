@@ -193,7 +193,7 @@ or command line options:
 	output scaling. Default: _0_.
 
 *-b*,*--background*=_HEX_
-	Background color. See *COLORS*. Default: _fdf6e3dd_.
+	Background color. See *COLORS*. Default: _fdf6e3ff_.
 
 *-t*,*--text-color*=_HEX_
 	Text color. See *COLORS*. Default: _657b83ff_.
@@ -217,7 +217,7 @@ or command line options:
 
 *-s*,*--selection-color*=_HEX_
 	The color to use as background of the currently selected
-	application. See *COLORS*. Default: _eee8d5dd_.
+	application. See *COLORS*. Default: _eee8d5ff_.
 
 *-S*,*--selection-text-color*=_HEX_
 	The text color of the currently selected application. See

@@ -294,7 +294,7 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 All color values are in RGBA.
 
 *background*
-	Background color. Default: _fdf6e3dd_.
+	Background color. Default: _fdf6e3ff_.
 
 *text*
 	Text (foreground) color of unselected entries. Default:
@@ -316,7 +316,7 @@ All color values are in RGBA.
 	_cb4b16ff_.
 
 *selection*
-	Background color of the selected entry. Default: _eee8d5dd_.
+	Background color of the selected entry. Default: _eee8d5ff_.
 
 *selection-text*
 	Text (foreground) color of the selected entry. Default:
