@@ -24,7 +24,7 @@ void render_background(const struct render *render, struct buffer *buf);
 
 void render_prompt(
     const struct render *render, struct buffer *buf,
-    const struct prompt *prompt);
+    const struct prompt *prompt, const struct matches *matches);
 
 void render_match_list(
     struct render *render, struct buffer *buf,

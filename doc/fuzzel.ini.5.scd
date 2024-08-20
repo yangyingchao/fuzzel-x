@@ -306,6 +306,10 @@ All color values are in RGBA.
 	Text (foreground) color of the matched substring of the
 	selected entry. Default: _cb4b16ff_.
 
+*count*=_HEX_
+	The color of the match count stats printed at the right-hand side
+	of the input prompt. See *COLORS*. Default: _93a1a1ff_.
+
 *border*
 	Border color. Default: _002b36ff_.
 

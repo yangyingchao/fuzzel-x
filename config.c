@@ -1031,6 +1031,9 @@ parse_section_colors(struct context *ctx)
     else if (strcmp(key, "selection-match") == 0)
         return value_to_color(ctx, true, &conf->colors.selection_match);
 
+    else if (strcmp(key, "count") == 0)
+        return value_to_color(ctx, true, &conf->colors.count);
+
     else if (strcmp(key, "border") == 0)
         return value_to_color(ctx, true, &conf->colors.border);
 
@@ -1624,6 +1627,7 @@ config_load(struct config *conf, const char *conf_path,
             .selection = conf_hex_to_rgba(0xeee8d5dd),
             .selection_text = conf_hex_to_rgba(0x657b83ff),
             .selection_match = conf_hex_to_rgba(0xcb4b16ff),
+            .count = conf_hex_to_rgba(0x93a1a1ff),
         },
         .border = {
             .size = 1u,

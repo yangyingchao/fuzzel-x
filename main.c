@@ -354,6 +354,7 @@ print_usage(const char *prog_name)
            "  -S,--selection-text-color=HEX  text color of selected item (657b83ff)\n"
            "  -M,--selection-match-color=HEX color of matched substring in selection\n"
            "                                 (cb4b16ff)\n"
+           "     --count-color               color of the match count (93a1a1)\n"
            "  -B,--border-width=INT          width of border, in pixels (1)\n"
            "  -r,--border-radius=INT         amount of corner \"roundness\" (10)\n"
            "  -C,--border-color=HEX          border color (002b36ff)\n"
@@ -696,6 +697,7 @@ main(int argc, char *const *argv)
     #define OPT_PROMPT_COLOR                 282
     #define OPT_INPUT_COLOR                  283
     #define OPT_PROMPT_ONLY                  284
+    #define OPT_COUNT_COLOR                  285
     #define OPT_MATCH_WORKERS                287
     #define OPT_DELAYED_FILTER_MS            289
     #define OPT_DELAYED_FILTER_LIMIT         290
@@ -729,6 +731,7 @@ main(int argc, char *const *argv)
         {"selection-color",      required_argument, 0, 's'},
         {"selection-text-color", required_argument, 0, 'S'},
         {"selection-match-color",required_argument, 0, 'M'},
+        {"count-color",          required_argument, 0, OPT_COUNT_COLOR},
         {"border-width",         required_argument, 0, 'B'},
         {"border-radius",        required_argument, 0, 'r'},
         {"border-color",         required_argument, 0, 'C'},
@@ -799,6 +802,7 @@ main(int argc, char *const *argv)
         bool selection_color_set:1;
         bool selection_text_color_set:1;
         bool selection_match_color_set:1;
+        bool count_color_set:1;
         bool border_color_set:1;
         bool border_size_set:1;
         bool border_radius_set:1;
@@ -1240,6 +1244,25 @@ main(int argc, char *const *argv)
             break;
         }
 
+        case OPT_COUNT_COLOR: {
+            const char *clr_start = optarg;
+            if (clr_start[0] == '#')
+                clr_start++;
+
+            errno = 0;
+            char *end = NULL;
+            uint32_t count_color = strtoul(clr_start, &end, 16);
+            if (errno != 0 || end == NULL || *end != '\0' || (end - clr_start) != 8) {
+                fprintf(stderr, "count-color: %s: invalid color\n",
+                        optarg);
+                return EXIT_FAILURE;
+            }
+            cmdline_overrides.conf.colors.count = conf_hex_to_rgba(count_color);
+            cmdline_overrides.count_color_set = true;
+            break;
+        }
+
+
         case 'B':
             if (sscanf(optarg, "%u", &cmdline_overrides.conf.border.size) != 1) {
                 fprintf(
@@ -1282,18 +1305,6 @@ main(int argc, char *const *argv)
             cmdline_overrides.conf.actions_enabled = true;
             break;
 
-        case OPT_FILTER_DESKTOP:
-            cmdline_overrides.filter_desktop_set = true;
-            if (optarg != NULL && strcasecmp(optarg, "no") == 0)
-                cmdline_overrides.conf.filter_desktop = false;
-            else if (optarg != NULL) {
-                fprintf(stderr, "%s: invalid filter-desktop option\n", optarg);
-                return EXIT_FAILURE;
-            }
-            else
-                cmdline_overrides.conf.filter_desktop = true;
-            break;
-
         case OPT_MATCH_MODE:
             if (strcmp(optarg, "exact") == 0)
                 cmdline_overrides.conf.match_mode = MATCH_MODE_EXACT;
@@ -1307,6 +1318,18 @@ main(int argc, char *const *argv)
             }
 
             cmdline_overrides.match_mode_set = true;
+            break;
+
+        case OPT_FILTER_DESKTOP:
+            cmdline_overrides.filter_desktop_set = true;
+            if (optarg != NULL && strcasecmp(optarg, "no") == 0)
+                cmdline_overrides.conf.filter_desktop = false;
+            else if (optarg != NULL) {
+                fprintf(stderr, "%s: invalid filter-desktop option\n", optarg);
+                return EXIT_FAILURE;
+            }
+            else
+                cmdline_overrides.conf.filter_desktop = true;
             break;
 
         case OPT_FUZZY_MIN_LENGTH:
@@ -1590,6 +1613,8 @@ main(int argc, char *const *argv)
         conf.colors.selection_text = cmdline_overrides.conf.colors.selection_text;
     if (cmdline_overrides.selection_match_color_set)
         conf.colors.selection_match = cmdline_overrides.conf.colors.selection_match;
+    if (cmdline_overrides.count_color_set)
+        conf.colors.count = cmdline_overrides.conf.colors.count;
     if (cmdline_overrides.border_color_set)
         conf.colors.border = cmdline_overrides.conf.colors.border;
     if (cmdline_overrides.border_size_set)

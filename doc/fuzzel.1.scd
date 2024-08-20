@@ -213,6 +213,10 @@ or command line options:
 	part in each application's name is highlighted with this color.
 	See *COLORS*. Default: _cb4b16ff_.
 
+*--count-color*=_HEX_
+	The color of the match count stats printed at the right-hand side
+	of the input prompt. See *COLORS*. Default: _93a1a1ff_.
+
 *-B*,*--border-width*=_INT_
 	The width of the surrounding border, in pixels (subject to output
 	scaling). Default: _1_.

@@ -62,6 +62,7 @@ struct render {
     pixman_color_t pix_selection_color;
     pixman_color_t pix_selection_text_color;
     pixman_color_t pix_selection_match_color;
+    pixman_color_t pix_count_color;
 
     unsigned x_margin;
     unsigned y_margin;
@@ -224,9 +225,114 @@ render_glyph(pixman_image_t *pix, const struct fcft_glyph *glyph, int x, int y,
     }
 }
 
+static int
+render_match_count(const struct render *render, struct buffer *buf,
+                   const struct prompt *prompt, const struct matches *matches)
+{
+    struct fcft_font *font = render->font;
+    assert(font != NULL);
+
+    const struct config *conf = render->conf;
+
+    const enum fcft_subpixel subpixel =
+        conf->colors.background.a == 1. && conf->colors.selection.a == 1.
+            ? render->subpixel
+            : FCFT_SUBPIXEL_NONE;
+
+    size_t total_count = matches_get_application_count(matches);
+    size_t match_count = matches_get_total_count(matches);
+    const char32_t *ptext = prompt_text(prompt);
+
+    char *text = NULL;
+    int chars = asprintf(
+        &text, "%zu/%zu",
+        ptext[0] == U'\0' ? total_count : match_count, total_count);
+
+    if (chars < 0)
+        return 0;
+
+    /* fcft wants UTF-32. Since we only use ASCII... */
+    uint32_t *wtext = malloc(chars * sizeof(wtext[0]));
+    for (size_t i = 0; i < chars; i++)
+        wtext[i] = (uint32_t)(unsigned char)text[i];
+
+    int width = -1;
+    int x = buf->width -  render->border_size - render->x_margin;
+    int y = render->border_size + render->y_margin +
+            (render->row_height + font->height) / 2 - font->descent;
+
+    if (fcft_capabilities() & FCFT_CAPABILITY_TEXT_RUN_SHAPING) {
+        struct fcft_text_run *run = fcft_rasterize_text_run_utf32(
+            font, chars, wtext, subpixel);
+
+        if (run != NULL) {
+            width = 0;
+
+            for (size_t i = 0; i < run->count; i++) {
+                const struct fcft_glyph *glyph = run->glyphs[i];
+                width += glyph->advance.x;
+            }
+
+            x -= width;
+            for (size_t i = 0; i < run->count; i++) {
+                const struct fcft_glyph *glyph = run->glyphs[i];
+                render_glyph(buf->pix[0], glyph, x, y, &render->pix_count_color);
+                x += glyph->advance.x;
+            }
+
+            fcft_text_run_destroy(run);
+            free(text);
+            free(wtext);
+            return width;
+        }
+    }
+
+    const struct fcft_glyph **glyphs = malloc(chars * sizeof(glyphs[0]));
+    long *x_kern = malloc(chars * sizeof(x_kern[0]));
+    char32_t prev;
+
+    width = 0;
+    for (size_t i = 0; i < (size_t)chars; i++) {
+        x_kern[i] = 0;
+
+        const struct fcft_glyph *glyph =
+            fcft_rasterize_char_utf32(font, wtext[i], subpixel);
+        glyphs[i] = glyph;
+
+        if (glyph == NULL)
+            continue;
+
+        if (i > 0) {
+            if (fcft_kerning(font, prev, wtext[i], &x_kern[i], NULL))
+                width += x_kern[i];
+        }
+        width += glyph->advance.x;
+        prev = wtext[i];
+    }
+
+    x -= width;
+
+    for (size_t i = 0; i < (size_t)chars; i++) {
+        const struct fcft_glyph *glyph = glyphs[i];
+        if (glyph == NULL)
+            continue;
+
+        x += x_kern[i];
+        render_glyph(buf->pix[0], glyph, x, y, &render->pix_count_color);
+        x += glyph->advance.x;
+        prev = wtext[i];
+    }
+
+    free(x_kern);
+    free(glyphs);
+    free(text);
+    free(wtext);
+    return width;
+}
+
 void
 render_prompt(const struct render *render, struct buffer *buf,
-              const struct prompt *prompt)
+              const struct prompt *prompt, const struct matches *matches)
 {
     struct fcft_font *font = render->font;
     assert(font != NULL);
@@ -246,7 +352,12 @@ render_prompt(const struct render *render, struct buffer *buf,
 
     int x = render->border_size + render->x_margin;
     int y = render->border_size + render->y_margin +
-        (render->row_height + font->height) / 2 - font->descent;
+            (render->row_height + font->height) / 2 - font->descent;
+
+    int stats_width = render_match_count(render, buf, prompt, matches);
+
+    const int max_x =
+        buf->width - render->border_size - render->x_margin - stats_width;
 
     if (fcft_capabilities() & FCFT_CAPABILITY_TEXT_RUN_SHAPING) {
         struct fcft_text_run *run = fcft_rasterize_text_run_utf32(
@@ -255,6 +366,9 @@ render_prompt(const struct render *render, struct buffer *buf,
         if (run != NULL) {
             for (size_t i = 0; i < run->count; i++) {
                 const struct fcft_glyph *glyph = run->glyphs[i];
+                if (x + glyph->width > max_x)
+                    return;
+
                 render_glyph(buf->pix[0], glyph, x, y, &render->pix_prompt_color);
                 x += glyph->advance.x;
             }
@@ -303,7 +417,15 @@ render_prompt(const struct render *render, struct buffer *buf,
         fcft_kerning(font, prev, wc, &x_kern, NULL);
 
         x += x_kern;
-        render_glyph(buf->pix[0], glyph, x, y, &render->pix_input_color);
+
+        if (x + glyph->width >= max_x)
+            return;
+
+        render_glyph(
+            buf->pix[0], glyph, x, y,
+            use_placholder
+                ? &render->pix_placeholder_color
+                : &render->pix_input_color);
         x += glyph->advance.x;
         if (i >= prompt_len)
             x += pt_or_px_as_pixels(render, &render->conf->letter_spacing);
@@ -744,8 +866,8 @@ render_one_match_entry(const struct render *render, const struct matches *matche
         }
     }
 
-    const struct fcft_glyph *space = fcft_rasterize_char_utf32(
-        render->font, U' ', subpixel);
+    const struct fcft_glyph *space =
+        fcft_rasterize_char_utf32(render->font, U' ', subpixel);
 
     cur_x +=
         (render->conf->icons_enabled && matches_have_icons(matches)
@@ -942,6 +1064,7 @@ render_init(const struct config *conf, mtx_t *icon_lock)
     render->pix_selection_color = rgba2pixman(render->conf->colors.selection);
     render->pix_selection_text_color = rgba2pixman(render->conf->colors.selection_text);
     render->pix_selection_match_color = rgba2pixman(render->conf->colors.selection_match);
+    render->pix_count_color = rgba2pixman(render->conf->colors.count);
 
     if (sem_init(&render->workers.start, 0, 0) < 0 ||
         sem_init(&render->workers.done, 0, 0) < 0)
@@ -954,7 +1077,6 @@ render_init(const struct config *conf, mtx_t *icon_lock)
     if ((err = mtx_init(&render->workers.lock, mtx_plain)) != thrd_success) {
         LOG_ERR("failed to instantiate render worker mutex: %d", err);
         goto err_free_semaphores;
-        return NULL;
     }
 
     render->workers.threads = calloc(render->conf->render_worker_count,
