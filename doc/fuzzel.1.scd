@@ -249,6 +249,10 @@ or command line options:
 	alternative actions some desktop entries have. Examples include
 	"New Window", "New Document", etc.
 
+*--match-mode*=_exact_|_fzf_|_fuzzy_
+	Defines how what you type is matched. See *fuzzel.ini*(5) for
+	details. The default is *fzf*.
+
 *--no-sort*
 	Do not sort the result.
 
@@ -256,10 +260,6 @@ or command line options:
 	Filter the visible desktop entries based on the value of
 	XDG_CURRENT_DESKTOP. If the optional parameter is "no",
 	explicitly disables filtering.
-
-*--match-mode*=_exact_|_fzf_|_fuzzy_
-	Defines how what you type is matched. See *fuzzel.ini*(5) for
-	details. The default is *fzf*.
 
 *--fuzzy-min-length*=_VALUE_
 	Search strings shorter than this will not by fuzzy
