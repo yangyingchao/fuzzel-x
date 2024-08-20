@@ -11,18 +11,21 @@
 
 struct prompt {
     char32_t *prompt;
+    char32_t *placeholder;
     char32_t *text;
     size_t cursor;
 };
 
 struct prompt *
-prompt_init(const char32_t *prompt_text)
+prompt_init(const char32_t *prompt_text, const char32_t *placeholder,
+            const char32_t *text)
 {
     struct prompt *prompt = malloc(sizeof(*prompt));
     *prompt = (struct prompt) {
         .prompt = c32dup(prompt_text),
         .text = calloc(1, sizeof(char32_t)),
         .cursor = 0,
+        .placeholder = c32dup(placeholder),
     };
 
     return prompt;
@@ -35,6 +38,7 @@ prompt_destroy(struct prompt *prompt)
         return;
 
     free(prompt->prompt);
+    free(prompt->placeholder);
     free(prompt->text);
     free(prompt);
 }
@@ -45,7 +49,7 @@ prompt_insert_chars(struct prompt *prompt, const char *text, size_t len)
     size_t wlen = mbsntoc32(NULL, text, len, 0);
 
     const size_t new_len = c32len(prompt->text) + wlen + 1;
-    char32_t *new_text = realloc(prompt->text, new_len * sizeof(char32_t));
+    char32_t *new_text = reallocarray(prompt->text, new_len, sizeof(char32_t));
     if (new_text == NULL)
         return false;
 
@@ -64,6 +68,12 @@ const char32_t *
 prompt_prompt(const struct prompt *prompt)
 {
     return prompt->prompt;
+}
+
+const char32_t *
+prompt_placeholder(const struct prompt *prompt)
+{
+    return prompt->placeholder;
 }
 
 const char32_t *

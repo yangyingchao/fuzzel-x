@@ -94,7 +94,12 @@ or command line options:
 	
 	In non-dmenu mode it behaves exactly like *--prompt*.
 
-*-i* Ignored; for compatibility with other, similar utilities (where
+*--placeholder*=_TEXT_
+	Text to display as placeholder in the input box. Default: _type to
+	filter_.
+
+*-i*
+	Ignored; for compatibility with other, similar utilities (where
 	*-i* means "case insensitive search").
 
 *--icon-theme*=_NAME_
@@ -193,7 +198,11 @@ or command line options:
 	Text (foreground) color of prompt character(s). See
 	*COLORS*. Default: _586e75ff_.
 
-*--prompt-color*=_HEX_
+*--placeholder-color*=_HEX_
+	Text (foreground) color of the placeholder string. See
+	*COLORS*. Default: _93a1a1ff_.
+
+*--input-color*=_HEX_
 	Text (foreground) color of input string. See *COLORS*. Default:
 	_657b83ff_.
 

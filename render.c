@@ -64,6 +64,7 @@ struct render {
     pixman_color_t pix_selection_text_color;
     pixman_color_t pix_selection_match_color;
     pixman_color_t pix_count_color;
+    pixman_color_t pix_placeholder_color;
 
     unsigned x_margin;
     unsigned y_margin;
@@ -344,7 +345,13 @@ render_prompt(const struct render *render, struct buffer *buf,
     size_t prompt_len = c32len(pprompt);
 
     const char32_t *ptext = prompt_text(prompt);
-    const size_t text_len = c32len(ptext);
+    size_t text_len = c32len(ptext);
+    bool use_placholder = text_len == 0;
+
+    if (use_placholder) {
+        ptext = prompt_placeholder(prompt);
+        text_len = c32len(ptext);
+    }
 
     const enum fcft_subpixel subpixel =
         (render->conf->colors.background.a == 1. &&
@@ -1071,6 +1078,7 @@ render_init(const struct config *conf, mtx_t *icon_lock)
     render->pix_selection_text_color = rgba2pixman(render->conf->colors.selection_text);
     render->pix_selection_match_color = rgba2pixman(render->conf->colors.selection_match);
     render->pix_count_color = rgba2pixman(render->conf->colors.count);
+    render->pix_placeholder_color = rgba2pixman(render->conf->colors.placeholder);
 
     if (sem_init(&render->workers.start, 0, 0) < 0 ||
         sem_init(&render->workers.done, 0, 0) < 0)

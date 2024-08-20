@@ -100,6 +100,7 @@ DEFINE_LIST(struct config_key_binding);
 struct config {
     char *output;
     char32_t *prompt;
+    char32_t *placeholder;
     bool prompt_only;
     enum match_fields match_fields;
 
@@ -175,6 +176,7 @@ struct config {
         struct rgba selection_text;
         struct rgba selection_match;
         struct rgba count;
+        struct rgba placeholder;
     } colors;
 
     struct {

@@ -20,7 +20,8 @@ complete -c fuzzel -x      -l icon-theme         -a "(find /usr/share/icons -min
 complete -c fuzzel    -s I -l no-icons                                                                          -d "do not render any icons"
 complete -c fuzzel -x -s F -l fields             -a "filename name generic exec categories keywords comment"    -d "comma separated list of XDG Desktop entry fields to match"
 complete -c fuzzel -x -s p -l prompt                                                                            -d "string to use as input prompt (\"> \")"
-complete -c fuzzel         -l password           -a "" -d "render all input using either '*', or the specified character"
+complete -c fuzzel -x      -l placeholder                                                                       -d "placeholder text in input box"
+complete -c fuzzel         -l password           -a ""                                                          -d "render all input using either '*', or the specified character"
 
 # TODO: this currently doesn’t quote the completed argument
 complete -c fuzzel -x -s T -l terminal           -a "(__fish_complete_subcommand)"                              -d "terminal command, with arguments ($TERMINAL -e)"
@@ -37,6 +38,7 @@ complete -c fuzzel -x -s P -l inner-pad                                         
 complete -c fuzzel -x -s b -l background                                                                        -d "background color (fdf6e3dd)"
 complete -c fuzzel -x -s t -l text-color                                                                        -d "text color (657b83ff)"
 complete -c fuzzel -x      -l prompt-color                                                                      -d "color of the prompt text (586e75ff)"
+complete -c fuzzel -x      -l placeholder-color                                                                 -d "color of the placeholder text (93a1a1ff)"
 complete -c fuzzel -x      -l input-color                                                                       -d "color of the input string (657b83ff)"
 complete -c fuzzel -x -s m -l match-color                                                                       -d "color of matched substring (cb4b16ff)"
 complete -c fuzzel -x -s s -l selection-color                                                                   -d "background color of selected item (eee8d5dd)"

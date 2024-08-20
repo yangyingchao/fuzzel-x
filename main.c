@@ -329,6 +329,7 @@ print_usage(const char *prog_name)
            "  -p,--prompt=PROMPT             string to use as input prompt (\"> \")\n"
            "     --prompt-only=PROMPT        same as --prompt, but in dmenu mode it does not\n"
            "                                 wait for STDIN, and implies --lines=0\n"
+           "     --placeholder=TEXT          placeholder text in input box\n"
            "     --password=[CHARACTER]      render all input as CHARACTER ('*' by default)\n"
            "  -T,--terminal                  terminal command to use when launching\n"
            "                                 'terminal' programs, e.g. \"xterm -e\".\n"
@@ -349,6 +350,7 @@ print_usage(const char *prog_name)
            "  -b,--background-color=HEX      background color (fdf6e3dd)\n"
            "  -t,--text-color=HEX            text color of matched entries (657b83ff)\n"
            "     --prompt-color=HEX          text color of the prompt (586e75ff)\n"
+           "     --placeholder-color=HEX     text color of the placeholder text (93a1a1)\n"
            "     --input-color=HEX           text color of the input string (657b83ff)\n"
            "  -m,--match-color=HEX           color of matched substring (cb4b16ff)\n"
            "  -s,--selection-color=HEX       background color of selected item (eee8d5dd)\n"
@@ -705,6 +707,8 @@ main(int argc, char *const *argv)
     #define OPT_NO_SORT                      288
     #define OPT_DELAYED_FILTER_MS            289
     #define OPT_DELAYED_FILTER_LIMIT         290
+    #define OPT_PLACEHOLDER                  291
+    #define OPT_PLACEHOLDER_COLOR            292
 
     static const struct option longopts[] = {
         {"config",               required_argument, 0, OPT_CONFIG},
@@ -731,6 +735,7 @@ main(int argc, char *const *argv)
         {"background-color",     required_argument, 0, 'b'},
         {"text-color",           required_argument, 0, 't'},
         {"prompt-color",         required_argument, 0, OPT_PROMPT_COLOR},
+        {"placeholder-color",    required_argument, 0, OPT_PLACEHOLDER_COLOR},
         {"input-color",          required_argument, 0, OPT_INPUT_COLOR},
         {"match-color",          required_argument, 0, 'm'},
         {"selection-color",      required_argument, 0, 's'},
@@ -742,6 +747,7 @@ main(int argc, char *const *argv)
         {"border-color",         required_argument, 0, 'C'},
         {"prompt",               required_argument, 0, 'p'},
         {"prompt-only",          required_argument, 0, OPT_PROMPT_ONLY},
+        {"placeholder",          required_argument, 0, OPT_PLACEHOLDER},
         {"terminal",             required_argument, 0, 'T'},
         {"show-actions",         no_argument,       0, OPT_SHOW_ACTIONS},
         {"filter-desktop",       optional_argument, 0, OPT_FILTER_DESKTOP},
@@ -832,6 +838,7 @@ main(int argc, char *const *argv)
         bool no_sort_set:1;
         bool delayed_filter_ms_set:1;
         bool delayed_filter_limit_set:1;
+        bool placeholder_color_set:1;
     } cmdline_overrides = {{0}};
 
     setlocale(LC_CTYPE, "");
@@ -1112,6 +1119,17 @@ main(int argc, char *const *argv)
             cmdline_overrides.conf.prompt_only = true;
             break;
 
+        case OPT_PLACEHOLDER:
+            free(cmdline_overrides.conf.placeholder);
+            cmdline_overrides.conf.placeholder = ambstoc32(optarg);
+
+            if (cmdline_overrides.conf.placeholder == NULL) {
+                fprintf(stderr, "%s: invalid placeholder\n", optarg);
+                return EXIT_FAILURE;
+            }
+
+            break;
+
         case 'b': {
             const char *clr_start = optarg;
             if (clr_start[0] == '#')
@@ -1162,6 +1180,23 @@ main(int argc, char *const *argv)
             }
             cmdline_overrides.conf.colors.prompt = conf_hex_to_rgba(prompt_color);
             cmdline_overrides.prompt_color_set = true;
+            break;
+        }
+
+        case OPT_PLACEHOLDER_COLOR: {
+            const char *clr_start = optarg;
+            if (clr_start[0] == '#')
+                clr_start++;
+
+            errno = 0;
+            char *end = NULL;
+            uint32_t placeholder_color = strtoul(clr_start, &end, 16);
+            if (errno != 0 || end == NULL || *end != '\0' || (end - clr_start) != 8) {
+                fprintf(stderr, "placeholder-color: %s: invalid color\n", optarg);
+                return EXIT_FAILURE;
+            }
+            cmdline_overrides.conf.colors.placeholder = conf_hex_to_rgba(placeholder_color);
+            cmdline_overrides.placeholder_color_set = true;
             break;
         }
 
@@ -1565,6 +1600,10 @@ main(int argc, char *const *argv)
         if (cmdline_overrides.prompt_only_set)
             conf.prompt_only = cmdline_overrides.conf.prompt_only;
     }
+    if (cmdline_overrides.conf.placeholder != NULL) {
+        free(conf.placeholder);
+        conf.placeholder = cmdline_overrides.conf.placeholder;
+    }
     if (cmdline_overrides.conf.password_mode.enabled) {
         conf.password_mode.enabled = true;
         conf.password_mode.character =
@@ -1622,6 +1661,8 @@ main(int argc, char *const *argv)
         conf.colors.text = cmdline_overrides.conf.colors.text;
     if (cmdline_overrides.prompt_color_set)
         conf.colors.prompt = cmdline_overrides.conf.colors.prompt;
+    if (cmdline_overrides.placeholder_color_set)
+        conf.colors.placeholder = cmdline_overrides.conf.colors.placeholder;
     if (cmdline_overrides.input_color_set)
         conf.colors.input = cmdline_overrides.conf.colors.input;
     if (cmdline_overrides.match_color_set)
@@ -1744,7 +1785,7 @@ main(int argc, char *const *argv)
     if ((render = render_init(&conf, &icon_lock)) == NULL)
         goto out;
 
-    if ((prompt = prompt_init(conf.prompt)) == NULL)
+    if ((prompt = prompt_init(conf.prompt, conf.placeholder, conf.search_text)) == NULL)
         goto out;
 
     if ((matches = matches_init(

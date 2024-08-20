@@ -76,6 +76,10 @@
   in `fuzzel.ini`.
 * `sort-result` option to `fuzzel.ini`, and `--no-sort` command line
   option.
+* Placeholder text (for the input box), controlled by the new
+  `--placeholder`, `--placeholder-color` command line options, and the
+  `placeholder` and `colors.placeholder` options in `fuzzel.ini`
+  ([#188][188]).
 
 [344]: https://codeberg.org/dnkl/fuzzel/issues/344
 [131]: https://codeberg.org/dnkl/fuzzel/issues/131
@@ -84,6 +88,7 @@
 [365]: https://codeberg.org/dnkl/fuzzel/issues/365
 [305]: https://codeberg.org/dnkl/fuzzel/issues/305
 [276]: https://codeberg.org/dnkl/fuzzel/issues/276
+[188]: https://codeberg.org/dnkl/fuzzel/issues/188
 
 
 ### Changed

@@ -15,6 +15,7 @@ _arguments \
     '(-I --no-icons)'{-I,--no-icons}'[do not render any icons]' \
     '(-F --fields)'{-F,--fields}'[comma separated list of XDG Desktop entry fields to match ]:fields:(filename name generic exec categories keywords comment)' \
     '(-p --prompt)'{-p,--prompt}'[string to use as input prompt ("> ")]:()' \
+    '--placeholder[placeholder text in the input box]:()' \
     '--password[render all input using either "*", or the specified character]:()' \
     '(-T --terminal)'{-T,--terminal}'[terminal command, with arguments ($TERMINAL -e)]:terminal:_command_names -e' \
     '(-a --anchor)'{-a,--anchor}'[set window anchor (center)]:anchors:(top-left top top-right left center right bottom-left bottom bottom-right)' \
@@ -29,6 +30,7 @@ _arguments \
     '(-b --background)'{-b,--background}'[background color (fdf6e3dd)]:background:()' \
     '(-t --text-color)'{-t,--text-color}'[text color (657b83ff)]:text-color:()' \
     '--prompt-color[color of the prompt text (586e75ff)]:prompt-color:()' \
+    '--placeholder-color[color of the placeholder text (93a1a1ff)]:()' \
     '--input-color[color of the input string (657b83ff)]:input-color:()' \
     '(-m --match-color)'{-m,--match-color}'[color of matched substring (cb4b16ff)]:match-color:()' \
     '(-s --selection-color)'{-s,--selection-color}'[background color of selected item (eee8d5dd)]:selection-color:()' \

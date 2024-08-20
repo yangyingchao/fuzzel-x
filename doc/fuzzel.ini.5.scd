@@ -304,6 +304,10 @@ All color values are in RGBA.
 	Text (foreground) color of prompt character(s). Default:
 	_586e75ff_.
 
+*placeholder*
+	Text (foreground) color of the placeholder string. Default:
+	_93a1a1ff_.
+
 *input*
 	Text (foreground) color of input string. Default: _657b83ff_.
 

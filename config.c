@@ -803,6 +803,9 @@ parse_section_main(struct context *ctx)
     else if (strcmp(key, "prompt") == 0)
         return value_to_wchars(ctx, &conf->prompt);
 
+    else if (strcmp(key, "placeholder") == 0)
+        return value_to_wchars(ctx, &conf->placeholder);
+
     else if (strcmp(key, "icon-theme") == 0)
         return value_to_str(ctx, &conf->icon_theme);
 
@@ -1021,6 +1024,9 @@ parse_section_colors(struct context *ctx)
 
     else if (strcmp(key, "prompt") == 0)
         return value_to_color(ctx, true, &conf->colors.prompt);
+
+    else if (strcmp(key, "placeholder") == 0)
+        return value_to_color(ctx, true, &conf->colors.placeholder);
 
     else if (strcmp(key, "input") == 0)
         return value_to_color(ctx, true, &conf->colors.input);
@@ -1583,6 +1589,7 @@ config_load(struct config *conf, const char *conf_path,
         .output = NULL,
         .prompt = c32dup(U"> "),
         .match_fields = MATCH_FILENAME | MATCH_NAME,
+        .placeholder = c32dup(U"type to filter"),
         .password_mode = {
             .character = U'\0',
             .enabled = false,
@@ -1636,6 +1643,7 @@ config_load(struct config *conf, const char *conf_path,
             .selection_text = conf_hex_to_rgba(0x657b83ff),
             .selection_match = conf_hex_to_rgba(0xcb4b16ff),
             .count = conf_hex_to_rgba(0x93a1a1ff),
+            .placeholder = conf_hex_to_rgba(0x93a1a1ff),
         },
         .border = {
             .size = 1u,
@@ -1710,6 +1718,7 @@ config_free(struct config *conf)
 {
     free(conf->output);
     free(conf->prompt);
+    free(conf->placeholder);
     free(conf->terminal);
     free(conf->launch_prefix);
     free(conf->font);
