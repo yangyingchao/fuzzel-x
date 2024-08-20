@@ -35,7 +35,7 @@ _arguments \
     '--input-color[color of the input string (657b83ff)]:input-color:()' \
     '(-m --match-color)'{-m,--match-color}'[color of matched substring (cb4b16ff)]:match-color:()' \
     '(-s --selection-color)'{-s,--selection-color}'[background color of selected item (eee8d5dd)]:selection-color:()' \
-    '(-S --selection-text-color)'{-S,--selection-text-color}'[text color of selected item (657b83ff)]:selection-text-color:()' \
+    '(-S --selection-text-color)'{-S,--selection-text-color}'[text color of selected item (586e75ff)]:selection-text-color:()' \
     '(-M --selection-match-color)'{-M,--selection-match-color}'[color of matched substring of selected item (cb4b16ff)]:match-color:()' \
     '--count-color[color of the match count (93a1a1ff)]:count-color:()' \
     '(-B --border-width)'{-B,--border-width}'[width of border, in pixels (1)]:border-width:()' \

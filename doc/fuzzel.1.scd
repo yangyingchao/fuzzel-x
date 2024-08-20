@@ -221,7 +221,7 @@ or command line options:
 
 *-S*,*--selection-text-color*=_HEX_
 	The text color of the currently selected application. See
-	*COLORS*. Default: _657b83ff_.
+	*COLORS*. Default: _586e75ff_.
 
 *-M*,*--selection-match-color*=_HEX_
 	The color of matching substring(s) of the currently selected

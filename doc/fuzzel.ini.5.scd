@@ -320,7 +320,7 @@ All color values are in RGBA.
 
 *selection-text*
 	Text (foreground) color of the selected entry. Default:
-	_657b83ff_.
+	_586e75ff_.
 
 *selection-match*
 	Text (foreground) color of the matched substring of the

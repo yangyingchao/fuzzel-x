@@ -43,7 +43,7 @@ complete -c fuzzel -x      -l placeholder-color                                 
 complete -c fuzzel -x      -l input-color                                                                       -d "color of the input string (657b83ff)"
 complete -c fuzzel -x -s m -l match-color                                                                       -d "color of matched substring (cb4b16ff)"
 complete -c fuzzel -x -s s -l selection-color                                                                   -d "background color of selected item (eee8d5dd)"
-complete -c fuzzel -x -s S -l selection-text-color                                                              -d "text color of selected item (657b83ff)"
+complete -c fuzzel -x -s S -l selection-text-color                                                              -d "text color of selected item (586e75ff)"
 complete -c fuzzel -x -s M -l selection-match-color                                                             -d "color of matched substring of selected item (cb4b16ff)"
 complete -c fuzzel -x      -l count-color                                                                       -d "color of the match count (93a1a1ff)"
 complete -c fuzzel -x -s B -l border-width                                                                      -d "width of border, in pixels (1)"

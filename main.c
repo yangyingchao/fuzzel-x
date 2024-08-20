@@ -355,7 +355,7 @@ print_usage(const char *prog_name)
            "     --input-color=HEX           text color of the input string (657b83ff)\n"
            "  -m,--match-color=HEX           color of matched substring (cb4b16ff)\n"
            "  -s,--selection-color=HEX       background color of selected item (eee8d5dd)\n"
-           "  -S,--selection-text-color=HEX  text color of selected item (657b83ff)\n"
+           "  -S,--selection-text-color=HEX  text color of selected item (586e75ff)\n"
            "  -M,--selection-match-color=HEX color of matched substring in selection\n"
            "                                 (cb4b16ff)\n"
            "     --count-color               color of the match count (93a1a1)\n"
