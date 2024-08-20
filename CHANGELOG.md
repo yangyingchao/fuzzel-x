@@ -109,6 +109,7 @@
   ([#305][305]).
 * Default text color of the prompt and the selected entry to
   `586e75ff` (_base01_ in the solarized palette).
+* Initial application sorting is now done case insensitive.
 
 [339]: https://codeberg.org/dnkl/fuzzel/issues/339
 [81]: https://codeberg.org/dnkl/fuzzel/issues/81
