@@ -1543,7 +1543,7 @@ matches_update_internal(struct matches *matches, bool incremental)
         if (use_threads) {
             tll_push_back(
                 matches->workers.queue,
-                (slice_start_idx + count) << 32 | slice_start_idx);
+                (uint64_t)(slice_start_idx + count) << 32 | slice_start_idx);
         } else {
             for (size_t j = 0; j < count; j++) {
                 struct application *app = NULL;
