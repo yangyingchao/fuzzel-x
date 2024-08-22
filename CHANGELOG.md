@@ -84,6 +84,9 @@
   ([#188][188]).
 * `--search=TEXT` command line option, allowing you to "pre-filter"
   the result ([#][274][274]).
+* Support for pasting text into fuzzel. Both the regular clipboard,
+  and the primary clipboard are supported. See the new
+  `clipboard-paste` and `primary-paste` key bindings ([#200][200]).
 
 [344]: https://codeberg.org/dnkl/fuzzel/issues/344
 [131]: https://codeberg.org/dnkl/fuzzel/issues/131
@@ -94,6 +97,7 @@
 [276]: https://codeberg.org/dnkl/fuzzel/issues/276
 [188]: https://codeberg.org/dnkl/fuzzel/issues/188
 [274]: https://codeberg.org/dnkl/fuzzel/issues/274
+[200]: https://codeberg.org/dnkl/fuzzel/issues/200
 
 
 ### Changed

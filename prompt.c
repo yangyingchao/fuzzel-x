@@ -8,6 +8,7 @@
 #define LOG_ENABLE_DBG 0
 #include "log.h"
 #include "char32.h"
+#include "wayland.h"
 
 struct prompt {
     char32_t *prompt;

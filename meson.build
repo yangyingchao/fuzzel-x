@@ -125,6 +125,7 @@ wl_proto_xml = [
   wayland_protocols_datadir + '/unstable/tablet/tablet-unstable-v2.xml',
   wayland_protocols_datadir + '/stable/viewporter/viewporter.xml',
   wayland_protocols_datadir + '/staging/fractional-scale/fractional-scale-v1.xml',
+  wayland_protocols_datadir / 'unstable/primary-selection/primary-selection-unstable-v1.xml',
 ]
 
 foreach prot : wl_proto_xml
@@ -152,8 +153,9 @@ version = custom_target(
 executable(
   'fuzzel',
   'application.c', 'application.h',
-  'config.c', 'config.h',
   'char32.c', 'char32.h',
+  'clipboard.c', 'clipboard.h',
+  'config.c', 'config.h',
   'debug.c', 'debug.h',
   'dmenu.c', 'dmenu.h',
   'event.c', 'event.h',
@@ -170,6 +172,7 @@ executable(
   'render.c', 'render.h',
   'shm.c', 'shm.h',
   'stride.h',
+  'uri.c', 'uri.h',
   'wayland.c', 'wayland.h',
   'xdg.c', 'xdg.h',
   wl_proto_src + wl_proto_headers, version,

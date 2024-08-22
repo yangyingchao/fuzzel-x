@@ -5,6 +5,7 @@
 #include <uchar.h>
 
 struct prompt;
+struct wayland;
 struct prompt *prompt_init(
     const char32_t *prompt_text, const char32_t *placeholder,
     const char32_t *text);

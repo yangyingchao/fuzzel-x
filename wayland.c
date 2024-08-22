@@ -24,6 +24,7 @@
 
 #include <cursor-shape-v1.h>
 #include <fractional-scale-v1.h>
+#include <primary-selection-unstable-v1.h>
 #include <viewporter.h>
 #include <wlr-layer-shell-unstable-v1.h>
 #include <xdg-activation-v1.h>
@@ -34,6 +35,7 @@
 #define LOG_MODULE "wayland"
 #define LOG_ENABLE_DBG 0
 #include "log.h"
+#include "clipboard.h"
 #include "dmenu.h"
 #include "icon.h"
 #include "key-binding.h"
@@ -111,48 +113,6 @@ struct monitor {
     enum fcft_subpixel subpixel;
 };
 
-struct repeat {
-    int fd;
-    int32_t delay;
-    int32_t rate;
-
-    bool dont_re_repeat;
-    uint32_t key;
-};
-
-struct seat {
-    struct wayland *wayl;
-    struct wl_seat *wl_seat;
-    uint32_t wl_name;
-    char *name;
-
-    struct wl_keyboard *wl_keyboard;
-    struct {
-        uint32_t serial;
-        struct xkb_context *xkb;
-        struct xkb_keymap *xkb_keymap;
-        struct xkb_state *xkb_state;
-        struct xkb_compose_table *xkb_compose_table;
-        struct xkb_compose_state *xkb_compose_state;
-        struct repeat repeat;
-    } kbd;
-
-    struct wl_pointer *wl_pointer;
-    struct {
-        uint32_t serial;
-
-        int x;
-        int y;
-        size_t hovered_row_idx;
-
-        struct wl_surface *surface;
-        struct wp_viewport *viewport;
-        struct wl_cursor_theme *theme;
-        struct wl_cursor *cursor;
-        float scale;
-    } pointer;
-};
-
 struct wayland {
     const struct config *conf;
     struct fdm *fdm;
@@ -203,6 +163,9 @@ struct wayland {
     struct zxdg_output_manager_v1 *xdg_output_manager;
     struct xdg_activation_v1 *xdg_activation_v1;
     struct wp_cursor_shape_manager_v1 *cursor_shape_manager;
+
+    struct wl_data_device_manager *data_device_manager;
+    struct zwp_primary_selection_device_manager_v1 *primary_selection_device_manager;
 
     tll(struct monitor) monitors;
     const struct monitor *monitor;
@@ -265,6 +228,18 @@ seat_destroy(struct seat *seat)
 
     kb_remove_seat(seat->wayl->kb_manager, seat);
 
+    if (seat->clipboard.data_source != NULL)
+        wl_data_source_destroy(seat->clipboard.data_source);
+    if (seat->clipboard.data_offer != NULL)
+        wl_data_offer_destroy(seat->clipboard.data_offer);
+    if (seat->primary.data_source != NULL)
+        zwp_primary_selection_source_v1_destroy(seat->primary.data_source);
+    if (seat->primary.data_offer != NULL)
+        zwp_primary_selection_offer_v1_destroy(seat->primary.data_offer);
+    if (seat->primary_selection_device != NULL)
+        zwp_primary_selection_device_v1_destroy(seat->primary_selection_device);
+    if (seat->data_device != NULL)
+        wl_data_device_release(seat->data_device);
     if (seat->kbd.xkb_compose_state != NULL)
         xkb_compose_state_unref(seat->kbd.xkb_compose_state);
     if (seat->kbd.xkb_compose_table != NULL)
@@ -292,6 +267,8 @@ seat_destroy(struct seat *seat)
     if (seat->wl_seat != NULL)
         wl_seat_release(seat->wl_seat);
 
+    free(seat->clipboard.text);
+    free(seat->primary.text);
     free(seat->name);
 }
 
@@ -700,6 +677,14 @@ execute_binding(struct seat *seat, const struct key_binding *binding, bool *refr
             *refresh = false;
         return true;
     }
+
+    case BIND_ACTION_CLIPBOARD_PASTE:
+        paste_from_clipboard(seat);
+        return true;
+
+    case BIND_ACTION_PRIMARY_PASTE:
+        paste_from_primary(seat);
+        return true;
 
     case BIND_ACTION_MATCHES_EXECUTE:
         execute_selected(seat, false, -1);
@@ -1143,11 +1128,17 @@ wl_pointer_button(void *data, struct wl_pointer *wl_pointer,
     if (state == WL_POINTER_BUTTON_STATE_RELEASED) {
         if (button == BTN_LEFT && seat->pointer.hovered_row_idx != -1) {
             execute_selected(seat, false, -1);
-        } else if (button == BTN_RIGHT) {
+        }
+
+        else if (button == BTN_RIGHT) {
             // Same as pressing ESC
             wayl->status = EXIT;
             if (wayl->conf->dmenu.enabled)
                 wayl->exit_code = 2;
+        }
+
+        else if (button == BTN_MIDDLE) {
+            paste_from_primary(seat);
         }
     }
 }
@@ -1688,6 +1679,48 @@ fdm_repeat(struct fdm *fdm, int fd, int events, void *data)
 }
 
 static void
+seat_add_data_device(struct seat *seat)
+{
+    if (seat->wayl->data_device_manager == NULL)
+        return;
+
+    if (seat->data_device != NULL) {
+        /* TODO: destroy old device + clipboard data? */
+        return;
+    }
+
+    struct wl_data_device *data_device = wl_data_device_manager_get_data_device(
+        seat->wayl->data_device_manager, seat->wl_seat);
+
+    if (data_device == NULL)
+        return;
+
+    seat->data_device = data_device;
+    wl_data_device_add_listener(data_device, &data_device_listener, seat);
+}
+
+static void
+seat_add_primary_selection(struct seat *seat)
+{
+    if (seat->wayl->primary_selection_device_manager == NULL)
+        return;
+
+    if (seat->primary_selection_device != NULL)
+        return;
+
+    struct zwp_primary_selection_device_v1 *primary_selection_device
+        = zwp_primary_selection_device_manager_v1_get_device(
+            seat->wayl->primary_selection_device_manager, seat->wl_seat);
+
+    if (primary_selection_device == NULL)
+        return;
+
+    seat->primary_selection_device = primary_selection_device;
+    zwp_primary_selection_device_v1_add_listener(
+        primary_selection_device, &primary_selection_device_listener, seat);
+}
+
+static void
 handle_global(void *data, struct wl_registry *registry,
               uint32_t name, const char *interface, uint32_t version)
 {
@@ -1777,14 +1810,15 @@ handle_global(void *data, struct wl_registry *registry,
         }
 
         tll_push_back(wayl->seats, ((struct seat){
-                    .wayl = wayl,
-                        .wl_seat = wl_seat,
-                        .wl_name = name,
-                        .kbd = {
-                        .repeat = {
-                            .fd = repeat_fd,
-                        },
-                    }}));
+            .fdm = wayl->fdm,
+            .wayl = wayl,
+            .wl_seat = wl_seat,
+            .wl_name = name,
+            .kbd = {
+                .repeat = {
+                    .fd = repeat_fd,
+                    },
+                }}));
 
         struct seat *seat = &tll_back(wayl->seats);
 
@@ -1796,6 +1830,8 @@ handle_global(void *data, struct wl_registry *registry,
             return;
         }
 
+        seat_add_data_device(seat);
+        seat_add_primary_selection(seat);
         kb_new_for_seat(wayl->kb_manager, wayl->conf, seat);
         wl_seat_add_listener(wl_seat, &seat_listener, seat);
     }
@@ -1844,6 +1880,31 @@ handle_global(void *data, struct wl_registry *registry,
 
         wayl->viewporter = wl_registry_bind(
             wayl->registry, name, &wp_viewporter_interface, required);
+    }
+
+    else if (strcmp(interface, wl_data_device_manager_interface.name) == 0) {
+        const uint32_t required = 3;
+        if (!verify_iface_version(interface, version, required))
+            return;
+
+        wayl->data_device_manager = wl_registry_bind(
+            wayl->registry, name, &wl_data_device_manager_interface, required);
+
+        tll_foreach(wayl->seats, it)
+            seat_add_data_device(&it->item);
+    }
+
+    else if (strcmp(interface, zwp_primary_selection_device_manager_v1_interface.name) == 0) {
+        const uint32_t required = 1;
+        if (!verify_iface_version(interface, version, required))
+            return;
+
+        wayl->primary_selection_device_manager = wl_registry_bind(
+            wayl->registry, name,
+            &zwp_primary_selection_device_manager_v1_interface, required);
+
+        tll_foreach(wayl->seats, it)
+            seat_add_primary_selection(&it->item);
     }
 }
 
@@ -2435,6 +2496,10 @@ wayl_destroy(struct wayland *wayl)
         monitor_destroy(&it->item);
     tll_free(wayl->monitors);
 
+    if (wayl->data_device_manager != NULL)
+        wl_data_device_manager_destroy(wayl->data_device_manager);
+    if (wayl->primary_selection_device_manager != NULL)
+        zwp_primary_selection_device_manager_v1_destroy(wayl->primary_selection_device_manager);
     if (wayl->xdg_output_manager != NULL)
         zxdg_output_manager_v1_destroy(wayl->xdg_output_manager);
     if (wayl->xdg_activation_v1 != NULL)
@@ -2489,4 +2554,17 @@ bool
 wayl_update_cache(const struct wayland *wayl)
 {
     return wayl->force_cache_update || wayl->status == EXIT_UPDATE_CACHE;
+}
+
+void
+wayl_clipboard_data(struct wayland *wayl, char *data, size_t size)
+{
+    prompt_insert_chars(wayl->prompt, data, size);
+}
+
+void
+wayl_clipboard_done(struct wayland *wayl)
+{
+    matches_update_incremental(wayl->matches);
+    wayl_refresh(wayl);
 }

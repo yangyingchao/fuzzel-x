@@ -52,6 +52,8 @@ static const char *const binding_action_map[] = {
     [BIND_ACTION_DELETE_LINE_FORWARD] = "delete-line-forward",
     [BIND_ACTION_INSERT_SELECTED] = "insert-selected",
     [BIND_ACTION_EXPUNGE] = "expunge",
+    [BIND_ACTION_CLIPBOARD_PASTE] = "clipboard-paste",
+    [BIND_ACTION_PRIMARY_PASTE] = "primary-paste",
     [BIND_ACTION_MATCHES_EXECUTE] = "execute",
     [BIND_ACTION_MATCHES_EXECUTE_OR_NEXT] = "execute-or-next",
     [BIND_ACTION_MATCHES_EXECUTE_INPUT] = "execute-input",
@@ -1534,6 +1536,11 @@ add_default_key_bindings(struct config *conf)
 
         {BIND_ACTION_EXPUNGE, m_shift, {{XKB_KEY_Delete}}},
         {BIND_ACTION_EXPUNGE, m_shift, {{XKB_KEY_KP_Delete}}},
+
+        {BIND_ACTION_CLIPBOARD_PASTE, m_ctrl, {{XKB_KEY_v}}},
+        {BIND_ACTION_CLIPBOARD_PASTE, m_none, {{XKB_KEY_XF86Paste}}},
+        {BIND_ACTION_PRIMARY_PASTE, m_shift, {{XKB_KEY_Insert}}},
+        {BIND_ACTION_PRIMARY_PASTE, m_shift, {{XKB_KEY_KP_Insert}}},
 
         {BIND_ACTION_MATCHES_EXECUTE, m_none, {{XKB_KEY_Return}}},
         {BIND_ACTION_MATCHES_EXECUTE, m_none, {{XKB_KEY_KP_Enter}}},

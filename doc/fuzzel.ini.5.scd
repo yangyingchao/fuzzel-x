@@ -465,6 +465,14 @@ done by setting _action=none_; e.g. *delete-line-forward=none*.
 	Removes the currently selected entry from the cache (of most
 	commonly launched applications). Default: _Shift+Delete_.
 
+*clipboard-paste*
+	Pastes from the _clipbard_. Default: _Control+v_ _XF86Paste_.
+
+*primary-paste*
+	Pastes from the _primary selection_. This action is also bound to
+	the middle mouse button (this is currently not configurable).
+	Default: _Shift+Insert_ _Shift+KP_Insert_.
+
 *prev*
 	Select the previous entry. Does *not* wrap around when the first
 	entry has been reached. Default: _Up Control+p_.
