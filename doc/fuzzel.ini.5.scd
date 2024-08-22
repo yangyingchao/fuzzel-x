@@ -292,6 +292,11 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	refiltering to delayed refiltering (see
 	*delayed-filter-ms*). Default: _20000_.
 
+*cache*
+	Specify the default cache location. If unset,
+	*$XDG_CACHE_HOME/fuzzel* will be used. Set to */dev/null* to
+	disable caching. Default: _not set_.
+
 # SECTION: colors
 
 All color values are in RGBA.

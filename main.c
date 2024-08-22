@@ -797,7 +797,6 @@ main(int argc, char *const *argv)
 
     bool check_config = false;
     const char *config_path = NULL;
-    const char *cache_path = NULL;
     enum log_class log_level = LOG_CLASS_WARNING;
     enum log_colorize log_colorize = LOG_COLORIZE_AUTO;
     bool log_syslog = true;
@@ -886,7 +885,7 @@ main(int argc, char *const *argv)
             break;
 
         case OPT_CACHE:
-            cache_path = optarg;
+            cmdline_overrides.conf.cache_path = optarg;
             break;
 
         case 'o':
@@ -1749,6 +1748,10 @@ main(int argc, char *const *argv)
         conf.delayed_filter_ms = cmdline_overrides.conf.delayed_filter_ms;
     if (cmdline_overrides.delayed_filter_limit_set)
         conf.delayed_filter_limit = cmdline_overrides.conf.delayed_filter_limit;
+    if (cmdline_overrides.conf.cache_path != NULL) {
+        free(conf.cache_path);
+        conf.cache_path = strdup(cmdline_overrides.conf.cache_path);
+    }
 
     if (conf.dmenu.enabled) {
         /* We don't have any meta data in dmenu mode */
@@ -1844,7 +1847,7 @@ main(int argc, char *const *argv)
 
     struct context ctx = {
         .conf = &conf,
-        .cache_path = cache_path,
+        .cache_path = conf.cache_path,
         .render = render,
         .matches = matches,
         .apps = apps,
@@ -1894,7 +1897,7 @@ main(int argc, char *const *argv)
     }
 
     if (wayl_update_cache(wayl))
-        write_cache(cache_path, apps, conf.dmenu.enabled);
+        write_cache(conf.cache_path, apps, conf.dmenu.enabled);
 
     ret = wayl_exit_code(wayl);
 

@@ -45,8 +45,9 @@
 * Mouse support. Left click selects/launches, right click quits
   fuzzel, wheel scrolls (a page at at time). This is, for the time
   being, not configurable ([#131][131])
-* `--cache=PATH` command line option, allowing a custom cache location
-  to be used ([#189][189], [#219][219]).
+* `--cache=PATH` command line option, and `cache` option to
+  `fuzzel.ini`, allowing a custom cache location to be used
+  ([#189][189], [#219][219]).
 * `expunge` key binding, to remove an entry from the cache. Mapped to
   shift+delete by default.
 * `--prompt-color` and `colors.prompt`, controlling the

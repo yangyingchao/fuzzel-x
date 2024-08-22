@@ -946,7 +946,7 @@ parse_section_main(struct context *ctx)
     }
     else if (strcmp(key, "x-margin") == 0)
       return value_to_uint32(ctx, 10, &conf->margin.x);
-  
+
     else if (strcmp(key, "y-margin") == 0)
       return value_to_uint32(ctx, 10, &conf->margin.y);
 
@@ -1003,6 +1003,9 @@ parse_section_main(struct context *ctx)
 
     else if (strcmp(key, "exit-on-keyboard-focus-loss") == 0)
         return value_to_bool(ctx, &conf->exit_on_kb_focus_loss);
+
+    else if (strcmp(key, "cache") == 0)
+        return value_to_str(ctx, &conf->cache_path);
 
     else
         LOG_CONTEXTUAL_ERR("not a valid option: %s", key);
@@ -1656,6 +1659,7 @@ config_load(struct config *conf, const char *conf_path,
         .layer = ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY,
         .exit_on_kb_focus_loss = true,
         .list_executables_in_path = false,
+        .cache_path = NULL,
     };
 
     add_default_key_bindings(conf);
@@ -1725,6 +1729,7 @@ config_free(struct config *conf)
     free(conf->launch_prefix);
     free(conf->font);
     free(conf->icon_theme);
+    free(conf->cache_path);
     free_key_binding_list(&conf->key_bindings);
 }
 
