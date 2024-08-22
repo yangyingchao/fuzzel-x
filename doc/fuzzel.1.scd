@@ -228,7 +228,7 @@ or command line options:
 	part in each application's name is highlighted with this color.
 	See *COLORS*. Default: _cb4b16ff_.
 
-*--count-color*=_HEX_
+*--counter-color*=_HEX_
 	The color of the match count stats printed at the right-hand side
 	of the input prompt. See *COLORS*. Default: _93a1a1ff_.
 
@@ -254,6 +254,9 @@ or command line options:
 
 *--no-sort*
 	Do not sort the result.
+
+*--no-counter*
+	Do not display the match count.
 
 *--filter-desktop*=[_no_]
 	Filter the visible desktop entries based on the value of

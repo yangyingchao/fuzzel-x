@@ -164,6 +164,14 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	
 	Default: _yes_
 
+*match-counter*
+	Boolean. When enabled, the match count and total count is
+	displayed on the right-hand side of the input prompt. Disabling
+	the counter also improves performance when loading a very large
+	number of dmenu entries from STDIN.
+	
+	Default: _yes_.
+
 *filter-desktop*
 	Boolean. Filter desktop files based on the value of XDG_CURRENT_DESKTOP.
 
@@ -334,7 +342,7 @@ All color values are in RGBA.
 	Text (foreground) color of the matched substring of the
 	selected entry. Default: _cb4b16ff_.
 
-*count*=_HEX_
+*counter*=_HEX_
 	The color of the match count stats printed at the right-hand side
 	of the input prompt. See *COLORS*. Default: _93a1a1ff_.
 

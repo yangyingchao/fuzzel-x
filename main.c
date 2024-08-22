@@ -358,7 +358,7 @@ print_usage(const char *prog_name)
            "  -S,--selection-text-color=HEX  text color of selected item (586e75ff)\n"
            "  -M,--selection-match-color=HEX color of matched substring in selection\n"
            "                                 (cb4b16ff)\n"
-           "     --count-color               color of the match count (93a1a1)\n"
+           "     --counter-color             color of the match count (93a1a1)\n"
            "  -B,--border-width=INT          width of border, in pixels (1)\n"
            "  -r,--border-radius=INT         amount of corner \"roundness\" (10)\n"
            "  -C,--border-color=HEX          border color (002b36ff)\n"
@@ -384,6 +384,7 @@ print_usage(const char *prog_name)
            "     --render-workers=N          number of threads to use for rendering\n"
            "     --match-workers=N           number of threads to use for matching\n"
            "     --no-sort                   do not sort the result\n"
+           "     --no-counter                do not display the match count\n"
            "     --delayed-filter-ms=TIME_MS time in ms before refiltering after a keystroke\n"
            "                                 (300)\n"
            "     --delayed-filter-limit=N    used delayed refiltering when the number of\n"
@@ -579,6 +580,7 @@ populate_apps(void *_ctx)
 static bool
 process_event(struct context *ctx, enum event_type event)
 {
+    const struct config *conf = ctx->conf;
     struct wayland *wayl = ctx->wayl;
     struct application_list *apps = ctx->apps;
     struct matches *matches = ctx->matches;
@@ -596,24 +598,22 @@ process_event(struct context *ctx, enum event_type event)
             matches_all_applications_loaded(matches);
         }
 
-#define UPDATE_MATCHES 1
-
-#if !UPDATE_MATCHES
         const size_t match_count = matches_get_count(matches);
         const size_t matches_per_page = matches_max_matches_per_page(matches);
 
-        if (event == EVENT_APPS_ALL_LOADED || match_count < matches_per_page) {
-#endif
+        if (conf->match_counter ||
+            event == EVENT_APPS_ALL_LOADED ||
+            match_count < matches_per_page)
+        {
             /*
              * Only update matches if
-             *   a) all applications have been loaded
-             *   b) a partial load will cause more matches to be displayed
+             *   a) we're displaying a match counter
+             *   b) all applications have been loaded
+             *   c) a partial load will cause more matches to be displayed
              */
             matches_update_no_delay(matches);
             matches_selected_select(matches, select);
-#if !UPDATE_MATCHES
         }
-#endif
         break;
     }
 
@@ -712,7 +712,7 @@ main(int argc, char *const *argv)
     #define OPT_PROMPT_COLOR                 282
     #define OPT_INPUT_COLOR                  283
     #define OPT_PROMPT_ONLY                  284
-    #define OPT_COUNT_COLOR                  285
+    #define OPT_COUNTER_COLOR                285
     #define OPT_USE_BOLD                     286
     #define OPT_MATCH_WORKERS                287
     #define OPT_NO_SORT                      288
@@ -721,6 +721,7 @@ main(int argc, char *const *argv)
     #define OPT_PLACEHOLDER                  291
     #define OPT_PLACEHOLDER_COLOR            292
     #define OPT_SEARCH_TEXT                  293
+    #define OPT_NO_COUNTER                   294
 
     static const struct option longopts[] = {
         {"config",               required_argument, 0, OPT_CONFIG},
@@ -753,7 +754,7 @@ main(int argc, char *const *argv)
         {"selection-color",      required_argument, 0, 's'},
         {"selection-text-color", required_argument, 0, 'S'},
         {"selection-match-color",required_argument, 0, 'M'},
-        {"count-color",          required_argument, 0, OPT_COUNT_COLOR},
+        {"counter-color",        required_argument, 0, OPT_COUNTER_COLOR},
         {"border-width",         required_argument, 0, 'B'},
         {"border-radius",        required_argument, 0, 'r'},
         {"border-color",         required_argument, 0, 'C'},
@@ -777,6 +778,7 @@ main(int argc, char *const *argv)
         {"render-workers",       required_argument, 0, OPT_RENDER_WORKERS},
         {"match-workers",        required_argument, 0, OPT_MATCH_WORKERS},
         {"no-sort",              no_argument,       0, OPT_NO_SORT},
+        {"no-counter",           no_argument,       0, OPT_NO_COUNTER},
         {"delayed-filter-ms",    required_argument, 0, OPT_DELAYED_FILTER_MS},
         {"delayed-filter-limit", required_argument, 0, OPT_DELAYED_FILTER_LIMIT},
 
@@ -825,7 +827,7 @@ main(int argc, char *const *argv)
         bool selection_color_set:1;
         bool selection_text_color_set:1;
         bool selection_match_color_set:1;
-        bool count_color_set:1;
+        bool counter_color_set:1;
         bool border_color_set:1;
         bool border_size_set:1;
         bool border_radius_set:1;
@@ -851,6 +853,7 @@ main(int argc, char *const *argv)
         bool delayed_filter_ms_set:1;
         bool delayed_filter_limit_set:1;
         bool placeholder_color_set:1;
+        bool no_counter_set:1;
     } cmdline_overrides = {{0}};
 
     setlocale(LC_CTYPE, "");
@@ -1314,7 +1317,7 @@ main(int argc, char *const *argv)
             break;
         }
 
-        case OPT_COUNT_COLOR: {
+        case OPT_COUNTER_COLOR: {
             const char *clr_start = optarg;
             if (clr_start[0] == '#')
                 clr_start++;
@@ -1323,12 +1326,12 @@ main(int argc, char *const *argv)
             char *end = NULL;
             uint32_t count_color = strtoul(clr_start, &end, 16);
             if (errno != 0 || end == NULL || *end != '\0' || (end - clr_start) != 8) {
-                fprintf(stderr, "count-color: %s: invalid color\n",
+                fprintf(stderr, "counter-color: %s: invalid color\n",
                         optarg);
                 return EXIT_FAILURE;
             }
-            cmdline_overrides.conf.colors.count = conf_hex_to_rgba(count_color);
-            cmdline_overrides.count_color_set = true;
+            cmdline_overrides.conf.colors.counter = conf_hex_to_rgba(count_color);
+            cmdline_overrides.counter_color_set = true;
             break;
         }
 
@@ -1559,6 +1562,11 @@ main(int argc, char *const *argv)
             cmdline_overrides.no_sort_set = true;
             break;
 
+        case OPT_NO_COUNTER:
+            cmdline_overrides.conf.match_counter = false;
+            cmdline_overrides.no_counter_set = true;
+            break;
+
         case OPT_DELAYED_FILTER_MS:
             if (sscanf(optarg, "%u", &cmdline_overrides.conf.delayed_filter_ms) != 1) {
                 fprintf(stderr, "%s: invalid delayed-filter-ms (must be an integer)\n",
@@ -1700,8 +1708,8 @@ main(int argc, char *const *argv)
         conf.colors.selection_text = cmdline_overrides.conf.colors.selection_text;
     if (cmdline_overrides.selection_match_color_set)
         conf.colors.selection_match = cmdline_overrides.conf.colors.selection_match;
-    if (cmdline_overrides.count_color_set)
-        conf.colors.count = cmdline_overrides.conf.colors.count;
+    if (cmdline_overrides.counter_color_set)
+        conf.colors.counter = cmdline_overrides.conf.colors.counter;
     if (cmdline_overrides.border_color_set)
         conf.colors.border = cmdline_overrides.conf.colors.border;
     if (cmdline_overrides.border_size_set)
@@ -1744,6 +1752,8 @@ main(int argc, char *const *argv)
         conf.match_worker_count = cmdline_overrides.conf.match_worker_count;
     if (cmdline_overrides.no_sort_set)
         conf.sort_result = cmdline_overrides.conf.sort_result;
+    if (cmdline_overrides.no_counter_set)
+        conf.match_counter = cmdline_overrides.conf.match_counter;
     if (cmdline_overrides.delayed_filter_ms_set)
         conf.delayed_filter_ms = cmdline_overrides.conf.delayed_filter_ms;
     if (cmdline_overrides.delayed_filter_limit_set)

@@ -63,7 +63,7 @@ struct render {
     pixman_color_t pix_selection_color;
     pixman_color_t pix_selection_text_color;
     pixman_color_t pix_selection_match_color;
-    pixman_color_t pix_count_color;
+    pixman_color_t pix_counter_color;
     pixman_color_t pix_placeholder_color;
 
     unsigned x_margin;
@@ -278,7 +278,7 @@ render_match_count(const struct render *render, struct buffer *buf,
             x -= width;
             for (size_t i = 0; i < run->count; i++) {
                 const struct fcft_glyph *glyph = run->glyphs[i];
-                render_glyph(buf->pix[0], glyph, x, y, &render->pix_count_color);
+                render_glyph(buf->pix[0], glyph, x, y, &render->pix_counter_color);
                 x += glyph->advance.x;
             }
 
@@ -320,7 +320,7 @@ render_match_count(const struct render *render, struct buffer *buf,
             continue;
 
         x += x_kern[i];
-        render_glyph(buf->pix[0], glyph, x, y, &render->pix_count_color);
+        render_glyph(buf->pix[0], glyph, x, y, &render->pix_counter_color);
         x += glyph->advance.x;
         prev = wtext[i];
     }
@@ -362,7 +362,9 @@ render_prompt(const struct render *render, struct buffer *buf,
     int y = render->border_size + render->y_margin +
             (render->row_height + font->height) / 2 - font->descent;
 
-    int stats_width = render_match_count(render, buf, prompt, matches);
+    int stats_width = conf->match_counter
+        ? render_match_count(render, buf, prompt, matches)
+        : 0;
 
     const int max_x =
         buf->width - render->border_size - render->x_margin - stats_width;
@@ -1078,7 +1080,7 @@ render_init(const struct config *conf, mtx_t *icon_lock)
     render->pix_selection_color = rgba2pixman(render->conf->colors.selection);
     render->pix_selection_text_color = rgba2pixman(render->conf->colors.selection_text);
     render->pix_selection_match_color = rgba2pixman(render->conf->colors.selection_match);
-    render->pix_count_color = rgba2pixman(render->conf->colors.count);
+    render->pix_counter_color = rgba2pixman(render->conf->colors.counter);
     render->pix_placeholder_color = rgba2pixman(render->conf->colors.placeholder);
 
     if (sem_init(&render->workers.start, 0, 0) < 0 ||

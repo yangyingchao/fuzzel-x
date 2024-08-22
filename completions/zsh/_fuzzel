@@ -37,13 +37,14 @@ _arguments \
     '(-s --selection-color)'{-s,--selection-color}'[background color of selected item (eee8d5ff)]:selection-color:()' \
     '(-S --selection-text-color)'{-S,--selection-text-color}'[text color of selected item (586e75ff)]:selection-text-color:()' \
     '(-M --selection-match-color)'{-M,--selection-match-color}'[color of matched substring of selected item (cb4b16ff)]:match-color:()' \
-    '--count-color[color of the match count (93a1a1ff)]:count-color:()' \
+    '--counter-color[color of the match count (93a1a1ff)]:counter-color:()' \
     '(-B --border-width)'{-B,--border-width}'[width of border, in pixels (1)]:border-width:()' \
     '(-r --border-radius)'{-r,--border-radius}'[amount of corner "roundness" (10)]:border-radius:()' \
     '(-C --border-color)'{-C,--border-color}'[border color (002b36ff)]:border-color:()' \
     '--show-actions[include desktop actions (e.g "New Window") in the list]' \
     '--match-mode[how to match what you type against the entries (fzf)]:match_mode:(exact fzf fuzzy)' \
     '--no-sort[do not sort the result]' \
+    '--no-counter[do not display the match count]' \
     '--filter-desktop=-[filter desktop entries based on XDG_CURRENT_DESKTOP]: :(no)' \
     '--list-executables-in-path[list executables present in the PATH environment variable]'\
     '--fuzzy-min-length[search strings shorter than this will not be fuzzy matched (3)]:()' \

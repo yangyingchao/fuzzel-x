@@ -132,6 +132,7 @@ struct config {
 
     enum match_mode match_mode;
     bool sort_result;
+    bool match_counter;
 
     uint32_t delayed_filter_ms;
     uint32_t delayed_filter_limit;
@@ -176,7 +177,7 @@ struct config {
         struct rgba selection;
         struct rgba selection_text;
         struct rgba selection_match;
-        struct rgba count;
+        struct rgba counter;
         struct rgba placeholder;
     } colors;
 

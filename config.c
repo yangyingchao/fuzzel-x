@@ -903,6 +903,9 @@ parse_section_main(struct context *ctx)
     else if (strcmp(key, "sort-result") == 0)
         return value_to_bool(ctx, &conf->sort_result);
 
+    else if (strcmp(key, "match-counter") == 0)
+        return value_to_bool(ctx, &conf->match_counter);
+
     else if (strcmp(key, "delayed-filter-ms") == 0)
         return value_to_uint32(ctx, 10, &conf->delayed_filter_ms);
 
@@ -1046,8 +1049,8 @@ parse_section_colors(struct context *ctx)
     else if (strcmp(key, "selection-match") == 0)
         return value_to_color(ctx, true, &conf->colors.selection_match);
 
-    else if (strcmp(key, "count") == 0)
-        return value_to_color(ctx, true, &conf->colors.count);
+    else if (strcmp(key, "counter") == 0)
+        return value_to_color(ctx, true, &conf->colors.counter);
 
     else if (strcmp(key, "border") == 0)
         return value_to_color(ctx, true, &conf->colors.border);
@@ -1610,6 +1613,7 @@ config_load(struct config *conf, const char *conf_path,
         .actions_enabled = false,
         .match_mode = MATCH_MODE_FZF,
         .sort_result = true,
+        .match_counter = true,
         .delayed_filter_ms = 300,
         .delayed_filter_limit = 20000,
         .fuzzy = {
@@ -1646,7 +1650,7 @@ config_load(struct config *conf, const char *conf_path,
             .selection = conf_hex_to_rgba(0xeee8d5ff),
             .selection_text = conf_hex_to_rgba(0x586e75ff),
             .selection_match = conf_hex_to_rgba(0xcb4b16ff),
-            .count = conf_hex_to_rgba(0x93a1a1ff),
+            .counter = conf_hex_to_rgba(0x93a1a1ff),
             .placeholder = conf_hex_to_rgba(0x93a1a1ff),
         },
         .border = {
