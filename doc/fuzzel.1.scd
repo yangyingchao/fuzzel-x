@@ -1,21 +1,22 @@
 fuzzel(1)
 
 # NAME
-fuzzel - display XDG applications in a searchable Wayland window
+fuzzel - Wayland app launcher and picker
 
 # SYNOPSIS
 *fuzzel* [_OPTIONS_]...
 
 # DESCRIPTION
 
-*fuzzel* lists all available XDG applications in a searchable
-Window. The search box supports Emacs-like key bindings.
+As a launcher, *fuzzel* lists all available XDG applications in a searchable
+window.
 
-Fuzzel uses the localized strings from the .desktop files by
-default. To disable this, run fuzzel with *LC_MESSAGES=C*.
+With the *--dmenu* flag, fuzzel works like a general-purpose picker like dmenu, rofi or fzf.
+Options to choose from are provided on the STDIN and the selected option is printed to STDOUT.
 
-The window size, font and colors can be configured with *fuzzel.ini*(5)
-or command line options:
+The search box supports Emacs-like key bindings.
+
+Many things can be configured with *fuzzel.ini*(5) or command line options:
 
 *--config*=_PATH_
 	Path to configuration file, see *fuzzel.ini*(5) for details.
@@ -396,6 +397,11 @@ An example configuration file containing all options with their default value
 commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 
 For more information, see *fuzzel.ini*(5).
+
+# LOCALIZATION
+
+Fuzzel uses the localized strings from the .desktop files by
+default. To disable this, run fuzzel with *LC_MESSAGES=C*.
 
 # FONT FORMAT
 
