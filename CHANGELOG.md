@@ -112,7 +112,9 @@
 * The default `layer` is now `overlay` instead of `top`. This means
   fuzzel now renders on top of fullscreen windows by default
   ([#81][81]).
-* When `--no-fuzzy` is used, fuzzel will now do a fzf-style search
+* `--no-fuzzy` option has been replaced with `--match-mode`.
+  Default match mode is `fzf`. Other options are `fuzzy` and `exact`. See
+  `man fuzzel.ini` for details.
   ([#305][305]).
 * Default text color of the prompt and the selected entry to
   `586e75ff` (_base01_ in the solarized palette).
