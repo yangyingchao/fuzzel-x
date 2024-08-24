@@ -66,9 +66,10 @@
 * `delayed-filter-ms`, `delayed-filter-limit` options to `fuzzel.ini`,
   and `--delayed-filter-ms` and `--delayed-filter-limit` command line
   options.
-* Match count is now printed at the right-hand side of the input
-  prompt. This can be disabled with the `--no-counter` command line
-  option, or the `match-counter` setting in `fuzzel.ini`.
+* Match count can now printed at the right-hand side of the input
+  prompt. It is disabled by default, and can be enabled with either
+  the `--counter` command line option, or the `match-counter` setting
+  in `fuzzel.ini`.
 * `--counter-color` and `colors.counter`, controlling the color of the
   match count. The default value is `93a1a1ff` (_base1_ in the
   solarized palette).

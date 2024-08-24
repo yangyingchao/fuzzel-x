@@ -257,8 +257,8 @@ or command line options:
 *--no-sort*
 	Do not sort the result.
 
-*--no-counter*
-	Do not display the match count.
+*--counter*
+	Display the match count.
 
 *--filter-desktop*=[_no_]
 	Filter the visible desktop entries based on the value of

@@ -170,7 +170,7 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	the counter also improves performance when loading a very large
 	number of dmenu entries from STDIN.
 	
-	Default: _yes_.
+	Default: _no_.
 
 *filter-desktop*
 	Boolean. Filter desktop files based on the value of XDG_CURRENT_DESKTOP.

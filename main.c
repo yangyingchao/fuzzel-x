@@ -384,7 +384,7 @@ print_usage(const char *prog_name)
            "     --render-workers=N          number of threads to use for rendering\n"
            "     --match-workers=N           number of threads to use for matching\n"
            "     --no-sort                   do not sort the result\n"
-           "     --no-counter                do not display the match count\n"
+           "     --counter                   display the match count\n"
            "     --delayed-filter-ms=TIME_MS time in ms before refiltering after a keystroke\n"
            "                                 (300)\n"
            "     --delayed-filter-limit=N    used delayed refiltering when the number of\n"
@@ -721,7 +721,7 @@ main(int argc, char *const *argv)
     #define OPT_PLACEHOLDER                  291
     #define OPT_PLACEHOLDER_COLOR            292
     #define OPT_SEARCH_TEXT                  293
-    #define OPT_NO_COUNTER                   294
+    #define OPT_COUNTER                      294
 
     static const struct option longopts[] = {
         {"config",               required_argument, 0, OPT_CONFIG},
@@ -778,7 +778,7 @@ main(int argc, char *const *argv)
         {"render-workers",       required_argument, 0, OPT_RENDER_WORKERS},
         {"match-workers",        required_argument, 0, OPT_MATCH_WORKERS},
         {"no-sort",              no_argument,       0, OPT_NO_SORT},
-        {"no-counter",           no_argument,       0, OPT_NO_COUNTER},
+        {"counter",              no_argument,       0, OPT_COUNTER},
         {"delayed-filter-ms",    required_argument, 0, OPT_DELAYED_FILTER_MS},
         {"delayed-filter-limit", required_argument, 0, OPT_DELAYED_FILTER_LIMIT},
 
@@ -853,7 +853,7 @@ main(int argc, char *const *argv)
         bool delayed_filter_ms_set:1;
         bool delayed_filter_limit_set:1;
         bool placeholder_color_set:1;
-        bool no_counter_set:1;
+        bool counter_set:1;
     } cmdline_overrides = {{0}};
 
     setlocale(LC_CTYPE, "");
@@ -1562,9 +1562,9 @@ main(int argc, char *const *argv)
             cmdline_overrides.no_sort_set = true;
             break;
 
-        case OPT_NO_COUNTER:
-            cmdline_overrides.conf.match_counter = false;
-            cmdline_overrides.no_counter_set = true;
+        case OPT_COUNTER:
+            cmdline_overrides.conf.match_counter = true;
+            cmdline_overrides.counter_set = true;
             break;
 
         case OPT_DELAYED_FILTER_MS:
@@ -1752,7 +1752,7 @@ main(int argc, char *const *argv)
         conf.match_worker_count = cmdline_overrides.conf.match_worker_count;
     if (cmdline_overrides.no_sort_set)
         conf.sort_result = cmdline_overrides.conf.sort_result;
-    if (cmdline_overrides.no_counter_set)
+    if (cmdline_overrides.counter_set)
         conf.match_counter = cmdline_overrides.conf.match_counter;
     if (cmdline_overrides.delayed_filter_ms_set)
         conf.delayed_filter_ms = cmdline_overrides.conf.delayed_filter_ms;

@@ -1620,7 +1620,7 @@ config_load(struct config *conf, const char *conf_path,
         .actions_enabled = false,
         .match_mode = MATCH_MODE_FZF,
         .sort_result = true,
-        .match_counter = true,
+        .match_counter = false,
         .delayed_filter_ms = 300,
         .delayed_filter_limit = 20000,
         .fuzzy = {
