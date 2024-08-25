@@ -2,8 +2,7 @@
 
 # Fuzzel
 
-Fuzzel is a Wayland-native application launcher, similar to rofi's
-_drun_ mode.
+Fuzzel is a Wayland-native application launcher and fuzzy finder, inspired by rofi and dmenu.
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/fuzzel.svg?columns=4)](https://repology.org/project/fuzzel/versions)
 
@@ -15,20 +14,48 @@ _drun_ mode.
 _Fuzzel, with transparency, on top of a browser window showing a diff of a fuzzel commit_
 
 
-## Features:
+## Features
 
-- Wayland native
-- Rofi drun-like mode of operation
-- dmenu mode where newline separated entries are read from stdin
-- Emacs key bindings
-- Icons!
+### For app launching
+
+- Fuzzy-find applications from a list and launch them
+- Icon support
 - Remembers frequently launched applications
+- Customize which `.desktop` files are searched
+- Option to filter apps based on `OnlyShowIn` and `NotShowIn`
+- Startup notification support
+- Launch prefix option to customize how apps are launched
+- Display a large icon of current selection if there are only a few
+  matches
+- Option to display executables in $PATH
+- Option to execute the input rather than return an app
+- Support for localized strings
 
+### For dmenu mode
 
-## Limitations:
+- dmenu mode where newline separated entries are read from STDIN
+- Support for Rofi's protocol to support icons
+- Optional cache with custom path
+- Password mode
+- Prompt-only mode
+- Exact-match option to support multi-stage menus
+- Option to return index of what's selected rather than what's selected
+- Some dmenu option compatibility. Invoking it as `dmenu` enables dmenu mode
+- Option for null-separated input
 
-- No themes (but you **can** configure font and colors)
+### For all modes
 
+- Numerous customizable key bindings, based on Emacs
+- Mouse support
+- Paste support
+- A number of theming options, which can be set in a separate `include` file
+- fzf-style matching with ability to filter huge lists
+- Optimized for performance
+- Zsh and Fish completions
+- Support for true fractional scaling
+- Wayland native
+
+For details, see [`man fuzzel`](./doc/fuzzel.1.scd) and [`man fuzzel.ini`](./doc/fuzzel.ini.5.scd)
 
 ## Requirements
 
@@ -104,12 +131,11 @@ Optionally, install it:
 ninja install
 ```
 
-For more detailed configuration information, see the man page:
+For more detailed configuration information, see the man pages:
 ```sh
 man fuzzel
+man fuzzel.ini
 ```
-
-
 ## License
 
 Fuzzel is released under the [MIT license](LICENSE).
