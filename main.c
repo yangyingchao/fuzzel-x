@@ -234,7 +234,13 @@ write_cache(const char *path, const struct application_list *apps, bool dmenu)
         if (!apps->v[i]->visible)
             continue;
 
-        if (!dmenu || apps->v[i]->id != NULL) {
+        if (!dmenu && apps->v[i]->id == NULL)
+            continue;
+
+        if (dmenu && apps->v[i]->title == NULL)
+            continue;
+
+        if (!dmenu) {
             const char *id = apps->v[i]->id;
             const size_t id_len = strlen(id);
 
