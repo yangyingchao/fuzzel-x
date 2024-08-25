@@ -71,9 +71,17 @@ path_find_programs(struct application_list *applications)
                 size_t exec_size = path_size + 1 + strlen(e->d_name) + 1;
                 char *exec = malloc(exec_size);
                 snprintf(exec, exec_size, "%s/%s", tok, e->d_name);
+
+                char32_t *lowercase = c32dup(wtitle);
+                for (size_t i = 0; i < c32len(lowercase); i++)
+                    lowercase[i] = toc32lower(lowercase[i]);
+
                 struct application *app = malloc(sizeof(*app));
                 *app = (struct application){
+                    .index = 0,  /* Not used in application mode */
                     .title = wtitle,
+                    .title_lowercase = lowercase,
+                    .title_len = c32len(lowercase),
                     .exec = exec,
                     .visible = true,
                 };
