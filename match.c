@@ -490,6 +490,7 @@ matches_destroy(struct matches *matches)
 
     free(matches->workers.threads);
     free(matches->matches);
+    free(matches->workers.old_matches);
     mtx_destroy(&matches->workers.lock);
     sem_destroy(&matches->workers.start);
     sem_destroy(&matches->workers.done);
