@@ -346,9 +346,9 @@ render_prompt(const struct render *render, struct buffer *buf,
 
     const char32_t *ptext = prompt_text(prompt);
     size_t text_len = c32len(ptext);
-    bool use_placholder = text_len == 0;
+    bool use_placeholder = text_len == 0;
 
-    if (use_placholder) {
+    if (use_placeholder) {
         ptext = prompt_placeholder(prompt);
         text_len = c32len(ptext);
     }
@@ -404,16 +404,17 @@ render_prompt(const struct render *render, struct buffer *buf,
     for (size_t i = 0; i < prompt_len + text_len; i++) {
         if (i >= prompt_len &&
             conf->password_mode.enabled &&
-            conf->password_mode.character == U'\0')
+            conf->password_mode.character == U'\0' &&
+            !use_placeholder)
         {
             continue;
         }
 
         char32_t wc = i < prompt_len
             ? pprompt[i]
-            : (conf->password_mode.enabled
-               ? conf->password_mode.character
-               : ptext[i - prompt_len]);
+            : (conf->password_mode.enabled && !use_placeholder
+                ? conf->password_mode.character
+                : ptext[i - prompt_len]);
 
         const struct fcft_glyph *glyph = fcft_rasterize_char_utf32(
             font, wc, subpixel);
@@ -433,7 +434,7 @@ render_prompt(const struct render *render, struct buffer *buf,
 
         render_glyph(
             buf->pix[0], glyph, x, y,
-            use_placholder
+            use_placeholder
                 ? &render->pix_placeholder_color
                 : &render->pix_input_color);
         x += glyph->advance.x;
