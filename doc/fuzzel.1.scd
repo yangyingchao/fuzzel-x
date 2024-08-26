@@ -363,8 +363,9 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	separated. Note that in this mode, icons are not supported.
 
 *--index*
-	Print selected entry's index instead of its text. **dmenu** mode
-	only.
+	Print selected entry's index instead of its text.
+	Index values start with zero for the first entry.
+	**dmenu** mode only.
 
 *-R*,*--no-run-if-empty*
 	Exit immediately, without showing the UI, if stdin is

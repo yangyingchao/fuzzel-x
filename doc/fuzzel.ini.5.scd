@@ -363,7 +363,8 @@ All color values are in RGBA.
 *mode*
 	One of *text* or *index*. Determines what fuzzel prints on stdout
 	when an entry is selected: *text* prints the entry itself, *index*
-	prints the index of the selected entry. Default: _text_.
+	prints the index of the selected entry. Index values start at zero
+	for the first entry. Default: _text_.
 
 *exit-immediately-if-empty*
 	Boolean. If enabled, fuzzel will not run at all (i.e. it will not
