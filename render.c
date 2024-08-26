@@ -1177,7 +1177,9 @@ render_set_font_and_update_sizes(struct render *render, struct fcft_font *font,
 
     const unsigned x_margin = render->conf->pad.x * scale;
     const unsigned y_margin = render->conf->pad.y * scale;
-    const unsigned inner_pad = render->conf->pad.inner * scale;
+    const unsigned inner_pad = render->conf->lines > 0
+        ? render->conf->pad.inner * scale
+        : 0;
 
     const unsigned border_size = render->conf->border.size * scale;
 
