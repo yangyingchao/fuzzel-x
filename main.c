@@ -1775,6 +1775,7 @@ main(int argc, char *const *argv)
 
         if (conf.prompt_only) {
             conf.lines = 0;
+            conf.match_counter = false;
             conf.dmenu.exit_immediately_if_empty = false;
             close(STDIN_FILENO);  /* To catch reads */
         }
