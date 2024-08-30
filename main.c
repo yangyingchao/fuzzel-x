@@ -1392,7 +1392,7 @@ main(int argc, char *const *argv)
             else if (strcmp(optarg, "fuzzy") == 0)
                 cmdline_overrides.conf.match_mode = MATCH_MODE_FUZZY;
             else {
-                fprintf(stderr, "%s: invalid match-mode\n", optarg);
+                fprintf(stderr, "%s: invalid match-mode. Must be 'exact', 'fuzzy' or 'fzf'\n", optarg);
                 return EXIT_FAILURE;
             }
 
