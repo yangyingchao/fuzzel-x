@@ -177,9 +177,7 @@ match_fzf(const char32_t *haystack, size_t haystack_len,
         }
 
         if (match_type != NULL)
-            *match_type = longest_match_len == haystack_len
-                ? MATCHED_EXACT
-                : MATCHED_FUZZY;
+            *match_type = MATCHED_EXACT;
 
         needle += longest_match_len;
         haystack_search_start = haystack + longest_match_ofs + longest_match_len;
