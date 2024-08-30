@@ -800,7 +800,14 @@ match_compar(const void *_a, const void *_b)
     const struct match *a = _a;
     const struct match *b = _b;
 
-    if (a->score > b->score)
+    if (a->matched_type != b->matched_type) {
+        if (a->matched_type == MATCHED_EXACT)
+            return -1;
+        else
+            return 1;
+    }
+
+    else if (a->score > b->score)
         return -1;
     else if (a->score < b->score)
         return 1;
