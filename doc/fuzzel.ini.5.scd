@@ -114,6 +114,10 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	Boolean. When enabled, application icons (from the selected
 	*icon-theme*) will be rendered. Default: _yes_.
 
+*hide-when-prompt-empty*
+	Boolean. When enabled, application list is hidden as long as the prompt
+	is empty. Default: _no_.
+
 *fields*
 	Comma separated list of XDG Desktop entry fields to match
 	against.

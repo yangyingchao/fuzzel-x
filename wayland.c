@@ -2118,7 +2118,8 @@ wayl_refresh(struct wayland *wayl)
     /* Window content */
     matches_lock(wayl->matches);
     render_prompt(wayl->render, buf, wayl->prompt, wayl->matches);
-    render_match_list(wayl->render, buf, wayl->prompt, wayl->matches);
+    if (!wayl->conf->hide_when_prompt_empty || prompt_text(wayl->prompt)[0] != '\0')
+        render_match_list(wayl->render, buf, wayl->prompt, wayl->matches);
     matches_unlock(wayl->matches);
 
 #if defined(FUZZEL_ENABLE_CAIRO)
