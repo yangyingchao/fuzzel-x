@@ -13,6 +13,7 @@ _arguments \
     '--use-bold[allow fuzzel to use bold fonts]' \
     '--icon-theme[icon theme name (hicolor)]:theme:->icon_theme' \
     '(-I --no-icons)'{-I,--no-icons}'[do not render any icons]' \
+    '--hide-when-prompt-empty[hide application list until something is typed]' \
     '(-F --fields)'{-F,--fields}'[comma separated list of XDG Desktop entry fields to match ]:fields:(filename name generic exec categories keywords comment)' \
     '(-p --prompt)'{-p,--prompt}'[string to use as input prompt ("> ")]:()' \
     '--placeholder[placeholder text in the input box]:()' \
