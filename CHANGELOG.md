@@ -89,7 +89,7 @@
   and the primary clipboard are supported. See the new
   `clipboard-paste` and `primary-paste` key bindings ([#200][200]).
 * `hide-when-prompt-empty` command line and config option, hiding the
-  application list as long as the prompt is empty. ([#351][#351]).
+  application list until the first letter is typed. ([#351][#351]).
 
 [344]: https://codeberg.org/dnkl/fuzzel/issues/344
 [131]: https://codeberg.org/dnkl/fuzzel/issues/131
