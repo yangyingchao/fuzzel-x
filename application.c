@@ -401,5 +401,6 @@ applications_flush_text_run_cache(struct application_list *apps)
         fcft_text_run_destroy(apps->v[i]->shaped);
         fcft_text_run_destroy(apps->v[i]->shaped_bold);
         apps->v[i]->shaped = NULL;
+        apps->v[i]->shaped_bold = NULL;
     }
 }
