@@ -1073,15 +1073,7 @@ parse_section_border(struct context *ctx)
         return value_to_uint32(ctx, 10, &conf->border.size);
 
     else if (strcmp(key, "radius") == 0)
-#if defined(FUZZEL_ENABLE_CAIRO)
         return value_to_uint32(ctx, 10, &conf->border.radius);
-#else
-    {
-        LOG_CONTEXTUAL_WARN(
-            "fuzzel compiled without cairo support; ignoring");
-        return true;
-    }
-#endif
 
     else
         LOG_CONTEXTUAL_ERR("not a valid option: %s", key);
