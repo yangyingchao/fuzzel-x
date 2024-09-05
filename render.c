@@ -1,5 +1,6 @@
 #include "render.h"
 
+#include <limits.h>
 #include <pthread.h>
 #include <semaphore.h>
 #include <signal.h>
@@ -49,6 +50,10 @@ struct render {
     struct fcft_font *font;
     struct fcft_font *font_bold;
     enum fcft_subpixel subpixel;
+
+    /* Cached fcft text runs */
+    struct fcft_text_run *prompt_text_run;
+    struct fcft_text_run *placeholder_text_run;
 
     float scale;
     float dpi;
@@ -344,8 +349,33 @@ render_match_count(const struct render *render, struct buffer *buf,
     return width;
 }
 
+static void
+render_cursor(const struct render *render, int x, int y, pixman_image_t *pix)
+{
+    struct fcft_font *font = render->font;
+
+    if (true) {
+        /* Bar cursor */
+        pixman_image_fill_rectangles(
+            PIXMAN_OP_SRC, pix, &render->pix_input_color,
+            1, &(pixman_rectangle16_t){
+                x,
+                render->border_size + render->y_margin,
+                font->underline.thickness,
+                min(font->ascent + font->descent, render->row_height)});
+    } else {
+        /* TODO: future: underline cursor */
+        pixman_image_fill_rectangles(
+            PIXMAN_OP_SRC, pix, &render->pix_input_color,
+            1, &(pixman_rectangle16_t){
+                x, y - font->underline.position,
+                font->max_advance.x,
+                font->underline.thickness});
+    }
+}
+
 void
-render_prompt(const struct render *render, struct buffer *buf,
+render_prompt(struct render *render, struct buffer *buf,
               const struct prompt *prompt, const struct matches *matches)
 {
     struct fcft_font *font = render->font;
@@ -355,6 +385,7 @@ render_prompt(const struct render *render, struct buffer *buf,
 
     const char32_t *pprompt = prompt_prompt(prompt);
     size_t prompt_len = c32len(pprompt);
+    const size_t cursor_location = prompt_cursor(prompt);
 
     const char32_t *ptext = prompt_text(prompt);
     size_t text_len = c32len(ptext);
@@ -391,89 +422,145 @@ render_prompt(const struct render *render, struct buffer *buf,
     const int max_x =
         buf->width - render->border_size - render->x_margin - stats_width;
 
+    struct fcft_text_run *prompt_run = render->prompt_text_run;
+    struct fcft_text_run *input_run =
+        use_placeholder ? render->placeholder_text_run : NULL;
+
     if (fcft_capabilities() & FCFT_CAPABILITY_TEXT_RUN_SHAPING) {
-        struct fcft_text_run *run = fcft_rasterize_text_run_utf32(
-            font, prompt_len, pprompt, subpixel);
-
-        if (run != NULL) {
-            for (size_t i = 0; i < run->count; i++) {
-                const struct fcft_glyph *glyph = run->glyphs[i];
-                if (x + glyph->width > max_x)
-                    return;
-
-                render_glyph(buf->pix[0], glyph, x, y, &render->pix_prompt_color);
-                x += glyph->advance.x;
-            }
-            fcft_text_run_destroy(run);
-
-            /* Cursor, if right after the prompt. In all other cases,
-             * the cursor will be rendered by the loop below */
-            if (prompt_cursor(prompt) == 0) {
-                pixman_image_fill_rectangles(
-                    PIXMAN_OP_SRC, buf->pix[0], &render->pix_input_color,
-                    1, &(pixman_rectangle16_t){
-                        x, y - font->ascent,
-                        font->underline.thickness, font->ascent + font->descent});
-            }
-
-            /* Prevent loop below from rendering the prompt */;
-            prompt_len = 0;
+        if (prompt_run == NULL) {
+            prompt_run = fcft_rasterize_text_run_utf32(
+                font, prompt_len, pprompt, subpixel);
+        }
+        if (input_run == NULL) {
+            input_run = fcft_rasterize_text_run_utf32(
+                font, text_len, ptext, subpixel);
         }
     }
 
-    char32_t prev = 0;
+    if (prompt_run != NULL) {
+        for (size_t i = 0; i < prompt_run->count; i++) {
+            const struct fcft_glyph *glyph = prompt_run->glyphs[i];
+            if (x + glyph->width > max_x)
+                goto out;
 
-    for (size_t i = 0; i < prompt_len + text_len; i++) {
-        if (i >= prompt_len &&
-            conf->password_mode.enabled &&
-            conf->password_mode.character == U'\0' &&
-            !use_placeholder)
-        {
-            continue;
+            render_glyph(buf->pix[0], glyph, x, y, &render->pix_prompt_color);
+            x += glyph->advance.x;
         }
+    } else {
+        char32_t prev = 0;
+        for (size_t i = 0; i < prompt_len; i++) {
+            const char32_t wc = pprompt[i];
+            const struct fcft_glyph *glyph = fcft_rasterize_char_utf32(font, wc, subpixel);
 
-        char32_t wc = i < prompt_len
-            ? pprompt[i]
-            : (conf->password_mode.enabled && !use_placeholder
-                ? conf->password_mode.character
-                : ptext[i - prompt_len]);
+            if (glyph == NULL) {
+                prev = wc;
+                continue;
+            }
 
-        const struct fcft_glyph *glyph = fcft_rasterize_char_utf32(
-            font, wc, subpixel);
+            long x_kern;
+            fcft_kerning(font, prev, wc, &x_kern, NULL);
 
-        if (glyph == NULL) {
-            prev = wc;
-            continue;
-        }
+            x += x_kern;
 
-        long x_kern;
-        fcft_kerning(font, prev, wc, &x_kern, NULL);
+            if (x + glyph->width >= max_x)
+                goto out;
 
-        x += x_kern;
-
-        if (x + glyph->width >= max_x)
-            return;
-
-        render_glyph(
-            buf->pix[0], glyph, x, y,
-            use_placeholder
-                ? &render->pix_placeholder_color
-                : &render->pix_input_color);
-        x += glyph->advance.x;
-        if (i >= prompt_len)
+            render_glyph(
+                buf->pix[0], glyph, x, y, &render->pix_prompt_color);
+            x += glyph->advance.x;
             x += pt_or_px_as_pixels(render, &render->conf->letter_spacing);
 
-        /* Cursor */
-        if (prompt_cursor(prompt) + prompt_len - 1 == i) {
-            pixman_image_fill_rectangles(
-                PIXMAN_OP_SRC, buf->pix[0], &render->pix_input_color,
-                1, &(pixman_rectangle16_t){
-                    x, y - font->ascent,
-                    font->underline.thickness, font->ascent + font->descent});
+            prev = wc;
         }
-
-        prev = wc;
     }
+
+    /* Cursor, if right after the prompt. In all other cases, the
+     * cursor will be rendered by the loop below */
+    if (cursor_location == 0 || (conf->password_mode.enabled &&
+                                 conf->password_mode.character == U'\0'))
+    {
+        render_cursor(render, x, y, buf->pix[0]);
+    }
+
+    if (input_run != NULL && !(conf->password_mode.enabled && !use_placeholder)) {
+        for (size_t i = 0; i < input_run->count; i++) {
+            const struct fcft_glyph *glyph = input_run->glyphs[i];
+            if (x + glyph->width > max_x)
+                goto out;
+
+            render_glyph(buf->pix[0], glyph, x, y,
+                         use_placeholder
+                             ? &render->pix_placeholder_color
+                             : &render->pix_input_color);
+            x += glyph->advance.x;
+
+            /* Cursor */
+            const int cur_cluster = input_run->cluster[i];
+            const int next_cluster = i + 1 < input_run->count
+                ? input_run->cluster[i + 1] : INT_MAX;
+
+            if (cursor_location > cur_cluster &&
+                cursor_location <= next_cluster)
+            {
+                render_cursor(render, x, y, buf->pix[0]);
+            }
+        }
+    } else {
+        char32_t prev = 0;
+
+        for (size_t i = 0; i < text_len; i++) {
+            if (conf->password_mode.enabled &&
+                conf->password_mode.character == U'\0' &&
+                !use_placeholder)
+            {
+                continue;
+            }
+
+            char32_t wc = conf->password_mode.enabled && !use_placeholder
+                ? conf->password_mode.character
+                : ptext[i];
+
+            const struct fcft_glyph *glyph = fcft_rasterize_char_utf32(
+                font, wc, subpixel);
+
+            if (glyph == NULL) {
+                prev = wc;
+                continue;
+            }
+
+            long x_kern;
+            fcft_kerning(font, prev, wc, &x_kern, NULL);
+
+            x += x_kern;
+
+            if (x + glyph->width >= max_x)
+                goto out;
+
+            render_glyph(
+                buf->pix[0], glyph, x, y,
+                use_placeholder
+                    ? &render->pix_placeholder_color
+                    : &render->pix_input_color);
+            x += glyph->advance.x;
+            x += pt_or_px_as_pixels(render, &render->conf->letter_spacing);
+
+            /* Cursor */
+            if (cursor_location > 0 && cursor_location - 1 == i)
+                render_cursor(render, x, y, buf->pix[0]);
+
+            prev = wc;
+        }
+    }
+
+out:
+    if (render->prompt_text_run == NULL)
+        render->prompt_text_run = prompt_run;
+    else if (prompt_run != render->prompt_text_run)
+        fcft_text_run_destroy(prompt_run);
+    if (use_placeholder && render->placeholder_text_run == NULL)
+        render->placeholder_text_run = input_run;
+    else if (!use_placeholder || input_run != render->placeholder_text_run)
+        fcft_text_run_destroy(input_run);
 }
 
 static void
@@ -1290,6 +1377,9 @@ render_destroy(struct render *render)
     assert(tll_length(render->workers.queue) == 0);
     tll_free(render->workers.queue);
 
+    fcft_text_run_destroy(render->prompt_text_run);
+    fcft_text_run_destroy(render->placeholder_text_run);
+
     fcft_destroy(render->font);
     free(render);
 }
@@ -1316,4 +1406,13 @@ render_get_row_num(const struct render *render, int y,
     }
 
     return row;
+}
+
+void
+render_flush_text_run_cache(struct render *render)
+{
+    fcft_text_run_destroy(render->prompt_text_run);
+    fcft_text_run_destroy(render->placeholder_text_run);
+    render->prompt_text_run = NULL;
+    render->placeholder_text_run = NULL;
 }

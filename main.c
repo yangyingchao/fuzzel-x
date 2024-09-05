@@ -420,6 +420,7 @@ font_reloaded(struct wayland *wayl, struct fcft_font *font, void *data)
     const struct config *conf = ctx->conf;
 
     applications_flush_text_run_cache(ctx->apps);
+    render_flush_text_run_cache(ctx->render);
 
     mtx_lock(ctx->icon_lock);
     {

@@ -121,9 +121,12 @@
 * Initial application sorting is now done case insensitive.
 * Background is no longer transparent by default. You can change this
   by setting `colors.background`.
+* Search string is now font shaped, improving support for e.g Arabic
+  ([#398][398]).
 
 [339]: https://codeberg.org/dnkl/fuzzel/issues/339
 [81]: https://codeberg.org/dnkl/fuzzel/issues/81
+[398]: https://codeberg.org/dnkl/fuzzel/issues/398
 
 
 ### Deprecated
