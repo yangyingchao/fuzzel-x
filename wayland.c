@@ -2047,6 +2047,9 @@ commit_buffer(struct wayland *wayl, struct buffer *buf)
     wl_callback_add_listener(wayl->frame_cb, &frame_listener, wayl);
 
     wl_surface_commit(wayl->surface);
+
+    if (!wayl->render_first_frame_transparent)
+        buf->age = 0;
 }
 
 static void

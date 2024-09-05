@@ -148,10 +148,22 @@ render_background(const struct render *render, struct buffer *buf)
 {
     unsigned bw = render->conf->border.size;
 
-    pixman_color_t bg = rgba2pixman(render->conf->colors.background);
-    pixman_color_t border_color = rgba2pixman(render->conf->colors.border);
+    pixman_color_t bg = render->pix_background_color;
+    pixman_color_t border_color = render->pix_border_color;
 
-    if (render->conf->border.radius == 0) {
+    if (buf->age == 0) {
+        /* Each sub-part of the window erases itself */
+        return;
+    }
+
+    /* Limit radius if the margins are very small, to prevent e.g. the
+       selection "box" from overlapping the corners */
+    const unsigned int radius =
+        min(render->conf->border.radius,
+            min(render->x_margin,
+                render->y_margin));
+
+    if (radius == 0) {
         pixman_image_fill_rectangles(
             PIXMAN_OP_SRC, buf->pix[0], &bg,
             1, &(pixman_rectangle16_t){
@@ -168,7 +180,7 @@ render_background(const struct render *render, struct buffer *buf)
     } else {
         const int msaa_scale = 2;
         const double brd_sz_scaled = bw * msaa_scale;
-        const double brd_rad_scaled = render->conf->border.radius * msaa_scale;
+        const double brd_rad_scaled = radius * msaa_scale;
         int w = buf->width * msaa_scale;
         int h = buf->height * msaa_scale;
 
@@ -361,6 +373,16 @@ render_prompt(const struct render *render, struct buffer *buf,
     int x = render->border_size + render->x_margin;
     int y = render->border_size + render->y_margin +
             (render->row_height + font->height) / 2 - font->descent;
+
+    /* Erase background */
+    pixman_color_t bg = render->pix_background_color;
+    pixman_image_fill_rectangles(
+        PIXMAN_OP_SRC, buf->pix[0], &bg, 1,
+        &(pixman_rectangle16_t){
+            render->border_size + render->x_margin,
+            render->border_size + render->y_margin,
+            buf->width - 2 * (render->border_size + render->x_margin),
+            render->row_height});
 
     int stats_width = conf->match_counter
         ? render_match_count(render, buf, prompt, matches)
@@ -796,6 +818,25 @@ first_row_y(const struct render *render)
 }
 
 static void
+render_match_entry_background(const struct render *render,
+                              int idx, int row_count, bool is_selected,
+                              pixman_image_t *pix, int width)
+{
+    pixman_color_t bg = is_selected
+        ? render->pix_selection_color : render->pix_background_color;
+
+    const int sel_margin = render->x_margin / 3;
+
+    const int x = render->border_size + render->x_margin - sel_margin;
+    const int y = first_row_y(render) + idx * render->row_height;
+    const int w = width - 2 * (render->border_size + render->x_margin - sel_margin);
+    const int h = row_count * render->row_height;
+
+    pixman_image_fill_rectangles(
+        PIXMAN_OP_SRC, pix, &bg, 1, &(pixman_rectangle16_t){x, y, w, h});
+}
+
+static void
 render_one_match_entry(const struct render *render, const struct matches *matches,
                        const struct match *match, bool render_icons,
                        int idx, bool is_selected, int width, int height,
@@ -815,15 +856,7 @@ render_one_match_entry(const struct render *render, const struct matches *matche
     double cur_x = render->border_size + render->x_margin;
     double max_x = width - render->border_size - render->x_margin;
 
-#if 0 /* Render the icon+text bounding box */
-    pixman_color_t sc = rgba2pixman(render->conf->colors.match);
-    pixman_image_fill_rectangles(
-        PIXMAN_OP_SRC, buf->pix[0], &sc, 1,
-        &(pixman_rectangle16_t){
-            cur_x, first_row + idx * render->row_height,
-            max_x - cur_x, render->row_height}
-        );
-#endif
+    render_match_entry_background(render, idx, 1, is_selected, pix, width);
 
     if (is_selected) {
         /* If currently selected item has a scalable icon, and if
@@ -846,18 +879,6 @@ render_one_match_entry(const struct render *render, const struct matches *matche
         {
             render_svg(&match->application->icon, img_x, img_y, size, pix, cairo);
         }
-
-        const int sel_margin = render->x_margin / 3;
-
-        pixman_color_t sc = rgba2pixman(render->conf->colors.selection);
-        pixman_image_fill_rectangles(
-            PIXMAN_OP_OVER, pix, &sc, 1,
-            &(pixman_rectangle16_t){
-                render->x_margin - sel_margin,
-                first_row + idx * render->row_height,
-                width - 2 * (render->x_margin - sel_margin),
-                render->row_height}
-            );
     }
 
     if (render_icons) {
@@ -953,6 +974,11 @@ render_match_list(struct render *render, struct buffer *buf,
 
         assert(tll_length(render->workers.queue) == 0);
     }
+
+    /* Erase background of the "empty" area, after the last match */
+    render_match_entry_background(
+        render, match_count, render->conf->lines - match_count, false,
+        buf->pix[0], buf->width);
 
     for (size_t i = 0; i < match_count; i++) {
         if (render->workers.count == 0) {
