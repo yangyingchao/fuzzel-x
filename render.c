@@ -205,7 +205,7 @@ render_background(const struct render *render, struct buffer *buf)
             PIXMAN_OP_SRC, bg_img, &bg, brd_sz_scaled, brd_sz_scaled,
             w-(brd_sz_scaled*2),
             h-(brd_sz_scaled*2),
-            brd_rad_scaled - brd_sz_scaled);
+            max(brd_rad_scaled - brd_sz_scaled, 0));
 
         if (msaa_scale != 1){
             pixman_f_transform_t ftrans;

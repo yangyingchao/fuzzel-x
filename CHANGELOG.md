@@ -33,6 +33,13 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* Crash when the border size is larger than the border radius
+  ([#401][401]).
+
+[401]: https://codeberg.org/dnkl/fuzzel/issues/401
+
+
 ### Security
 ### Contributors
 
