@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [1.11.0](#1-11-0)
 * [1.10.2](#1-10-2)
 * [1.10.1](#1-10-1)
 * [1.10.0](#1-10-0)
@@ -26,7 +26,8 @@
 * [1.4.1](#1-4-1)
 
 
-## Unreleased
+## 1.11.0
+
 ### Added
 
 * Nanosvg updated to 93ce879dc4c04a3ef1758428ec80083c38610b1f
@@ -129,8 +130,6 @@
 [398]: https://codeberg.org/dnkl/fuzzel/issues/398
 
 
-### Deprecated
-### Removed
 ### Fixed
 
 * PNG images being way too dark.
@@ -153,8 +152,15 @@
 [356]: https://codeberg.org/dnkl/fuzzel/issues/356
 
 
-### Security
 ### Contributors
+
+* Aaron Lichtman
+* alz
+* Jordi Estrada
+* Leonardo Hernández Hernández
+* Mark Stosberg
+* Ronan Pigott
+* triallax
 
 
 ## 1.10.2
