@@ -245,6 +245,25 @@ render_glyph(pixman_image_t *pix, const struct fcft_glyph *glyph, int x, int y,
 }
 
 static int
+render_baseline(const struct render *render)
+{
+    const struct fcft_font *font = render->font;
+    const int line_height = render->row_height;
+    const int font_height = font->ascent + font->descent;
+
+    /*
+     * Center glyph on the line *if* using a custom line height,
+     * otherwise the baseline is simply 'descent' pixels above the
+     * bottom of the cell
+     */
+    const int glyph_top_y = render->conf->line_height.px >= 0
+        ? round((line_height - font_height) / 2.)
+        : 0;
+
+    return line_height - glyph_top_y - font->descent;
+}
+
+static int
 render_match_count(const struct render *render, struct buffer *buf,
                    const struct prompt *prompt, const struct matches *matches)
 {
@@ -350,25 +369,27 @@ render_match_count(const struct render *render, struct buffer *buf,
 }
 
 static void
-render_cursor(const struct render *render, int x, int y, pixman_image_t *pix)
+render_cursor(const struct render *render, int x, int baseline, pixman_image_t *pix)
 {
     struct fcft_font *font = render->font;
 
     if (true) {
         /* Bar cursor */
+        const int height = min(font->ascent + font->descent, render->row_height);
+
         pixman_image_fill_rectangles(
             PIXMAN_OP_SRC, pix, &render->pix_input_color,
             1, &(pixman_rectangle16_t){
                 x,
-                render->border_size + render->y_margin,
+                baseline - render->font->ascent,
                 font->underline.thickness,
-                min(font->ascent + font->descent, render->row_height)});
+                height});
     } else {
         /* TODO: future: underline cursor */
         pixman_image_fill_rectangles(
             PIXMAN_OP_SRC, pix, &render->pix_input_color,
             1, &(pixman_rectangle16_t){
-                x, y - font->underline.position,
+                x, baseline - font->underline.position,
                 font->max_advance.x,
                 font->underline.thickness});
     }
@@ -402,8 +423,7 @@ render_prompt(struct render *render, struct buffer *buf,
         ? render->subpixel : FCFT_SUBPIXEL_NONE;
 
     int x = render->border_size + render->x_margin;
-    int y = render->border_size + render->y_margin +
-            (render->row_height + font->height) / 2 - font->descent;
+    int y = render->border_size + render->y_margin + render_baseline(render);
 
     /* Erase background */
     pixman_color_t bg = render->pix_background_color;
@@ -1019,7 +1039,7 @@ render_one_match_entry(const struct render *render, const struct matches *matche
         }
     }
 
-    const int y = first_row + (render->row_height + render->font->height) / 2 - render->font->descent + idx * render->row_height;
+    const int y = first_row + render_baseline(render) + idx * render->row_height;
 
     /* Application title */
     render_match_text(
@@ -1298,7 +1318,7 @@ render_set_font_and_update_sizes(struct render *render, struct fcft_font *font,
 
     const unsigned row_height = render->conf->line_height.px >= 0
         ? pt_or_px_as_pixels(render, &render->conf->line_height)
-        : font->height;
+        : max(font->height, font->ascent + font->descent);
 
     const unsigned icon_height = max(0, row_height - font->descent);
 

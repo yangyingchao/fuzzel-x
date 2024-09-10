@@ -36,8 +36,11 @@
 
 * Crash when the border size is larger than the border radius
   ([#401][401]).
+* Regression: cursor not centered when using a custom line height
+  ([#403][403]).
 
 [401]: https://codeberg.org/dnkl/fuzzel/issues/401
+[403]: https://codeberg.org/dnkl/fuzzel/issues/403
 
 
 ### Security
