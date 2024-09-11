@@ -114,6 +114,11 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	Boolean. When enabled, application icons (from the selected
 	*icon-theme*) will be rendered. Default: _yes_.
 
+*hide-before-typing*
+	Boolean. When enabled, application list will be hidden until the first
+	letter is typed. When the prompt is cleared again, the list will appear.
+	Default: _no_.
+
 *fields*
 	Comma separated list of XDG Desktop entry fields to match
 	against.

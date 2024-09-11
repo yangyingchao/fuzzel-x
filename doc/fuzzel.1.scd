@@ -119,6 +119,9 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 *-I*,*--no-icons*
 	Do not render any icons.
 
+*--hide-before-typing*
+	Hide application list until something is typed.
+
 *-F*,*--fields*=_FIELDS_
 	Comma separated list of XDG Desktop entry fields to match against:
 	

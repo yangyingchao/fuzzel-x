@@ -814,6 +814,9 @@ parse_section_main(struct context *ctx)
     else if (strcmp(key, "icons-enabled") == 0)
         return value_to_bool(ctx, &conf->icons_enabled);
 
+    else if (strcmp(key, "hide-before-typing") == 0)
+        return value_to_bool(ctx, &conf->hide_when_prompt_empty);
+
     else if (strcmp(key, "list-executables-in-path") == 0)
         return value_to_bool(ctx, &conf->list_executables_in_path);
 
@@ -1609,6 +1612,7 @@ config_load(struct config *conf, const char *conf_path,
         .match_worker_count = sysconf(_SC_NPROCESSORS_ONLN),
         .icons_enabled = true,
         .icon_theme = strdup("hicolor"),
+        .hide_when_prompt_empty = false,
         .actions_enabled = false,
         .match_mode = MATCH_MODE_FZF,
         .sort_result = true,

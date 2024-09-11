@@ -18,6 +18,7 @@ complete -c fuzzel -x -s o -l output             -a "(__fish_complete_fuzzel_out
 complete -c fuzzel -x -s D -l dpi-aware          -a "no yes auto"                                               -d "scale fonts using the monitor's DPI (auto)"
 complete -c fuzzel -x      -l icon-theme         -a "(find /usr/share/icons -mindepth 1 -maxdepth 1 -type d -print0 | xargs -0 -n 1 basename | sort)" -d "icon theme name (hicolor)"
 complete -c fuzzel    -s I -l no-icons                                                                          -d "do not render any icons"
+complete -c fuzzel         -l hide-before-typing                                                            -d "hide application list until something is typed"
 complete -c fuzzel -x -s F -l fields             -a "filename name generic exec categories keywords comment"    -d "comma separated list of XDG Desktop entry fields to match"
 complete -c fuzzel -x -s p -l prompt                                                                            -d "string to use as input prompt (\"> \")"
 complete -c fuzzel -x      -l placeholder                                                                       -d "placeholder text in input box"

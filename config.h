@@ -126,6 +126,8 @@ struct config {
     bool icons_enabled;
     char *icon_theme;
 
+    bool hide_when_prompt_empty;
+
     bool actions_enabled;
 
     struct config_key_binding_list key_bindings;

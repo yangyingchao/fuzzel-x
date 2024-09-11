@@ -111,6 +111,8 @@
 * Support for pasting text into fuzzel. Both the regular clipboard,
   and the primary clipboard are supported. See the new
   `clipboard-paste` and `primary-paste` key bindings ([#200][200]).
+* `hide-before-typing` command line and config option, hiding the
+  application list until the first letter is typed. ([#351][#351]).
 
 [344]: https://codeberg.org/dnkl/fuzzel/issues/344
 [131]: https://codeberg.org/dnkl/fuzzel/issues/131
@@ -122,6 +124,7 @@
 [188]: https://codeberg.org/dnkl/fuzzel/issues/188
 [274]: https://codeberg.org/dnkl/fuzzel/issues/274
 [200]: https://codeberg.org/dnkl/fuzzel/issues/200
+[351]: https://codeberg.org/dnkl/fuzzel/issues/351
 
 
 ### Changed

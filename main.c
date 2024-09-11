@@ -330,6 +330,7 @@ print_usage(const char *prog_name)
            "  -D,--dpi-aware=no|yes|auto     enable or disable DPI aware rendering (auto)\n"
            "     --icon-theme=NAME           icon theme name (\"hicolor\")\n"
            "  -I,--no-icons                  do not render any icons\n"
+           "     --hide-before-typing    hide application list until something is typed\n"
            "  -F,--fields=FIELDS             comma separated list of XDG Desktop entry\n"
            "                                 fields to match\n"
            "  -p,--prompt=PROMPT             string to use as input prompt (\"> \")\n"
@@ -729,6 +730,7 @@ main(int argc, char *const *argv)
     #define OPT_PLACEHOLDER_COLOR            292
     #define OPT_SEARCH_TEXT                  293
     #define OPT_COUNTER                      294
+    #define OPT_HIDE_WHEN_PROMPT_EMPTY       295
 
     static const struct option longopts[] = {
         {"config",               required_argument, 0, OPT_CONFIG},
@@ -740,6 +742,7 @@ main(int argc, char *const *argv)
         {"dpi-aware",            required_argument, 0, 'D'},
         {"icon-theme",           required_argument, 0, OPT_ICON_THEME},
         {"no-icons",             no_argument,       0, 'I'},
+        {"hide-before-typing", no_argument,     0, OPT_HIDE_WHEN_PROMPT_EMPTY},
         {"fields",               required_argument, 0, 'F'},
         {"password",             optional_argument, 0, OPT_PASSWORD},
         {"anchor",               required_argument, 0, 'a'},
@@ -817,6 +820,7 @@ main(int argc, char *const *argv)
         bool dpi_aware_set:1;
         bool match_fields_set:1;
         bool icons_disabled_set:1;
+        bool hide_when_prompt_empty_set:1;
         bool anchor_set:1;
         bool x_margin_set : 1;
         bool y_margin_set : 1;
@@ -941,6 +945,11 @@ main(int argc, char *const *argv)
         case 'I':
             cmdline_overrides.conf.icons_enabled = false;
             cmdline_overrides.icons_disabled_set = true;
+            break;
+
+        case OPT_HIDE_WHEN_PROMPT_EMPTY:
+            cmdline_overrides.conf.hide_when_prompt_empty = true;
+            cmdline_overrides.hide_when_prompt_empty_set = true;
             break;
 
         case 'F': {
@@ -1679,6 +1688,8 @@ main(int argc, char *const *argv)
         conf.match_fields = cmdline_overrides.conf.match_fields;
     if (cmdline_overrides.icons_disabled_set)
         conf.icons_enabled = cmdline_overrides.conf.icons_enabled;
+    if (cmdline_overrides.hide_when_prompt_empty_set)
+        conf.hide_when_prompt_empty = cmdline_overrides.conf.hide_when_prompt_empty;
     if (cmdline_overrides.anchor_set)
         conf.anchor = cmdline_overrides.conf.anchor;
     if (cmdline_overrides.x_margin_set)

@@ -137,6 +137,7 @@ struct wayland {
     float dpi;
     enum fcft_subpixel subpixel;
     bool font_is_sized_by_dpi;
+    bool hide_when_prompt_empty;
 
     enum { KEEP_RUNNING, EXIT_UPDATE_CACHE, EXIT} status;
     int exit_code;
@@ -2111,7 +2112,15 @@ wayl_refresh(struct wayland *wayl)
     /* Window content */
     matches_lock(wayl->matches);
     render_prompt(wayl->render, buf, wayl->prompt, wayl->matches);
+    if (wayl->hide_when_prompt_empty) {
+        if (prompt_text(wayl->prompt)[0] != '\0') {
+            wayl->hide_when_prompt_empty = false;
+        } else {
+            goto skip_list;
+        }
+    }
     render_match_list(wayl->render, buf, wayl->prompt, wayl->matches);
+skip_list:
     matches_unlock(wayl->matches);
 
 #if defined(FUZZEL_ENABLE_CAIRO)
@@ -2331,6 +2340,7 @@ wayl_init(const struct config *conf, struct fdm *fdm,
         .render = render,
         .prompt = prompt,
         .matches = matches,
+        .hide_when_prompt_empty = conf->hide_when_prompt_empty,
         .status = KEEP_RUNNING,
         .exit_code = !conf->dmenu.enabled ? EXIT_SUCCESS : EXIT_FAILURE,
         .font_reloaded = {
