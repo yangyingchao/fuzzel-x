@@ -28,7 +28,12 @@
 
 
 ## Unreleased
+
 ### Added
+
+* New option `--hide-before-typing` for application launcher mode hides
+  the list until the first character is typed ([#351])
+
 ### Changed
 ### Deprecated
 ### Removed
@@ -41,6 +46,7 @@
 * Regression: selected background not rendered on top of the regular
   background ([#405][405]).
 
+[351]: https://codeberg.org/dnkl/fuzzel/issues/351
 [401]: https://codeberg.org/dnkl/fuzzel/issues/401
 [403]: https://codeberg.org/dnkl/fuzzel/issues/403
 [405]: https://codeberg.org/dnkl/fuzzel/issues/405
