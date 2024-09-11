@@ -814,7 +814,7 @@ parse_section_main(struct context *ctx)
     else if (strcmp(key, "icons-enabled") == 0)
         return value_to_bool(ctx, &conf->icons_enabled);
 
-    else if (strcmp(key, "hide-when-prompt-empty") == 0)
+    else if (strcmp(key, "hide-before-typing") == 0)
         return value_to_bool(ctx, &conf->hide_when_prompt_empty);
 
     else if (strcmp(key, "list-executables-in-path") == 0)

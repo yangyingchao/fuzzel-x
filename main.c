@@ -330,7 +330,7 @@ print_usage(const char *prog_name)
            "  -D,--dpi-aware=no|yes|auto     enable or disable DPI aware rendering (auto)\n"
            "     --icon-theme=NAME           icon theme name (\"hicolor\")\n"
            "  -I,--no-icons                  do not render any icons\n"
-           "     --hide-when-prompt-empty    hide application list until something is typed\n"
+           "     --hide-before-typing    hide application list until something is typed\n"
            "  -F,--fields=FIELDS             comma separated list of XDG Desktop entry\n"
            "                                 fields to match\n"
            "  -p,--prompt=PROMPT             string to use as input prompt (\"> \")\n"
@@ -741,7 +741,7 @@ main(int argc, char *const *argv)
         {"dpi-aware",            required_argument, 0, 'D'},
         {"icon-theme",           required_argument, 0, OPT_ICON_THEME},
         {"no-icons",             no_argument,       0, 'I'},
-        {"hide-when-prompt-empty", no_argument,     0, OPT_HIDE_WHEN_PROMPT_EMPTY},
+        {"hide-before-typing", no_argument,     0, OPT_HIDE_WHEN_PROMPT_EMPTY},
         {"fields",               required_argument, 0, 'F'},
         {"password",             optional_argument, 0, OPT_PASSWORD},
         {"anchor",               required_argument, 0, 'a'},
