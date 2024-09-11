@@ -926,11 +926,10 @@ first_row_y(const struct render *render)
 
 static void
 render_match_entry_background(const struct render *render,
-                              int idx, int row_count, bool is_selected,
+                              int idx, int row_count,
                               pixman_image_t *pix, int width)
 {
-    pixman_color_t bg = is_selected
-        ? render->pix_selection_color : render->pix_background_color;
+    pixman_color_t bg = render->pix_background_color;
 
     const int sel_margin = render->x_margin / 3;
 
@@ -941,6 +940,23 @@ render_match_entry_background(const struct render *render,
 
     pixman_image_fill_rectangles(
         PIXMAN_OP_SRC, pix, &bg, 1, &(pixman_rectangle16_t){x, y, w, h});
+}
+
+static void
+render_selected_match_entry_background(const struct render *render,
+                                       int idx, pixman_image_t *pix, int width)
+{
+    pixman_color_t bg = render->pix_selection_color;
+
+    const int sel_margin = render->x_margin / 3;
+
+    const int x = render->border_size + render->x_margin - sel_margin;
+    const int y = first_row_y(render) + idx * render->row_height;
+    const int w = width - 2 * (render->border_size + render->x_margin - sel_margin);
+    const int h = 1 * render->row_height;
+
+    pixman_image_fill_rectangles(
+        PIXMAN_OP_OVER, pix, &bg, 1, &(pixman_rectangle16_t){x, y, w, h});
 }
 
 static void
@@ -963,9 +979,11 @@ render_one_match_entry(const struct render *render, const struct matches *matche
     double cur_x = render->border_size + render->x_margin;
     double max_x = width - render->border_size - render->x_margin;
 
-    render_match_entry_background(render, idx, 1, is_selected, pix, width);
+    render_match_entry_background(render, idx, 1, pix, width);
 
     if (is_selected) {
+        render_selected_match_entry_background(render, idx, pix, width);
+
         /* If currently selected item has a scalable icon, and if
          * there's "enough" free space, render a large representation
          * of the icon */
@@ -1084,7 +1102,7 @@ render_match_list(struct render *render, struct buffer *buf,
 
     /* Erase background of the "empty" area, after the last match */
     render_match_entry_background(
-        render, match_count, render->conf->lines - match_count, false,
+        render, match_count, render->conf->lines - match_count,
         buf->pix[0], buf->width);
 
     for (size_t i = 0; i < match_count; i++) {

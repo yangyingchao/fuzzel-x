@@ -38,14 +38,15 @@
   ([#401][401]).
 * Regression: cursor not centered when using a custom line height
   ([#403][403]).
+* Regression: selected background not rendered on top of the regular
+  background ([#405][405]).
 
 [401]: https://codeberg.org/dnkl/fuzzel/issues/401
 [403]: https://codeberg.org/dnkl/fuzzel/issues/403
-
+[405]: https://codeberg.org/dnkl/fuzzel/issues/405
 
 ### Security
 ### Contributors
-
 
 ## 1.11.0
 
