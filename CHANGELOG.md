@@ -35,6 +35,9 @@
   the list until the first character is typed ([#351])
 
 ### Changed
+
+* Logging no longer reports "aborted" if dmenu mode is called with no input ([#406]).
+
 ### Deprecated
 ### Removed
 ### Fixed
@@ -50,6 +53,7 @@
 [401]: https://codeberg.org/dnkl/fuzzel/issues/401
 [403]: https://codeberg.org/dnkl/fuzzel/issues/403
 [405]: https://codeberg.org/dnkl/fuzzel/issues/405
+[406]: https://codeberg.org/dnkl/fuzzel/issues/406
 
 ### Security
 ### Contributors

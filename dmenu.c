@@ -63,7 +63,7 @@ dmenu_load_entries(struct application_list *applications, char delim,
         }
 
         if (fds[1].revents & (POLLIN | POLLHUP)) {
-            LOG_WARN("aborted");
+            LOG_DBG("aborted");
             break;
         }
 
