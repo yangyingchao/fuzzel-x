@@ -188,7 +188,7 @@ open_config(void)
 
     /* First, check XDG_CONFIG_HOME (or .config, if unset) */
     if (xdg_config_home != NULL && xdg_config_home[0] != '\0' &&
-            xdg_config_home[0] != '/') {
+            xdg_config_home[0] == '/') {
         if (asprintf(&path, "%s/fuzzel/fuzzel.ini", xdg_config_home) < 0) {
             LOG_ERRNO("failed to build fuzzel.ini path");
             goto done;
