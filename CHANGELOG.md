@@ -32,11 +32,11 @@
 ### Added
 
 * New option `--hide-before-typing` for application launcher mode hides
-  the list until the first character is typed ([#351])
+  the list until the first character is typed ([#351][351])
 
 ### Changed
 
-* Logging no longer reports "aborted" if dmenu mode is called with no input ([#406]).
+* Logging no longer reports "aborted" if dmenu mode is called with no input ([#406][406]).
 
 ### Deprecated
 ### Removed
@@ -49,7 +49,7 @@
 * Regression: selected background not rendered on top of the regular
   background ([#405][405]).
 * Regression: Supporting XDG_CUSTOM_HOME as absolute path but not relative
-  should be supported ([#408])
+  should be supported ([#408][408])
 
 [351]: https://codeberg.org/dnkl/fuzzel/issues/351
 [401]: https://codeberg.org/dnkl/fuzzel/issues/401
@@ -60,6 +60,13 @@
 
 ### Security
 ### Contributors
+
+ * @evur
+ * @ingolemo
+ * @otaj
+ * @thoralf
+ * @tranzystorekk
+ * Mark Stosberg
 
 ## 1.11.0
 
