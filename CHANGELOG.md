@@ -60,8 +60,8 @@
   ([#403][403]).
 * Regression: selected background not rendered on top of the regular
   background ([#405][405]).
-* Regression: Supporting XDG_CUSTOM_HOME as absolute path but not relative
-  should be supported ([#408][408])
+* Regression: Supporting `XDG_CONFIG_HOME` as absolute path but not
+  relative should be supported ([#408][408])
 
 [351]: https://codeberg.org/dnkl/fuzzel/issues/351
 [401]: https://codeberg.org/dnkl/fuzzel/issues/401
