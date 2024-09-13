@@ -34,9 +34,12 @@
 * New option `--hide-before-typing` for application launcher mode hides
   the list until the first character is typed ([#351][351])
 
+
 ### Changed
 
-* Logging no longer reports "aborted" if dmenu mode is called with no input ([#406][406]).
+* Logging no longer reports "aborted" if dmenu mode is called with no
+  input ([#406][406]).
+
 
 ### Deprecated
 ### Removed
@@ -58,6 +61,7 @@
 [406]: https://codeberg.org/dnkl/fuzzel/issues/406
 [408]: https://codeberg.org/dnkl/fuzzel/issues/408
 
+
 ### Security
 ### Contributors
 
@@ -67,6 +71,7 @@
  * @thoralf
  * @tranzystorekk
  * Mark Stosberg
+
 
 ## 1.11.0
 
