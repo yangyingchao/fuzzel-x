@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [1.11.1](#1-11-1)
 * [1.11.0](#1-11-0)
 * [1.10.2](#1-10-2)
 * [1.10.1](#1-10-1)
@@ -27,7 +27,7 @@
 * [1.4.1](#1-4-1)
 
 
-## Unreleased
+## 1.11.1
 
 ### Added
 
@@ -41,8 +41,6 @@
   input ([#406][406]).
 
 
-### Deprecated
-### Removed
 ### Fixed
 
 * Crash when the border size is larger than the border radius
@@ -62,15 +60,14 @@
 [408]: https://codeberg.org/dnkl/fuzzel/issues/408
 
 
-### Security
 ### Contributors
 
- * @evur
- * @ingolemo
- * @otaj
- * @thoralf
- * @tranzystorekk
- * Mark Stosberg
+* @ever
+* @ingolemo
+* @otaj
+* @thoralf
+* @tranzystorekk
+* Mark Stosberg
 
 
 ## 1.11.0
