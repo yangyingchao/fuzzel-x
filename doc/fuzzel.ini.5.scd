@@ -251,7 +251,8 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 
 *image-size-ratio*
 	The ratio of the large image displayed when there are only a "few"
-	matches, compared to the full window size. Default: _0.5_.
+	matches, compared to the full window size. Set to 1 to disable the
+	the large images. Default: _0.5_.
 
 *line-height*
 	Override line height from font metrics. Default: use font metrics.
