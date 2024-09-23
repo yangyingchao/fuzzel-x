@@ -79,7 +79,9 @@ select_mime_type_for_offer(const char *_mime_type,
     }
 
     LOG_DBG("mime-type: %s -> %s (offered type was %s)",
-            mime_type_map[*type], mime_type_map[mime_type], _mime_type);
+            mime_type_map[*type],
+            (mime_type_map[mime_type] == NULL ? "(null)" : mime_type_map[mime_type]),
+            _mime_type);
 
     /* Mime-type transition; if the new mime-type is "better" than
      * previously offered types, use the new type */
