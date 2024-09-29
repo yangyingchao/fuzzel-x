@@ -136,6 +136,17 @@ For more detailed configuration information, see the man pages:
 man fuzzel
 man fuzzel.ini
 ```
+## Testing
+
+Fuzzel has some automated tests in `test/`. To run them, Fish shell and `wtype` are required.
+The test runner can be installed within Fish shell with:
+
+    fisher install jorgebucaran/fishtape
+
+Once installed, the tests can be run with:
+
+    fishtape test/*.fish
+
 ## License
 
 Fuzzel is released under the [MIT license](LICENSE).
