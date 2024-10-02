@@ -34,6 +34,11 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* Custom line heights smaller than the font's actual line height
+  causing visual glitches in the prompt.
+
+
 ### Security
 ### Contributors
 

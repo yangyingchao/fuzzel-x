@@ -256,9 +256,10 @@ render_baseline(const struct render *render)
      * otherwise the baseline is simply 'descent' pixels above the
      * bottom of the cell
      */
-    const int glyph_top_y = render->conf->line_height.px >= 0
-        ? round((line_height - font_height) / 2.)
-        : 0;
+    const int glyph_top_y =
+        render->conf->line_height.px >= 0 && line_height >= font_height
+            ? round((line_height - font_height) / 2.)
+            : 0;
 
     return line_height - glyph_top_y - font->descent;
 }
@@ -381,7 +382,7 @@ render_cursor(const struct render *render, int x, int baseline, pixman_image_t *
             PIXMAN_OP_SRC, pix, &render->pix_input_color,
             1, &(pixman_rectangle16_t){
                 x,
-                baseline - render->font->ascent,
+                baseline + render->font->descent - height,
                 font->underline.thickness,
                 height});
     } else {
