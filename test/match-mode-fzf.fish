@@ -22,3 +22,6 @@ test_fzf_mode "hamburger\nflag: bulgaria\nbug\njunk\ntrunk" bug
 
 test_fzf_mode "longer entry\nlonger\nlong" long
 @test "shorter matches should match first" $got = long
+
+test_fzf_mode "\nbcdef\nabcd\n" cd
+@test "matched sub-string is closer to the beginning is sorted first." $got = bcdef
