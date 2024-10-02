@@ -819,6 +819,10 @@ match_compar(const void *_a, const void *_b)
         return -1;
     else if (a->application->count < b->application->count)
         return 1;
+    else if (a->pos_count > 0 && b->pos_count > 0 && a->pos[0].start < b->pos[0].start)
+        return -1;
+    else if (a->pos_count > 0 && b->pos_count > 0 && a->pos[0].start > b->pos[0].start)
+        return 1;
     else if (a->pos_count > 0 && b->pos_count > 0 &&
              a->application->title != NULL && b->application->title != NULL)
     {

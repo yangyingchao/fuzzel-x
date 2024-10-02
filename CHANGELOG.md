@@ -31,6 +31,15 @@
 ## Unreleased
 ### Added
 ### Changed
+
+* Take the matched sub-string's position into account when sorting
+  matches; entries where the matched sub-string is closer to the
+  beginning of the entry is sorted before entries where the sub-string
+  is closer to the end of the entry ([#419][419]).
+
+[419]: https://codeberg.org/dnkl/fuzzel/issues/419
+
+
 ### Deprecated
 ### Removed
 ### Fixed
