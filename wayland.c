@@ -145,6 +145,7 @@ struct wayland {
 
     struct wl_callback *frame_cb;
     bool need_refresh;
+    bool is_configured;
 
     struct wl_display *display;
     struct wl_registry *registry;
@@ -1971,6 +1972,7 @@ layer_surface_configure(void *data, struct zwlr_layer_surface_v1 *surface,
 {
     struct wayland *wayl = data;
     zwlr_layer_surface_v1_ack_configure(surface, serial);
+    wayl->is_configured = true;
     wayl_refresh(wayl);
 }
 
@@ -2076,6 +2078,9 @@ frame_callback(void *data, struct wl_callback *wl_callback, uint32_t callback_da
 void
 wayl_refresh(struct wayland *wayl)
 {
+    if (!wayl->is_configured)
+        return;
+
     if (wayl->frame_cb != NULL) {
         wayl->need_refresh = true;
         return;

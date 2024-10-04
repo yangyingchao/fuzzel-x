@@ -46,6 +46,10 @@
 
 * Custom line heights smaller than the font's actual line height
   causing visual glitches in the prompt.
+* Wayland protocol error: _"layer surface has never been configured"_
+  ([#426][426]).
+
+[426]: https://codeberg.org/dnkl/fuzzel/issues/426
 
 
 ### Security
