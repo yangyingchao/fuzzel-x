@@ -1455,10 +1455,7 @@ matches_update_internal(struct matches *matches, bool incremental)
 
     if (copy == NULL || tokens == NULL || tok_lengths == NULL) {
         LOG_ERR("failed to allocate tokens");
-        free(copy);
-        free(tokens);
-        free(tok_lengths);
-        goto unlock_and_return;
+        goto free_unlock_and_return;
     }
 
     size_t tok_count = 1;
@@ -1481,24 +1478,16 @@ matches_update_internal(struct matches *matches, bool incremental)
 
             char32_t **new_tokens = reallocarray(
                 tokens, tok_count, sizeof(tokens[0]));
+            if (new_tokens == NULL)
+                goto free_unlock_and_return;
+            tokens = new_tokens;
+
             size_t *new_tok_lengths = reallocarray(
                 tok_lengths, tok_count, sizeof(tok_lengths[0]));
-
-            if (new_tokens == NULL || new_tok_lengths == NULL) {
-                if (new_tokens != NULL)
-                    free(new_tokens);
-                else
-                    free(tokens);
-                if (new_tok_lengths != NULL)
-                    free(new_tok_lengths);
-                else
-                    free(tok_lengths);
-                free(copy);
-                goto unlock_and_return;
-            }
-
-            tokens = new_tokens;
+            if (new_tok_lengths == NULL)
+                goto free_unlock_and_return;
             tok_lengths = new_tok_lengths;
+
             tokens[tok_count - 1] = p + 1;
             tok_lengths[tok_count - 1] = 0;
         }
@@ -1591,10 +1580,6 @@ matches_update_internal(struct matches *matches, bool incremental)
         matches->workers.tok_lengths = NULL;
     }
 
-    free(tok_lengths);
-    free(tokens);
-    free(copy);
-
     LOG_DBG("match update done");
 
     /* Sort */
@@ -1610,6 +1595,11 @@ matches_update_internal(struct matches *matches, bool incremental)
 
     if (matches->selected >= matches->match_count && matches->selected > 0)
         matches->selected = matches->match_count - 1;
+
+free_unlock_and_return:
+    free(tok_lengths);
+    free(tokens);
+    free(copy);
 
 unlock_and_return:
     matches_unlock(matches);
