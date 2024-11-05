@@ -854,24 +854,35 @@ render_png_libpng(struct icon *icon, int x, int y, int size,
             &scale_transform, &_scale_transform);
         pixman_image_set_transform(png, &scale_transform);
 
-        int param_count = 0;
-        pixman_kernel_t kernel = PIXMAN_KERNEL_LANCZOS3;
-        pixman_fixed_t *params = pixman_filter_create_separable_convolution(
-            &param_count,
-            pixman_double_to_fixed(1. / scale),
-            pixman_double_to_fixed(1. / scale),
-            kernel, kernel,
-            kernel, kernel,
-            pixman_int_to_fixed(1),
-            pixman_int_to_fixed(1));
+        if (height >= 1000) {
+            if (!icon->png_size_warned) {
+                LOG_WARN(
+                    "%s: PNG is too large (%dx%d); "
+                    "downscaling using a less precise filter",
+                    icon->path, width, height);
+                icon->png_size_warned = true;
+            }
+            pixman_image_set_filter(png, PIXMAN_FILTER_FAST, NULL, 0);
+        } else {
+            int param_count = 0;
+            pixman_kernel_t kernel = PIXMAN_KERNEL_LANCZOS3;
+            pixman_fixed_t *params = pixman_filter_create_separable_convolution(
+                &param_count,
+                pixman_double_to_fixed(1. / scale),
+                pixman_double_to_fixed(1. / scale),
+                kernel, kernel,
+                kernel, kernel,
+                pixman_int_to_fixed(1),
+                pixman_int_to_fixed(1));
 
-        if (params != NULL || param_count == 0) {
-            pixman_image_set_filter(
-                png, PIXMAN_FILTER_SEPARABLE_CONVOLUTION,
-                params, param_count);
+            if (params != NULL || param_count == 0) {
+                pixman_image_set_filter(
+                    png, PIXMAN_FILTER_SEPARABLE_CONVOLUTION,
+                    params, param_count);
+            }
+
+            free(params);
         }
-
-        free(params);
 
         width *= scale;
         height *= scale;

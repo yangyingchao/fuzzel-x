@@ -36,8 +36,11 @@
   matches; entries where the matched sub-string is closer to the
   beginning of the entry is sorted before entries where the sub-string
   is closer to the end of the entry ([#419][419]).
+* "Too large" PNG icons are now downscaled using a less precise
+  scaling filter, to improve performance ([#439][439]).
 
 [419]: https://codeberg.org/dnkl/fuzzel/issues/419
+[439]: https://codeberg.org/dnkl/fuzzel/issues/439
 
 
 ### Deprecated

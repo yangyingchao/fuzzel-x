@@ -44,6 +44,9 @@ struct icon {
 #endif
     };
 
+    /* Icon is "too large" and we've already warned about this */
+    bool png_size_warned;
+
     /* List of cached rasterizations (used with SVGs) */
     rasterized_list_t rasterized;
 };
