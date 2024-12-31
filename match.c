@@ -638,9 +638,9 @@ matches_get_match(const struct matches *matches)
 }
 
 size_t
-matches_get_application_count(const struct matches *matches)
+matches_get_application_visible_count(const struct matches *matches)
 {
-    return matches->applications->count;
+    return matches->applications->visible_count;
 }
 
 size_t

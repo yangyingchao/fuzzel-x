@@ -201,7 +201,7 @@ dmenu_load_entries(struct application_list *applications, char delim,
             }
 
             assert(i == new_count);
-            applications->count = new_count;
+            applications->count = applications->visible_count = new_count;
             send_event(event_fd, EVENT_APPS_SOME_LOADED);
             mtx_unlock(&applications->lock);
         }
@@ -226,7 +226,7 @@ out:
         tll_remove(entries, it);
     }
 
-    applications->count = new_count;
+    applications->count = applications->visible_count = new_count;
     mtx_unlock(&applications->lock);
 
     tll_free(entries);

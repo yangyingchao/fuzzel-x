@@ -98,6 +98,7 @@ path_find_programs(struct application_list *applications)
 
     tll_foreach(entries, it) {
         applications->v[applications->count++] = it->item;
+        applications->visible_count++;
         tll_remove(entries, it);
     }
 }

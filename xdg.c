@@ -689,6 +689,8 @@ xdg_find_programs(const char *terminal, bool include_actions,
     size_t i = 0;
     tll_foreach(apps, it) {
         applications->v[i++] = it->item;
+        if (it->item->visible)
+            applications->visible_count++;
         tll_remove(apps, it);
     }
     tll_free(apps);

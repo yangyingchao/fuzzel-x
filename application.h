@@ -100,6 +100,7 @@ bool application_execute(
 struct application_list {
     struct application **v;
     size_t count;
+    size_t visible_count;
     mtx_t lock;
 };
 

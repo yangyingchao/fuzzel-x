@@ -278,7 +278,7 @@ render_match_count(const struct render *render, struct buffer *buf,
             ? render->subpixel
             : FCFT_SUBPIXEL_NONE;
 
-    size_t total_count = matches_get_application_count(matches);
+    size_t total_count = matches_get_application_visible_count(matches);
     size_t match_count = matches_get_total_count(matches);
     const char32_t *ptext = prompt_text(prompt);
 

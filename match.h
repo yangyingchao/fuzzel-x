@@ -60,7 +60,7 @@ size_t matches_get_page(const struct matches *matches);
 
 const struct match *matches_get(const struct matches *matches, size_t idx);
 const struct match *matches_get_match(const struct matches *matches);
-size_t matches_get_application_count(const struct matches *matches);
+size_t matches_get_application_visible_count(const struct matches *matches);
 size_t matches_get_count(const struct matches *matches); /* Matches on current page */
 size_t matches_get_total_count(const struct matches *matches);
 size_t matches_get_match_index(const struct matches *matches);
