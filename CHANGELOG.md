@@ -51,6 +51,8 @@
   causing visual glitches in the prompt.
 * Wayland protocol error: _"layer surface has never been configured"_
   ([#426][426]).
+* Entries with `NoDisplay=True` being included in the total (entry)
+  count.
 
 [426]: https://codeberg.org/dnkl/fuzzel/issues/426
 
