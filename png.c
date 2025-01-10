@@ -15,6 +15,7 @@
 #define LOG_ENABLE_DBG 0
 #include "log.h"
 #include "stride.h"
+#include "xmalloc.h"
 
 static void
 png_warning_cb(png_structp png_ptr, png_const_charp warning_msg)
@@ -131,12 +132,12 @@ png_load(const char *path)
 
     size_t row_bytes __attribute__((unused)) = png_get_rowbytes(png_ptr, info_ptr);
     int stride = stride_for_format_and_width(format, width);
-    image_data = malloc(height * stride);
+    image_data = xmalloc(height * stride);
 
     LOG_DBG("stride=%d, row-bytes=%zu", stride, row_bytes);
     assert(stride >= row_bytes);
 
-    row_pointers = malloc(height * sizeof(png_bytep));
+    row_pointers = xmalloc(height * sizeof(png_bytep));
     for (int i = 0; i < height; i++)
         row_pointers[i] = &image_data[i * stride];
 

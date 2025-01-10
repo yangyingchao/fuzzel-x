@@ -10,9 +10,8 @@
 #include <syslog.h>
 #include <unistd.h>
 #include <assert.h>
-
-#define ALEN(v) (sizeof(v) / sizeof((v)[0]))
-#define UNUSED __attribute__((unused))
+#include "macros.h"
+#include "xsnprintf.h"
 
 static bool colorize = false;
 static bool do_syslog = false;
@@ -78,7 +77,7 @@ _log(enum log_class log_class, const char *module, const char *file, int lineno,
     unsigned int class_clr = log_level_map[log_class].color;
 
     char clr[16];
-    snprintf(clr, sizeof(clr), "\033[%um", class_clr);
+    xsnprintf(clr, sizeof(clr), "\033[%um", class_clr);
     fprintf(stderr, "%s%s%s: ", colorize ? clr : "", prefix, colorize ? "\033[0m" : "");
 
     if (colorize)
@@ -219,7 +218,7 @@ log_level_string_hint(void)
     for (size_t i = 0, pos = 0, n = map_len(); i < n; i++) {
         const char *entry = log_level_map[i].name;
         const char *delim = (i + 1 < n) ? ", " : "";
-        pos += snprintf(buf + pos, sizeof(buf) - pos, "'%s'%s", entry, delim);
+        pos += xsnprintf(buf + pos, sizeof(buf) - pos, "'%s'%s", entry, delim);
     }
 
     return buf;

@@ -1,5 +1,7 @@
 #pragma once
 
+#define ALEN(v) (sizeof(v) / sizeof((v)[0]))
+#define DO_PRAGMA(x) _Pragma(#x)
 #define VERCMP(x, y, cx, cy) ((cx > x) || ((cx == x) && (cy >= y)))
 
 #ifdef __has_include
@@ -26,6 +28,15 @@
     #define HAS_BUILTIN(x) 0
 #endif
 
+// __has_extension() is a Clang macro used to determine if a feature is
+// available even if not standardized in the current "-std" mode.
+#ifdef __has_extension
+    #define HAS_EXTENSION(x) __has_extension(x)
+#else
+    // Clang versions prior to 3.0 only supported __has_feature()
+    #define HAS_EXTENSION(x) HAS_FEATURE(x)
+#endif
+
 #if defined(__GNUC__) && defined(__GNUC_MINOR__)
     #define GNUC_AT_LEAST(x, y) VERCMP(x, y, __GNUC__, __GNUC_MINOR__)
 #else
@@ -36,6 +47,12 @@
     #define UNUSED __attribute__((__unused__))
 #else
     #define UNUSED
+#endif
+
+#if GNUC_AT_LEAST(3, 0) || HAS_ATTRIBUTE(malloc)
+    #define MALLOC __attribute__((__malloc__))
+#else
+    #define MALLOC
 #endif
 
 #if GNUC_AT_LEAST(3, 0) || HAS_ATTRIBUTE(format)
@@ -68,6 +85,20 @@
     #define COLD
 #endif
 
+#if GNUC_AT_LEAST(3, 3) || HAS_ATTRIBUTE(nonnull)
+    #define NONNULL_ARGS __attribute__((__nonnull__))
+    #define NONNULL_ARG(...) __attribute__((__nonnull__(__VA_ARGS__)))
+#else
+    #define NONNULL_ARGS
+    #define NONNULL_ARG(...)
+#endif
+
+#if GNUC_AT_LEAST(3, 4) || HAS_ATTRIBUTE(warn_unused_result)
+    #define WARN_UNUSED_RESULT __attribute__((__warn_unused_result__))
+#else
+    #define WARN_UNUSED_RESULT
+#endif
+
 #if GNUC_AT_LEAST(4, 3) || HAS_ATTRIBUTE(hot)
     #define HOT __attribute__((__hot__))
 #else
@@ -78,4 +109,31 @@
     #define UNREACHABLE() __builtin_unreachable()
 #else
     #define UNREACHABLE()
+#endif
+
+#if GNUC_AT_LEAST(5, 0) || HAS_ATTRIBUTE(returns_nonnull)
+    #define RETURNS_NONNULL __attribute__((__returns_nonnull__))
+#else
+    #define RETURNS_NONNULL
+#endif
+
+#define XMALLOC MALLOC RETURNS_NONNULL WARN_UNUSED_RESULT
+#define XSTRDUP XMALLOC NONNULL_ARGS
+
+#ifdef __clang__
+    #define IGNORE_WARNING(wflag) \
+        DO_PRAGMA(clang diagnostic push) \
+        DO_PRAGMA(clang diagnostic ignored "-Wunknown-pragmas") \
+        DO_PRAGMA(clang diagnostic ignored "-Wunknown-warning-option") \
+        DO_PRAGMA(clang diagnostic ignored wflag)
+    #define UNIGNORE_WARNINGS DO_PRAGMA(clang diagnostic pop)
+#elif GNUC_AT_LEAST(4, 6)
+    #define IGNORE_WARNING(wflag) \
+        DO_PRAGMA(GCC diagnostic push) \
+        DO_PRAGMA(GCC diagnostic ignored "-Wpragmas") \
+        DO_PRAGMA(GCC diagnostic ignored wflag)
+    #define UNIGNORE_WARNINGS DO_PRAGMA(GCC diagnostic pop)
+#else
+    #define IGNORE_WARNING(wflag)
+    #define UNIGNORE_WARNINGS
 #endif

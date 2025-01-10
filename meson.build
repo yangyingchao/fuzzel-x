@@ -175,6 +175,8 @@ executable(
   'uri.c', 'uri.h',
   'wayland.c', 'wayland.h',
   'xdg.c', 'xdg.h',
+  'xmalloc.c', 'xmalloc.h',
+  'xsnprintf.c', 'xsnprintf.h',
   wl_proto_src + wl_proto_headers, version,
   dependencies: [math,
                  threads,

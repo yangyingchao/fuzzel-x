@@ -11,7 +11,7 @@ struct prompt *prompt_init(
     const char32_t *text);
 void prompt_destroy(struct prompt *prompt);
 
-bool prompt_insert_chars(struct prompt *prompt, const char *text, size_t len);
+void prompt_insert_chars(struct prompt *prompt, const char *text, size_t len);
 
 const char32_t *prompt_prompt(const struct prompt *prompt);
 const char32_t *prompt_placeholder(const struct prompt *prompt);

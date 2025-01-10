@@ -21,6 +21,7 @@
 #include "log.h"
 #include "debug.h"
 #include "macros.h"
+#include "xmalloc.h"
 
 #if !defined(MAP_UNINITIALIZED)
  #define MAP_UNINITIALIZED 0
@@ -269,12 +270,12 @@ instantiate_offset(struct buffer_private *buf, off_t new_offset)
 
     void *mmapped = MAP_FAILED;
     struct wl_buffer *wl_buf = NULL;
-    pixman_image_t **pix = calloc(buf->public.pix_instances, sizeof(pix[0]));
+    pixman_image_t **pix = xcalloc(buf->public.pix_instances, sizeof(pix[0]));
 
 #if defined(FUZZEL_ENABLE_CAIRO)
-    cairo_t **cairos = calloc(buf->public.pix_instances, sizeof(cairos[0]));
+    cairo_t **cairos = xcalloc(buf->public.pix_instances, sizeof(cairos[0]));
     cairo_surface_t **cairo_surfs =
-        calloc(buf->public.pix_instances, sizeof(cairo_surfs[0]));
+        xcalloc(buf->public.pix_instances, sizeof(cairo_surfs[0]));
 #endif
 
     mmapped = (uint8_t *)pool->real_mmapped + new_offset;
@@ -509,12 +510,7 @@ get_new_buffers(struct buffer_chain *chain, size_t count,
         goto err;
     }
 
-    pool = malloc(sizeof(*pool));
-    if (pool == NULL) {
-        LOG_ERRNO("failed to allocate buffer pool");
-        goto err;
-    }
-
+    pool = xmalloc(sizeof(*pool));
     *pool = (struct buffer_pool){
         .fd = pool_fd,
         .wl_pool = wl_pool,
@@ -530,7 +526,7 @@ get_new_buffers(struct buffer_chain *chain, size_t count,
         }
 
         /* Push to list of available buffers, but marked as 'busy' */
-        struct buffer_private *buf = malloc(sizeof(*buf));
+        struct buffer_private *buf = xmalloc(sizeof(*buf));
         *buf = (struct buffer_private){
             .public = {
                 .width = widths[i],
@@ -559,7 +555,7 @@ get_new_buffers(struct buffer_chain *chain, size_t count,
         else
             tll_push_front(chain->bufs, buf);
 
-        buf->public.dirty = malloc(
+        buf->public.dirty = xmalloc(
             chain->pix_instances * sizeof(buf->public.dirty[0]));
 
         for (size_t j = 0; j < chain->pix_instances; j++)
@@ -1026,7 +1022,7 @@ shm_unref(struct buffer *_buf)
 struct buffer_chain *
 shm_chain_new(struct wl_shm *shm, bool scrollable, size_t pix_instances)
 {
-    struct buffer_chain *chain = malloc(sizeof(*chain));
+    struct buffer_chain *chain = xmalloc(sizeof(*chain));
     *chain = (struct buffer_chain){
         .bufs = tll_init(),
         .shm = shm,

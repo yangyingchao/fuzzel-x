@@ -9,6 +9,7 @@
 #include "log.h"
 #include "char32.h"
 #include "wayland.h"
+#include "xmalloc.h"
 
 struct prompt {
     char32_t *prompt;
@@ -23,11 +24,11 @@ prompt_init(const char32_t *prompt_text, const char32_t *placeholder,
 {
     const bool have_initial_text = text != NULL && text[0] != U'\0';
 
-    struct prompt *prompt = malloc(sizeof(*prompt));
+    struct prompt *prompt = xmalloc(sizeof(*prompt));
     *prompt = (struct prompt) {
-        .prompt = c32dup(prompt_text),
-        .placeholder = c32dup(placeholder),
-        .text = have_initial_text ? c32dup(text) : calloc(1, sizeof(char32_t)),
+        .prompt = xc32dup(prompt_text),
+        .placeholder = xc32dup(placeholder),
+        .text = have_initial_text ? xc32dup(text) : xcalloc(1, sizeof(char32_t)),
         .cursor = have_initial_text ? c32len(text) : 0,
     };
 
@@ -46,15 +47,13 @@ prompt_destroy(struct prompt *prompt)
     free(prompt);
 }
 
-bool
+void
 prompt_insert_chars(struct prompt *prompt, const char *text, size_t len)
 {
     size_t wlen = mbsntoc32(NULL, text, len, 0);
 
     const size_t new_len = c32len(prompt->text) + wlen + 1;
-    char32_t *new_text = reallocarray(prompt->text, new_len, sizeof(char32_t));
-    if (new_text == NULL)
-        return false;
+    char32_t *new_text = xreallocarray(prompt->text, new_len, sizeof(char32_t));
 
     memmove(&new_text[prompt->cursor + wlen],
             &new_text[prompt->cursor],
@@ -64,7 +63,6 @@ prompt_insert_chars(struct prompt *prompt, const char *text, size_t len)
 
     prompt->text = new_text;
     prompt->cursor += wlen;
-    return true;
 }
 
 const char32_t *
@@ -211,7 +209,7 @@ bool
 prompt_erase_all(struct prompt *prompt)
 {
     free(prompt->text);
-    prompt->text = calloc(1, sizeof(char32_t));
+    prompt->text = xcalloc(1, sizeof(char32_t));
     prompt->cursor = 0;
     return true;
 }

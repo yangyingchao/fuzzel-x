@@ -28,6 +28,7 @@
 #include "log.h"
 #include "char32.h"
 #include "wayland.h"
+#include "xmalloc.h"
 
 #define min(x, y) ((x < y) ? (x) : (y))
 #define max(x, y) ((x > y) ? (x) : (y))
@@ -171,7 +172,7 @@ match_fzf(const char32_t *haystack, size_t haystack_len,
         if (pos != NULL) {
             assert(pos_count != NULL);
             (*pos_count)++;
-            *pos = reallocarray(*pos, *pos_count, sizeof((*pos)[0]));
+            *pos = xreallocarray(*pos, *pos_count, sizeof((*pos)[0]));
             (*pos)[*pos_count - 1].start = longest_match_ofs;
             (*pos)[*pos_count - 1].len = longest_match_len;
         }
@@ -228,9 +229,9 @@ match_levenshtein(struct matches *matches,
     if (src_len < pat_len)
         return NULL;
 
-    struct levenshtein_matrix **m = calloc(pat_len + 1, sizeof(m[0]));
+    struct levenshtein_matrix **m = xcalloc(pat_len + 1, sizeof(m[0]));
     for (size_t i = 0; i < pat_len + 1; i++)
-        m[i] = calloc(src_len + 1, sizeof(m[0][0]));
+        m[i] = xcalloc(src_len + 1, sizeof(m[0][0]));
 
     levenshtein_distance(src, src_len, pat, pat_len, m);
 
@@ -364,7 +365,7 @@ matches_init(struct fdm *fdm, const struct prompt *prompt,
              size_t fuzzy_max_distance, uint16_t workers,
              size_t delay_ms, size_t delay_limit)
 {
-    struct matches *matches = malloc(sizeof(*matches));
+    struct matches *matches = xmalloc(sizeof(*matches));
     *matches = (struct matches) {
         .fdm = fdm,
         .prompt = prompt,
@@ -401,20 +402,10 @@ matches_init(struct fdm *fdm, const struct prompt *prompt,
         }
 
         matches->workers.threads =
-            calloc(workers, sizeof(matches->workers.threads[0]));
-
-        if (matches->workers.threads == NULL) {
-            LOG_ERRNO("failed to allocate match worker threads array");
-            goto err_free_semaphores_and_lock;
-        }
+            xcalloc(workers, sizeof(matches->workers.threads[0]));
 
         for (size_t i = 0; i < workers; i++) {
-            struct thread_context *ctx = malloc(sizeof(*ctx));
-            if (ctx == NULL) {
-                LOG_ERRNO("failed to allocate match worker thread context");
-                goto err_free_semaphores_and_lock;
-            }
-
+            struct thread_context *ctx = xmalloc(sizeof(*ctx));
             *ctx = (struct thread_context){
                 .matches = matches,
                 .my_id = 1 + i,
@@ -529,7 +520,7 @@ matches_set_applications(struct matches *matches,
         return;
     }
 
-    matches->matches = reallocarray(
+    matches->matches = xreallocarray(
         matches->matches, applications->count, sizeof(matches->matches[0]));
 
     const size_t old_size = matches->matches_size;
@@ -909,17 +900,11 @@ match_app(struct matches *matches, struct application *app,
                     /* Extend last match position */
                     pos[pos_count - 1].len += match_len;
                 } else {
-                    size_t new_pos_count = pos_count + 1;
-                    struct match_substring *new_pos =
-                        reallocarray(pos, new_pos_count, sizeof(new_pos[0]));
+                    pos_count += 1;
+                    pos = xreallocarray(pos, pos_count, sizeof(pos[0]));
 
-                    if (new_pos != NULL) {
-                        pos = new_pos;
-                        pos_count = new_pos_count;
-
-                        pos[pos_count - 1].start = m - app->title_lowercase;
-                        pos[pos_count - 1].len = match_len;
-                    }
+                    pos[pos_count - 1].start = m - app->title_lowercase;
+                    pos[pos_count - 1].len = match_len;
                 }
             }
 
@@ -1449,15 +1434,9 @@ matches_update_internal(struct matches *matches, bool incremental)
 
     LOG_DBG("match update begin");
 
-    char32_t *copy = c32dup(ptext);
-    char32_t **tokens = malloc(sizeof(tokens[0]));
-    size_t *tok_lengths = malloc(sizeof(tok_lengths[0]));
-
-    if (copy == NULL || tokens == NULL || tok_lengths == NULL) {
-        LOG_ERR("failed to allocate tokens");
-        goto free_unlock_and_return;
-    }
-
+    char32_t *copy = xc32dup(ptext);
+    char32_t **tokens = xmalloc(sizeof(tokens[0]));
+    size_t *tok_lengths = xmalloc(sizeof(tok_lengths[0]));
     size_t tok_count = 1;
     tokens[0] = copy;
     tok_lengths[0] = 0;
@@ -1476,17 +1455,10 @@ matches_update_internal(struct matches *matches, bool incremental)
         } else {
             tok_count++;
 
-            char32_t **new_tokens = reallocarray(
-                tokens, tok_count, sizeof(tokens[0]));
-            if (new_tokens == NULL)
-                goto free_unlock_and_return;
-            tokens = new_tokens;
+            tokens = xreallocarray(tokens, tok_count, sizeof(tokens[0]));
 
-            size_t *new_tok_lengths = reallocarray(
+            tok_lengths = xreallocarray(
                 tok_lengths, tok_count, sizeof(tok_lengths[0]));
-            if (new_tok_lengths == NULL)
-                goto free_unlock_and_return;
-            tok_lengths = new_tok_lengths;
 
             tokens[tok_count - 1] = p + 1;
             tok_lengths[tok_count - 1] = 0;
@@ -1521,7 +1493,7 @@ matches_update_internal(struct matches *matches, bool incremental)
 
         if (incremental) {
             matches->workers.old_matches =
-                reallocarray(matches->workers.old_matches,
+                xreallocarray(matches->workers.old_matches,
                              matches->match_count,
                              sizeof(matches->workers.old_matches[0]));
 
@@ -1596,7 +1568,6 @@ matches_update_internal(struct matches *matches, bool incremental)
     if (matches->selected >= matches->match_count && matches->selected > 0)
         matches->selected = matches->match_count - 1;
 
-free_unlock_and_return:
     free(tok_lengths);
     free(tokens);
     free(copy);
@@ -1633,7 +1604,7 @@ matches_update(struct matches *matches)
         matches->delayed_update_type = DELAYED_FULL_UPDATE;
         if (arm_delayed_timer(matches))
             return;
-    } 
+    }
 
     matches_update_internal(matches, false);
 }

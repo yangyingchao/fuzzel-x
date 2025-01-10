@@ -12,9 +12,11 @@
 #define LOG_MODULE "clipboard"
 #define LOG_ENABLE_DBG 1
 #include "log.h"
+#include "macros.h"
 #include "prompt.h"
 #include "uri.h"
 #include "wayland.h"
+#include "xmalloc.h"
 
 static const char *const mime_type_map[] = {
     [DATA_OFFER_MIME_UNSET] = NULL,
@@ -68,7 +70,7 @@ select_mime_type_for_offer(const char *_mime_type,
     enum data_offer_mime_type mime_type = DATA_OFFER_MIME_UNSET;
 
     /* Translate offered mime type to our mime type enum */
-    for (size_t i = 0; i < sizeof(mime_type_map) / sizeof(mime_type_map[0]); i++) {
+    for (size_t i = 0; i < ALEN(mime_type_map); i++) {
         if (mime_type_map[i] == NULL)
             continue;
 
@@ -253,7 +255,7 @@ drop(void *data, struct wl_data_device *wl_data_device)
         return;
     }
 
-    struct dnd_context *ctx = malloc(sizeof(*ctx));
+    struct dnd_context *ctx = xmalloc(sizeof(*ctx));
     *ctx = (struct dnd_context){
         .seat = seat,
         .data_offer = clipboard->data_offer,
@@ -458,7 +460,7 @@ fdm_receive_decoder_uri(struct clipboard_receive *ctx, char *data, size_t size)
 {
     while (ctx->buf.idx + size > ctx->buf.sz) {
         size_t new_sz = ctx->buf.sz == 0 ? size : 2 * ctx->buf.sz;
-        ctx->buf.data = realloc(ctx->buf.data, new_sz);
+        ctx->buf.data = xrealloc(ctx->buf.data, new_sz);
         ctx->buf.sz = new_sz;
     }
 
@@ -614,7 +616,7 @@ begin_receive_clipboard(struct seat *seat, int read_fd,
         goto err;
     }
 
-    ctx = malloc(sizeof(*ctx));
+    ctx = xmalloc(sizeof(*ctx));
     *ctx = (struct clipboard_receive) {
         .seat = seat,
         .read_fd = read_fd,

@@ -9,6 +9,8 @@
 #define LOG_ENABLE_DBG 0
 #include "log.h"
 #include "debug.h"
+#include "macros.h"
+#include "xmalloc.h"
 
 enum {
     HEX_DIGIT_INVALID = 16
@@ -60,7 +62,7 @@ uri_parse(const char *uri, size_t len,
         goto err;
 
     if (scheme != NULL)
-        *scheme = strndup(start, scheme_len);
+        *scheme = xstrndup(start, scheme_len);
 
     LOG_DBG("scheme: \"%.*s\"", (int)scheme_len, start);
 
@@ -95,7 +97,7 @@ uri_parse(const char *uri, size_t len,
                     goto err;
 
                 if (user != NULL)
-                    *user = strndup(start, user_len);
+                    *user = xstrndup(start, user_len);
 
                 const char *pw = user_end + 1;
                 size_t pw_len = user_pw_end - pw;
@@ -103,7 +105,7 @@ uri_parse(const char *uri, size_t len,
                     goto err;
 
                 if (password != NULL)
-                    *password = strndup(pw, pw_len);
+                    *password = xstrndup(pw, pw_len);
 
                 LOG_DBG("user: \"%.*s\"", (int)user_len, start);
                 LOG_DBG("password: \"%.*s\"", (int)pw_len, pw);
@@ -113,7 +115,7 @@ uri_parse(const char *uri, size_t len,
                     goto err;
 
                 if (user != NULL)
-                    *user = strndup(start, user_len);
+                    *user = xstrndup(start, user_len);
 
                 LOG_DBG("user: \"%.*s\"", (int)user_len, start);
             }
@@ -127,7 +129,7 @@ uri_parse(const char *uri, size_t len,
         if (host_end != NULL) {
             size_t host_len = host_end - start;
             if (host != NULL)
-                *host = strndup(start, host_len);
+                *host = xstrndup(start, host_len);
 
             const char *port_str = host_end + 1;
             size_t port_len = path_segment - port_str;
@@ -151,7 +153,7 @@ uri_parse(const char *uri, size_t len,
         } else {
             size_t host_len = path_segment - start;
             if (host != NULL)
-                *host = strndup(start, host_len);
+                *host = xstrndup(start, host_len);
 
             LOG_DBG("host: \"%.*s\"", (int)host_len, start);
         }
@@ -175,7 +177,7 @@ uri_parse(const char *uri, size_t len,
     /* Path - decode %xx encoded characters */
     if (path != NULL) {
         const char *encoded = start;
-        char *decoded = malloc(path_len + 1);
+        char *decoded = xmalloc(path_len + 1);
         char *p = decoded;
 
         size_t encoded_len = path_len;
@@ -231,7 +233,7 @@ uri_parse(const char *uri, size_t len,
             goto err;
 
         if (query != NULL)
-            *query = strndup(start, query_len);
+            *query = xstrndup(start, query_len);
 
         LOG_DBG("query: \"%.*s\"", (int)query_len, start);
 
@@ -244,7 +246,7 @@ uri_parse(const char *uri, size_t len,
             goto err;
 
         if (fragment != NULL)
-            *fragment = strndup(start, left);
+            *fragment = xstrndup(start, left);
 
         LOG_DBG("fragment: \"%.*s\"", (int)left, start);
     }

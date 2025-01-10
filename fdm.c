@@ -12,6 +12,7 @@
 #define LOG_MODULE "fdm"
 #define LOG_ENABLE_DBG 0
 #include "log.h"
+#include "xmalloc.h"
 
 struct handler {
     int fd;
@@ -37,7 +38,7 @@ fdm_init(void)
         return NULL;
     }
 
-    struct fdm *fdm = malloc(sizeof(*fdm));
+    struct fdm *fdm = xmalloc(sizeof(*fdm));
     *fdm = (struct fdm){
         .epoll_fd = epoll_fd,
         .is_polling = false,
@@ -77,7 +78,7 @@ fdm_add(struct fdm *fdm, int fd, int events, fdm_handler_t handler, void *data)
     }
 #endif
 
-    struct handler *fd_data = malloc(sizeof(*fd_data));
+    struct handler *fd_data = xmalloc(sizeof(*fd_data));
     *fd_data = (struct handler) {
         .fd = fd,
         .events = events,

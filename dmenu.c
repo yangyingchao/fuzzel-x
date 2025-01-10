@@ -17,6 +17,8 @@
 #include "log.h"
 #include "char32.h"
 #include "event.h"
+#include "macros.h"
+#include "xmalloc.h"
 
 void
 dmenu_load_entries(struct application_list *applications, char delim,
@@ -26,17 +28,10 @@ dmenu_load_entries(struct application_list *applications, char delim,
 
     size_t size = 0;
     size_t alloc_size = 16384;
-    char *buffer = malloc(alloc_size);
+    char *buffer = xmalloc(alloc_size);
 
-    if (buffer == NULL) {
-        LOG_ERRNO("failed to allocate input buffer");
-        return;
-    }
-
-    int flags;
-    if ((flags = fcntl(STDIN_FILENO, F_GETFL)) < 0 ||
-        fcntl(STDIN_FILENO, F_SETFL, flags | O_NONBLOCK) < 0)
-    {
+    int flags = fcntl(STDIN_FILENO, F_GETFL);
+    if (flags < 0 || fcntl(STDIN_FILENO, F_SETFL, flags | O_NONBLOCK) < 0) {
         LOG_ERRNO("failed to set O_NONBLOCK on stdin");
         goto out;
     }
@@ -52,7 +47,7 @@ dmenu_load_entries(struct application_list *applications, char delim,
             {.fd = abort_fd, .events = POLLIN},
         };
 
-        size_t count = sizeof(fds) / sizeof(fds[0]);
+        size_t count = ALEN(fds);
         if (abort_fd < 0)
             count--;
 
@@ -73,14 +68,7 @@ dmenu_load_entries(struct application_list *applications, char delim,
                     alloc_size, alloc_size * 2);
 
             alloc_size *= 2;
-
-            char *new_buf = realloc(buffer, alloc_size);
-            if (new_buf == NULL) {
-                LOG_ERRNO("failed to reallocate input buffer");
-                break;
-            }
-
-            buffer = new_buf;
+            buffer = xrealloc(buffer, alloc_size);
         }
 
         ssize_t bytes_read = read(
@@ -150,8 +138,8 @@ dmenu_load_entries(struct application_list *applications, char delim,
                  * 'extra' is "\0icon\x1f" - 6 characters. Require
                  * *more* than 6, since icon *name* cannot be empty
                  */
-                if (extra_len > 6 &&  memcmp(extra, "\0icon\x1f", 6) == 0)
-                    icon_name = strndup(extra + 6, delim_at - (extra + 6));
+                if (extra_len > 6 && memcmp(extra, "\0icon\x1f", 6) == 0)
+                    icon_name = xstrndup(extra + 6, delim_at - (extra + 6));
             }
 
             LOG_DBG("%s (icon=%s)", buffer, icon_name);
@@ -170,11 +158,11 @@ dmenu_load_entries(struct application_list *applications, char delim,
                 continue;
             }
 
-            char32_t *lowercase = c32dup(wline);
+            char32_t *lowercase = xc32dup(wline);
             for (size_t i = 0; i < c32len(lowercase); i++)
                 lowercase[i] = toc32lower(lowercase[i]);
 
-            struct application *app = malloc(sizeof(*app));
+            struct application *app = xmalloc(sizeof(*app));
             *app = (struct application){
                 .index = app_idx++,
                 .title = wline,
@@ -191,7 +179,7 @@ dmenu_load_entries(struct application_list *applications, char delim,
             mtx_lock(&applications->lock);
 
             const size_t new_count = applications->count + tll_length(entries);
-            applications->v = reallocarray(
+            applications->v = xreallocarray(
                 applications->v, new_count, sizeof(applications->v[0]));
 
             size_t i = applications->count;
@@ -217,7 +205,7 @@ out:
     mtx_lock(&applications->lock);
 
     const size_t new_count = applications->count + tll_length(entries);
-    applications->v = reallocarray(
+    applications->v = xreallocarray(
         applications->v, new_count, sizeof(applications->v[0]));
 
     size_t i = applications->count;

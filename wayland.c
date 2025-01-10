@@ -42,6 +42,8 @@
 #include "prompt.h"
 #include "render.h"
 #include "shm.h"
+#include "xmalloc.h"
+#include "xsnprintf.h"
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
 
@@ -489,7 +491,7 @@ token_done(void *data, struct xdg_activation_token_v1 *token,
            const char *name)
 {
     char **xdg_activation_token = data;
-    *xdg_activation_token = strdup(name);
+    *xdg_activation_token = xstrdup(name);
 }
 
 static const struct xdg_activation_token_v1_listener token_listener = {
@@ -652,15 +654,14 @@ execute_binding(struct seat *seat, const struct key_binding *binding, bool *refr
         if (wayl->conf->dmenu.enabled) {
             char *chars = ac32tombs(match->application->title);
             if (chars != NULL) {
-                *refresh = prompt_insert_chars(
-                    wayl->prompt, chars, strlen(chars));
+                prompt_insert_chars(wayl->prompt, chars, strlen(chars));
+                *refresh = true;
                 free(chars);
             }
         } else if (match->application->exec != NULL) {
-            *refresh = prompt_insert_chars(
-                wayl->prompt,
-                match->application->exec,
-                strlen(match->application->exec));
+            const char *chars = match->application->exec;
+            prompt_insert_chars(wayl->prompt, chars, strlen(chars));
+            *refresh = true;
         }
 
         if (*refresh)
@@ -979,8 +980,7 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
     if (count == 0)
         return;
 
-    if (!prompt_insert_chars(wayl->prompt, buf, count))
-        return;
+    prompt_insert_chars(wayl->prompt, buf, count);
 
     matches_update_incremental(wayl->matches);
     wayl_refresh(wayl);
@@ -1270,7 +1270,7 @@ seat_handle_name(void *data, struct wl_seat *wl_seat, const char *name)
 {
     struct seat *seat = data;
     free(seat->name);
-    seat->name = strdup(name);
+    seat->name = xstrdup(name);
 }
 
 static const struct wl_seat_listener seat_listener = {
@@ -1358,34 +1358,26 @@ reload_font(struct wayland *wayl, float new_dpi, float new_scale)
     wayl->font_is_sized_by_dpi = will_size_using_dpi;
 
     if (need_font_reload) {
-        char **names = malloc(wayl->font_count * sizeof(names[0]));
+        char **names = xmalloc(wayl->font_count * sizeof(names[0]));
 
         /* Apply font size, possibly scaled using the scaling factor */
         for (size_t i = 0; i < wayl->font_count; i++) {
             const struct font_spec *spec = &wayl->fonts[i];
             const bool use_px_size = spec->px_size > 0;
             const float scale = wayl->font_is_sized_by_dpi ? 1. : new_scale;
-
-            char size[64];
-            size_t size_len;
             if (use_px_size) {
-                size_len = snprintf(
-                    size, sizeof(size), ":pixelsize=%d", (int)roundf(spec->px_size * scale));
+                int px = (int)roundf(spec->px_size * scale);
+                names[i] = xasprintf("%s:pixelsize=%d", spec->pattern, px);
             } else {
-                size_len = snprintf(
-                    size, sizeof(size), ":size=%.2f", spec->pt_size * scale);
+                double pt = spec->pt_size * scale;
+                names[i] = xasprintf("%s:size=%.2f", spec->pattern, pt);
             }
-
-            size_t len = strlen(spec->pattern) + size_len + 1;
-            names[i] = malloc(len);
-
-            strcpy(names[i], spec->pattern);
-            strcat(names[i], size);
         }
 
         /* Font’s DPI */
         float dpi = will_size_using_dpi ? new_dpi : 96.;
-        char attrs[256]; snprintf(attrs, sizeof(attrs), "dpi=%.2f", dpi);
+        char attrs[256];
+        xsnprintf(attrs, sizeof(attrs), "dpi=%.2f", dpi);
 
         char bold_attrs[512];
         strcpy(bold_attrs, attrs);
@@ -1528,8 +1520,8 @@ output_geometry(void *data, struct wl_output *wl_output, int32_t x, int32_t y,
     mon->dim.mm.width = physical_width;
     mon->dim.mm.height = physical_height;
     mon->inch = sqrt(pow(mon->dim.mm.width, 2) + pow(mon->dim.mm.height, 2)) * 0.03937008;
-    mon->make = make != NULL ? strdup(make) : NULL;
-    mon->model = model != NULL ? strdup(model) : NULL;
+    mon->make = make != NULL ? xstrdup(make) : NULL;
+    mon->model = model != NULL ? xstrdup(model) : NULL;
     mon->subpixel = subpixel;
     mon->transform = transform;
 
@@ -1611,7 +1603,7 @@ xdg_output_handle_name(void *data, struct zxdg_output_v1 *xdg_output,
     struct wayland *wayl = mon->wayl;
 
     free(mon->name);
-    mon->name = name != NULL ? strdup(name) : NULL;
+    mon->name = name != NULL ? xstrdup(name) : NULL;
 
     if (wayl->conf->output != NULL &&
         mon->name != NULL &&
@@ -1627,7 +1619,7 @@ xdg_output_handle_description(void *data, struct zxdg_output_v1 *xdg_output,
 {
     struct monitor *mon = data;
     free(mon->description);
-    mon->description = description != NULL ? strdup(description) : NULL;
+    mon->description = description != NULL ? xstrdup(description) : NULL;
 }
 
 static struct zxdg_output_v1_listener xdg_output_listener = {
@@ -2299,7 +2291,7 @@ parse_font_spec(const char *font_spec, size_t *count, struct font_spec **specs)
 {
     tll(struct font_spec) fonts = tll_init();
 
-    char *copy = strdup(font_spec);
+    char *copy = xstrdup(font_spec);
     for (char *font = strtok(copy, ",");
          font != NULL;
          font = strtok(NULL, ","))
@@ -2321,7 +2313,7 @@ parse_font_spec(const char *font_spec, size_t *count, struct font_spec **specs)
     free(copy);
 
     *count = tll_length(fonts);
-    *specs = malloc(*count * sizeof((*specs)[0]));
+    *specs = xmalloc(*count * sizeof((*specs)[0]));
 
     struct font_spec *s = *specs;
     tll_foreach(fonts, it) {
@@ -2337,7 +2329,7 @@ wayl_init(const struct config *conf, struct fdm *fdm,
           struct render *render, struct prompt *prompt,
           struct matches *matches, font_reloaded_t font_reloaded_cb, void *data)
 {
-    struct wayland *wayl = malloc(sizeof(*wayl));
+    struct wayland *wayl = xmalloc(sizeof(*wayl));
     *wayl = (struct wayland){
         .conf = conf,
         .fdm = fdm,

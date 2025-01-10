@@ -29,6 +29,8 @@
 #define LOG_ENABLE_DBG 0
 #include "log.h"
 #include "xdg.h"
+#include "xmalloc.h"
+#include "xsnprintf.h"
 
 typedef tll(char *) theme_names_t;
 
@@ -95,7 +97,7 @@ parse_theme(FILE *index, struct icon_theme *theme, theme_names_t *themes_to_load
             type = ICON_DIR_THRESHOLD;
             threshold = 2;
 
-            section = malloc(len - 2 + 1);
+            section = xmalloc(len - 2 + 1);
             memcpy(section, &line[1], len - 2);
             section[len - 2] = '\0';
             free(line);
@@ -112,7 +114,7 @@ parse_theme(FILE *index, struct icon_theme *theme, theme_names_t *themes_to_load
             for (const char *theme_name = strtok_r(value, ",", &ctx);
                  theme_name != NULL; theme_name = strtok_r(NULL, ",", &ctx))
             {
-                tll_push_back(*themes_to_load, strdup(theme_name));
+                tll_push_back(*themes_to_load, xstrdup(theme_name));
             }
         }
 
@@ -122,7 +124,7 @@ parse_theme(FILE *index, struct icon_theme *theme, theme_names_t *themes_to_load
                  d != NULL;
                  d = strtok_r(NULL, ",", &save))
             {
-                struct icon_dir dir = {.path = strdup(d)};
+                struct icon_dir dir = {.path = xstrdup(d)};
                 tll_push_back(theme->dirs, dir);
             }
         }
@@ -140,7 +142,7 @@ parse_theme(FILE *index, struct icon_theme *theme, theme_names_t *themes_to_load
             sscanf(value, "%d", &scale);
 
         else if (strcasecmp(key, "context") == 0)
-            context = strdup(value);
+            context = xstrdup(value);
 
         else if (strcasecmp(key, "threshold") == 0)
             sscanf(value, "%d", &threshold);
@@ -192,7 +194,7 @@ load_theme_in(const char *dir, struct icon_theme *theme,
               theme_names_t *themes_to_load)
 {
     char path[PATH_MAX];
-    snprintf(path, sizeof(path), "%s/index.theme", dir);
+    xsnprintf(path, sizeof(path), "%s/index.theme", dir);
 
     FILE *index = fopen(path, "r");
     if (index == NULL)
@@ -227,7 +229,7 @@ discover_and_load_theme(const char *theme_name, xdg_data_dirs_t dirs,
 
         struct icon_theme theme = {0};
         if (load_theme_in(path, &theme, themes_to_load)) {
-            theme.name = strdup(theme_name);
+            theme.name = xstrdup(theme_name);
             tll_push_back(*themes, theme);
         }
     }
@@ -243,7 +245,7 @@ icon_load_theme(const char *name)
     /* List of themes to try to load. This list will be appended to as
      * we go, and find 'Inherits' values in the theme index files. */
     theme_names_t themes_to_load = tll_init();
-    tll_push_back(themes_to_load, strdup(name));
+    tll_push_back(themes_to_load, xstrdup(name));
 
     xdg_data_dirs_t dirs = xdg_data_dirs();
 
@@ -379,7 +381,7 @@ icon_from_svg(struct icon *icon, const char *name)
 static bool
 svg(struct icon *icon, const char *path)
 {
-    icon->path = strdup(path);
+    icon->path = xstrdup(path);
     icon->type = ICON_SVG;
     icon->svg = NULL;
     return true;
@@ -388,7 +390,7 @@ svg(struct icon *icon, const char *path)
 static bool
 png(struct icon *icon, const char *path)
 {
-    icon->path = strdup(path);
+    icon->path = xstrdup(path);
     icon->type = ICON_PNG;
     icon->png = NULL;
     return true;
@@ -529,16 +531,12 @@ lookup_icons(const icon_theme_list_t *themes, int icon_size,
                     LOG_DBG("%s: abslute path PNG", app->icon.name);
             }
         } else {
-            size_t file_name_len = strlen(app->icon.name) + 4;
-            char *file_name = malloc(file_name_len + 1);
-            strcpy(file_name, app->icon.name);
-            strcat(file_name, ".xxx");
-
+            char *file_name = xstrjoin(app->icon.name, ".xxx");
             struct icon_data data = {
                 .name = app->icon.name,
                 .app = app,
                 .file_name = file_name,
-                .file_name_len = file_name_len,
+                .file_name_len = strlen(file_name),
                 .min_diff = {.diff = INT_MAX},
             };
             tll_push_back(icons, data);
@@ -650,15 +648,9 @@ lookup_icons(const icon_theme_list_t *themes, int icon_size,
                         continue;
                     }
 
-                    char *full_path = malloc(
-                        strlen(xdg_dir->path) + 1 +
-                        5 + 1 + /* “icons” */
-                        strlen(theme->name) + 1 +
-                        strlen(icon_dir->path) + 1 +
-                        len + 1);
-
-                    sprintf(full_path, "%s/icons/%s/%s/%s",
-                            xdg_dir->path, theme->name, icon_dir->path, path);
+                    char *full_path = xasprintf(
+                        "%s/icons/%s/%s/%s",
+                        xdg_dir->path, theme->name, icon_dir->path, path);
 
                     if ((path[len - 3] == 's' &&
                          svg(&icon->app->icon, full_path)) ||

@@ -35,6 +35,8 @@
 #include "char32.h"
 #include "icon.h"
 #include "stride.h"
+#include "xmalloc.h"
+#include "xsnprintf.h"
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
 #define max(x, y) ((x) > (y) ? (x) : (y))
@@ -282,21 +284,17 @@ render_match_count(const struct render *render, struct buffer *buf,
     size_t match_count = matches_get_total_count(matches);
     const char32_t *ptext = prompt_text(prompt);
 
-    char *text = NULL;
-    int chars = asprintf(
-        &text, "%zu/%zu",
-        ptext[0] == U'\0' ? total_count : match_count, total_count);
-
-    if (chars < 0)
-        return 0;
+    char text[64];
+    size_t count = (ptext[0] == U'\0') ? total_count : match_count;
+    size_t chars = xsnprintf(text, sizeof(text), "%zu/%zu", count, total_count);
 
     /* fcft wants UTF-32. Since we only use ASCII... */
-    uint32_t *wtext = malloc(chars * sizeof(wtext[0]));
+    uint32_t wtext[64];
     for (size_t i = 0; i < chars; i++)
         wtext[i] = (uint32_t)(unsigned char)text[i];
 
     int width = -1;
-    int x = buf->width -  render->border_size - render->x_margin;
+    int x = buf->width - render->border_size - render->x_margin;
     int y = render->border_size + render->y_margin +
             (render->row_height + font->height) / 2 - font->descent;
 
@@ -320,14 +318,12 @@ render_match_count(const struct render *render, struct buffer *buf,
             }
 
             fcft_text_run_destroy(run);
-            free(text);
-            free(wtext);
             return width;
         }
     }
 
-    const struct fcft_glyph **glyphs = malloc(chars * sizeof(glyphs[0]));
-    long *x_kern = malloc(chars * sizeof(x_kern[0]));
+    const struct fcft_glyph **glyphs = xmalloc(chars * sizeof(glyphs[0]));
+    long *x_kern = xmalloc(chars * sizeof(x_kern[0]));
     char32_t prev = 0;
 
     width = 0;
@@ -364,8 +360,6 @@ render_match_count(const struct render *render, struct buffer *buf,
 
     free(x_kern);
     free(glyphs);
-    free(text);
-    free(wtext);
     return width;
 }
 
@@ -614,9 +608,9 @@ render_match_text(pixman_image_t *pix, double *_x, double _y, double max_x,
         count = (*run)->count;
     } else {
         count = c32len(text);
-        glyphs = malloc(count * sizeof(glyphs[0]));
-        clusters = malloc(count * sizeof(clusters[0]));
-        kern = malloc(count * sizeof(kern[0]));
+        glyphs = xmalloc(count * sizeof(glyphs[0]));
+        clusters = xmalloc(count * sizeof(clusters[0]));
+        kern = xmalloc(count * sizeof(kern[0]));
 
         for (size_t i = 0; i < count; i++) {
             const struct fcft_glyph *glyph = fcft_rasterize_char_utf32(
@@ -766,7 +760,7 @@ render_svg_nanosvg(struct icon *icon, int x, int y, int size,
 
         float scale = svg->width > svg->height ? size / svg->width : size / svg->height;
 
-        uint8_t *data = malloc(size * size * 4);
+        uint8_t *data = xmalloc(size * size * 4);
         nsvgRasterize(rast, svg, 0, 0, scale, data, size, size, size * 4);
 
         img = pixman_image_create_bits_no_clear(
@@ -888,7 +882,7 @@ render_png_libpng(struct icon *icon, int x, int y, int size,
         height *= scale;
 
         int stride = stride_for_format_and_width(fmt, width);
-        uint8_t *data = malloc(height * stride);
+        uint8_t *data = xmalloc(height * stride);
         pixman_image_t *scaled_png = pixman_image_create_bits_no_clear(
             fmt, width, height, (uint32_t *)data, stride);
         pixman_image_composite32(
@@ -1054,7 +1048,7 @@ render_one_match_entry(const struct render *render, const struct matches *matche
         char32_t *newline = c32chr(match->application->title, U'\n');
 
         if (newline != NULL) {
-            char32_t *render_title = c32dup(match->application->title);
+            char32_t *render_title = xc32dup(match->application->title);
 
             newline = render_title + (newline - match->application->title);
             *newline = U' ';
@@ -1229,7 +1223,7 @@ render_worker_thread(void *_ctx)
 struct render *
 render_init(const struct config *conf, mtx_t *icon_lock)
 {
-    struct render *render = calloc(1, sizeof(*render));
+    struct render *render = xcalloc(1, sizeof(*render));
     *render = (struct render){
         .conf = conf,
         .icon_lock = icon_lock,
@@ -1260,20 +1254,11 @@ render_init(const struct config *conf, mtx_t *icon_lock)
         goto err_free_semaphores;
     }
 
-    render->workers.threads = calloc(render->conf->render_worker_count,
-                                     sizeof(render->workers.threads[0]));
-    if (render->workers.threads == NULL) {
-        LOG_ERRNO("failed to allocate render worker threads array");
-        goto err_free_semaphores_and_lock;
-    }
+    render->workers.threads = xcalloc(render->conf->render_worker_count,
+                                      sizeof(render->workers.threads[0]));
 
     for (size_t i = 0; i < render->conf->render_worker_count; i++) {
-        struct thread_context *ctx = malloc(sizeof(*ctx));
-        if (ctx == NULL) {
-            LOG_ERRNO("failed to allocate render worker thread context");
-            goto err_free_semaphores_and_lock;
-        }
-
+        struct thread_context *ctx = xmalloc(sizeof(*ctx));
         *ctx = (struct thread_context){
             .render = render,
             .my_id = 1 + i,

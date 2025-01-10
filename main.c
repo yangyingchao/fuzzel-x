@@ -38,6 +38,8 @@
 #include "version.h"
 #include "wayland.h"
 #include "xdg.h"
+#include "xmalloc.h"
+#include "xsnprintf.h"
 
 #define max(x, y) ((x) > (y) ? (x) : (y))
 
@@ -150,7 +152,7 @@ read_cache(const char *path, struct application_list *apps, bool dmenu)
         sscanf(count_str, "%u", &count);
 
         struct cache_entry entry = {
-            .id = dmenu ? NULL : strdup(id),
+            .id = dmenu ? NULL : xstrdup(id),
             .title = dmenu ? ambstoc32(id) : NULL,
             .count = count,
         };
@@ -283,7 +285,7 @@ static const char *
 version_and_features(void)
 {
     static char buf[256];
-    snprintf(buf, sizeof(buf), "version: %s %ccairo %cpng %csvg%s %cassertions",
+    xsnprintf(buf, sizeof(buf), "version: %s %ccairo %cpng %csvg%s %cassertions",
              FUZZEL_VERSION,
 #if defined(FUZZEL_ENABLE_CAIRO)
              '+',
@@ -478,13 +480,7 @@ lock_file_name(void)
     if (wayland_display == NULL)
         return NULL;
 
-    #define path_fmt "%s/fuzzel-%s.lock"
-    int chars = snprintf(NULL, 0, path_fmt, xdg_runtime_dir, wayland_display);
-
-    char *path = malloc(chars + 1);
-    snprintf(path, chars + 1, path_fmt, xdg_runtime_dir, wayland_display);
-    #undef path_fmt
-
+    char *path = xasprintf("%s/fuzzel-%s.lock", xdg_runtime_dir, wayland_display);
     LOG_DBG("lock file: %s", path);
     return path;
 }
@@ -532,12 +528,12 @@ populate_apps(void *_ctx)
     if (filter_desktop) {
         char *xdg_current_desktop = getenv("XDG_CURRENT_DESKTOP");
         if (xdg_current_desktop && strlen(xdg_current_desktop) != 0) {
-            xdg_current_desktop = strdup(xdg_current_desktop);
+            xdg_current_desktop = xstrdup(xdg_current_desktop);
             for (char *desktop = strtok_r(xdg_current_desktop, ":", &saveptr);
                  desktop != NULL;
                  desktop = strtok_r(NULL, ":", &saveptr))
                 {
-                    tll_push_back(desktops, strdup(desktop));
+                    tll_push_back(desktops, xstrdup(desktop));
                 }
             free(xdg_current_desktop);
         }
@@ -872,16 +868,14 @@ main(int argc, char *const *argv)
 
     /* Auto-enable dmenu mode if invoked through a ‘dmenu’ symlink */
     if (argv[0] != NULL) {
-        char *copy = strdup(argv[0]);
-        if (copy != NULL) {
-            const char *name = basename(copy);
-            if (name != NULL && strcmp(name, "dmenu") == 0) {
-                cmdline_overrides.conf.dmenu.enabled = true;
-                cmdline_overrides.dmenu_enabled_set = true;
-            }
-
-            free(copy);
+        char *copy = xstrdup(argv[0]);
+        const char *name = basename(copy);
+        if (name != NULL && strcmp(name, "dmenu") == 0) {
+            cmdline_overrides.conf.dmenu.enabled = true;
+            cmdline_overrides.dmenu_enabled_set = true;
         }
+
+        free(copy);
     }
 
     while (true) {
@@ -973,7 +967,7 @@ main(int argc, char *const *argv)
             {
                 enum match_fields field = 0;
 
-                for (size_t i = 0; i < sizeof(map) / sizeof(map[0]); i++) {
+                for (size_t i = 0; i < ALEN(map); i++) {
                     if (strcmp(f, map[i].name) == 0) {
                         field = map[i].value;
                         break;
@@ -984,9 +978,9 @@ main(int argc, char *const *argv)
                     cmdline_overrides.conf.match_fields |= field;
                 else {
                     char valid_names[128] = {0};
-                    int idx = 0;
-                    for (size_t i = 0; i < sizeof(map) / sizeof(map[0]); i++) {
-                        idx += snprintf(
+                    size_t idx = 0;
+                    for (size_t i = 0; i < ALEN(map); i++) {
+                        idx += xsnprintf(
                             &valid_names[idx], sizeof(valid_names) - idx,
                             "'%s', ", map[i].name);
                     }
@@ -1639,7 +1633,7 @@ main(int argc, char *const *argv)
     /* Apply command line overrides */
     if (cmdline_overrides.conf.output != NULL) {
         free(conf.output);
-        conf.output = strdup(cmdline_overrides.conf.output);
+        conf.output = xstrdup(cmdline_overrides.conf.output);
     }
     if (cmdline_overrides.conf.prompt != NULL) {
         free(conf.prompt);
@@ -1666,21 +1660,21 @@ main(int argc, char *const *argv)
     }
     if (cmdline_overrides.conf.terminal != NULL) {
         free(conf.terminal);
-        conf.terminal = strdup(cmdline_overrides.conf.terminal);
+        conf.terminal = xstrdup(cmdline_overrides.conf.terminal);
     }
     if (cmdline_overrides.conf.launch_prefix != NULL) {
         free(conf.launch_prefix);
-        conf.launch_prefix = strdup(cmdline_overrides.conf.launch_prefix);
+        conf.launch_prefix = xstrdup(cmdline_overrides.conf.launch_prefix);
     }
     if (cmdline_overrides.conf.font != NULL) {
         free(conf.font);
-        conf.font = strdup(cmdline_overrides.conf.font);
+        conf.font = xstrdup(cmdline_overrides.conf.font);
     }
     if (cmdline_overrides.use_bold_set)
         conf.use_bold = cmdline_overrides.conf.use_bold;
     if (cmdline_overrides.conf.icon_theme != NULL) {
         free(conf.icon_theme);
-        conf.icon_theme = strdup(cmdline_overrides.conf.icon_theme);
+        conf.icon_theme = xstrdup(cmdline_overrides.conf.icon_theme);
     }
     if (cmdline_overrides.dpi_aware_set)
         conf.dpi_aware = cmdline_overrides.conf.dpi_aware;
@@ -1778,7 +1772,7 @@ main(int argc, char *const *argv)
         conf.delayed_filter_limit = cmdline_overrides.conf.delayed_filter_limit;
     if (cmdline_overrides.conf.cache_path != NULL) {
         free(conf.cache_path);
-        conf.cache_path = strdup(cmdline_overrides.conf.cache_path);
+        conf.cache_path = xstrdup(cmdline_overrides.conf.cache_path);
     }
 
     if (conf.dmenu.enabled) {

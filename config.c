@@ -19,8 +19,9 @@
 #define LOG_ENABLE_DBG 0
 #include "log.h"
 #include "key-binding.h"
-
-#define ALEN(v) (sizeof(v) / sizeof((v)[0]))
+#include "macros.h"
+#include "xmalloc.h"
+#include "xsnprintf.h"
 
 const struct anchors_map anchors_map[] = {
     {"top-left", ANCHOR_TOP_LEFT},
@@ -117,12 +118,11 @@ log_contextual(struct context *ctx, enum log_class log_class,
     char *formatted_msg = NULL;
     va_list va;
     va_start(va, fmt);
-    if (vasprintf(&formatted_msg, fmt, va) < 0) {
-        va_end(va);
-        return;
-    }
-
+    int ret = vasprintf(&formatted_msg, fmt, va);
     va_end(va);
+
+    if (unlikely(ret < 0))
+        return;
 
     bool print_dot = ctx->key != NULL;
     bool print_colon = ctx->value != NULL;
@@ -150,7 +150,7 @@ log_contextual_errno(struct context *ctx, const char *file, int lineno,
     int ret = vasprintf(&formatted_msg, fmt, va);
     va_end(va);
 
-    if (ret < 0)
+    if (unlikely(ret < 0))
         return;
 
     bool print_dot = ctx->key != NULL;
@@ -187,17 +187,10 @@ open_config(void)
     char *xdg_config_dirs_copy = NULL;
 
     /* First, check XDG_CONFIG_HOME (or .config, if unset) */
-    if (xdg_config_home != NULL && xdg_config_home[0] != '\0' &&
-            xdg_config_home[0] == '/') {
-        if (asprintf(&path, "%s/fuzzel/fuzzel.ini", xdg_config_home) < 0) {
-            LOG_ERRNO("failed to build fuzzel.ini path");
-            goto done;
-        }
+    if (xdg_config_home != NULL && xdg_config_home[0] == '/') {
+        path = xstrjoin(xdg_config_home, "/fuzzel/fuzzel.ini");
     } else if (home_dir != NULL) {
-        if (asprintf(&path, "%s/.config/fuzzel/fuzzel.ini", home_dir) < 0) {
-            LOG_ERRNO("failed to build fuzzel.ini path");
-            goto done;
-        }
+        path = xstrjoin(home_dir, "/.config/fuzzel/fuzzel.ini");
     }
 
     if (path != NULL) {
@@ -211,8 +204,8 @@ open_config(void)
     }
 
     xdg_config_dirs_copy = xdg_config_dirs != NULL && xdg_config_dirs[0] != '\0'
-        ? strdup(xdg_config_dirs)
-        : strdup("/etc/xdg");
+        ? xstrdup(xdg_config_dirs)
+        : xstrdup("/etc/xdg");
 
     if (xdg_config_dirs_copy == NULL || xdg_config_dirs_copy[0] == '\0')
         goto done;
@@ -222,13 +215,7 @@ open_config(void)
          conf_dir = strtok(NULL, ":"))
     {
         free(path);
-        path = NULL;
-
-        if (asprintf(&path, "%s/fuzzel/fuzzel.ini", conf_dir) < 0) {
-            LOG_ERRNO("failed to build fuzzel.ini path");
-            goto done;
-        }
-
+        path = xstrjoin(conf_dir, "/fuzzel/fuzzel.ini");
         int fd = open(path, O_RDONLY | O_CLOEXEC);
         if (fd >= 0) {
             ret = (struct config_file){.path = path, .fd = fd};
@@ -263,7 +250,7 @@ parse_modifiers(struct context *ctx, const char *text, size_t len,
     if (strncmp(text, "none", len) == 0)
         return true;
 
-    char *copy = strndup(text, len);
+    char *copy = xstrndup(text, len);
 
     for (char *tok_ctx = NULL, *key = strtok_r(copy, "+", &tok_ctx);
          key != NULL;
@@ -342,7 +329,7 @@ value_to_key_combos(struct context *ctx, int action,
 
     struct config_key_binding new_combos[combo_count];
 
-    char *copy = strdup(ctx->value);
+    char *copy = xstrdup(ctx->value);
     size_t idx = 0;
 
     for (char *tok_ctx = NULL, *combo = strtok_r(copy, " ", &tok_ctx);
@@ -384,7 +371,7 @@ value_to_key_combos(struct context *ctx, int action,
 
     remove_from_key_bindings_list(bindings, action);
 
-    bindings->arr = reallocarray(
+    bindings->arr = xreallocarray(
         bindings->arr,
         bindings->count + combo_count, sizeof(bindings->arr[0]));
 
@@ -415,15 +402,13 @@ modifiers_equal(const struct config_key_modifiers *mods1,
 static char *
 modifiers_to_str(const struct config_key_modifiers *mods)
 {
-    char *ret = NULL;
-    if (asprintf(&ret,
-                 "%s%s%s%s",
-                 mods->ctrl ? XKB_MOD_NAME_CTRL "+" : "",
-                 mods->alt ? XKB_MOD_NAME_ALT "+": "",
-                 mods->super ? XKB_MOD_NAME_LOGO "+": "",
-                 mods->shift ? XKB_MOD_NAME_SHIFT "+": "") < 0)
-        return NULL;
-    return ret;
+    return xasprintf(
+        "%s%s%s%s",
+        mods->ctrl ? XKB_MOD_NAME_CTRL "+" : "",
+        mods->alt ? XKB_MOD_NAME_ALT "+": "",
+        mods->super ? XKB_MOD_NAME_LOGO "+": "",
+        mods->shift ? XKB_MOD_NAME_SHIFT "+": ""
+    );
 }
 
 static bool
@@ -551,7 +536,7 @@ static bool
 value_to_str(struct context *ctx, char **res)
 {
     free(*res);
-    *res = strdup(ctx->value);
+    *res = xstrdup(ctx->value);
     return true;
 }
 
@@ -710,7 +695,7 @@ value_to_enum(struct context *ctx, const char **value_map, int *res)
     assert(size < sizeof(valid_values));
 
     for (size_t i = 0; i < count; i++)
-        idx += snprintf(&valid_values[idx], size - idx, "'%s', ", value_map[i]);
+        idx += xsnprintf(&valid_values[idx], size - idx, "'%s', ", value_map[i]);
 
     if (count > 0)
         valid_values[idx - 2] = '\0';
@@ -826,7 +811,7 @@ parse_section_main(struct context *ctx)
 
         enum match_fields match_fields = 0;
 
-        char *copy = strdup(value);
+        char *copy = xstrdup(value);
         for (const char *field = strtok(copy, ",");
              field != NULL;
              field = strtok(NULL, ","))
@@ -846,7 +831,7 @@ parse_section_main(struct context *ctx)
 
             enum match_fields field_value = 0;
 
-            for (size_t i = 0; i < sizeof(map) / sizeof(map[0]); i++) {
+            for (size_t i = 0; i < ALEN(map); i++) {
                 if (strcmp(field, map[i].name) == 0) {
                     field_value = map[i].value;
                     break;
@@ -1282,7 +1267,7 @@ parse_config_file(FILE *f, struct config *conf, const char *path,
             continue;                           \
     }
 
-    char *section_name = strdup("main");
+    char *section_name = xstrdup("main");
 
     struct context context = {
         .conf = conf,
@@ -1376,7 +1361,7 @@ parse_config_file(FILE *f, struct config *conf, const char *path,
             }
 
             free(section_name);
-            section_name = strdup(key_value);
+            section_name = xstrdup(key_value);
             context.section = section_name;
 
             /* Process next line */
@@ -1584,7 +1569,7 @@ add_default_key_bindings(struct config *conf)
     };
 
     conf->key_bindings.count = ALEN(bindings);
-    conf->key_bindings.arr = malloc(sizeof(bindings));
+    conf->key_bindings.arr = xmalloc(sizeof(bindings));
     memcpy(conf->key_bindings.arr, bindings, sizeof(bindings));
 }
 
@@ -1595,9 +1580,9 @@ config_load(struct config *conf, const char *conf_path,
     bool ret = !errors_are_fatal;
     *conf = (struct config) {
         .output = NULL,
-        .prompt = c32dup(U"> "),
-        .placeholder = c32dup(U""),
-        .search_text = c32dup(U""),
+        .prompt = xc32dup(U"> "),
+        .placeholder = xc32dup(U""),
+        .search_text = xc32dup(U""),
         .match_fields = MATCH_FILENAME | MATCH_NAME | MATCH_GENERIC,
         .password_mode = {
             .character = U'\0',
@@ -1605,13 +1590,13 @@ config_load(struct config *conf, const char *conf_path,
         },
         .terminal = NULL,
         .launch_prefix = NULL,
-        .font = strdup("monospace"),
+        .font = xstrdup("monospace"),
         .use_bold = false,
         .dpi_aware = DPI_AWARE_AUTO,
         .render_worker_count = sysconf(_SC_NPROCESSORS_ONLN),
         .match_worker_count = sysconf(_SC_NPROCESSORS_ONLN),
         .icons_enabled = true,
-        .icon_theme = strdup("hicolor"),
+        .icon_theme = xstrdup("hicolor"),
         .hide_when_prompt_empty = false,
         .actions_enabled = false,
         .match_mode = MATCH_MODE_FZF,
@@ -1688,7 +1673,7 @@ config_load(struct config *conf, const char *conf_path,
             goto out;
         }
 
-        conf_file.path = strdup(conf_path);
+        conf_file.path = xstrdup(conf_path);
         conf_file.fd = fd;
     } else {
         conf_file = open_config();

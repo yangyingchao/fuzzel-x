@@ -16,26 +16,21 @@
 #define LOG_ENABLE_DBG 0
 #include "log.h"
 #include "char32.h"
+#include "xmalloc.h"
 
-static bool
+static void
 push_argv(char ***argv, size_t *size, char *arg, size_t *argc)
 {
     if (arg != NULL && arg[0] == '%')
-        return true;
+        return;
 
     if (*argc >= *size) {
         size_t new_size = *size > 0 ? 2 * *size : 10;
-        char **new_argv = reallocarray(*argv, new_size, sizeof(new_argv[0]));
-
-        if (new_argv == NULL)
-            return false;
-
-        *argv = new_argv;
+        *argv = xreallocarray(*argv, new_size, sizeof(char*));
         *size = new_size;
     }
 
     (*argv)[(*argc)++] = arg;
-    return true;
 }
 
 static bool
@@ -103,8 +98,7 @@ tokenize_cmdline(char *cmdline, char ***argv)
                 open_quote = 0;
                 *p = '\0';
 
-                if (!push_argv(argv, &argv_size, search_start, &idx))
-                    goto err;
+                push_argv(argv, &argv_size, search_start, &idx);
 
                 search_start = p + 1;
             } else if (*p == ' ' && open_quote == 0) {
@@ -112,8 +106,7 @@ tokenize_cmdline(char *cmdline, char ***argv)
                  * check if we can close the arg at p (exclusive) */
                 if (p > search_start) {
                     *p = '\0';
-                    if (!push_argv(argv, &argv_size, search_start, &idx))
-                        goto err;
+                    push_argv(argv, &argv_size, search_start, &idx);
                 }
                 search_start = p + 1;
             }
@@ -127,14 +120,10 @@ tokenize_cmdline(char *cmdline, char ***argv)
     }
 
     /* edge case: argument terminated by \0 */
-    if (p > search_start) {
-        if (!push_argv(argv, &argv_size, search_start, &idx))
-            goto err;
-    }
+    if (p > search_start)
+        push_argv(argv, &argv_size, search_start, &idx);
 
-    if (!push_argv(argv, &argv_size, NULL, &idx))
-        goto err;
-
+    push_argv(argv, &argv_size, NULL, &idx);
     return true;
 
 err:
@@ -168,8 +157,9 @@ application_execute(const struct application *app, const struct prompt *prompt,
     size_t execute_len = strlen(execute);
     if (launch_prefix != NULL) {
       size_t launch_len = strlen(launch_prefix);
-      unescaped = malloc(launch_len + execute_len + 2 /* whitespace + null terminator */);
-      sprintf(unescaped, "%s ", launch_prefix);
+      unescaped = xmalloc(launch_len + execute_len + 2 /* whitespace + null terminator */);
+      memcpy(unescaped, launch_prefix, launch_len);
+      unescaped[launch_len] = ' ';
       execute_dest = unescaped + launch_len + 1;
       if (id != NULL) {
           setenv("FUZZEL_DESKTOP_FILE_ID", id, 1);
@@ -177,7 +167,7 @@ application_execute(const struct application *app, const struct prompt *prompt,
           LOG_WARN("No Desktop File ID, not setting FUZZEL_DESKTOP_FILE_ID");
       }
     } else {
-      unescaped = malloc(execute_len + 1);
+      unescaped = xmalloc(execute_len + 1);
       execute_dest = unescaped;
     }
 
@@ -313,9 +303,7 @@ application_execute(const struct application *app, const struct prompt *prompt,
 struct application_list *
 applications_init(void)
 {
-    struct application_list *ret = calloc(1, sizeof(*ret));
-    if (ret == NULL)
-        return NULL;
+    struct application_list *ret = xcalloc(1, sizeof(*ret));
 
     if (mtx_init(&ret->lock, mtx_plain) != thrd_success) {
         LOG_ERR("failed to instantiate application list mutex");

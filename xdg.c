@@ -21,6 +21,9 @@
 #include "log.h"
 #include "char32.h"
 #include "icon.h"
+#include "macros.h"
+#include "xmalloc.h"
+#include "xsnprintf.h"
 
 typedef tll(struct application *) application_llist_t;
 
@@ -162,20 +165,20 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename_lowercase,
 
                         action->generic_name =
                             default_action->generic_name != NULL
-                            ? c32dup(default_action->generic_name) : NULL;
+                            ? xc32dup(default_action->generic_name) : NULL;
                         action->comment = default_action->comment != NULL
-                            ? c32dup(default_action->comment) : NULL;
+                            ? xc32dup(default_action->comment) : NULL;
                         action->path = default_action->path != NULL
-                            ? strdup(default_action->path) : NULL;
+                            ? xstrdup(default_action->path) : NULL;
                         action->icon = default_action->icon != NULL
-                            ? strdup(default_action->icon) : NULL;
+                            ? xstrdup(default_action->icon) : NULL;
                         action->visible = default_action->visible;
                         action->use_terminal = default_action->use_terminal;
 
                         tll_foreach(default_action->keywords, it)
-                            tll_push_back(action->keywords, c32dup(it->item));
+                            tll_push_back(action->keywords, xc32dup(it->item));
                         tll_foreach(default_action->categories, it)
-                            tll_push_back(action->categories, c32dup(it->item));
+                            tll_push_back(action->categories, xc32dup(it->item));
 
                         action_is_valid = true;
                         break;
@@ -258,13 +261,13 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename_lowercase,
             else if (strcmp(key, "Exec") == 0) {
                 free(action->exec);
                 free(action->wexec);
-                action->exec = strdup(value);
+                action->exec = xstrdup(value);
                 action->wexec = ambstoc32(value);
             }
 
             else if (strcmp(key, "Path") == 0) {
                 free(action->path);
-                action->path = strdup(value);
+                action->path = xstrdup(value);
             }
 
             else if (strcmp(key, "GenericName") == 0) {
@@ -282,7 +285,7 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename_lowercase,
 
             else if (strcmp(key, "StartupWMClass") == 0) {
                 free(action->app_id);
-                action->app_id = strdup(value);
+                action->app_id = xstrdup(value);
             }
 
             else if (strcmp(key, "Comment") == 0) {
@@ -328,7 +331,7 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename_lowercase,
                      action != NULL;
                      action = strtok_r(NULL, ";", &ctx))
                 {
-                    tll_push_back(action_names, strdup(action));
+                    tll_push_back(action_names, xstrdup(action));
                 }
             }
 
@@ -337,7 +340,7 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename_lowercase,
                      desktop != NULL;
                      desktop = strtok_r(NULL, ";", &ctx))
                 {
-                    tll_push_back(action->onlyshowin, strdup(desktop));
+                    tll_push_back(action->onlyshowin, xstrdup(desktop));
                 }
             }
 
@@ -346,13 +349,13 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename_lowercase,
                      desktop != NULL;
                      desktop = strtok_r(NULL, ";", &ctx))
                 {
-                    tll_push_back(action->notshowin, strdup(desktop));
+                    tll_push_back(action->notshowin, xstrdup(desktop));
                 }
             }
 
             else if (strcmp(key, "Icon") == 0) {
                 free(action->icon);
-                action->icon = strdup(value);
+                action->icon = xstrdup(value);
             }
 
             else if (strcmp(key, "Hidden") == 0 ||
@@ -397,26 +400,14 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename_lowercase,
             a->name = ambstoc32("<no title>");
 
         if (a->use_terminal && terminal != NULL && a->exec != NULL) {
-            char *exec_with_terminal = malloc(
-                strlen(terminal) + 1 + strlen(a->exec) + 1);
-            strcpy(exec_with_terminal, terminal);
-            strcat(exec_with_terminal, " ");
-            strcat(exec_with_terminal, a->exec);
+            char *exec_with_terminal = xstrjoin3(terminal, " ", a->exec);
             free(a->exec);
             a->exec = exec_with_terminal;
         }
 
         char32_t *title = a->name;
         if (a != default_action) {
-            size_t title_len = c32len(default_action->name) +
-                3 +  /* “ — ” */
-                c32len(a->name) +
-                1;
-            title = malloc(title_len * sizeof(char32_t));
-
-            c32cpy(title, default_action->name);
-            c32cat(title, U" — ");
-            c32cat(title, a->name);
+            title = xc32join3(default_action->name, U" — ", a->name);
             free(a->name);
         }
 
@@ -434,7 +425,7 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename_lowercase,
             ? c32len(action->comment)
             : 0;
 
-        char32_t *title_lowercase = c32dup(title);
+        char32_t *title_lowercase = xc32dup(title);
         for (size_t i = 0; i < title_len; i++)
             title_lowercase[i] = toc32lower(title_lowercase[i]);
 
@@ -453,16 +444,16 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename_lowercase,
                 it->item[i] = toc32lower(it->item[i]);
         }
 
-        struct application *app = malloc(sizeof(*app));
+        struct application *app = xmalloc(sizeof(*app));
         *app = (struct application){
-            .id = strdup(id),
+            .id = xstrdup(id),
             .index = 0,  /* Not used in application mode */
             .path = a->path,
             .exec = a->exec,
             .app_id = a->app_id,
             .title = title,
             .title_lowercase = title_lowercase,
-            .basename = c32dup(file_basename_lowercase),
+            .basename = xc32dup(file_basename_lowercase),
             .wexec = a->wexec,
             .generic_name = a->generic_name,
             .comment = a->comment,
@@ -492,16 +483,9 @@ static char *
 new_id(const char *base_id, const char *new_part)
 {
     if (base_id == NULL)
-        return strdup(new_part);
+        return xstrdup(new_part);
 
-    size_t len = strlen(base_id) + 1 + strlen(new_part) + 1;
-    char *id = malloc(len);
-
-    strcpy(id, base_id);
-    strcat(id, "-");
-    strcat(id, new_part);
-
-    return id;
+    return xstrjoin3(base_id, "-", new_part);
 }
 
 static void
@@ -519,7 +503,7 @@ scan_dir(int base_fd, const char *terminal, bool include_actions,
     struct locale_variants lc_messages = {NULL};
 
     if (locale != NULL) {
-        char *copy = strdup(locale);
+        char *copy = xstrdup(locale);
 
         char *lang = copy;
         char *country_start = strchr(copy, '_');
@@ -684,7 +668,7 @@ xdg_find_programs(const char *terminal, bool include_actions,
 
     mtx_lock(&applications->lock);
     applications->count = tll_length(apps);
-    applications->v = malloc(tll_length(apps) * sizeof(applications->v[0]));
+    applications->v = xmalloc(tll_length(apps) * sizeof(applications->v[0]));
 
     size_t i = 0;
     tll_foreach(apps, it) {
@@ -711,7 +695,7 @@ xdg_find_programs(const char *terminal, bool include_actions,
         int idx = 0;
         tll_foreach(app->keywords, it) {
             idx += swprintf(&keywords[idx],
-                            (sizeof(keywords) / sizeof(keywords[0])) - idx,
+                            ALEN(keywords) - idx,
                             L"%ls, ", (const wchar_t *)it->item);
         }
 
@@ -721,7 +705,7 @@ xdg_find_programs(const char *terminal, bool include_actions,
         idx = 0;
         tll_foreach(app->categories, it) {
             idx += swprintf(&categories[idx],
-                            (sizeof(categories) / sizeof(categories[0])) - idx,
+                            ALEN(categories) - idx,
                             L"%ls, ", (const wchar_t *)it->item);
         }
 
@@ -764,16 +748,12 @@ xdg_data_dirs(void)
     if (xdg_data_home != NULL && xdg_data_home[0] != '\0') {
         int fd = open(xdg_data_home, O_RDONLY | O_DIRECTORY);
         if (fd >= 0) {
-            struct xdg_data_dir d = {.fd = fd, .path = strdup(xdg_data_home)};
+            struct xdg_data_dir d = {.fd = fd, .path = xstrdup(xdg_data_home)};
             tll_push_back(ret, d);
         }
     } else {
-        static const char *const local = ".local/share";
         const struct passwd *pw = getpwuid(getuid());
-
-        char *path = malloc(strlen(pw->pw_dir) + 1 + strlen(local) + 1);
-        sprintf(path, "%s/%s", pw->pw_dir, local);
-
+        char *path = xstrjoin(pw->pw_dir, "/.local/share");
         int fd = open(path, O_RDONLY | O_DIRECTORY);
         if (fd >= 0) {
             struct xdg_data_dir d = {.fd = fd, .path = path};
@@ -787,7 +767,7 @@ xdg_data_dirs(void)
     if (_xdg_data_dirs != NULL) {
 
         char *ctx = NULL;
-        char *copy = strdup(_xdg_data_dirs);
+        char *copy = xstrdup(_xdg_data_dirs);
 
         for (const char *tok = strtok_r(copy, ":", &ctx);
              tok != NULL;
@@ -795,7 +775,7 @@ xdg_data_dirs(void)
         {
             int fd = open(tok, O_RDONLY | O_DIRECTORY);
             if (fd >= 0) {
-                struct xdg_data_dir d = {.fd = fd, .path = strdup(tok)};
+                struct xdg_data_dir d = {.fd = fd, .path = xstrdup(tok)};
                 tll_push_back(ret, d);
             }
         }
@@ -806,12 +786,12 @@ xdg_data_dirs(void)
         int fd2 = open("/usr/share", O_RDONLY | O_DIRECTORY);
 
         if (fd1 >= 0) {
-            struct xdg_data_dir d = {.fd = fd1, .path = strdup("/usr/local/share")};
+            struct xdg_data_dir d = {.fd = fd1, .path = xstrdup("/usr/local/share")};
             tll_push_back(ret, d);
         }
 
         if (fd2 >= 0) {
-            struct xdg_data_dir d = {.fd = fd2, .path = strdup("/usr/share")};
+            struct xdg_data_dir d = {.fd = fd2, .path = xstrdup("/usr/share")};
             tll_push_back(ret, d);;
         }
     }
@@ -839,7 +819,7 @@ xdg_cache_dir(void)
     const char *home = getenv("HOME");
     if (home != NULL && home[0] != '\0') {
         static char path[PATH_MAX];
-        snprintf(path, sizeof(path), "%s/.cache", home);
+        xsnprintf(path, sizeof(path), "%s/.cache", home);
         return path;
     }
 

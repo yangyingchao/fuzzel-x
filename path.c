@@ -15,6 +15,7 @@
 #include "log.h"
 #include "xdg.h"
 #include "char32.h"
+#include "xmalloc.h"
 
 void
 path_find_programs(struct application_list *applications)
@@ -24,7 +25,7 @@ path_find_programs(struct application_list *applications)
     if (_path == NULL)
         return ;
 
-    char *copy = strdup(_path);
+    char *copy = xstrdup(_path);
     char *ctx = NULL;
     tll(struct application *) entries = tll_init();
 
@@ -43,7 +44,6 @@ path_find_programs(struct application_list *applications)
             closedir(d);
             continue;
         }
-        const size_t path_size = strlen(tok);
         for (const struct dirent *e = readdir(d); e != NULL; e = readdir(d)) {
             if (strcmp(e->d_name, ".") == 0 || strcmp(e->d_name, "..") == 0)
                 continue;
@@ -68,21 +68,18 @@ path_find_programs(struct application_list *applications)
                     free(wtitle);
                     continue;
                 }
-                size_t exec_size = path_size + 1 + strlen(e->d_name) + 1;
-                char *exec = malloc(exec_size);
-                snprintf(exec, exec_size, "%s/%s", tok, e->d_name);
 
-                char32_t *lowercase = c32dup(wtitle);
+                char32_t *lowercase = xc32dup(wtitle);
                 for (size_t i = 0; i < c32len(lowercase); i++)
                     lowercase[i] = toc32lower(lowercase[i]);
 
-                struct application *app = malloc(sizeof(*app));
+                struct application *app = xmalloc(sizeof(*app));
                 *app = (struct application){
                     .index = 0,  /* Not used in application mode */
                     .title = wtitle,
                     .title_lowercase = lowercase,
                     .title_len = c32len(lowercase),
-                    .exec = exec,
+                    .exec = xstrjoin3(tok, "/", e->d_name),
                     .visible = true,
                 };
 
@@ -93,7 +90,7 @@ path_find_programs(struct application_list *applications)
     }
     free(copy);
 
-    applications->v = reallocarray(
+    applications->v = xreallocarray(
         applications->v, applications->count + tll_length(entries), sizeof(applications->v[0]));
 
     tll_foreach(entries, it) {

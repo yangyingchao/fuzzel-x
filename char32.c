@@ -16,6 +16,7 @@
 #define LOG_MODULE "char32"
 #define LOG_ENABLE_DBG 0
 #include "log.h"
+#include "xmalloc.h"
 
 /*
  * For now, assume we can map directly to the corresponding wchar_t
@@ -57,6 +58,12 @@ char32_t *
 c32cpy(char32_t *dest, const char32_t *src)
 {
     return (char32_t *)wcscpy((wchar_t *)dest, (const wchar_t *)src);
+}
+
+char32_t *
+c32memcpy(char32_t *dest, const char32_t *src, size_t n)
+{
+    return (char32_t *)wmemcpy((wchar_t *)dest, (const wchar_t *)src, n);
 }
 
 char32_t *
@@ -184,9 +191,7 @@ ambstoc32(const char *src)
 
     const size_t src_len = strlen(src);
 
-    char32_t *ret = malloc((src_len + 1) * sizeof(ret[0]));
-    if (ret == NULL)
-        return NULL;
+    char32_t *ret = xmalloc((src_len + 1) * sizeof(ret[0]));
 
     mbstate_t ps = {0};
     char32_t *out = ret;
@@ -211,8 +216,7 @@ ambstoc32(const char *src)
 
     *out = U'\0';
 
-    ret = reallocarray(ret, chars + 1, sizeof(ret[0]));
-    return ret;
+    return xreallocarray(ret, chars + 1, sizeof(ret[0]));
 
 err:
     free(ret);
@@ -228,9 +232,7 @@ ac32tombs(const char32_t *src)
     const size_t src_len = c32len(src);
 
     size_t allocated = src_len + 1;
-    char *ret = malloc(allocated);
-    if (ret == NULL)
-        return NULL;
+    char *ret = xmalloc(allocated);
 
     mbstate_t ps = {0};
     char *out = ret;
@@ -250,12 +252,7 @@ ac32tombs(const char32_t *src)
 
         if (bytes + rc > allocated) {
             allocated *= 2;
-            char *new_ret = realloc(ret, allocated);
-            if (new_ret == NULL) {
-                free(ret);
-                return NULL;
-            }
-            ret = new_ret;
+            ret = xrealloc(ret, allocated);
             out = &ret[bytes];
         }
 
@@ -266,10 +263,7 @@ ac32tombs(const char32_t *src)
     }
 
     assert(ret[bytes - 1] == '\0');
-    char *new_ret = realloc(ret, bytes);
-    if (new_ret != NULL)
-        ret = new_ret;
-    return ret;
+    return xrealloc(ret, bytes);
 
 err:
     free(ret);
