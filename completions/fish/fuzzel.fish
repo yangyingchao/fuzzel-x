@@ -32,6 +32,7 @@ complete -c fuzzel -x -s a -l anchor             -a "top-left top top-right left
 complete -c fuzzel -x      -l x-margin                                                                          -d "horizontal margin away from the anchor point in pixels (0)"
 complete -c fuzzel -x      -l y-margin                                                                          -d "vertical margin away from the anchor point in pixels (0)"
 complete -c fuzzel -x      -l select                                                                            -d "select the first entry that matches the given string"
+complete -c fuzzel -x      -l select-index                                                                      -d "select the entry at index"
 complete -c fuzzel -x -s l -l lines                                                                             -d "maximum number of matches to displayh (15)"
 complete -c fuzzel -x -s w -l width                                                                             -d "window width, in characters (30)"
 complete -c fuzzel -x -s x -l horizontal-pad                                                                    -d "horizontal padding, in pixels (40)"

@@ -56,6 +56,7 @@ struct context {
     mtx_t *icon_lock;
 
     const char *select_initial;
+    const size_t select_initial_idx;
 
     int event_fd;
     int dmenu_abort_fd;
@@ -349,6 +350,7 @@ print_usage(const char *prog_name)
            "     --y-margin=MARGIN           vertical margin, in pixels (0)\n"
            "     --select=STRING             select first entry that matches the given\n"
            "                                 string\n"
+           "     --select-index=INDEX        select the entry with index, not compatible with --select\n"
            "  -l,--lines                     number of matches to show\n"
            "  -w,--width                     window width, in characters (margins and\n"
            "                                 borders not included)\n"
@@ -589,6 +591,7 @@ process_event(struct context *ctx, enum event_type event)
     struct application_list *apps = ctx->apps;
     struct matches *matches = ctx->matches;
     const char *select = ctx->select_initial;
+    const size_t select_idx = ctx->select_initial_idx;
 
     switch (event) {
     case EVENT_APPS_SOME_LOADED:
@@ -616,7 +619,14 @@ process_event(struct context *ctx, enum event_type event)
              *   c) a partial load will cause more matches to be displayed
              */
             matches_update_no_delay(matches);
-            matches_selected_select(matches, select);
+            if (select_idx != 0) {
+                if (!matches_selected_set(matches, select_idx)) {
+                    LOG_ERR("couldn't select entry at index %zu", select_idx);
+                    return false;
+                }
+            }
+            else
+                matches_selected_select(matches, select);
         }
         break;
     }
@@ -708,25 +718,26 @@ main(int argc, char *const *argv)
     #define OPT_FILTER_DESKTOP               274
     #define OPT_CHECK_CONFIG                 275
     #define OPT_SELECT                       276
-    #define OPT_LIST_EXECS_IN_PATH           277
-    #define OPT_X_MARGIN                     278
-    #define OPT_Y_MARGIN                     279
-    #define OPT_CACHE                        280
-    #define OPT_RENDER_WORKERS               281
-    #define OPT_PROMPT_COLOR                 282
-    #define OPT_INPUT_COLOR                  283
-    #define OPT_PROMPT_ONLY                  284
-    #define OPT_COUNTER_COLOR                285
-    #define OPT_USE_BOLD                     286
-    #define OPT_MATCH_WORKERS                287
-    #define OPT_NO_SORT                      288
-    #define OPT_DELAYED_FILTER_MS            289
-    #define OPT_DELAYED_FILTER_LIMIT         290
-    #define OPT_PLACEHOLDER                  291
-    #define OPT_PLACEHOLDER_COLOR            292
-    #define OPT_SEARCH_TEXT                  293
-    #define OPT_COUNTER                      294
-    #define OPT_HIDE_WHEN_PROMPT_EMPTY       295
+    #define OPT_SELECT_INDEX                 277
+    #define OPT_LIST_EXECS_IN_PATH           278
+    #define OPT_X_MARGIN                     279
+    #define OPT_Y_MARGIN                     280
+    #define OPT_CACHE                        281
+    #define OPT_RENDER_WORKERS               282
+    #define OPT_PROMPT_COLOR                 283
+    #define OPT_INPUT_COLOR                  284
+    #define OPT_PROMPT_ONLY                  285
+    #define OPT_COUNTER_COLOR                286
+    #define OPT_USE_BOLD                     287
+    #define OPT_MATCH_WORKERS                288
+    #define OPT_NO_SORT                      289
+    #define OPT_DELAYED_FILTER_MS            290
+    #define OPT_DELAYED_FILTER_LIMIT         291
+    #define OPT_PLACEHOLDER                  292
+    #define OPT_PLACEHOLDER_COLOR            293
+    #define OPT_SEARCH_TEXT                  294
+    #define OPT_COUNTER                      295
+    #define OPT_HIDE_WHEN_PROMPT_EMPTY       296
 
     static const struct option longopts[] = {
         {"config",               required_argument, 0, OPT_CONFIG},
@@ -745,6 +756,7 @@ main(int argc, char *const *argv)
         {"x-margin",             required_argument, 0, OPT_X_MARGIN},
         {"y-margin",             required_argument, 0, OPT_Y_MARGIN},
         {"select",               required_argument, 0, OPT_SELECT},
+        {"select-index",         required_argument, 0, OPT_SELECT_INDEX},
         {"lines",                required_argument, 0, 'l'},
         {"width",                required_argument, 0, 'w'},
         {"tabs",                 required_argument, 0, OPT_TABS},
@@ -809,6 +821,7 @@ main(int argc, char *const *argv)
     enum log_colorize log_colorize = LOG_COLORIZE_AUTO;
     bool log_syslog = true;
     const char *select = NULL;
+    size_t select_idx = 0;
 
     struct {
         struct config conf;
@@ -1070,6 +1083,16 @@ main(int argc, char *const *argv)
 
         case OPT_SELECT:
             select = optarg;
+            break;
+
+        case OPT_SELECT_INDEX:
+            if (sscanf(optarg, "%zu", &select_idx) != 1) {
+                fprintf(
+                    stderr,
+                    "%s: invalid selected index (must be an integer)\n",
+                    optarg);
+                return EXIT_FAILURE;
+            }
             break;
 
         case 'l':
@@ -1618,6 +1641,11 @@ main(int argc, char *const *argv)
 
     int ret = EXIT_FAILURE;
 
+    if (select != NULL && select_idx) {
+            LOG_ERRNO("--select and --select-index cannot be used at the same time");
+            return ret;
+    }
+
     struct config conf = {0};
     bool conf_successful = config_load(&conf, config_path, NULL, check_config);
     if (!conf_successful) {
@@ -1877,6 +1905,7 @@ main(int argc, char *const *argv)
         .themes = &themes,
         .icon_lock = &icon_lock,
         .select_initial = select,
+        .select_initial_idx = select_idx,
         .event_fd = -1,
         .dmenu_abort_fd = dmenu_abort_fd,
     };

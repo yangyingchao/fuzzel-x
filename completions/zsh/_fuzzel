@@ -24,6 +24,7 @@ _arguments \
     '--x-margin[horizontal margin away from the anchor point in pixels (0)]:()' \
     '--y-margin[vertical margin away from the anchor point in pixels (0)]:()' \
     '--select[select the first entry that matches the given string]:()' \
+    '--select-index[select the entry with index]:()' \
     '(-l --lines)'{-l,--lines}'[maximum number of matches to display (15)]:()' \
     '(-w --width)'{-w,--width}'[window width, in characters (30)]:()' \
     '(-x --horizontal-pad)'{-x,--horizontal-pad}'[horizontal padding, in pixels (40)]:()' \

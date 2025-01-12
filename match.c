@@ -713,6 +713,16 @@ matches_selected_first(struct matches *matches)
 }
 
 bool
+matches_selected_set(struct matches *matches, size_t idx)
+{
+    if (matches == NULL || matches->match_count <= 0 || idx >= matches->match_count)
+        return false;
+
+    matches->selected = idx;
+    return true;
+}
+
+bool
 matches_selected_last(struct matches *matches)
 {
     if (matches->match_count <= 0 ||

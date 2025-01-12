@@ -68,6 +68,8 @@ size_t matches_get_match_index(const struct matches *matches);
 bool matches_selected_select(struct matches *matches, const char *string);
 bool matches_idx_select(struct matches *matches, size_t idx);
 
+bool matches_selected_set(struct matches *matches, const size_t idx);
+
 bool matches_selected_first(struct matches *matches);
 bool matches_selected_last(struct matches *matches);
 

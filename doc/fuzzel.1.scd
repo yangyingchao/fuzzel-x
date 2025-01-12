@@ -174,6 +174,9 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	Select the first entry that matches the given string (case
 	insensitive).
 
+*--select-index*=INDEX
+	Select the entry with index, not compatible with --select.
+
 *-l*,*--lines*=COUNT
 	The (maximum) number of matches to display. This dictates the
 	window height. Default: _15_.
