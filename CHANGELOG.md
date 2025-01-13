@@ -168,7 +168,7 @@
   and the primary clipboard are supported. See the new
   `clipboard-paste` and `primary-paste` key bindings ([#200][200]).
 * `hide-before-typing` command line and config option, hiding the
-  application list until the first letter is typed. ([#351][#351]).
+  application list until the first letter is typed. ([#351][351]).
 
 [344]: https://codeberg.org/dnkl/fuzzel/issues/344
 [131]: https://codeberg.org/dnkl/fuzzel/issues/131
@@ -207,6 +207,7 @@
   ([#398][398]).
 
 [339]: https://codeberg.org/dnkl/fuzzel/issues/339
+[353]: https://codeberg.org/dnkl/fuzzel/issues/353
 [81]: https://codeberg.org/dnkl/fuzzel/issues/81
 [398]: https://codeberg.org/dnkl/fuzzel/issues/398
 
@@ -229,6 +230,7 @@
 * Mouse selection not working correctly (wrong item selected) when
   `dpi-aware=yes` and desktop scaling was enabled.
 
+[337]: https://codeberg.org/dnkl/fuzzel/issues/337
 [348]: https://codeberg.org/dnkl/fuzzel/issues/348
 [356]: https://codeberg.org/dnkl/fuzzel/issues/356
 
