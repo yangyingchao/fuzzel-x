@@ -38,9 +38,11 @@
   is closer to the end of the entry ([#419][419]).
 * "Too large" PNG icons are now downscaled using a less precise
   scaling filter, to improve performance ([#439][439]).
+* Icon themes: 'scaled' directories are now ignored ([#459][459]).
 
 [419]: https://codeberg.org/dnkl/fuzzel/issues/419
 [439]: https://codeberg.org/dnkl/fuzzel/issues/439
+[459]: https://codeberg.org/dnkl/fuzzel/issues/459
 
 
 ### Deprecated

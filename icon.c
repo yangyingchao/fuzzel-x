@@ -565,11 +565,21 @@ lookup_icons(const icon_theme_list_t *themes, int icon_size,
             tll_foreach(*xdg_dirs, xdg_dir_it) {
                 const struct xdg_data_dir *xdg_dir = &xdg_dir_it->item;
 
-                const int scale = icon_dir->scale;
-                const int size = icon_dir->size * scale;
-                const int min_size = icon_dir->min_size * scale;
-                const int max_size = icon_dir->max_size * scale;
-                const int threshold = icon_dir->threshold * scale;
+                if (icon_dir->scale > 1) {
+                    /*
+                     * Scaled dirs are physically bigger icons (more
+                     * pixels), but with less details. See
+                     *  - https://codeberg.org/dnkl/fuzzel/issues/459#issuecomment-2574718
+                     *  - https://codeberg.org/dnkl/fuzzel/issues/459#issuecomment-2574720
+                     * For details on why we're skipping these.
+                     */
+                    continue;
+                }
+
+                const int size = icon_dir->size;
+                const int min_size = icon_dir->min_size;
+                const int max_size = icon_dir->max_size;
+                const int threshold = icon_dir->threshold;
                 const enum icon_dir_type type = icon_dir->type;
 
                 bool is_exact_match = false;
