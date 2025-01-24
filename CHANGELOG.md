@@ -30,6 +30,10 @@
 
 ## Unreleased
 ### Added
+
+* Nanosvg updated to ea6a6aca009422bba0dbad4c80df6e6ba0c82183
+
+
 ### Changed
 
 * Take the matched sub-string's position into account when sorting
