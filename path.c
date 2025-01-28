@@ -2,6 +2,7 @@
 #include "application.h"
 #include "tllist.h"
 
+#include <errno.h>
 #include <string.h>
 #include <fcntl.h>
 #include <sys/types.h>
@@ -35,12 +36,12 @@ path_find_programs(struct application_list *applications)
     {
         DIR *d = opendir(tok);
         if (d == NULL) {
-            LOG_WARN("failed to open %s from PATH", tok);
+            LOG_WARN("failed to open %s from PATH: %s", tok, strerror(errno));
             continue;
         }
         int fd = dirfd(d);
         if (fd == -1) {
-            LOG_WARN("failed to open %s's fd from PATH", tok);
+            LOG_WARN("failed to open %s's fd from PATH: %s", tok, strerror(errno));
             closedir(d);
             continue;
         }
@@ -50,7 +51,7 @@ path_find_programs(struct application_list *applications)
 
             struct stat st;
             if (fstatat(fd, e->d_name, &st, 0) == -1) {
-                LOG_WARN("%s: failed to stat", e->d_name);
+                LOG_WARN("%s: failed to stat: %s", e->d_name, strerror(errno));
                 continue;
             }
             if (S_ISREG(st.st_mode) && st.st_mode & S_IXUSR) {

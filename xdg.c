@@ -558,7 +558,7 @@ scan_dir(int base_fd, const char *terminal, bool include_actions,
 
         struct stat st;
         if (fstatat(base_fd, e->d_name, &st, 0) == -1) {
-            LOG_WARN("%s: failed to stat", e->d_name);
+            LOG_WARN("%s: failed to stat: %s", e->d_name, strerror(errno));
             continue;
         }
 
@@ -588,7 +588,7 @@ scan_dir(int base_fd, const char *terminal, bool include_actions,
             //LOG_DBG("%s", e->d_name);
             int fd = openat(base_fd, e->d_name, O_RDONLY);
             if (fd == -1)
-                LOG_WARN("%s: failed to open", e->d_name);
+                LOG_WARN("%s: failed to open: %s", e->d_name, strerror(errno));
             else {
                 const char *file_basename = strrchr(e->d_name, '/');
                 if (file_basename == NULL)

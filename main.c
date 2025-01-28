@@ -491,7 +491,7 @@ acquire_file_lock(const char *path, int *fd)
     *fd = open(path, O_WRONLY | O_CREAT | O_CLOEXEC, 0644);
     if (*fd < 0) {
         /* Warn, but allow running anyway */
-        LOG_WARN("%s: failed to create lock file", path);
+        LOG_WARN("%s: failed to create lock file: %s", path, strerror(errno));
         return true;
     }
 
