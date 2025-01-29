@@ -729,10 +729,7 @@ parse_section_main(struct context *ctx)
                 return false;
             }
 
-            if (asprintf(&_include_path, "%s/%s", home_dir, value + 2) < 0) {
-                LOG_ERRNO("failed to allocate path for include directive");
-                return false;
-            }
+            _include_path = xstrjoin3(home_dir, "/", value + 2);
             include_path = _include_path;
         } else
             include_path = value;
@@ -1569,8 +1566,7 @@ add_default_key_bindings(struct config *conf)
     };
 
     conf->key_bindings.count = ALEN(bindings);
-    conf->key_bindings.arr = xmalloc(sizeof(bindings));
-    memcpy(conf->key_bindings.arr, bindings, sizeof(bindings));
+    conf->key_bindings.arr = xmemdup(bindings, sizeof(bindings));
 }
 
 bool
@@ -1660,10 +1656,7 @@ config_load(struct config *conf, const char *conf_path,
 
     const char *terminal = getenv("TERMINAL");
     if (terminal != NULL) {
-        if (asprintf(&conf->terminal, "%s -e", terminal) < 0) {
-            LOG_ERRNO("failed to build default terminal command line");
-            goto out;
-        }
+        conf->terminal = xstrjoin(terminal, " -e");
     }
 
     if (conf_path != NULL) {

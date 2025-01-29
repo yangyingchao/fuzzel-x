@@ -29,6 +29,7 @@
 #include "char32.h"
 #include "wayland.h"
 #include "xmalloc.h"
+#include "xsnprintf.h"
 
 #define min(x, y) ((x < y) ? (x) : (y))
 #define max(x, y) ((x > y) ? (x) : (y))
@@ -1291,7 +1292,7 @@ match_thread(void *_ctx)
     pthread_sigmask(SIG_SETMASK, &mask, NULL);
 
     char proc_title[16];
-    snprintf(proc_title, sizeof(proc_title), "fuzzel:match:%d", my_id);
+    xsnprintf(proc_title, sizeof(proc_title), "fuzzel:match:%d", my_id);
 
     if (pthread_setname_np(pthread_self(), proc_title) < 0)
         LOG_ERRNO("render worker %d: failed to set process title", my_id);

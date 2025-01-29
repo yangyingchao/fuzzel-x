@@ -1159,7 +1159,7 @@ render_worker_thread(void *_ctx)
     pthread_sigmask(SIG_SETMASK, &mask, NULL);
 
     char proc_title[16];
-    snprintf(proc_title, sizeof(proc_title), "fuzzel:rend:%d", my_id);
+    xsnprintf(proc_title, sizeof(proc_title), "fuzzel:rend:%d", my_id);
 
     if (pthread_setname_np(pthread_self(), proc_title) < 0)
         LOG_ERRNO("render worker %d: failed to set process title", my_id);

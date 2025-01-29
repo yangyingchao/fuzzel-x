@@ -266,8 +266,8 @@ write_cache(const char *path, const struct application_list *apps, bool dmenu)
         }
 
         char count_as_str[11];
-        sprintf(count_as_str, "%u", apps->v[i]->count);
-        const size_t count_len = strlen(count_as_str);
+        const size_t count_len = xsnprintf(
+            count_as_str, sizeof(count_as_str), "%u", apps->v[i]->count);
 
         if (write(fd, "|", 1) != 1 ||
             write(fd, count_as_str, count_len) != count_len ||
