@@ -12,6 +12,12 @@ enum log_class {
     LOG_CLASS_DEBUG,
 };
 
+static inline const char *
+loggable_str(const char *str)
+{
+    return str ? str : "(null)";
+}
+
 void log_init(enum log_colorize colorize, bool do_syslog,
               enum log_facility syslog_facility, enum log_class log_level);
 void log_deinit(void);

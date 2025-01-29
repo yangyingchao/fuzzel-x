@@ -503,52 +503,35 @@ scan_dir(int base_fd, const char *terminal, bool include_actions,
     struct locale_variants lc_messages = {NULL};
 
     if (locale != NULL) {
-        char *copy = xstrdup(locale);
+        char *lang = xstrdup(locale);
+        char *country_start = strchr(lang, '_');
+        char *encoding_start = strchr(lang, '.');
+        char *modifier_start = strchr(lang, '@');
 
-        char *lang = copy;
-        char *country_start = strchr(copy, '_');
-        char *encoding_start = strchr(copy, '.');
-        char *modifier_start = strchr(copy, '@');
-
+        // Replace found delimiters with null terminators and skip past them
         if (country_start != NULL)
-            *country_start = '\0';
+            *country_start++ = '\0';
         if (encoding_start != NULL)
-            *encoding_start = '\0';
+            *encoding_start++ = '\0';
         if (modifier_start != NULL)
-            *modifier_start = '\0';
+            *modifier_start++ = '\0';
 
-        lc_messages.lang = copy;
-        if (country_start != NULL) {
-            if (asprintf(
-                    &lc_messages.lang_country, "%s_%s", lang, country_start + 1) < 0) {
-                LOG_WARN(
-                    "failed to construct lang_country string from %s and %s: %s",
-                    lang, country_start + 1, strerror(errno));
-            }
-        }
+        lc_messages.lang = lang;
+        if (country_start != NULL)
+            lc_messages.lang_country = xstrjoin3(lang, "_", country_start);
 
-        if (modifier_start != NULL) {
-            if (asprintf(
-                    &lc_messages.lang_modifier, "%s@%s", lang, modifier_start + 1) < 0) {
-                LOG_WARN(
-                    "failed to construct lang@modifier string from %s and %s: %s",
-                    lang, modifier_start + 1, strerror(errno));
-            }
-        }
+        if (modifier_start != NULL)
+            lc_messages.lang_modifier = xstrjoin3(lang, "@", modifier_start);
 
-        if (country_start != NULL && modifier_start != NULL) {
-            if (asprintf(
-                    &lc_messages.lang_country_modifier,
-                    "%s_%s@%s", lang, country_start + 1, modifier_start + 1) < 0) {
-                LOG_WARN(
-                    "failed to construct lang_country@modifier string from %s, %s and %s: %s",
-                    lang, country_start + 1, modifier_start + 1, strerror(errno));
-            }
-        }
+        if (country_start != NULL && modifier_start != NULL)
+            lc_messages.lang_country_modifier = xstrjoin3(
+                    lc_messages.lang_country, "@", modifier_start);
 
         LOG_DBG("lang=%s, lang_country=%s, lang@modifier=%s, lang_country@modifier=%s",
-                lc_messages.lang, lc_messages.lang_country,
-                lc_messages.lang_modifier, lc_messages.lang_country_modifier);
+                lc_messages.lang,
+                loggable_str(lc_messages.lang_country),
+                loggable_str(lc_messages.lang_modifier),
+                loggable_str(lc_messages.lang_country_modifier));
     }
 
 
