@@ -115,12 +115,14 @@
 * `--accept-nth=N` command line option ([#493][493]).
 * `keyboard-focus=exclusive|on-demand` command line and config option
   ([#495][495]).
+* New key binding: `delete-line` corresponding to C-S-Backspace in Emacs,
+  Which deletes the entire input ([#472][472]).
 
 [447]: https://codeberg.org/dnkl/fuzzel/issues/447
 [438]: https://codeberg.org/dnkl/fuzzel/issues/438
 [493]: https://codeberg.org/dnkl/fuzzel/pulls/493
 [495]: https://codeberg.org/dnkl/fuzzel/pulls/495
-
+[472]: https://codeberg.org/dnkl/fuzzel/pulls/472
 
 ### Changed
 

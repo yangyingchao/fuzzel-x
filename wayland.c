@@ -650,6 +650,12 @@ execute_binding(struct seat *seat, const struct key_binding *binding, bool *refr
         *refresh = prompt_cursor_next_word(wayl->prompt);
         return true;
 
+    case BIND_ACTION_DELETE_LINE:
+        *refresh = prompt_erase_all(wayl->prompt);
+        if (*refresh)
+            matches_update(wayl->matches);
+        return true;
+
     case BIND_ACTION_DELETE_PREV:
         *refresh = prompt_erase_prev_char(wayl->prompt);
         if (*refresh)

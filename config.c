@@ -45,6 +45,7 @@ static const char *const binding_action_map[] = {
     [BIND_ACTION_CURSOR_LEFT_WORD] = "cursor-left-word",
     [BIND_ACTION_CURSOR_RIGHT] = "cursor-right",
     [BIND_ACTION_CURSOR_RIGHT_WORD] = "cursor-right-word",
+    [BIND_ACTION_DELETE_LINE] = "delete-line",
     [BIND_ACTION_DELETE_PREV] = "delete-prev",
     [BIND_ACTION_DELETE_PREV_WORD] = "delete-prev-word",
     [BIND_ACTION_DELETE_LINE_BACKWARD] = "delete-line-backward",
@@ -1523,6 +1524,8 @@ add_default_key_bindings(struct config *conf)
 
         {BIND_ACTION_CURSOR_RIGHT_WORD, m_alt, {{XKB_KEY_f}}},
         {BIND_ACTION_CURSOR_RIGHT_WORD, m_ctrl, {{XKB_KEY_Right}}},
+
+        {BIND_ACTION_DELETE_LINE, m_ctrl_shift, {{XKB_KEY_BackSpace}}},
 
         {BIND_ACTION_DELETE_PREV, m_none, {{XKB_KEY_BackSpace}}},
         {BIND_ACTION_DELETE_PREV, m_ctrl, {{XKB_KEY_h}}},
