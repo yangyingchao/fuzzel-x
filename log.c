@@ -10,7 +10,6 @@
 #include <syslog.h>
 #include <unistd.h>
 #include <assert.h>
-#include "macros.h"
 #include "xsnprintf.h"
 
 static bool colorize = false;

@@ -111,7 +111,7 @@ struct context {
     log_contextual_errno(ctx, __FILE__, __LINE__, __VA_ARGS__)
 
 
-static void __attribute__((format(printf, 5, 6)))
+static void PRINTF(5)
 log_contextual(struct context *ctx, enum log_class log_class,
                const char *file, int lineno, const char *fmt, ...)
 {
@@ -140,7 +140,7 @@ log_contextual(struct context *ctx, enum log_class log_class,
     free(formatted_msg);
 }
 
-static void __attribute__((format(printf, 4, 5)))
+static void PRINTF(4)
 log_contextual_errno(struct context *ctx, const char *file, int lineno,
                      const char *fmt, ...)
 {

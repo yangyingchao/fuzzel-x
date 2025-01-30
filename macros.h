@@ -50,9 +50,21 @@
 #endif
 
 #if GNUC_AT_LEAST(3, 0) || HAS_ATTRIBUTE(malloc)
-    #define MALLOC __attribute__((__malloc__))
+    #define MALLOC WARN_UNUSED_RESULT __attribute__((__malloc__))
 #else
-    #define MALLOC
+    #define MALLOC WARN_UNUSED_RESULT
+#endif
+
+#if GNUC_AT_LEAST(3, 0) || HAS_ATTRIBUTE(pure)
+    #define PURE WARN_UNUSED_RESULT __attribute__((__pure__))
+#else
+    #define PURE WARN_UNUSED_RESULT
+#endif
+
+#if GNUC_AT_LEAST(3, 0) || HAS_ATTRIBUTE(const)
+    #define CONST_FN WARN_UNUSED_RESULT __attribute__((__const__))
+#else
+    #define CONST_FN WARN_UNUSED_RESULT
 #endif
 
 #if GNUC_AT_LEAST(3, 0) || HAS_ATTRIBUTE(format)
@@ -117,7 +129,7 @@
     #define RETURNS_NONNULL
 #endif
 
-#define XMALLOC MALLOC RETURNS_NONNULL WARN_UNUSED_RESULT
+#define XMALLOC MALLOC RETURNS_NONNULL
 #define XSTRDUP XMALLOC NONNULL_ARGS
 
 #ifdef __clang__

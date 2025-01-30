@@ -600,7 +600,7 @@ size_t
 match_get_idx(const struct matches *matches, size_t idx)
 {
     const size_t page_no = matches_get_page(matches);
-    const size_t items_on_page __attribute__((unused)) = matches_get_count(matches);
+    const size_t items_on_page UNUSED = matches_get_count(matches);
 
     LOG_DBG(
         "page-count: %zu, page-no: %zu, items-on-page: %zu, idx: %zu, max: %zu, "

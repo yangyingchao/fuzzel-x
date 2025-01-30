@@ -73,8 +73,8 @@ png_load(const char *path)
     int width = png_get_image_width(png_ptr, info_ptr);
     int height = png_get_image_height(png_ptr, info_ptr);
     png_byte color_type = png_get_color_type(png_ptr, info_ptr);
-    png_byte bit_depth __attribute__((unused)) = png_get_bit_depth(png_ptr, info_ptr);
-    int channels __attribute__((unused)) = png_get_channels(png_ptr, info_ptr);
+    png_byte bit_depth UNUSED = png_get_bit_depth(png_ptr, info_ptr);
+    int channels UNUSED = png_get_channels(png_ptr, info_ptr);
 
     LOG_DBG("%s: %dx%d@%hhubpp, %d channels", path, width, height, bit_depth, channels);
 
@@ -130,7 +130,7 @@ png_load(const char *path)
 
     png_read_update_info(png_ptr, info_ptr);
 
-    size_t row_bytes __attribute__((unused)) = png_get_rowbytes(png_ptr, info_ptr);
+    size_t row_bytes UNUSED = png_get_rowbytes(png_ptr, info_ptr);
     int stride = stride_for_format_and_width(format, width);
     image_data = xmalloc(height * stride);
 

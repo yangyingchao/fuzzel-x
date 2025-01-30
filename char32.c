@@ -36,7 +36,7 @@ _Static_assert(
  #error "wchar_t does not use UTF-32"
 #endif
 
-size_t __attribute__((pure))
+size_t
 c32len(const char32_t *s)
 {
     return wcslen((const wchar_t *)s);
@@ -270,19 +270,19 @@ err:
     return NULL;
 }
 
-char32_t __attribute__((const))
+char32_t
 toc32lower(char32_t c)
 {
     return (char32_t)towlower((wint_t)c);
 }
 
-char32_t __attribute__((const))
+char32_t
 toc32upper(char32_t c)
 {
     return (char32_t)towupper((wint_t)c);
 }
 
-bool __attribute__((const))
+bool
 isc32space(char32_t c32)
 {
     return iswspace((wint_t)c32);
