@@ -728,15 +728,15 @@ xdg_data_dirs(void)
     xdg_data_dirs_t ret = tll_init();
 
     const char *xdg_data_home = getenv("XDG_DATA_HOME");
+    const char *home;
     if (xdg_data_home != NULL && xdg_data_home[0] != '\0') {
         int fd = open(xdg_data_home, O_RDONLY | O_DIRECTORY);
         if (fd >= 0) {
             struct xdg_data_dir d = {.fd = fd, .path = xstrdup(xdg_data_home)};
             tll_push_back(ret, d);
         }
-    } else {
-        const struct passwd *pw = getpwuid(getuid());
-        char *path = xstrjoin(pw->pw_dir, "/.local/share");
+    } else if ((home = getenv("HOME")) != NULL && home[0] != '\0') {
+        char *path = xstrjoin(home, "/.local/share");
         int fd = open(path, O_RDONLY | O_DIRECTORY);
         if (fd >= 0) {
             struct xdg_data_dir d = {.fd = fd, .path = path};
