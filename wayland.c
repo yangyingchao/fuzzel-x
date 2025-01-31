@@ -768,52 +768,6 @@ execute_binding(struct seat *seat, const struct key_binding *binding, bool *refr
     return false;
 }
 
-static bool
-symbol_is_keypad(xkb_keysym_t sym)
-{
-    switch (sym) {
-    default:
-        return false;
-
-    case XKB_KEY_KP_Space:
-    case XKB_KEY_KP_Tab:
-    case XKB_KEY_KP_Enter:
-    case XKB_KEY_KP_F1:
-    case XKB_KEY_KP_F2:
-    case XKB_KEY_KP_F3:
-    case XKB_KEY_KP_F4:
-    case XKB_KEY_KP_Home:
-    case XKB_KEY_KP_Left:
-    case XKB_KEY_KP_Up:
-    case XKB_KEY_KP_Right:
-    case XKB_KEY_KP_Down:
-    case XKB_KEY_KP_Prior:
-    case XKB_KEY_KP_Next:
-    case XKB_KEY_KP_End:
-    case XKB_KEY_KP_Begin:
-    case XKB_KEY_KP_Insert:
-    case XKB_KEY_KP_Delete:
-    case XKB_KEY_KP_Equal:
-    case XKB_KEY_KP_Multiply:
-    case XKB_KEY_KP_Add:
-    case XKB_KEY_KP_Separator:
-    case XKB_KEY_KP_Subtract:
-    case XKB_KEY_KP_Decimal:
-    case XKB_KEY_KP_Divide:
-    case XKB_KEY_KP_0:
-    case XKB_KEY_KP_1:
-    case XKB_KEY_KP_2:
-    case XKB_KEY_KP_3:
-    case XKB_KEY_KP_4:
-    case XKB_KEY_KP_5:
-    case XKB_KEY_KP_6:
-    case XKB_KEY_KP_7:
-    case XKB_KEY_KP_8:
-    case XKB_KEY_KP_9:
-        return true;
-    }
-}
-
 static void
 keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
              uint32_t time, uint32_t key, uint32_t state)
@@ -894,21 +848,7 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
     tll_foreach(bindings->key, it) {
         const struct key_binding *bind = &it->item;
 
-        if (bind->mods != mods)
-            continue;
-
-        /*
-         * Skip raw key codes for keypad keys.
-         *
-         * The keypad is usually unaffected by the layout. Instead,
-         * mapping raw key codes effectively means we’ll ignore
-         * NumLock. That is, if we have a key binding for KP_PageUp,
-         * it’ll trigger regardless of NumLock setting, and thus
-         * making it impossible to use the keypad to enter numericals.
-         *
-         * See https://codeberg.org/dnkl/fuzzel/issues/192
-         */
-        if (symbol_is_keypad(bind->k.sym))
+        if (bind->mods != mods || bind->mods == 0)
             continue;
 
         for (size_t i = 0; i < raw_count; i++) {
@@ -925,21 +865,7 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
     tll_foreach(bindings->key, it) {
         const struct key_binding *bind = &it->item;
 
-        if (bind->mods != mods)
-            continue;
-
-        /*
-         * Skip raw key codes for keypad keys.
-         *
-         * The keypad is usually unaffected by the layout. Instead,
-         * mapping raw key codes effectively means we’ll ignore
-         * NumLock. That is, if we have a key binding for KP_PageUp,
-         * it’ll trigger regardless of NumLock setting, and thus
-         * making it impossible to use the keypad to enter numericals.
-         *
-         * See https://codeberg.org/dnkl/fuzzel/issues/192
-         */
-        if (symbol_is_keypad(bind->k.sym))
+        if (bind->mods != mods || bind->mods == 0)
             continue;
 
         tll_foreach(bind->k.key_codes, code) {
