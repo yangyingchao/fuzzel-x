@@ -443,6 +443,17 @@ done by setting _action=none_; e.g. *delete-line-forward=none*.
 	Moves the cursor to the end of the input. Default: _End
 	Control+e_.
 
+*delete-input*
+	There is no standalone binding to clear the input. Use _Control+a_
+	to go into the beginning of the input, followed the
+	*delete-line-forward* binding. By default, _Control+k_.
+
+*delete-line-backward*
+	Deletes everything before the cursor. Default: _Control+u_.
+
+*delete-line-forward*
+	Deletes everything after the cursor. Default: _Control+k_.
+
 *delete-prev*
 	Deletes the **character before** the cursor. Default: _BackSpace Control+h_.
 
@@ -450,18 +461,12 @@ done by setting _action=none_; e.g. *delete-line-forward=none*.
 	Deletes the **word before** the cursor. Default: _Mod1+BackSpace
 	Control+BackSpace Control+w_.
 
-*delete-line-backward*
-	Deletes everything before the cursor. Default: _Control+u_.
-
 *delete-next*
 	Deletes the **character after** the cursor. Default: _Delete_.
 
 *delete-next-word*
 	Deletes the **word after** the cursor. Default: _Mod1+d
 	Control+Delete_.
-
-*delete-line-forward*
-	Deletes everything after the cursor. Default: _Control+k_.
 
 *insert-selected*
 	Copies the selected entry to the prompt, replacing the current
