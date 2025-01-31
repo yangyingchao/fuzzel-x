@@ -832,20 +832,6 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
     bool refresh = false;
     seat->kbd.serial = serial;
 
-    /* Translated (exact matching, check *consumed* modifiers) */
-    tll_foreach(bindings->key, it) {
-        const struct key_binding *bind = &it->item;
-
-        if (bind->k.sym == sym &&
-            bind->mods == (mods & ~consumed) &&
-            execute_binding(seat, bind, &refresh))
-        {
-            if (refresh)
-                wayl_refresh(wayl);
-            goto maybe_repeat;
-        }
-    }
-
     /* Untranslated (unshifted matching, check *exact* modifiers) */
     tll_foreach(bindings->key, it) {
         const struct key_binding *bind = &it->item;
@@ -863,6 +849,21 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
             }
         }
     }
+
+    /* Translated (exact matching, check *consumed* modifiers) */
+    tll_foreach(bindings->key, it) {
+        const struct key_binding *bind = &it->item;
+
+        if (bind->k.sym == sym &&
+            bind->mods == (mods & ~consumed) &&
+            execute_binding(seat, bind, &refresh))
+        {
+            if (refresh)
+                wayl_refresh(wayl);
+            goto maybe_repeat;
+        }
+    }
+
 
     /* Raw key-code (check *exact* modifiers) */
     tll_foreach(bindings->key, it) {
