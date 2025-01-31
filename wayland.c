@@ -818,33 +818,8 @@ static void
 keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
              uint32_t time, uint32_t key, uint32_t state)
 {
-    /* TODO: these can’t be static - need to reload on keymap changes */
-    static bool mod_masks_initialized = false;
-    static xkb_mod_mask_t shift = -1;
-    static xkb_mod_mask_t ctrl = -1;
-    static xkb_mod_mask_t alt = -1;
-    static xkb_mod_mask_t super = -1;
-
     struct seat *seat = data;
     struct wayland *wayl = seat->wayl;
-
-    if (!mod_masks_initialized) {
-        mod_masks_initialized = true;
-
-        xkb_mod_index_t shift_idx = xkb_keymap_mod_get_index(
-            seat->kbd.xkb_keymap, XKB_MOD_NAME_SHIFT);
-        xkb_mod_index_t ctrl_idx = xkb_keymap_mod_get_index(
-            seat->kbd.xkb_keymap, XKB_MOD_NAME_CTRL);
-        xkb_mod_index_t alt_idx = xkb_keymap_mod_get_index(
-            seat->kbd.xkb_keymap, XKB_MOD_NAME_ALT);
-        xkb_mod_index_t super_idx = xkb_keymap_mod_get_index(
-            seat->kbd.xkb_keymap, XKB_MOD_NAME_LOGO);
-
-        shift = shift_idx != XKB_MOD_INVALID ? 1 << shift_idx : 0;
-        ctrl = ctrl_idx != XKB_MOD_INVALID ? 1 << ctrl_idx : 0;
-        alt = alt_idx != XKB_MOD_INVALID ? 1 << alt_idx : 0;
-        super = super_idx != XKB_MOD_INVALID ? 1 << super_idx : 0;
-    }
 
     if (state == XKB_KEY_UP) {
         repeat_stop(&seat->kbd.repeat, key);
@@ -870,16 +845,13 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
 
     xkb_mod_mask_t mods = xkb_state_serialize_mods(
         seat->kbd.xkb_state, XKB_STATE_MODS_EFFECTIVE);
-    const xkb_mod_mask_t consumed = xkb_state_key_get_consumed_mods2(
+    xkb_mod_mask_t consumed = xkb_state_key_get_consumed_mods2(
         seat->kbd.xkb_state, key, XKB_CONSUMED_MODE_XKB);
     const xkb_mod_mask_t locked = xkb_state_serialize_mods(
         seat->kbd.xkb_state, XKB_STATE_MODS_LOCKED);
 
-    const xkb_mod_mask_t significant = shift | ctrl | alt | super;
-    const xkb_mod_mask_t bind_mods
-        = mods & significant & ~locked;
-    const xkb_mod_mask_t bind_consumed =
-        consumed & significant & ~locked;
+    mods &= ~locked;
+    consumed &= ~locked;
 
     const xkb_layout_index_t layout_idx =
         xkb_state_key_get_layout(seat->kbd.xkb_state, key);
@@ -910,15 +882,19 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
         const struct key_binding *bind = &it->item;
 
         if (bind->k.sym == sym &&
-            bind->mods == (bind_mods & ~bind_consumed) &&
+            bind->mods == (mods & ~consumed) &&
             execute_binding(seat, bind, &refresh))
         {
             if (refresh)
                 wayl_refresh(wayl);
             goto maybe_repeat;
         }
+    }
 
-        if (bind->mods != bind_mods || bind_mods != (mods & ~locked))
+    tll_foreach(bindings->key, it) {
+        const struct key_binding *bind = &it->item;
+
+        if (bind->mods != mods)
             continue;
 
         /*
@@ -944,6 +920,27 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
                 goto maybe_repeat;
             }
         }
+    }
+
+    tll_foreach(bindings->key, it) {
+        const struct key_binding *bind = &it->item;
+
+        if (bind->mods != mods)
+            continue;
+
+        /*
+         * Skip raw key codes for keypad keys.
+         *
+         * The keypad is usually unaffected by the layout. Instead,
+         * mapping raw key codes effectively means we’ll ignore
+         * NumLock. That is, if we have a key binding for KP_PageUp,
+         * it’ll trigger regardless of NumLock setting, and thus
+         * making it impossible to use the keypad to enter numericals.
+         *
+         * See https://codeberg.org/dnkl/fuzzel/issues/192
+         */
+        if (symbol_is_keypad(bind->k.sym))
+            continue;
 
         tll_foreach(bind->k.key_codes, code) {
             if (code->item == key &&
@@ -956,7 +953,7 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
         }
     }
 
-    if ((bind_mods & ~bind_consumed) != 0)
+    if ((mods & ~consumed) != 0)
         goto maybe_repeat;
 
     /*
