@@ -822,9 +822,8 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
     }
 #endif
 
-    LOG_DBG("sym=%u, mod=0x%08x, consumed=0x%08x, significant=0x%08x, "
-            "locked=0x%08x",
-            sym, mods, consumed, significant, locked);
+    LOG_DBG("sym=%u, mod=0x%08x, consumed=0x%08x, locked=0x%08x",
+            sym, mods, consumed, locked);
 
     const struct key_binding_set *bindings =
         key_binding_for(wayl->kb_manager, seat);
