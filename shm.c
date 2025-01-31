@@ -669,7 +669,7 @@ shm_get_buffer(struct buffer_chain *chain, int width, int height, bool with_alph
     }
 
     if (cached != NULL) {
-        LOG_DBG("re-using buffer %p from cache", (void *)cached);
+        LOG_DBG("reusing buffer %p from cache", (void *)cached);
         cached->busy = true;
         for (size_t i = 0; i < cached->public.pix_instances; i++)
             pixman_region32_clear(&cached->public.dirty[i]);
