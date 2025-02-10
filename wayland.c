@@ -775,6 +775,13 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
     struct seat *seat = data;
     struct wayland *wayl = seat->wayl;
 
+    if (seat->kbd.xkb == NULL ||
+        seat->kbd.xkb_keymap == NULL ||
+        seat->kbd.xkb_state == NULL)
+    {
+        return;
+    }
+
     if (state == XKB_KEY_UP) {
         repeat_stop(&seat->kbd.repeat, key);
         return;

@@ -62,8 +62,11 @@
   ([#426][426]).
 * Entries with `NoDisplay=True` being included in the total (entry)
   count.
+* Crash if compositor sends a key event without having sent a keymap
+  event before that ([#482][482]).
 
 [426]: https://codeberg.org/dnkl/fuzzel/issues/426
+[482]: https://codeberg.org/dnkl/fuzzel/issues/482
 
 
 ### Security
