@@ -9,12 +9,12 @@ body:
       description: I've checked the following before submitting
       options:
         - label: |
-          The [fuzzel.ini](https://codeberg.org/dnkl/fuzzel/src/branch/master/doc/fuzzel.ini.5.scd)
-          and [fuzzel](https://codeberg.org/dnkl/fuzzel/src/branch/master/doc/fuzzel.1.scd) man pages.
+            The [fuzzel.ini](https://codeberg.org/dnkl/fuzzel/src/branch/master/doc/fuzzel.ini.5.scd)
+            and [fuzzel](https://codeberg.org/dnkl/fuzzel/src/branch/master/doc/fuzzel.1.scd) man pages.
           required: true
         - label: |
-          [Changelog](https://codeberg.org/dnkl/fuzzel/src/branch/master/CHANGELOG.md#unreleased)
-          of newer and unreleased features
+            [Changelog](https://codeberg.org/dnkl/fuzzel/src/branch/master/CHANGELOG.md#unreleased)
+            of newer and unreleased features
           required: true
   - type: markdown
     attributes:
