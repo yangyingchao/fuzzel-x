@@ -4,17 +4,18 @@ labels: ["enhancement"]
 body:
   - type: checkboxes
     id: preflight
-    attributes: Pre-checks
-    description: I've checked the following before submitting
-    options:
-      - label: |
+    attributes:
+      label: Pre-checks
+      description: I've checked the following before submitting
+      options:
+        - label: |
           The [fuzzel.ini](https://codeberg.org/dnkl/fuzzel/src/branch/master/doc/fuzzel.ini.5.scd)
           and [fuzzel](https://codeberg.org/dnkl/fuzzel/src/branch/master/doc/fuzzel.1.scd) man pages.
-        required: true
-      - label: |
+          required: true
+        - label: |
           [Changelog](https://codeberg.org/dnkl/fuzzel/src/branch/master/CHANGELOG.md#unreleased)
           of newer and unreleased features
-        required: true
+          required: true
   - type: markdown
     attributes:
       value: |
@@ -37,12 +38,14 @@ body:
 
         Features will be more likely to be accepted if similar tools already support the feature.
 
-  - type: textarea   
-    label: Do similar tools already implement this feature?
-    placeholder: |
-      List similar tools that implement the feature, if any, and what syntax they use, if so.
-      Consider tools like rofi, wofi, dmenu and fzf.
-       
+  - type: textarea
+    id: similar
+    attributes:
+      label: Do similar tools already implement this feature?
+      placeholder: |
+        List similar tools that implement the feature, if any, and
+        what syntax they use, if so.  Consider tools like rofi, wofi,
+        dmenu and fzf.
   - type: textarea
     id: request
     attributes:
