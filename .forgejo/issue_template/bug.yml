@@ -30,8 +30,8 @@ body:
     id: distro
     attributes:
       label: Distribution
-      description: "The name of the Linux distribution, or BSD flavor, you are running"
-      placeholder: "Arch Linux"
+      description: "The name of the Linux distribution, or BSD flavor, you are running. And, if applicable, the version"
+      placeholder: "Fedora Workstation 41"
     validations:
       required: true
   - type: textarea
