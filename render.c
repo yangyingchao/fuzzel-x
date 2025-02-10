@@ -167,7 +167,7 @@ render_background(const struct render *render, struct buffer *buf)
        selection "box" from overlapping the corners */
     const unsigned int radius =
         min(render->conf->border.radius,
-            min(render->x_margin,
+            max(render->x_margin,
                 render->y_margin));
 
     if (radius == 0) {

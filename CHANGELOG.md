@@ -43,10 +43,13 @@
 * "Too large" PNG icons are now downscaled using a less precise
   scaling filter, to improve performance ([#439][439]).
 * Icon themes: 'scaled' directories are now ignored ([#459][459]).
+* Border radius limited by max(horizontal-pad, vertical-pad), instead
+  of min(horizontal-pad, vertical-pad) ([#436][436]).
 
 [419]: https://codeberg.org/dnkl/fuzzel/issues/419
 [439]: https://codeberg.org/dnkl/fuzzel/issues/439
 [459]: https://codeberg.org/dnkl/fuzzel/issues/459
+[436]: https://codeberg.org/dnkl/fuzzel/issues/436
 
 
 ### Deprecated
