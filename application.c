@@ -254,19 +254,13 @@ application_execute(const struct application *app, const struct prompt *prompt,
             setenv("DESKTOP_STARTUP_ID", xdg_activation_token, 1);
         }
 
-        /* Redirect stdin/stdout/stderr -> /dev/null */
+        /* Redirect stdin -> /dev/null */
         int devnull_r = open("/dev/null", O_RDONLY | O_CLOEXEC);
-        int devnull_w = open("/dev/null", O_WRONLY | O_CLOEXEC);
-
-        if (devnull_r == -1 || devnull_w == -1)
+        if (devnull_r == -1)
             goto child_err;
 
-        if (dup2(devnull_r, STDIN_FILENO) == -1 ||
-            dup2(devnull_w, STDOUT_FILENO) == -1 ||
-            dup2(devnull_w, STDERR_FILENO) == -1)
-        {
+        if (dup2(devnull_r, STDIN_FILENO) == -1)
             goto child_err;
-        }
 
         execvp(argv[0], argv);
 
