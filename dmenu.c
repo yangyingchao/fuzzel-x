@@ -179,18 +179,21 @@ dmenu_load_entries(struct application_list *applications, char delim,
             mtx_lock(&applications->lock);
 
             const size_t new_count = applications->count + tll_length(entries);
-            applications->v = xreallocarray(
-                applications->v, new_count, sizeof(applications->v[0]));
+            if (new_count > 0) {
+                applications->v = xreallocarray(
+                    applications->v, new_count, sizeof(applications->v[0]));
 
-            size_t i = applications->count;
-            tll_foreach(entries, it) {
-                applications->v[i++] = it->item;
-                tll_remove(entries, it);
+                size_t i = applications->count;
+                tll_foreach(entries, it) {
+                    applications->v[i++] = it->item;
+                    tll_remove(entries, it);
+                }
+
+                assert(i == new_count);
+                applications->count = applications->visible_count = new_count;
+                send_event(event_fd, EVENT_APPS_SOME_LOADED);
             }
 
-            assert(i == new_count);
-            applications->count = applications->visible_count = new_count;
-            send_event(event_fd, EVENT_APPS_SOME_LOADED);
             mtx_unlock(&applications->lock);
         }
     }
