@@ -405,6 +405,8 @@ print_usage(const char *prog_name)
            "                                 instead of newline separated\n"
            "     --index                     print selected entry's index instead of of the \n"
            "                                 entry's text (dmenu mode only)\n"
+           "     --with-nth=N                display the N:th column (tab separated) of each\n"
+           "                                 input line (dmenu only)\n"
            "  -R,--no-run-if-empty           exit immediately without showing UI if stdin\n"
            "                                 is empty (dmenu mode only)\n"
            "     --log-level={info|warning|error|none}\n"
@@ -738,6 +740,7 @@ main(int argc, char *const *argv)
     #define OPT_SEARCH_TEXT                  294
     #define OPT_COUNTER                      295
     #define OPT_HIDE_WHEN_PROMPT_EMPTY       296
+   # define OPT_DMENU_WITH_NTH               297
 
     static const struct option longopts[] = {
         {"config",               required_argument, 0, OPT_CONFIG},
@@ -805,6 +808,7 @@ main(int argc, char *const *argv)
         {"dmenu0",               no_argument,       0, OPT_DMENU_NULL},
         {"no-run-if-empty",      no_argument,       0, 'R'},
         {"index",                no_argument,       0, OPT_DMENU_INDEX},
+        {"with-nth",             required_argument, 0, OPT_DMENU_WITH_NTH},
 
         /* Misc */
         {"log-level",            required_argument, 0, OPT_LOG_LEVEL},
@@ -863,6 +867,7 @@ main(int argc, char *const *argv)
         bool dmenu_mode_set:1;
         bool dmenu_exit_immediately_if_empty_set:1;
         bool dmenu_delim_set:1;
+        bool dmenu_with_nth_set:1;
         bool layer_set:1;
         bool no_exit_on_keyboard_focus_loss_set:1;
         bool render_workers_set:1;
@@ -1536,6 +1541,17 @@ main(int argc, char *const *argv)
             cmdline_overrides.dmenu_mode_set = true;
             break;
 
+        case OPT_DMENU_WITH_NTH:
+            if (sscanf(optarg, "%u", &cmdline_overrides.conf.dmenu.render_column) != 1) {
+                fprintf(
+                    stderr,
+                    "%s: invalid with-nth value (must be an integer)\n",
+                    optarg);
+                return EXIT_FAILURE;
+            }
+            cmdline_overrides.dmenu_with_nth_set = true;
+            break;
+
         case OPT_LOG_LEVEL: {
             int lvl = log_level_from_string(optarg);
             if (lvl < 0) {
@@ -1784,6 +1800,8 @@ main(int argc, char *const *argv)
         conf.dmenu.mode = cmdline_overrides.conf.dmenu.mode;
     if (cmdline_overrides.dmenu_exit_immediately_if_empty_set)
         conf.dmenu.exit_immediately_if_empty = cmdline_overrides.conf.dmenu.exit_immediately_if_empty;
+    if (cmdline_overrides.dmenu_with_nth_set)
+        conf.dmenu.render_column = cmdline_overrides.conf.dmenu.render_column;
     if (cmdline_overrides.conf.list_executables_in_path)
         conf.list_executables_in_path = cmdline_overrides.conf.list_executables_in_path;
     if (cmdline_overrides.render_workers_set)

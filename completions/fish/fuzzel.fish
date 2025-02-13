@@ -70,6 +70,7 @@ complete -c fuzzel -x      -l delayed-filter-limit                              
 complete -c fuzzel    -s d -l dmenu                                                                             -d "dmenu compatibility mode; entries are read from stdin, newline separated"
 complete -c fuzzel         -l dmenu0                                                                            -d "dmenu compatibility mode; entries are read from stdin, NUL separated"
 complete -c fuzzel         -l index                                                                             -d "print selected entry's index instead of its text (dmenu mode only)"
+complete -c fuzzel -x      -l with-nth                                                                          -d "display the N:th column (tab separated) of each input line (dmenu only)"
 complete -c fuzzel    -s R -l no-run-if-empty                                                                   -d "exit immediately without showing the UI if stdin is empty (dmenu mode only)"
 complete -c fuzzel -x -s d -l log-level          -a "info warning error none"                                   -d "log-level (warning)"
 complete -c fuzzel -x -s l -l log-colorize       -a "always never auto"                                         -d "enable or disable colorization of log output on stderr"

@@ -371,11 +371,28 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 *--index*
 	Print selected entry's index instead of its text.
 	Index values start with zero for the first entry.
-	**dmenu** mode only.
+	dmenu mode only.
+
+*--with-nth*=_N_
+	Display the N:th column (tab separated) of each input line. When
+	selected, the full input line is printed on stdout. dmenu mode
+	only.
+	
+	Example:
+	```
+	printf "1\tFirst\n2\tSecond" | fuzzel --with-nth=2
+	```
+	
+	This will display the entries *First* and *Second*. When one of
+	them has selected, the full input line (tabs included) are printed
+	on stdout.
+	
+	Setting it to *0* is the same as not specifying *--with-nth* at
+	all.
 
 *-R*,*--no-run-if-empty*
 	Exit immediately, without showing the UI, if stdin is
-	empty. **dmenu** mode only.
+	empty. dmenu mode only.
 
 *--log-level*={*info*,*warning*,*error*,*none*}
 	Log level, used both for log output on stderr as well as

@@ -150,6 +150,7 @@ struct config {
         enum dmenu_mode mode;
         bool exit_immediately_if_empty;
         char delim;
+        unsigned int render_column;
     } dmenu;
 
     enum anchors anchor;

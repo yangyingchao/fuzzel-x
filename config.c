@@ -1610,6 +1610,7 @@ config_load(struct config *conf, const char *conf_path,
             .mode = DMENU_MODE_TEXT,
             .exit_immediately_if_empty = false,
             .delim = '\n',
+            .render_column = 0,
         },
         .anchor = ANCHOR_CENTER,
         .margin = {
