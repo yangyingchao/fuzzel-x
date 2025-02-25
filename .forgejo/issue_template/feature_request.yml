@@ -27,7 +27,7 @@ body:
 
         ## Not of interest
 
-        - HTML / Pango / Formmating support. Use wofi if you need that.
+        - HTML / Pango / Formatting support. Use wofi if you need that.
         - Multi-line support
         - A plugin / extension system
         - More built-in modes like SSH, window switcher, calculator, etc.
