@@ -134,7 +134,9 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	- categories
 	- keywords
 	- comment
-	
+
+	"filename" is the ".desktop" file name.
+
 	Default: _filename,name,generic_.
 
 *password-character*
