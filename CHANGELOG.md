@@ -48,7 +48,7 @@
 * Icon themes: 'scaled' directories are now ignored ([#459][459]).
 * Border radius limited by `max(horizontal-pad, vertical-pad)`,
   instead of `min(horizontal-pad, vertical-pad)` ([#436][436]).
-* `stdout` and `stderr` of the launched application is now preserved,
+* `stdout` and `stderr` of the launched application are now preserved,
   instead of being redirected to `/dev/null` ([#480][480]).
 
 [419]: https://codeberg.org/dnkl/fuzzel/issues/419
