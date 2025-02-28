@@ -68,9 +68,11 @@
   count.
 * Crash if compositor sends a key event without having sent a keymap
   event before that ([#482][482]).
+* Filenames matching up to the first period only ([#487][487]).
 
 [426]: https://codeberg.org/dnkl/fuzzel/issues/426
 [482]: https://codeberg.org/dnkl/fuzzel/issues/482
+[487]: https://codeberg.org/dnkl/fuzzel/issues/487
 
 
 ### Security

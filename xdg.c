@@ -579,7 +579,7 @@ scan_dir(int base_fd, const char *terminal, bool include_actions,
                 else
                     file_basename++;
 
-                const char *extension = strchr(file_basename, '.');
+                const char *extension = strrchr(file_basename, '.');
                 if (extension == NULL)
                     extension = file_basename + strlen(file_basename);
 
