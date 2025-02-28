@@ -46,8 +46,8 @@
 * "Too large" PNG icons are now downscaled using a less precise
   scaling filter, to improve performance ([#439][439]).
 * Icon themes: 'scaled' directories are now ignored ([#459][459]).
-* Border radius limited by max(horizontal-pad, vertical-pad), instead
-  of min(horizontal-pad, vertical-pad) ([#436][436]).
+* Border radius limited by `max(horizontal-pad, vertical-pad)`,
+  instead of `min(horizontal-pad, vertical-pad)` ([#436][436]).
 * `stdout` and `stderr` of the launched application is now preserved,
   instead of being redirected to `/dev/null` ([#480][480]).
 
