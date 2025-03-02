@@ -75,6 +75,7 @@ struct application {
     char32_t *wexec;           /* Lower cased! Same as ‘exec’, but for matching purposes */
     char32_t *generic_name;    /* Lower cased! */
     char32_t *comment;         /* Lower cased! */
+    char32_t *translated_name; /* Lower cased! */
     char32_list_t keywords;    /* Lower cased! */
     char32_list_t categories;  /* Lower cased! */
 
@@ -83,6 +84,7 @@ struct application {
     size_t wexec_len;
     size_t generic_name_len;
     size_t comment_len;
+    size_t translated_name_len;
     /* keywords and categories lengths not cached */
 
     struct icon icon;

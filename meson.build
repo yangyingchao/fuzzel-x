@@ -167,6 +167,7 @@ executable(
   'main.c',
   'match.c', 'match.h',
   'path.c', 'path.h',
+  'plugin.c', 'plugin.h',
   'png.c', 'png-fuzzel.h',
   'prompt.c', 'prompt.h',
   'render.c', 'render.h',

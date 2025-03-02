@@ -1,0 +1,13 @@
+---
+# We'll use defaults from the LLVM style, but with 4 columns indentation.
+BasedOnStyle: Mozilla
+IndentWidth: 4
+---
+Language: Cpp
+BinPackParameters: true
+DerivePointerAlignment: false
+PointerAlignment: Right
+ColumnLimit: 80
+SortIncludes: Never
+---
+...

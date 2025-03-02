@@ -1103,6 +1103,51 @@ match_app(struct matches *matches, struct application *app,
                 match_type_comment = match_type;
         }
 
+        if (match_name && app->translated_name &&
+            (t == 0 || match_type_name != MATCHED_NONE)) {
+                const char32_t *m = NULL;
+                size_t match_len = 0;
+                enum matched_type match_type = MATCHED_NONE;
+
+                switch (matches->mode) {
+                    case MATCH_MODE_EXACT:
+                        m = match_exact(app->translated_name, app->translated_name_len, tok,
+                                        tok_len);
+                        if (m != NULL) {
+                            match_type = MATCHED_EXACT;
+                            match_len = tok_len;
+                        }
+                        break;
+
+                    case MATCH_MODE_FZF:
+                        match_fzf(app->translated_name, app->translated_name_len, tok,
+                                  tok_len, &pos, &pos_count, &match_type);
+                        break;
+
+                    case MATCH_MODE_FUZZY:
+                        m = match_exact(app->translated_name, app->translated_name_len, tok,
+                                        tok_len);
+                        if (m != NULL) {
+                            match_type = MATCHED_EXACT;
+                            match_len = tok_len;
+                        } else {
+                            m = match_levenshtein(matches, app->translated_name,
+                                                  app->translated_name_len, tok, tok_len,
+                                                  &match_len);
+                            if (m != NULL)
+                                match_type = MATCHED_FUZZY;
+                        }
+                        break;
+                }
+
+                if (t == 0)
+                    match_type_comment = match_type;
+                else if (match_type == MATCHED_NONE)
+                    match_type_comment = MATCHED_NONE;
+                else if (match_type_comment == MATCHED_EXACT)
+                    match_type_comment = match_type;
+            }
+
         if (match_keywords) {
             size_t k = 0;
             tll_foreach(app->keywords, it) {

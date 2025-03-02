@@ -24,6 +24,7 @@
 #include "macros.h"
 #include "xmalloc.h"
 #include "xsnprintf.h"
+#include "plugin.h"
 
 typedef tll(struct application *) application_llist_t;
 
@@ -39,6 +40,7 @@ struct action {
     char32_t *generic_name;
     char *app_id;
     char32_t *comment;
+    char32_t* translated_name;
     char32_list_t keywords;
     char32_list_t categories;
     char_list_t onlyshowin;
@@ -255,6 +257,12 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename_lowercase,
                     free(action->name);
                     action->name = ambstoc32(value);
                     action->name_locale_score = locale_score;
+
+                    if (action->translated_name) {
+                        free(action->translated_name);
+                    }
+
+                    action->translated_name = l10n_translate(value);
                 }
             }
 
@@ -388,6 +396,10 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename_lowercase,
             free(a->wexec);
             free(a->path);
 
+            if (action->translated_name) {
+                free(action->translated_name);
+            }
+
             tll_free_and_free(a->keywords, free);
             tll_free_and_free(a->categories, free);
             tll_free_and_free(a->onlyshowin, free);
@@ -424,6 +436,9 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename_lowercase,
         const size_t comment_len = action->comment != NULL
             ? c32len(action->comment)
             : 0;
+        const size_t translated_name_len = action->translated_name != NULL
+            ? c32len(action->translated_name)
+            : 0;
 
         char32_t *title_lowercase = xc32dup(title);
         for (size_t i = 0; i < title_len; i++)
@@ -457,10 +472,12 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename_lowercase,
             .wexec = a->wexec,
             .generic_name = a->generic_name,
             .comment = a->comment,
+            .translated_name = a->translated_name,
             .keywords = a->keywords,
             .categories = a->categories,
             .title_len = title_len,
             .basename_len = basename_len,
+            .translated_name_len = translated_name_len,
             .wexec_len = wexec_len,
             .generic_name_len = generic_name_len,
             .comment_len = comment_len,

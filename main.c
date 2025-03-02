@@ -40,6 +40,7 @@
 #include "xdg.h"
 #include "xmalloc.h"
 #include "xsnprintf.h"
+#include "plugin.h"
 
 #define max(x, y) ((x) > (y) ? (x) : (y))
 
@@ -1831,6 +1832,10 @@ main(int argc, char *const *argv)
             conf.dmenu.exit_immediately_if_empty = false;
             close(STDIN_FILENO);  /* To catch reads */
         }
+    }
+
+    if (conf.l10n_plugin_path) {
+        l10n_plugin_load(conf.l10n_plugin_path);
     }
 
     _Static_assert((int)LOG_CLASS_ERROR == (int)FCFT_LOG_CLASS_ERROR,

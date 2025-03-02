@@ -199,6 +199,8 @@ struct config {
 
     bool list_executables_in_path;
     char *cache_path;
+
+    char *l10n_plugin_path;
 };
 
 typedef tll(char *) config_override_t;

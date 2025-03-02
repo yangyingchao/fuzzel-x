@@ -1111,12 +1111,26 @@ parse_section_key_bindings(struct context *ctx)
     return false;
 }
 
+static bool
+parse_section_plugins(struct context *ctx)
+{
+    struct config *conf = ctx->conf;
+    const char *key = ctx->key;
+
+    if (strcmp(key, "l10n") == 0)
+        return value_to_str(ctx, &conf->l10n_plugin_path);
+
+    LOG_CONTEXTUAL_ERR("not a valid option: %s", key);
+    return false;
+}
+
 enum section {
     SECTION_MAIN,
     SECTION_COLORS,
     SECTION_BORDER,
     SECTION_DMENU,
     SECTION_KEY_BINDINGS,
+    SECTION_PLUGINS,
     SECTION_COUNT,
 };
 
@@ -1132,6 +1146,7 @@ static const struct {
     [SECTION_BORDER] =       {&parse_section_border, "border"},
     [SECTION_DMENU] =        {&parse_section_dmenu, "dmenu"},
     [SECTION_KEY_BINDINGS] = {&parse_section_key_bindings, "key-bindings"},
+    [SECTION_PLUGINS] = {&parse_section_plugins, "plugins"},
 };
 
 static enum section
