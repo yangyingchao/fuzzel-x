@@ -3,3 +3,4 @@ option('png-backend', type: 'combo', choices: ['none', 'libpng'], value: 'libpng
 option('svg-backend', type: 'combo', choices: ['none', 'librsvg', 'nanosvg'], value: 'nanosvg', description: 'enables support for SVG icons (librsvg: also requires cairo, nanosvg: bundled)')
 option('system-nanosvg', type: 'feature', value: 'disabled',
        description: 'use system\'s nanosvg instead of the bundled version')
+option('enable-plugins', type: 'boolean', value: true, description: 'enables support for plugins')

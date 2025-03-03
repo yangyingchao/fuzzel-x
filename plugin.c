@@ -37,13 +37,14 @@ l10n_plugin_load(const char *path)
     dlerror();
 
     l10n_plugin_init init = dlsym(l10n_handle, "l10n_plugin_init");
-    char *error = dlerror();
+    const char *error = dlerror();
     if (error != NULL) {
         fprintf(stderr, "%s\n", error);
         l10n_func = NULL;
     }
 
-    if (!init(path)) {
+    error = init(path);
+    if (error) {
         fprintf(stderr, "failed to init plugin: %s\n", error);
         l10n_func = NULL;
     }

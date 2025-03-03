@@ -1,9 +1,10 @@
-project('fuzzel', 'c',
+project('fuzzel', ['c', 'cpp'],
         version: '1.11.1',
         license: 'MIT',
         meson_version: '>=0.58.0',
         default_options: [
           'c_std=c18',
+          'cpp_std=c++17',
           'warning_level=1',
           'werror=true',
           'b_ndebug=if-release'])
@@ -204,6 +205,7 @@ install_data(
 
 subdir('completions')
 subdir('doc')
+subdir('plugins')
 
 summary(
   {

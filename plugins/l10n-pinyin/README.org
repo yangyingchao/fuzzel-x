@@ -1,0 +1,50 @@
+#+TITLE:  README
+#+AUTHOR: Yang,Ying-chao
+#+DATE:   2025-02-28
+#+OPTIONS:  ^:nil H:5 num:t toc:2 \n:nil ::t |:t -:t f:t *:t tex:t d:(HIDE) tags:not-in-toc
+#+STARTUP:  align nodlcheck oddeven lognotestate
+#+SEQ_TODO: TODO(t) INPROGRESS(i) WAITING(w@) | DONE(d) CANCELED(c@)
+#+LANGUAGE: en
+#+TAGS:     noexport(n)
+#+EXCLUDE_TAGS: noexport
+#+FILETAGS: :tag1:tag2:
+
+* Brief Introduction
+Fuzzel 插件，让 fuzzel 启动器过滤 app 时候支持拼音。
+
+Fuzzel plugin, allow fuzzel launcher to support Pinyin filtering when filtering apps.
+
+
+[[./images/screenshot.png]]
+
+
+* Usage:
+
+1. Compile and install
+
+
+    #+BEGIN_SRC sh -r
+      git clone git@codeberg.org:yangyingchao/fuzzel-plugin-pinyin.git
+      cd fuzzel-plugin-pinyin
+      cmake -B build -DCMAKE_INSTALL_PREFIX=${HOME}/.local/share/
+      cd build && make && make install
+
+      cd ../../
+      git clone git@codeberg.org:yangyingchao/fuzzel.git
+      cd fuzzel
+      meson setup build
+      cd build && ninja && ninjia install
+    #+END_SRC
+
+2. Config fuzzel
+
+   add plugin section:
+   #+BEGIN_SRC conf -r
+     [plugins]
+     l10n=PATH_OF_PLUGIN/share/fuzzel/libfuzzel-plugin-pinyin.so
+   #+END_SRC
+
+
+* References
+- https://codeberg.org/dnkl/fuzzel
+- https://github.com/wolfgitpr/cpp-pinyin

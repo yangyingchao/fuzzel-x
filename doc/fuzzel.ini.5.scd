@@ -544,7 +544,7 @@ done by setting _action=none_; e.g. *delete-line-forward=none*.
 
 *l10n*
 	Path of l10n plugin to translate application name to english characters
-	to make filter easier. For example, *fuzzel-plugin-pinyin* can convert
+	to make filter easier. For example, *l10n-pinyin* can convert
 	chinese characters into pinyin, so filter can start without IME.
 
 
