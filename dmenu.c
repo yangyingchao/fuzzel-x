@@ -1,4 +1,5 @@
 #include "dmenu.h"
+#include "column.h"
 
 #include <stdlib.h>
 #include <stdbool.h>
@@ -8,6 +9,7 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <poll.h>
+#include <uchar.h>
 #include <unistd.h>
 
 #include <tllist.h>
@@ -225,13 +227,23 @@ out:
 
 bool
 dmenu_execute(const struct application *app, ssize_t index,
-              const struct prompt *prompt, enum dmenu_mode format)
+              const struct prompt *prompt, enum dmenu_mode format, unsigned int column)
 {
     switch (format) {
     case DMENU_MODE_TEXT: {
-        char *text = ac32tombs(app != NULL ? app->title : prompt_text(prompt));
-        if (text != NULL)
+        const char32_t *output = app != NULL ? app->title : prompt_text(prompt);
+        
+        char32_t *column_output = NULL;
+        if (column > 0) {
+            column_output = nth_column(output, column);
+            output = column_output;
+        }
+
+        char *text = ac32tombs(output);
+        if (text != NULL) {
             printf("%s\n", text);
+        }
+        free(column_output);
         free(text);
         break;
     }

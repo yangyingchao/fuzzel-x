@@ -33,8 +33,10 @@
 
 * Nanosvg updated to ea6a6aca009422bba0dbad4c80df6e6ba0c82183
 * `--with-nth=N` command line option ([#438][438]).
+* `--accept-nth=N` command line option ([#493][493]).
 
 [438]: https://codeberg.org/dnkl/fuzzel/issues/438
+[493]: https://codeberg.org/dnkl/fuzzel/pulls/493
 
 
 ### Changed

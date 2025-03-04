@@ -151,6 +151,7 @@ struct config {
         bool exit_immediately_if_empty;
         char delim;
         unsigned int render_column;
+        unsigned int output_column;
     } dmenu;
 
     enum anchors anchor;

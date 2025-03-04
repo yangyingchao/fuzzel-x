@@ -536,7 +536,7 @@ execute_selected(struct seat *seat, bool as_is, int custom_success_exit_code)
     ssize_t index = app != NULL ? app->index : -1;
 
     if (wayl->conf->dmenu.enabled) {
-        dmenu_execute(app, index, wayl->prompt, wayl->conf->dmenu.mode);
+        dmenu_execute(app, index, wayl->prompt, wayl->conf->dmenu.mode, wayl->conf->dmenu.output_column);
         wayl->exit_code = custom_success_exit_code >= 0
             ? custom_success_exit_code
             : EXIT_SUCCESS;

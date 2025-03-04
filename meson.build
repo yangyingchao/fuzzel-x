@@ -155,6 +155,7 @@ executable(
   'application.c', 'application.h',
   'char32.c', 'char32.h',
   'clipboard.c', 'clipboard.h',
+  'column.c', 'column.h',
   'config.c', 'config.h',
   'debug.c', 'debug.h',
   'dmenu.c', 'dmenu.h',
