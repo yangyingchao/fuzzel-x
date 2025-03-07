@@ -1,3 +1,10 @@
+# Fuzzel-X
+
+Fuzzel with plugin.
+
+Forked from [fuzzel](https://codeberg.org/dnkl/fuzzel) .
+
+
 [![CI status](https://ci.codeberg.org/api/badges/dnkl/fuzzel/status.svg)](https://ci.codeberg.org/dnkl/fuzzel)
 
 # Fuzzel
