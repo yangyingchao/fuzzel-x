@@ -55,6 +55,7 @@ _arguments \
     '--line-height[override line height from font metrics, in points or pixels]:()' \
     '--letter-spacing[additional letter spacing, in points or pixels]:()' \
     '--layer[which layer to render the fuzzel window on (top)]:layer:(top overlay)' \
+    '--keyboard-focus[keyboard focus mode (exclusive)]:keyboard-focus:(exclusive on-demand)' \
     '--render-workers[number of render worker threads]:render-workers:()' \
     '--match-workers[number of match worker threads]:match-workers:()' \
     '--delayed-filter-ms[time in milliseconds to delay refiltering when there are lots of matches]:delayed-filter-ms:()' \

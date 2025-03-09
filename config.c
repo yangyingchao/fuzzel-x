@@ -991,6 +991,18 @@ parse_section_main(struct context *ctx)
         return false;
     }
 
+    else if (strcmp(key, "keyboard-focus") == 0) {
+        if (strcasecmp(value, "exclusive") == 0) {
+            conf->keyboard_focus = ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_EXCLUSIVE;
+            return true;
+        } else if (strcasecmp(value, "on-demand") == 0) {
+            conf->keyboard_focus = ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_ON_DEMAND;
+            return true;
+        }
+        LOG_CONTEXTUAL_ERR("not one of 'exclusive', 'on-demand'");
+        return false;
+    }
+
     else if (strcmp(key, "exit-on-keyboard-focus-loss") == 0)
         return value_to_bool(ctx, &conf->exit_on_kb_focus_loss);
 
@@ -1647,6 +1659,7 @@ config_load(struct config *conf, const char *conf_path,
         .line_height = {-1, 0.0},
         .letter_spacing = {0},
         .layer = ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY,
+        .keyboard_focus = ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_EXCLUSIVE,
         .exit_on_kb_focus_loss = true,
         .list_executables_in_path = false,
         .cache_path = NULL,

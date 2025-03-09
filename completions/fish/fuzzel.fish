@@ -63,6 +63,7 @@ complete -c fuzzel -x      -l fuzzy-max-distance                                
 complete -c fuzzel -x      -l line-height                                                                       -d "override the line height from font metrics, in points or pixels"
 complete -c fuzzel -x      -l letter-spacing                                                                    -d "additional letter spacing, in points or pixels"
 complete -c fuzzel -x      -l layer              -a "top overlay"                                               -d "which layer to render the fuzzel window on (top)"
+complete -c fuzzel -x      -l keyboard-focus     -a "exclusive on-demand"                                       -d "keyboard focus mode (exclusive)"
 complete -c fuzzel -x      -l render-workers                                                                    -d "number of render worker threads"
 complete -c fuzzel -x      -l match-workers                                                                     -d "number of match worker threads"
 complete -c fuzzel -x      -l delayed-filter-ms                                                                 -d "time in milliseconds to delay refiltering when there are lots of matches"

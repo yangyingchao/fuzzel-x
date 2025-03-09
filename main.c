@@ -389,6 +389,7 @@ print_usage(const char *prog_name)
            "     --letter-spacing=AMOUNT     additional letter spacing\n"
            "     --layer=top|overlay         which layer to render the fuzzel window on\n"
            "                                 (top)\n"
+           "     --keyboard-focus=exclusive|on-demand  keyboard focus mode (exclusive)\n"
            "     --no-exit-on-keyboard-focus-loss  do not exit when losing keyboard focus\n"
            "     --launch-prefix=COMMAND     prefix to add before argv of executed program\n"
            "     --list-executables-in-path  include executables from PATH in the list\n"
@@ -716,34 +717,35 @@ main(int argc, char *const *argv)
     #define OPT_CONFIG                       268
     #define OPT_LAYER                        269
     #define OPT_ICON_THEME                   270
-    #define OPT_NO_EXIT_ON_KB_LOSS           271
-    #define OPT_TABS                         272
-    #define OPT_DMENU_NULL                   273
-    #define OPT_FILTER_DESKTOP               274
-    #define OPT_CHECK_CONFIG                 275
-    #define OPT_SELECT                       276
-    #define OPT_SELECT_INDEX                 277
-    #define OPT_LIST_EXECS_IN_PATH           278
-    #define OPT_X_MARGIN                     279
-    #define OPT_Y_MARGIN                     280
-    #define OPT_CACHE                        281
-    #define OPT_RENDER_WORKERS               282
-    #define OPT_PROMPT_COLOR                 283
-    #define OPT_INPUT_COLOR                  284
-    #define OPT_PROMPT_ONLY                  285
-    #define OPT_COUNTER_COLOR                286
-    #define OPT_USE_BOLD                     287
-    #define OPT_MATCH_WORKERS                288
-    #define OPT_NO_SORT                      289
-    #define OPT_DELAYED_FILTER_MS            290
-    #define OPT_DELAYED_FILTER_LIMIT         291
-    #define OPT_PLACEHOLDER                  292
-    #define OPT_PLACEHOLDER_COLOR            293
-    #define OPT_SEARCH_TEXT                  294
-    #define OPT_COUNTER                      295
-    #define OPT_HIDE_WHEN_PROMPT_EMPTY       296
-    #define OPT_DMENU_WITH_NTH               297
-    #define OPT_DMENU_ACCEPT_NTH             298
+    #define OPT_KEYBOARD_FOCUS               271
+    #define OPT_NO_EXIT_ON_KB_LOSS           272
+    #define OPT_TABS                         273
+    #define OPT_DMENU_NULL                   274
+    #define OPT_FILTER_DESKTOP               275
+    #define OPT_CHECK_CONFIG                 276
+    #define OPT_SELECT                       277
+    #define OPT_SELECT_INDEX                 278
+    #define OPT_LIST_EXECS_IN_PATH           279
+    #define OPT_X_MARGIN                     280
+    #define OPT_Y_MARGIN                     281
+    #define OPT_CACHE                        282
+    #define OPT_RENDER_WORKERS               283
+    #define OPT_PROMPT_COLOR                 284
+    #define OPT_INPUT_COLOR                  285
+    #define OPT_PROMPT_ONLY                  286
+    #define OPT_COUNTER_COLOR                287
+    #define OPT_USE_BOLD                     288
+    #define OPT_MATCH_WORKERS                289
+    #define OPT_NO_SORT                      290
+    #define OPT_DELAYED_FILTER_MS            291
+    #define OPT_DELAYED_FILTER_LIMIT         292
+    #define OPT_PLACEHOLDER                  293
+    #define OPT_PLACEHOLDER_COLOR            294
+    #define OPT_SEARCH_TEXT                  295
+    #define OPT_COUNTER                      296
+    #define OPT_HIDE_WHEN_PROMPT_EMPTY       297
+    #define OPT_DMENU_WITH_NTH               298
+    #define OPT_DMENU_ACCEPT_NTH             299
 
     static const struct option longopts[] = {
         {"config",               required_argument, 0, OPT_CONFIG},
@@ -797,8 +799,9 @@ main(int argc, char *const *argv)
         {"letter-spacing",       required_argument, 0, OPT_LETTER_SPACING},
         {"launch-prefix",        required_argument, 0, OPT_LAUNCH_PREFIX},
         {"layer",                required_argument, 0, OPT_LAYER},
-        {"no-exit-on-keyboard-focus-loss", no_argument, 0, OPT_NO_EXIT_ON_KB_LOSS},
-        {"list-executables-in-path",       no_argument, 0, OPT_LIST_EXECS_IN_PATH},
+        {"keyboard-focus",       required_argument, 0, OPT_KEYBOARD_FOCUS},
+        {"no-exit-on-keyboard-focus-loss",   no_argument, 0, OPT_NO_EXIT_ON_KB_LOSS},
+        {"list-executables-in-path",         no_argument, 0, OPT_LIST_EXECS_IN_PATH},
         {"render-workers",       required_argument, 0, OPT_RENDER_WORKERS},
         {"match-workers",        required_argument, 0, OPT_MATCH_WORKERS},
         {"no-sort",              no_argument,       0, OPT_NO_SORT},
@@ -874,6 +877,7 @@ main(int argc, char *const *argv)
         bool dmenu_with_nth_set:1;
         bool dmenu_accept_nth_set:1;
         bool layer_set:1;
+        bool keyboard_focus_set:1;
         bool no_exit_on_keyboard_focus_loss_set:1;
         bool render_workers_set:1;
         bool match_workers_set:1;
@@ -1519,6 +1523,21 @@ main(int argc, char *const *argv)
             cmdline_overrides.layer_set = true;
             break;
 
+        case OPT_KEYBOARD_FOCUS:
+            if (strcasecmp(optarg, "exclusive") == 0)
+                cmdline_overrides.conf.keyboard_focus = ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_EXCLUSIVE;
+            else if (strcasecmp(optarg, "on-demand") == 0)
+                cmdline_overrides.conf.keyboard_focus = ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_ON_DEMAND;
+            else {
+                fprintf(
+                    stderr,
+                    "%s: invalid keyboard-focus. Must be one of 'exclusive', 'on-demand'\n",
+                    optarg);
+                return EXIT_FAILURE;
+            }
+            cmdline_overrides.keyboard_focus_set = true;
+            break;
+
         case OPT_NO_EXIT_ON_KB_LOSS:
             cmdline_overrides.conf.exit_on_kb_focus_loss = false;
             cmdline_overrides.no_exit_on_keyboard_focus_loss_set = true;
@@ -1806,6 +1825,8 @@ main(int argc, char *const *argv)
         conf.letter_spacing = cmdline_overrides.conf.letter_spacing;
     if (cmdline_overrides.layer_set)
         conf.layer = cmdline_overrides.conf.layer;
+    if (cmdline_overrides.keyboard_focus_set)
+        conf.keyboard_focus = cmdline_overrides.conf.keyboard_focus;
     if (cmdline_overrides.no_exit_on_keyboard_focus_loss_set)
         conf.exit_on_kb_focus_loss = cmdline_overrides.conf.exit_on_kb_focus_loss;
     if (cmdline_overrides.dmenu_enabled_set)

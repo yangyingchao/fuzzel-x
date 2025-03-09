@@ -277,6 +277,20 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	
 	Default: _overlay_
 
+*keyboard-focus*
+	Keyboard focusing mode, valid modes are *exclusive* and *on-demand*.
+	
+	*exclusive* locks keyboard focus to fuzzel, receiving all keyboard
+	input until closed.
+	
+	*on-demand* makes fuzzel focus like a regular window, allowing other
+	windows to take keyboard focus by e.g. clicking on them.
+	By default switching keyboard focus will immediately close fuzzel,
+	using *exit-on-keyboard-focus-loss=no* allows interacting with
+	other windows while fuzzel is open.
+	
+	Default: _exclusive_
+
 *exit-on-keyboard-focus-loss*
 	Boolean. If true, exit when the fuzzel window loses keyboard focus.
 	

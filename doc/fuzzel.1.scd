@@ -311,6 +311,20 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	
 	Default: _top_
 
+*--keyboard-focus*=_exclusive_|_on-demand_
+	Keyboard focusing mode, valid modes are *exclusive* and *on-demand*.
+	
+	*exclusive* locks keyboard focus to fuzzel, receiving all keyboard
+	input until closed.
+	
+	*on-demand* makes fuzzel focus like a regular window, allowing other
+	windows to take keyboard focus by e.g. clicking on them.
+	By default switching keyboard focus will immediately close fuzzel,
+	using *--no-exit-on-keyboard-focus-loss* allows interacting with
+	other windows while fuzzel is open.
+	
+	Default: _exclusive_
+
 *--no-exit-on-keyboard-focus-loss*
 	Do not exit when losing keyboard focus. This can be useful on
 	compositors where enabling "focus-follows-mouse" causes fuzzel to
