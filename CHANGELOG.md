@@ -54,6 +54,7 @@
   instead of `min(horizontal-pad, vertical-pad)` ([#436][436]).
 * `stdout` and `stderr` of the launched application are now preserved,
   instead of being redirected to `/dev/null` ([#480][480]).
+* Version 5 of the `wl_seat` interface is now required.
 
 [419]: https://codeberg.org/dnkl/fuzzel/issues/419
 [439]: https://codeberg.org/dnkl/fuzzel/issues/439
@@ -75,6 +76,8 @@
 * Crash if compositor sends a key event without having sent a keymap
   event before that ([#482][482]).
 * Filenames matching up to the first period only ([#487][487]).
+* `wl_seat_release()` used while only binding version 4 of the seat
+  interface ([#498][498]).
 
 [426]: https://codeberg.org/dnkl/fuzzel/issues/426
 [482]: https://codeberg.org/dnkl/fuzzel/issues/482
