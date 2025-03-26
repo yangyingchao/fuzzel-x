@@ -86,7 +86,7 @@ read_cache(const char *path, struct application_list *apps, bool dmenu)
             return;
         }
 
-        int cache_dir_fd = open(path, O_DIRECTORY);
+        int cache_dir_fd = open(path, O_DIRECTORY | O_CLOEXEC);
         if (cache_dir_fd == -1) {
             LOG_ERRNO("%s: failed to open", path);
             return;
@@ -94,7 +94,7 @@ read_cache(const char *path, struct application_list *apps, bool dmenu)
 
         int fd = -1;
         if (fstatat(cache_dir_fd, "fuzzel", &st, 0) < 0 ||
-            (fd = openat(cache_dir_fd, "fuzzel", O_RDONLY)) < 0 ||
+            (fd = openat(cache_dir_fd, "fuzzel", O_RDONLY | O_CLOEXEC)) < 0 ||
             (f = fdopen(fd, "r")) == NULL)
         {
             close(cache_dir_fd);
@@ -107,7 +107,7 @@ read_cache(const char *path, struct application_list *apps, bool dmenu)
         }
         close(cache_dir_fd);
     } else {
-        if (stat(path, &st) < 0 || (f = fopen(path, "r")) == NULL)
+        if (stat(path, &st) < 0 || (f = fopen(path, "re")) == NULL)
         {
             if (errno != ENOENT)
                 LOG_ERRNO("%s: failed to open", path);
@@ -213,16 +213,16 @@ write_cache(const char *path, const struct application_list *apps, bool dmenu)
             return;
         }
 
-        int cache_dir_fd = open(path, O_DIRECTORY);
+        int cache_dir_fd = open(path, O_DIRECTORY | O_CLOEXEC);
         if (cache_dir_fd == -1) {
             LOG_ERRNO("%s: failed to open", path);
             return;
         }
 
-        fd = openat(cache_dir_fd, "fuzzel", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        fd = openat(cache_dir_fd, "fuzzel", O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
         close(cache_dir_fd);
     } else {
-        fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        fd = open(path, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
     }
 
     if (fd == -1) {
