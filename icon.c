@@ -196,7 +196,7 @@ load_theme_in(const char *dir, struct icon_theme *theme,
     char path[PATH_MAX];
     xsnprintf(path, sizeof(path), "%s/index.theme", dir);
 
-    FILE *index = fopen(path, "r");
+    FILE *index = fopen(path, "re");
     if (index == NULL)
         return false;
 
