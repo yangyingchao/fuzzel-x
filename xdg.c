@@ -91,8 +91,10 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename_lowercase,
                    application_llist_t *applications)
 {
     FILE *f = fdopen(fd, "re");
-    if (f == NULL)
+    if (f == NULL) {
+        close(fd);
         return;
+    }
 
     bool is_desktop_entry = false;
 
@@ -608,9 +610,11 @@ scan_dir(int base_fd, const char *terminal, bool include_actions,
                         fd, id, wfile_basename, terminal, include_actions,
                         filter_desktop, desktops,
                         &lc_messages, applications);
-                } else
+                    /* fd closed by parse_desktop_file() */
+                } else {
                     free(id);
-                close(fd);
+                    close(fd);
+                }
             }
         }
     }

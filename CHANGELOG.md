@@ -78,10 +78,13 @@
 * Filenames matching up to the first period only ([#487][487]).
 * `wl_seat_release()` used while only binding version 4 of the seat
   interface ([#498][498]).
+* Double close of an FD, causing occasional failures to start fuzzel
+  ([#497][497]).
 
 [426]: https://codeberg.org/dnkl/fuzzel/issues/426
 [482]: https://codeberg.org/dnkl/fuzzel/issues/482
 [487]: https://codeberg.org/dnkl/fuzzel/issues/487
+[497]: https://codeberg.org/dnkl/fuzzel/issues/497
 
 
 ### Security
