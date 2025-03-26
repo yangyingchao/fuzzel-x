@@ -740,7 +740,7 @@ parse_section_main(struct context *ctx)
             return false;
         }
 
-        FILE *include = fopen(include_path, "r");
+        FILE *include = fopen(include_path, "re");
 
         if (include == NULL) {
             LOG_CONTEXTUAL_ERRNO("failed to open");
@@ -1675,7 +1675,7 @@ config_load(struct config *conf, const char *conf_path,
     }
 
     if (conf_path != NULL) {
-        int fd = open(conf_path, O_RDONLY);
+        int fd = open(conf_path, O_RDONLY | O_CLOEXEC);
         if (fd < 0) {
             LOG_ERRNO("%s: failed to open", conf_path);
             goto out;

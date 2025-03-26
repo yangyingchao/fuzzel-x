@@ -630,7 +630,7 @@ lookup_icons(const icon_theme_list_t *themes, int icon_size,
                 }
 
                 int dir_fd = openat(
-                    xdg_dir->fd, theme_relative_path, O_RDONLY | O_DIRECTORY);
+                    xdg_dir->fd, theme_relative_path, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
                 if (dir_fd < 0)
                     continue;
 
@@ -728,7 +728,7 @@ lookup_icons(const icon_theme_list_t *themes, int icon_size,
         const struct icon_data *icon = &icon_it->item;
 
         tll_foreach(*xdg_dirs, it) {
-            int pixmaps_fd = openat(it->item.fd, "pixmaps", O_RDONLY);
+            int pixmaps_fd = openat(it->item.fd, "pixmaps", O_RDONLY | O_CLOEXEC);
             if (pixmaps_fd < 0)
                 continue;
 
