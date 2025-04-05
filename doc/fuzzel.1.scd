@@ -378,6 +378,12 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	
 		echo -en "Firefox\\0icon\\x1ffirefox" | fuzzel --dmenu
 
+	Fallback icons using comma-separated values are also supported.
+	When the primary icon is not found, subsequent icons in the
+	list will be tried until one is successfully loaded. Example:
+	
+		echo -en "Firefox\\0icon\\x1ffirefox,web-browser,application-x-executable" | fuzzel --dmenu
+
 *--dmenu0*
 	Like *--dmenu*, but input is NUL separated instead of newline
 	separated. Note that in this mode, icons are not supported.

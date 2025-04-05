@@ -31,6 +31,13 @@
 
 ## Unreleased
 ### Added
+
+* Add support for fallback icons in dmenu mode using comma-separated
+  values in the icon metadata ([#504][504]).
+
+[504]: https://codeberg.org/dnkl/fuzzel/pulls/504
+
+
 ### Changed
 
 * Number of render workers is now automatically limited to the number

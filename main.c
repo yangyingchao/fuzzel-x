@@ -439,6 +439,10 @@ font_reloaded(struct wayland *wayl, struct fcft_font *font, void *data)
         if (conf->icons_enabled) {
             icon_lookup_application_icons(
                 *ctx->themes, ctx->icon_size, ctx->apps);
+
+            if (conf->dmenu.enabled) {
+                dmenu_try_icon_list(ctx->apps, *ctx->themes, ctx->icon_size);
+            }
         }
     }
     mtx_unlock(ctx->icon_lock);
@@ -576,6 +580,10 @@ populate_apps(void *_ctx)
             if (ctx->icon_size > 0) {
                 icon_lookup_application_icons(
                     *ctx->themes, ctx->icon_size, apps);
+
+                if (dmenu_enabled) {
+                    dmenu_try_icon_list(apps, *ctx->themes, ctx->icon_size);
+                }
             }
         }
         mtx_unlock(ctx->icon_lock);

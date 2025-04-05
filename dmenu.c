@@ -1,5 +1,6 @@
 #include "dmenu.h"
 #include "column.h"
+#include "icon.h"
 
 #include <stdlib.h>
 #include <stdbool.h>
@@ -129,6 +130,12 @@ dmenu_load_entries(struct application_list *applications, char delim,
              * entry:
              *
              *  “hello world\0icon\x1ffirefox”
+             *
+             * We also support fallback icons using comma-separated values.
+             * When the primary icon is not found, subsequent icons in the
+             * list will be tried until one is successfully loaded:
+             *
+             *  “hello world\0icon\x1ffirefox,web-browser,application-x-executable”
              */
             char *icon_name = NULL;
             const char *extra = memchr(buffer, '\0', entry_len);
@@ -254,4 +261,53 @@ dmenu_execute(const struct application *app, ssize_t index,
     }
 
     return true;
+}
+
+static void
+try_icon_list(struct application *app, icon_theme_list_t themes, int icon_size)
+{
+    if (app->icon.name == NULL || strchr(app->icon.name, ',') == NULL)
+        return;
+    
+    if (app->icon.type != ICON_NONE) {
+        return;
+    }
+    
+    char *icon_list = xstrdup(app->icon.name);
+    char *saveptr = NULL;
+    
+    for (char *icon_name = strtok_r(icon_list, ",", &saveptr);
+         icon_name != NULL;
+         icon_name = strtok_r(NULL, ",", &saveptr))
+    {
+        free(app->icon.name);
+        app->icon.name = xstrdup(icon_name);
+        
+        app->icon.type = ICON_NONE;
+        app->icon.path = NULL;
+        app->icon.svg = NULL;
+        app->icon.png = NULL;
+        
+        struct application_list temp_list = {
+            .v = &app,
+            .count = 1,
+            .visible_count = 1
+        };
+        
+        icon_lookup_application_icons(themes, icon_size, &temp_list);
+        
+        if (app->icon.type != ICON_NONE)
+            break;
+    }
+    
+    free(icon_list);
+}
+
+void
+dmenu_try_icon_list(struct application_list *applications, icon_theme_list_t themes, int icon_size)
+{
+    for (size_t i = 0; i < applications->count; i++) {
+        struct application *app = applications->v[i];
+        try_icon_list(app, themes, icon_size);
+    }
 }
