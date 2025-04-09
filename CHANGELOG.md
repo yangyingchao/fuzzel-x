@@ -55,6 +55,8 @@
 * `stdout` and `stderr` of the launched application are now preserved,
   instead of being redirected to `/dev/null` ([#480][480]).
 * Version 5 of the `wl_seat` interface is now required.
+* The `pixmaps` sub-directory is no longer searched for in every
+  `XDG_DATA_DIR`; only `/usr/share/pixmaps`.
 
 [419]: https://codeberg.org/dnkl/fuzzel/issues/419
 [439]: https://codeberg.org/dnkl/fuzzel/issues/439
@@ -80,6 +82,7 @@
   interface ([#498][498]).
 * Double close of an FD, causing occasional failures to start fuzzel
   ([#497][497]).
+* `$HOME/.icons` not searched.
 
 [426]: https://codeberg.org/dnkl/fuzzel/issues/426
 [482]: https://codeberg.org/dnkl/fuzzel/issues/482

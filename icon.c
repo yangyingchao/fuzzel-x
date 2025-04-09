@@ -235,6 +235,47 @@ discover_and_load_theme(const char *theme_name, xdg_data_dirs_t dirs,
     }
 }
 
+static xdg_data_dirs_t
+get_icon_dirs(void)
+{
+    /*
+     * See https://specifications.freedesktop.org/icon-theme-spec/latest/#directory_layout
+     */
+
+    xdg_data_dirs_t dirs = xdg_data_dirs();
+
+    const char *home = getenv("HOME");
+    if (home != NULL) {
+        char *path = xasprintf("%s/%s", home, ".icons");
+        int fd = open(path, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+
+        if (fd >= 0) {
+            struct xdg_data_dir home_icons = {
+                .path = path,
+                .fd = fd,
+            };
+
+            tll_push_front(dirs, home_icons);
+        } else
+            free(path);
+    }
+
+    {
+        const char *path = "/usr/share/pixmaps";
+        int fd = open(path, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+        if (fd >= 0) {
+            struct xdg_data_dir home_icons = {
+                .path = xstrdup(path),
+                .fd = fd,
+            };
+
+            tll_push_back(dirs, home_icons);
+        }
+    }
+
+    return dirs;
+}
+
 icon_theme_list_t
 icon_load_theme(const char *name)
 {
@@ -247,7 +288,7 @@ icon_load_theme(const char *name)
     theme_names_t themes_to_load = tll_init();
     tll_push_back(themes_to_load, xstrdup(name));
 
-    xdg_data_dirs_t dirs = xdg_data_dirs();
+    xdg_data_dirs_t dirs = get_icon_dirs();
 
     while (tll_length(themes_to_load) > 0) {
         char *theme_name = tll_pop_front(themes_to_load);
@@ -728,34 +769,24 @@ lookup_icons(const icon_theme_list_t *themes, int icon_size,
         const struct icon_data *icon = &icon_it->item;
 
         tll_foreach(*xdg_dirs, it) {
-            int pixmaps_fd = openat(it->item.fd, "pixmaps", O_RDONLY | O_CLOEXEC);
-            if (pixmaps_fd < 0)
-                continue;
-
             size_t len = icon->file_name_len;
             char *path = icon->file_name;
 
-            if (!icon_file_exists(pixmaps_fd, path, len)) {
-                close(pixmaps_fd);
+            if (!icon_file_exists(it->item.fd, path, len))
                 continue;
-            }
 
-            close(pixmaps_fd);
-
-            char full_path[strlen(it->item.path) + 1 +
-                           strlen("pixmaps") + 1 +
-                           len + 1];
+            char full_path[strlen(it->item.path) + 1 + len + 1];
 
             /* Try SVG variant first */
-            sprintf(full_path, "%s/pixmaps/%s", it->item.path, path);
+            sprintf(full_path, "%s/%s", it->item.path, path);
             if (path[len - 3] == 's' && svg(&icon->app->icon, full_path)) {
-                LOG_DBG("%s: %s (pixmaps)", icon->name, full_path);
+                LOG_DBG("%s: %s (standalone)", icon->name, full_path);
                 break;
             }
 
             /* No SVG, look for PNG instead */
             if (path[len - 3] == 'p' && png(&icon->app->icon, full_path)) {
-                LOG_DBG("%s: %s (pixmaps)", icon->name, full_path);
+                LOG_DBG("%s: %s (standalone)", icon->name, full_path);
                 break;
             }
 
@@ -772,7 +803,7 @@ bool
 icon_lookup_application_icons(icon_theme_list_t themes, int icon_size,
                               struct application_list *applications)
 {
-    xdg_data_dirs_t xdg_dirs = xdg_data_dirs();
+    xdg_data_dirs_t xdg_dirs = get_icon_dirs();
     lookup_icons(&themes, icon_size, applications, &xdg_dirs);
     xdg_data_dirs_destroy(xdg_dirs);
 
