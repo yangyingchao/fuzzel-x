@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [1.12.0](#1-12-0)
 * [1.11.1](#1-11-1)
 * [1.11.0](#1-11-0)
 * [1.10.2](#1-10-2)
@@ -28,7 +28,8 @@
 * [1.4.1](#1-4-1)
 
 
-## Unreleased
+## 1.12.0
+
 ### Added
 
 * Nanosvg updated to ea6a6aca009422bba0dbad4c80df6e6ba0c82183
@@ -66,8 +67,6 @@
 [480]: https://codeberg.org/dnkl/fuzzel/issues/480
 
 
-### Deprecated
-### Removed
 ### Fixed
 
 * Custom line heights smaller than the font's actual line height
@@ -91,8 +90,16 @@
 [497]: https://codeberg.org/dnkl/fuzzel/issues/497
 
 
-### Security
 ### Contributors
+
+* Ashish SHUKLA
+* bbb651
+* Christian Fillion
+* Craig Barnes
+* Mark Stosberg
+* Peter Colberg
+* Sertonix
+* Wekuz
 
 
 ## 1.11.1
