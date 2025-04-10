@@ -70,7 +70,8 @@ _arguments \
     '(-R --no-run-if-empty)'{-R,--no-run-if-empty}'[exit immediately without showing the UI if stdin is empty (dmenu mode only)]' \
     '--log-level[log level (warning)]:loglevel:(info warning error none)' \
     '--log-colorize[enable or disable colorization of log output on stderr]:logcolor:(never always auto)' \
-    '--log-no-syslog[disable syslog logging]'
+    '--log-no-syslog[disable syslog logging]' \
+    '--print-timing-info[print timing information, to help debug performance issues]'
 
 case "${state}" in
     fonts)

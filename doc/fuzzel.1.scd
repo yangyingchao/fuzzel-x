@@ -474,6 +474,9 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 *--log-no-syslog*
 	Disables syslog logging. Logging is only done on stderr.
 
+*--print-timing-info*
+	Print timing information, to help debug performance issues.
+
 *-v*,*--version*
 	Show the version number and quit
 

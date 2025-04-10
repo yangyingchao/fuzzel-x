@@ -9,6 +9,7 @@
 #include <string.h>
 #include <threads.h>
 #include <uchar.h>
+#include <sys/time.h>
 
 #include "column.h"
 #include "macros.h"
@@ -866,21 +867,49 @@ render_svg_nanosvg(struct icon *icon, int x, int y, int size,
 
 static void
 render_svg(struct icon *icon, int x, int y, int size,
-           pixman_image_t *pix, cairo_t *cairo, bool gamma_correct)
+           pixman_image_t *pix, cairo_t *cairo, bool gamma_correct,
+           bool print_timing_info)
 {
     assert(icon->type == ICON_SVG);
 
     if (icon->svg == NULL) {
+        struct timeval start, stop, diff;
+        gettimeofday(&start, NULL);
+
         if (!icon_from_svg(icon, icon->path))
             return;
+
+        if (print_timing_info) {
+            gettimeofday(&stop, NULL);
+            timersub(&stop, &start, &diff);
+
+            LOG_WARN("%s loaded in %llus %lluµs",
+                     icon->path,
+                     (unsigned long long)diff.tv_sec,
+                     (unsigned long long)diff.tv_usec);
+        }
+
         LOG_DBG("%s", icon->path);
     }
+
+    struct timeval start, stop, diff;
+    gettimeofday(&start, NULL);
 
 #if defined(FUZZEL_ENABLE_SVG_LIBRSVG)
     render_svg_librsvg(icon, x, y, size, cairo);
 #elif defined(FUZZEL_ENABLE_SVG_NANOSVG)
     render_svg_nanosvg(icon, x, y, size, pix, cairo, gamma_correct);
 #endif
+
+    if (print_timing_info) {
+        gettimeofday(&stop, NULL);
+        timersub(&stop, &start, &diff);
+
+        LOG_WARN("%s rendered in %llus %lluµs",
+                 icon->path,
+                 (unsigned long long)diff.tv_sec,
+                 (unsigned long long)diff.tv_usec);
+    }
 }
 
 #if defined(FUZZEL_ENABLE_PNG_LIBPNG)
@@ -969,19 +998,44 @@ render_png_libpng(struct icon *icon, int x, int y, int size,
 
 static void
 render_png(struct icon *icon, int x, int y, int size, pixman_image_t *pix,
-           cairo_t *cairo, bool gamma_correct)
+           cairo_t *cairo, bool gamma_correct, bool print_timing_info)
 {
     assert(icon->type == ICON_PNG);
 
     if (icon->png == NULL) {
+        struct timeval start, stop, diff;
+        gettimeofday(&start, NULL);
+
         if (!icon_from_png(icon, icon->path, gamma_correct))
             return;
+
+        if (print_timing_info) {
+            gettimeofday(&stop, NULL);
+            timersub(&stop, &start, &diff);
+            LOG_WARN("%s loaded in %llus %lluµs",
+                     icon->path,
+                     (unsigned long long)diff.tv_sec,
+                     (unsigned long long)diff.tv_usec);
+        }
+
         LOG_DBG("%s", icon->path);
     }
+
+    struct timeval start, stop, diff;
+    gettimeofday(&start, NULL);
 
 #if defined(FUZZEL_ENABLE_PNG_LIBPNG)
     render_png_libpng(icon, x, y, size, pix, cairo);
 #endif
+
+    if (print_timing_info) {
+        gettimeofday(&stop, NULL);
+        timersub(&stop, &start, &diff);
+        LOG_WARN("%s rendered in %llus %lluµs",
+                 icon->path,
+                 (unsigned long long)diff.tv_sec,
+                 (unsigned long long)diff.tv_usec);
+    }
 }
 
 static int
@@ -1071,7 +1125,8 @@ render_one_match_entry(const struct render *render, const struct matches *matche
             match->application->icon.type == ICON_SVG &&
             img_y > list_end + render->row_height)
         {
-            render_svg(&match->application->icon, img_x, img_y, size, pix, cairo, render->gamma_correct);
+            render_svg(&match->application->icon, img_x, img_y, size, pix, cairo,
+                       render->gamma_correct, render->conf->print_timing_info);
         }
     }
 
@@ -1086,11 +1141,13 @@ render_one_match_entry(const struct render *render, const struct matches *matche
             break;
 
         case ICON_PNG:
-            render_png(icon, img_x, img_y, size, pix, cairo, render->gamma_correct);
+            render_png(icon, img_x, img_y, size, pix, cairo,
+                       render->gamma_correct, render->conf->print_timing_info);
             break;
 
         case ICON_SVG:
-            render_svg(icon, img_x, img_y, size, pix, cairo, render->gamma_correct);
+            render_svg(icon, img_x, img_y, size, pix, cairo,
+                       render->gamma_correct, render->conf->print_timing_info);
             break;
         }
     }

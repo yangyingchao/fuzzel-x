@@ -204,6 +204,8 @@ struct config {
 
     bool list_executables_in_path;
     char *cache_path;
+
+    bool print_timing_info;
 };
 
 typedef tll(char *) config_override_t;

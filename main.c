@@ -15,6 +15,7 @@
 #include <sys/file.h>
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
+#include <sys/time.h>
 #include <fcntl.h>
 #include <dirent.h>
 
@@ -60,6 +61,24 @@ struct context {
 
     int event_fd;
     int dmenu_abort_fd;
+
+    struct {
+        struct {
+            struct timeval start;
+            struct timeval stop;
+            struct timeval diff;
+        } apps;
+        struct {
+            struct timeval start;
+            struct timeval stop;
+            struct timeval diff;
+        } icons_theme;
+        struct {
+            struct timeval start;
+            struct timeval stop;
+            struct timeval diff;
+        } icons;
+    } timing;
 };
 
 struct cache_entry {
@@ -419,6 +438,8 @@ print_usage(const char *prog_name)
            "                                 enable/disable colorization of log output on\n"
            "                                 stderr\n"
            "     --log-no-syslog             disable syslog logging\n"
+           "     --print-timing-info         print timing information, to help debug\n"
+           "                                 performance issues\n"
            "  -v,--version                   show the version number and quit\n");
     printf("\n");
     printf("All colors are RGBA - i.e. 8-digit hex values, without prefix.\n");
@@ -558,10 +579,13 @@ populate_apps(void *_ctx)
             read_cache(cache_path, apps, true);
         }
     } else {
+        gettimeofday(&ctx->timing.apps.start, NULL);
         xdg_find_programs(terminal, actions_enabled, filter_desktop, &desktops, apps);
         if (list_exec_in_path)
             path_find_programs(apps);
         read_cache(cache_path, apps, false);
+        gettimeofday(&ctx->timing.apps.stop, NULL);
+        timersub(&ctx->timing.apps.stop, &ctx->timing.apps.start, &ctx->timing.apps.diff);
     }
     tll_free_and_free(desktops, free);
 
@@ -570,12 +594,16 @@ populate_apps(void *_ctx)
         return r;
 
     if (icons_enabled) {
+        gettimeofday(&ctx->timing.icons_theme.start, NULL);
         icon_theme_list_t icon_themes = icon_load_theme(icon_theme);
         if (tll_length(icon_themes) > 0)
             LOG_INFO("theme: %s", tll_front(icon_themes).name);
         else
             LOG_WARN("%s: icon theme not found", icon_theme);
+        gettimeofday(&ctx->timing.icons_theme.stop, NULL);
+        timersub(&ctx->timing.icons_theme.stop, &ctx->timing.icons_theme.start, &ctx->timing.icons_theme.diff);
 
+        gettimeofday(&ctx->timing.icons.start, NULL);
         mtx_lock(ctx->icon_lock);
         {
             *ctx->themes = icon_themes;
@@ -589,6 +617,8 @@ populate_apps(void *_ctx)
             }
         }
         mtx_unlock(ctx->icon_lock);
+        gettimeofday(&ctx->timing.icons.stop, NULL);
+        timersub(&ctx->timing.icons.stop, &ctx->timing.icons.start, &ctx->timing.icons.diff);
 
         r = send_event(ctx->event_fd, EVENT_ICONS_LOADED);
         if (r != 0)
@@ -611,6 +641,11 @@ process_event(struct context *ctx, enum event_type event)
     switch (event) {
     case EVENT_APPS_SOME_LOADED:
     case EVENT_APPS_ALL_LOADED: {
+        if (event == EVENT_APPS_ALL_LOADED && conf->print_timing_info) {
+            LOG_WARN("apps loaded in %llus %lluµs",
+                     (unsigned long long)ctx->timing.apps.diff.tv_sec,
+                     (unsigned long long)ctx->timing.apps.diff.tv_usec);
+        }
         /* Update matches list, then refresh the GUI */
         matches_set_applications(matches, apps);
 
@@ -648,6 +683,14 @@ process_event(struct context *ctx, enum event_type event)
 
     case EVENT_ICONS_LOADED:
         /* Just need to refresh the GUI */
+        if (conf->print_timing_info) {
+            LOG_WARN("icon themes loaded in %llus %lluµs",
+                     (unsigned long long)ctx->timing.icons_theme.diff.tv_sec,
+                     (unsigned long long)ctx->timing.icons_theme.diff.tv_usec);
+            LOG_WARN("icon paths resolved in %llus %lluµs",
+                     (unsigned long long)ctx->timing.icons.diff.tv_sec,
+                     (unsigned long long)ctx->timing.icons.diff.tv_usec);
+        }
         matches_icons_loaded(matches);
         break;
 
@@ -757,6 +800,7 @@ main(int argc, char *const *argv)
     #define OPT_DMENU_WITH_NTH               298
     #define OPT_DMENU_ACCEPT_NTH             299
     #define OPT_GAMMA_CORRECT                300
+    #define OPT_PRINT_TIMINGS                301
 
     static const struct option longopts[] = {
         {"config",               required_argument, 0, OPT_CONFIG},
@@ -835,6 +879,7 @@ main(int argc, char *const *argv)
         {"log-colorize",         optional_argument, 0, OPT_LOG_COLORIZE},
         {"log-no-syslog",        no_argument,       0, OPT_LOG_NO_SYSLOG},
         {"version",              no_argument,       0, 'v'},
+        {"print-timing-info",    no_argument,       0, OPT_PRINT_TIMINGS},
         {"help",                 no_argument,       0, 'h'},
         {NULL,                   no_argument,       0, 0},
     };
@@ -902,6 +947,7 @@ main(int argc, char *const *argv)
         bool delayed_filter_limit_set:1;
         bool placeholder_color_set:1;
         bool counter_set:1;
+        bool print_timing_info_set:1;
     } cmdline_overrides = {{0}};
 
     setlocale(LC_CTYPE, "");
@@ -1692,6 +1738,11 @@ main(int argc, char *const *argv)
             cmdline_overrides.delayed_filter_limit_set = true;
             break;
 
+        case OPT_PRINT_TIMINGS:
+            cmdline_overrides.conf.print_timing_info = true;
+            cmdline_overrides.print_timing_info_set = true;
+            break;
+
         case 'v':
             printf("fuzzel %s\n", version_and_features());
             return EXIT_SUCCESS;
@@ -1888,6 +1939,8 @@ main(int argc, char *const *argv)
         free(conf.cache_path);
         conf.cache_path = xstrdup(cmdline_overrides.conf.cache_path);
     }
+    if (cmdline_overrides.print_timing_info_set)
+        conf.print_timing_info = cmdline_overrides.conf.print_timing_info;
 
     if (conf.dmenu.enabled) {
         /* We don't have any meta data in dmenu mode */
@@ -2020,6 +2073,7 @@ main(int argc, char *const *argv)
     if (!fdm_add(fdm, event_pipe[0], EPOLLIN, &fdm_apps_populated, &ctx))
         goto out;
 
+    gettimeofday(&ctx.timing.apps.start, NULL);
     if (thrd_create(&app_thread_id, &populate_apps, &ctx) != thrd_success) {
         LOG_ERR("failed to create thread");
         goto out;

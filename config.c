@@ -1671,6 +1671,7 @@ config_load(struct config *conf, const char *conf_path,
         .exit_on_kb_focus_loss = true,
         .list_executables_in_path = false,
         .cache_path = NULL,
+        .print_timing_info = false,
     };
 
     add_default_key_bindings(conf);

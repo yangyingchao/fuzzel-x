@@ -12,6 +12,7 @@
 #include <sys/mman.h>
 #include <sys/epoll.h>
 #include <sys/timerfd.h>
+#include <sys/time.h>
 
 #include <wayland-client.h>
 #include <wayland-cursor.h>
@@ -2168,6 +2169,9 @@ wayl_refresh(struct wayland *wayl)
         return;
     }
 
+    struct timeval start, stop, diff;
+    gettimeofday(&start, NULL);
+
     if (wayl->chain == NULL) {
         wayl->chain =
             shm_chain_new(
@@ -2227,6 +2231,14 @@ commit:
     /* No pending frames - render immediately */
     assert(!wayl->need_refresh);
     commit_buffer(wayl, buf);
+
+    if (wayl->conf->print_timing_info) {
+        gettimeofday(&stop, NULL);
+        timersub(&stop, &start, &diff);
+        LOG_WARN("frame rendered in %llus %lluµs",
+                 (unsigned long long)diff.tv_sec,
+                 (unsigned long long)diff.tv_usec);
+    }
 }
 
 static bool
