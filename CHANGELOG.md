@@ -98,6 +98,7 @@
 [426]: https://codeberg.org/dnkl/fuzzel/issues/426
 [482]: https://codeberg.org/dnkl/fuzzel/issues/482
 [487]: https://codeberg.org/dnkl/fuzzel/issues/487
+[498]: https://codeberg.org/dnkl/fuzzel/issues/498
 [497]: https://codeberg.org/dnkl/fuzzel/issues/497
 
 
