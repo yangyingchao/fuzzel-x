@@ -1301,8 +1301,12 @@ match_thread(void *_ctx)
     sigfillset(&mask);
     pthread_sigmask(SIG_SETMASK, &mask, NULL);
 
+    /*
+     * Note: using 'mtch' instead of 'match', to allow for core IDs >
+     * 99.
+     */
     char proc_title[16];
-    xsnprintf(proc_title, sizeof(proc_title), "fuzzel:match:%d", my_id);
+    xsnprintf(proc_title, sizeof(proc_title), "fuzzel:mtch:%d", my_id);
 
     if (pthread_setname_np(pthread_self(), proc_title) < 0)
         LOG_ERRNO("render worker %d: failed to set process title", my_id);

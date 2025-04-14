@@ -35,6 +35,10 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* Crash when `--match-workers >= 100` ([#507][507]).
+
+
 ### Security
 ### Contributors
 
