@@ -44,11 +44,13 @@
 ### Added
 
 * Nanosvg updated to ea6a6aca009422bba0dbad4c80df6e6ba0c82183
+* `--select-index` command line option ([#447][447]).
 * `--with-nth=N` command line option ([#438][438]).
 * `--accept-nth=N` command line option ([#493][493]).
 * `keyboard-focus=exclusive|on-demand` command line and config option
   ([#495][495]).
 
+[447]: https://codeberg.org/dnkl/fuzzel/issues/447
 [438]: https://codeberg.org/dnkl/fuzzel/issues/438
 [493]: https://codeberg.org/dnkl/fuzzel/pulls/493
 [495]: https://codeberg.org/dnkl/fuzzel/pulls/495
