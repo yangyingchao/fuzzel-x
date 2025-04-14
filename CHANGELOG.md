@@ -32,6 +32,11 @@
 ## Unreleased
 ### Added
 ### Changed
+
+* Number of render workers is now automatically limited to the number
+  of displayed entries.
+
+
 ### Deprecated
 ### Removed
 ### Fixed

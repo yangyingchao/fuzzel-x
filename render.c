@@ -1267,10 +1267,12 @@ render_init(const struct config *conf, mtx_t *icon_lock)
         goto err_free_semaphores;
     }
 
-    render->workers.threads = xcalloc(render->conf->render_worker_count,
-                                      sizeof(render->workers.threads[0]));
+    const size_t num_workers = min(conf->render_worker_count, conf->lines);
 
-    for (size_t i = 0; i < render->conf->render_worker_count; i++) {
+    render->workers.threads = xcalloc(
+        num_workers, sizeof(render->workers.threads[0]));
+
+    for (size_t i = 0; i < num_workers; i++) {
         struct thread_context *ctx = xmalloc(sizeof(*ctx));
         *ctx = (struct thread_context){
             .render = render,
