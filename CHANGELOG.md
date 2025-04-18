@@ -43,6 +43,8 @@
 
 * Crash when `--match-workers >= 100` ([#507][507]).
 
+[507]: https://codeberg.org/dnkl/fuzzel/issues/507
+
 
 ### Security
 ### Contributors
