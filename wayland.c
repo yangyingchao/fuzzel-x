@@ -2380,7 +2380,7 @@ wayl_init(const struct config *conf, struct fdm *fdm,
     wayl->layer_surface = zwlr_layer_shell_v1_get_layer_surface(
         wayl->layer_shell, wayl->surface,
         wayl->monitor != NULL ? wayl->monitor->output : NULL,
-        conf->layer, "launcher");
+        conf->layer, conf->namespace);
 
     if (wayl->layer_surface == NULL) {
         LOG_ERR("failed to create layer shell surface");

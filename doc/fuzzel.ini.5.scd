@@ -39,6 +39,13 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	
 	Default: _not set_.
 
+*namespace*
+	Namespace for the spawned layer shell surface. Useful for blocking
+	fuzzel out from screencasts in your compositor if it shows sensitive
+	information, such as passwords.
+
+	Default: _launcher_
+
 *output*
 	Output (monitor) to display on. You can list the available outputs
 	with *wlr-randr* or with Sway using *swaymsg -t get_outputs*.

@@ -25,6 +25,13 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	Verify configuration and then exit with 0 if ok, otherwise exit
 	with 1.
 
+*-n*,*--namespace*=_NAMESPACE_
+	Specifies the namespace for the spawned layer shell surface. Useful for
+	blocking fuzzel out from screencasts in your compositor if it shows
+	sensitive information, such as passwords.
+
+	Default: _launcher_
+
 *--cache*=_PATH_
 	Use a custom cache location. Fuzzel uses this file to cache the
 	most commonly launched applications (to be able to sort them at

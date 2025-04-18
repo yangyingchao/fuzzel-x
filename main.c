@@ -326,6 +326,7 @@ print_usage(const char *prog_name)
            "                                 otherwise exit with 1\n"
            "     --cache=PATH                load most recently launched applications from\n"
            "                                 PATH (XDG_CACHE_HOME/fuzzel)\n"
+           "  -n,--namespace=NAMESPACE       layer shell surface namespace\n"
            "  -o,--output=OUTPUT             output (monitor) to display on (none)\n"
            "  -f,--font=FONT                 font name and style, in FontConfig format\n"
            "                                 (monospace)\n"
@@ -758,6 +759,7 @@ main(int argc, char *const *argv)
     static const struct option longopts[] = {
         {"config",               required_argument, 0, OPT_CONFIG},
         {"check-config",         no_argument,       0, OPT_CHECK_CONFIG},
+        {"namespace",            required_argument, 0, 'n'},
         {"cache",                required_argument, 0, OPT_CACHE},
         {"output"  ,             required_argument, 0, 'o'},
         {"font",                 required_argument, 0, 'f'},
@@ -914,7 +916,7 @@ main(int argc, char *const *argv)
     }
 
     while (true) {
-        int c = getopt_long(argc, argv, ":o:f:D:IF:ia:l:w:x:y:p:P:b:t:m:s:S:M:B:r:C:T:dRvh", longopts, NULL);
+        int c = getopt_long(argc, argv, ":n:o:f:D:IF:ia:l:w:x:y:p:P:b:t:m:s:S:M:B:r:C:T:dRvh", longopts, NULL);
         if (c == -1)
             break;
 
@@ -925,6 +927,10 @@ main(int argc, char *const *argv)
 
         case OPT_CHECK_CONFIG:
             check_config = true;
+            break;
+
+        case 'n':
+            cmdline_overrides.conf.namespace = optarg;
             break;
 
         case OPT_CACHE:
@@ -1721,6 +1727,10 @@ main(int argc, char *const *argv)
     if (cmdline_overrides.conf.output != NULL) {
         free(conf.output);
         conf.output = xstrdup(cmdline_overrides.conf.output);
+    }
+    if (cmdline_overrides.conf.namespace != NULL) {
+        free(conf.namespace);
+        conf.namespace = xstrdup(cmdline_overrides.conf.namespace);
     }
     if (cmdline_overrides.conf.prompt != NULL) {
         free(conf.prompt);

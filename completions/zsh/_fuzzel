@@ -4,6 +4,7 @@ _arguments \
     -s \
     '--config[path to configuration file (XDG_CONFIG_HOME/fuzzel/fuzzel.ini)]:config:_files' \
     '--cache[file to load most recently launched applications from (XDG_CACHE_HOME/fuzzel)]:cache:_files' \
+    '(-n --namespace)'{-n,--namespace}'[layer shell surface namespace (launcher)]:()' \
     '--check-config[verify configuration and exit with 0 if ok, otherwise exit with 1]' \
     '(-v --version)'{-v,--version}'[show the version number and quit]' \
     '(-h --help)'{-h,--help}'[show help message and quit]' \

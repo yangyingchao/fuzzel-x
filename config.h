@@ -105,6 +105,8 @@ struct config {
     bool prompt_only;
     enum match_fields match_fields;
 
+    char *namespace;
+
     struct {
         char32_t character;
         bool enabled;

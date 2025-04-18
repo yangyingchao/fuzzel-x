@@ -757,6 +757,9 @@ parse_section_main(struct context *ctx)
         return ret;
     }
 
+    else if (strcmp(key, "namespace") == 0)
+        return value_to_str(ctx, &conf->namespace);
+
     else if (strcmp(key, "output") == 0)
         return value_to_str(ctx, &conf->output);
 
@@ -1588,6 +1591,7 @@ config_load(struct config *conf, const char *conf_path,
     bool ret = !errors_are_fatal;
     *conf = (struct config) {
         .output = NULL,
+        .namespace = xstrdup("launcher"),
         .prompt = xc32dup(U"> "),
         .placeholder = xc32dup(U""),
         .search_text = xc32dup(U""),
@@ -1721,6 +1725,7 @@ out:
 void
 config_free(struct config *conf)
 {
+    free(conf->namespace);
     free(conf->output);
     free(conf->prompt);
     free(conf->placeholder);

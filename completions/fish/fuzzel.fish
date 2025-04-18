@@ -11,6 +11,7 @@ complete -c fuzzel
 complete -c fuzzel -f
 complete -c fuzzel -r -s c -l config                                                                            -d "path to configuration file (XDG_CONFIG_HOME/fuzzel/fuzzel.ini)"
 complete -c fuzzel -r      -l cache                                                                             -d "file to load most recently launched applications from (XDG_CACHE_HOME/fuzzel)"
+complete -c fuzzel -x -s n -l namespace                                                                         -d "layer shell surface namespace (launcher)"
 complete -c fuzzel         -l check-config                                                                      -d "verify configuration and exit with 0 if ok, otherwise exit with 1"
 complete -c fuzzel -x -s f -l font               -a "(fc-list : family | sed 's/,/\n/g' | sort | uniq)"         -d "font name and style in fontconfig format (monospace)"
 complete -c fuzzel         -l use-bold                                                                          -d "allow fuzzel to use bold fonts"

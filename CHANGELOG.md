@@ -34,8 +34,10 @@
 
 * Add support for fallback icons in dmenu mode using comma-separated
   values in the icon metadata ([#504][504]).
+* `--namespace` command line option ([#512][512]).
 
 [504]: https://codeberg.org/dnkl/fuzzel/pulls/504
+[512]: https://codeberg.org/dnkl/fuzzel/pulls/512
 
 
 ### Changed
