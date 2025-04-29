@@ -478,6 +478,8 @@ done by setting _action=none_; e.g. *delete-line-forward=none*.
 	There is no standalone binding to clear the input. Use _Control+a_
 	to go into the beginning of the input, followed the
 	*delete-line-forward* binding. By default, _Control+k_.
+	This is an alternative to using "select all" to highlight text and
+	then delete it.
 
 *delete-line-backward*
 	Deletes everything before the cursor. Default: _Control+u_.
