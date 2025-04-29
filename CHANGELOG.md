@@ -51,6 +51,7 @@
 ### Fixed
 
 * Crash when `--match-workers >= 100` ([#507][507]).
+* Keyboard modifiers not being reset on keyboard leave events.
 
 [507]: https://codeberg.org/dnkl/fuzzel/issues/507
 
