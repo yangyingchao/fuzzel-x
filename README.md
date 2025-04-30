@@ -154,3 +154,9 @@ Fuzzel is released under the [MIT license](LICENSE).
 
 Fuzzel uses nanosvg, released under the [Zlib
 license](3rd-party/nanosvg/LICENSE.txt).
+
+
+# Sponsoring/donations
+
+* Liberapay: https://liberapay.com/dnkl
+* GitHub Sponsors: https://github.com/sponsors/dnkl
