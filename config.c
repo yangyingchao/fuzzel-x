@@ -990,7 +990,7 @@ parse_section_main(struct context *ctx)
             return true;
         }
 
-        LOG_CONTEXTUAL_ERR("not one of 'top', 'overay'");
+        LOG_CONTEXTUAL_ERR("not one of 'top', 'overlay'");
         return false;
     }
 
