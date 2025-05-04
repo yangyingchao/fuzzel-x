@@ -10,6 +10,7 @@
 
 #include <sys/mman.h>
 #include <sys/epoll.h>
+#include <sys/poll.h>
 #include <sys/timerfd.h>
 
 #include <wayland-client.h>
@@ -2506,7 +2507,55 @@ wayl_destroy(struct wayland *wayl)
 void
 wayl_flush(struct wayland *wayl)
 {
-    wl_display_flush(wayl->display);
+    while (true) {
+        int r = wl_display_flush(wayl->display);
+        if (r >= 0) {
+            /* Most likely code path - the flush succeed */
+            return;
+        }
+
+        if (errno == EINTR) {
+            /* Unlikely */
+            continue;
+        }
+
+        if (errno != EAGAIN) {
+            const int saved_errno = errno;
+
+            if (errno == EPIPE) {
+                wl_display_read_events(wayl->display);
+                wl_display_dispatch_pending(wayl->display);
+            }
+
+            LOG_ERRNO_P("failed to flush wayland socket", saved_errno);
+            return;
+        }
+
+        /* Socket buffer is full - need to wait for it to become
+           writeable again */
+        assert(errno == EAGAIN);
+
+        while (true) {
+            int wayl_fd = wl_display_get_fd(wayl->display);
+            struct pollfd fds[] = {{.fd = wayl_fd, .events = POLLOUT}};
+
+            r = poll(fds, sizeof(fds) / sizeof(fds[0]), -1);
+
+            if (r < 0) {
+                if (errno == EINTR)
+                    continue;
+
+                LOG_ERRNO("failed to poll");
+                return;
+            }
+
+            if (fds[0].revents & POLLHUP)
+                return;
+
+            assert(fds[0].revents & POLLOUT);
+            break;
+        }
+    }
 }
 
 int
