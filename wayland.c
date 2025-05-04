@@ -1,16 +1,16 @@
 #include "wayland.h"
 
-#include <stdlib.h>
-#include <string.h>
 #include <ctype.h>
-#include <wctype.h>
-#include <unistd.h>
 #include <errno.h>
 #include <locale.h>
+#include <poll.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <wctype.h>
 
 #include <sys/mman.h>
 #include <sys/epoll.h>
-#include <sys/poll.h>
 #include <sys/timerfd.h>
 
 #include <wayland-client.h>
