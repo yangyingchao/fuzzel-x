@@ -2103,6 +2103,8 @@ fdm_handler(struct fdm *fdm, int fd, int events, void *data)
             return false;
         }
 
+        wl_display_dispatch_pending(wayl->display);
+
         while (wl_display_prepare_read(wayl->display) != 0)
             if (wl_display_dispatch_pending(wayl->display) < 0) {
                 LOG_ERRNO("failed to dispatch pending Wayland events");
