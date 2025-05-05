@@ -63,7 +63,7 @@ _arguments \
     '--delayed-filter-limit[switch to delayed refiltering when there are more matches than this]:delayed-filter-limit:()' \
     '(-d --dmenu)'{-d,--dmenu}'[dmenu compatibility mode; entries are read from stdin, newline separated]' \
     '--dmenu0[dmenu compatibility mode; entries are read from stdin, NUL separated]' \
-    '--index[print selected entry's index instead of its text (dmenu mode only)]' \
+    '--index[print selected entry'\''s index instead of its text (dmenu mode only)]' \
     '--with-nth[display the N:th column (tab separated) of each input line (dmenu mode only)]:with-nth:()' \
     '--accept-nth[output the N:th column (tab separated) of each input line (dmenu mode only)]:with-nth:()' \
     '(-R --no-run-if-empty)'{-R,--no-run-if-empty}'[exit immediately without showing the UI if stdin is empty (dmenu mode only)]' \
