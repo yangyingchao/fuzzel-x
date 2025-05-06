@@ -24,7 +24,7 @@ png_warning_cb(png_structp png_ptr, png_const_charp warning_msg)
 }
 
 pixman_image_t *
-png_load(const char *path)
+png_load(const char *path, bool gamma_correct)
 {
     pixman_image_t *pix = NULL;
 
@@ -33,6 +33,11 @@ png_load(const char *path)
     png_infop info_ptr = NULL;
     png_bytepp row_pointers = NULL;
     uint8_t *image_data = NULL;
+
+    const pixman_format_code_t fmt_with_alpha =
+        gamma_correct ? PIXMAN_a16b16g16r16 : PIXMAN_a8b8g8r8;
+    const pixman_format_code_t fmt_without_alpha =
+        gamma_correct ? PIXMAN_a16b16g16r16 : PIXMAN_x8b8g8r8;
 
     /* open file and test for it being a png */
     if ((fp = fopen(path, "rbe")) == NULL) {
@@ -68,6 +73,26 @@ png_load(const char *path)
     png_init_io(png_ptr, fp);
     png_set_sig_bytes(png_ptr, 8);
 
+    if (gamma_correct) {
+        /*
+         * 16-bit premultiplied linear pixels
+         */
+        png_set_alpha_mode(png_ptr, PNG_ALPHA_PREMULTIPLIED, PNG_DEFAULT_sRGB);
+        png_set_gamma(png_ptr, PNG_GAMMA_LINEAR, PNG_DEFAULT_sRGB);
+        png_set_expand_16(png_ptr);
+    } else {
+        /*
+         * 8-bit non-premultiplied sRGB pixels
+         *
+         * Setting alpha-mode == PREMULTIPLIED doesn't seem to work -
+         * may be that libpng doesn't re-encode to sRGB. So, tell
+         * libpng to generate non-premultiplied pixels, and then we
+         * premultiply them ourselves later
+         */
+        png_set_alpha_mode(png_ptr, PNG_ALPHA_PNG, PNG_DEFAULT_sRGB);
+        png_set_scale_16(png_ptr);
+    }
+
     /* Get meta data */
     png_read_info(png_ptr, info_ptr);
     int width = png_get_image_width(png_ptr, info_ptr);
@@ -80,8 +105,6 @@ png_load(const char *path)
 
     png_set_packing(png_ptr);
     png_set_interlace_handling(png_ptr);
-    png_set_strip_16(png_ptr);  /* "pack" 16-bit colors to 8-bit */
-    png_set_bgr(png_ptr);
 
     /* pixman expects pre-multiplied alpha */
 
@@ -98,7 +121,11 @@ png_load(const char *path)
             png_set_expand_gray_1_2_4_to_8(png_ptr);
 
         png_set_gray_to_rgb(png_ptr);
-        format = color_type == PNG_COLOR_TYPE_GRAY ? PIXMAN_r8g8b8 : PIXMAN_a8r8g8b8;
+
+        if (color_type == PNG_COLOR_TYPE_GRAY)
+            png_set_add_alpha(png_ptr, 0xff, PNG_FILLER_AFTER);
+
+        format = color_type == PNG_COLOR_TYPE_GRAY ? fmt_without_alpha : fmt_with_alpha;
         break;
 
     case PNG_COLOR_TYPE_PALETTE:
@@ -106,21 +133,25 @@ png_load(const char *path)
                 png_get_valid(png_ptr, info_ptr, PNG_INFO_tRNS) ? "+tRNS" : "");
 
         png_set_palette_to_rgb(png_ptr);
+
         if (png_get_valid(png_ptr, info_ptr, PNG_INFO_tRNS)) {
             png_set_tRNS_to_alpha(png_ptr);
-            format = PIXMAN_a8r8g8b8;
-        } else
-            format = PIXMAN_r8g8b8;
+            format = fmt_with_alpha;
+        } else {
+            png_set_add_alpha(png_ptr, 0xff, PNG_FILLER_AFTER);
+            format = fmt_without_alpha;
+        }
         break;
 
     case PNG_COLOR_TYPE_RGB:
         LOG_DBG("RGB");
-        format = PIXMAN_r8g8b8;
+        png_set_add_alpha(png_ptr, 0xff, PNG_FILLER_AFTER);
+        format = fmt_without_alpha;
         break;
 
     case PNG_COLOR_TYPE_RGBA:
         LOG_DBG("RGBA");
-        format = PIXMAN_a8r8g8b8;
+        format = fmt_with_alpha;
         break;
 
     default:
@@ -143,28 +174,32 @@ png_load(const char *path)
 
     png_read_image(png_ptr, row_pointers);
 
-    /* pixman expects pre-multiplied alpha */
-    if (format == PIXMAN_a8r8g8b8) {
-        for (int i = 0; i < height; i++) {
-            uint32_t *p = (uint32_t *)row_pointers[i];
-            for (int j = 0; j < width; j++, p++) {
-                uint8_t a = (*p >> 24) & 0xff;
-                uint8_t r = (*p >> 16) & 0xff;
-                uint8_t g = (*p >> 8) & 0xff;
-                uint8_t b = (*p >> 0) & 0xff;
+    if (!gamma_correct) {
+        /* TODO: find a way to make libpng generate premultiplied,
+           sRGB encoded pixels */
 
-                if (a == 0xff)
-                    continue;
+        if (format == PIXMAN_a8b8g8r8) {
+            for (int i = 0; i < height; i++) {
+                uint32_t *p = (uint32_t *)row_pointers[i];
+                for (int j = 0; j < width; j++, p++) {
+                    uint8_t a = (*p >> 24) & 0xff;
+                    uint8_t r = (*p >> 16) & 0xff;
+                    uint8_t g = (*p >> 8) & 0xff;
+                    uint8_t b = (*p >> 0) & 0xff;
 
-                if (a == 0) {
-                    r = g = b = 0;
-                } else {
-                    r = r * a / 0xff;
-                    g = g * a / 0xff;
-                    b = b * a / 0xff;
+                    if (a == 0xff)
+                        continue;
+
+                    if (a == 0) {
+                        r = g = b = 0;
+                    } else {
+                        r = r * a / 0xff;
+                        g = g * a / 0xff;
+                        b = b * a / 0xff;
+                    }
+
+                    *p = (uint32_t)a << 24 | r << 16 | g << 8 | b;
                 }
-
-                *p = (uint32_t)a << 24 | r << 16 | g << 8 | b;
             }
         }
     }

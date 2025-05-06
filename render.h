@@ -14,6 +14,9 @@ struct render;
 struct render *render_init(const struct config *conf, mtx_t *icon_lock);
 void render_destroy(struct render *render);
 
+void render_initialize_colors(
+    struct render *render, const struct config *conf, bool gamma_correct);
+
 void render_set_subpixel(struct render *render, enum fcft_subpixel subpixel);
 bool render_set_font_and_update_sizes(
     struct render *render, struct fcft_font *font, struct fcft_font *font_bold,

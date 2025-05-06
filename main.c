@@ -755,6 +755,7 @@ main(int argc, char *const *argv)
     #define OPT_HIDE_WHEN_PROMPT_EMPTY       297
     #define OPT_DMENU_WITH_NTH               298
     #define OPT_DMENU_ACCEPT_NTH             299
+    #define OPT_GAMMA_CORRECT                300
 
     static const struct option longopts[] = {
         {"config",               required_argument, 0, OPT_CONFIG},
@@ -765,6 +766,7 @@ main(int argc, char *const *argv)
         {"font",                 required_argument, 0, 'f'},
         {"use-bold",             no_argument,       0, OPT_USE_BOLD},
         {"dpi-aware",            required_argument, 0, 'D'},
+        {"gamma-correct",        no_argument,       0, OPT_GAMMA_CORRECT},
         {"icon-theme",           required_argument, 0, OPT_ICON_THEME},
         {"no-icons",             no_argument,       0, 'I'},
         {"hide-before-typing", no_argument,     0, OPT_HIDE_WHEN_PROMPT_EMPTY},
@@ -848,6 +850,7 @@ main(int argc, char *const *argv)
         struct config conf;
 
         bool dpi_aware_set:1;
+        bool gamma_correct_set:1;
         bool match_fields_set:1;
         bool icons_disabled_set:1;
         bool hide_when_prompt_empty_set:1;
@@ -966,6 +969,11 @@ main(int argc, char *const *argv)
                 return EXIT_FAILURE;
             }
             cmdline_overrides.dpi_aware_set = true;
+            break;
+
+        case OPT_GAMMA_CORRECT:
+            cmdline_overrides.conf.gamma_correct = true;
+            cmdline_overrides.gamma_correct_set = true;
             break;
 
         case 'i':
@@ -1775,6 +1783,8 @@ main(int argc, char *const *argv)
     }
     if (cmdline_overrides.dpi_aware_set)
         conf.dpi_aware = cmdline_overrides.conf.dpi_aware;
+    if (cmdline_overrides.gamma_correct_set)
+        conf.gamma_correct = cmdline_overrides.conf.gamma_correct;
     if (cmdline_overrides.match_fields_set)
         conf.match_fields = cmdline_overrides.conf.match_fields;
     if (cmdline_overrides.icons_disabled_set)
@@ -1992,6 +2002,8 @@ main(int argc, char *const *argv)
              &conf, fdm, kb_manager, render, prompt, matches,
              &font_reloaded, &ctx)) == NULL)
         goto out;
+
+    render_initialize_colors(render, &conf, wayl_do_linear_blending(wayl));
 
     matches_set_wayland(matches, wayl);
     ctx.wayl = wayl;

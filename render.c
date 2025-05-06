@@ -36,6 +36,7 @@
 #include "log.h"
 #include "char32.h"
 #include "icon.h"
+#include "srgb.h"
 #include "stride.h"
 #include "xmalloc.h"
 #include "xsnprintf.h"
@@ -63,6 +64,7 @@ struct render {
     float dpi;
     bool size_font_by_dpi;
 
+    bool gamma_correct;
     pixman_color_t pix_background_color;
     pixman_color_t pix_border_color;
     pixman_color_t pix_text_color;
@@ -99,19 +101,20 @@ struct render {
 };
 
 static pixman_color_t
-rgba2pixman(struct rgba rgba)
+rgba2pixman(bool gamma_correct, struct rgba rgba)
 {
-    uint16_t r = rgba.r * 65535.0;
-    uint16_t g = rgba.g * 65535.0;
-    uint16_t b = rgba.b * 65535.0;
-    uint16_t a = rgba.a * 65535.0;
-
-    return (pixman_color_t){
-        .red = (uint32_t)r * a / 0xffff,
-        .green = (uint32_t)g * a / 0xffff,
-        .blue = (uint32_t)b * a / 0xffff,
-        .alpha = a,
+    pixman_color_t pix_color = {
+        .alpha = rgba.a * 65535. + 0.5,
+        .red = gamma_correct ? srgb_decode_8_to_16(rgba.r * 255 + 0.5) : rgba.r * 65535. + 0.5,
+        .green = gamma_correct ? srgb_decode_8_to_16(rgba.g * 255 + 0.5) : rgba.g * 65535. + 0.5,
+        .blue = gamma_correct ? srgb_decode_8_to_16(rgba.b * 255 + 0.5) : rgba.b * 65535. + 0.5,
     };
+
+    pix_color.red = (uint32_t)pix_color.red * pix_color.alpha / 0xffff;
+    pix_color.green = (uint32_t)pix_color.green * pix_color.alpha / 0xffff;
+    pix_color.blue = (uint32_t)pix_color.blue * pix_color.alpha / 0xffff;
+
+    return pix_color;
 }
 
 static int
@@ -737,7 +740,7 @@ render_svg_librsvg(const struct icon *icon, int x, int y, int size,
 #if defined(FUZZEL_ENABLE_SVG_NANOSVG)
 static void
 render_svg_nanosvg(struct icon *icon, int x, int y, int size,
-                   pixman_image_t *pix, cairo_t *cairo)
+                   pixman_image_t *pix, cairo_t *cairo, bool gamma_correct)
 {
 #if defined(FUZZEL_ENABLE_CAIRO)
     cairo_surface_flush(cairo_get_target(cairo));
@@ -760,40 +763,86 @@ render_svg_nanosvg(struct icon *icon, int x, int y, int size,
         if (rast == NULL)
             return;
 
+        /* For gamma-correct blending */
+        uint8_t *data_16bit = NULL;
+        pixman_image_t *img_16bit = NULL;
+        uint64_t *abgr16 = NULL;
+
         float scale = svg->width > svg->height ? size / svg->width : size / svg->height;
 
-        uint8_t *data = xmalloc(size * size * 4);
-        nsvgRasterize(rast, svg, 0, 0, scale, data, size, size, size * 4);
+        uint8_t *data_8bit = xmalloc(size * size * 4);
+
+        nsvgRasterize(rast, svg, 0, 0, scale, data_8bit, size, size, size * 4);
 
         img = pixman_image_create_bits_no_clear(
-            PIXMAN_a8b8g8r8, size, size, (uint32_t *)data, size * 4);
+            PIXMAN_a8b8g8r8, size, size, (uint32_t *)data_8bit, size * 4);
+
+        if (gamma_correct) {
+            data_16bit = xmalloc(size * size * 8);
+            abgr16 = (uint64_t *)data_16bit;
+
+            img_16bit = pixman_image_create_bits_no_clear(
+                PIXMAN_a16b16g16r16, size, size, (uint32_t *)data_16bit,
+                size * 8);
+        }
 
         /* Nanosvg produces non-premultiplied ABGR, while pixman expects
          * premultiplied */
-        for (uint32_t *abgr = (uint32_t *)data;
-             abgr < (uint32_t *)(data + size * size * 4);
+
+        for (uint32_t *abgr = (uint32_t *)data_8bit;
+             abgr < (uint32_t *)(data_8bit + size * size * 4);
              abgr++)
         {
-            uint8_t alpha = (*abgr >> 24) & 0xff;
-            uint8_t blue = (*abgr >> 16) & 0xff;
-            uint8_t green = (*abgr >> 8) & 0xff;
-            uint8_t red = (*abgr >> 0) & 0xff;
+            uint16_t alpha = (*abgr >> 24) & 0xff;
+            uint16_t blue = (*abgr >> 16) & 0xff;
+            uint16_t green = (*abgr >> 8) & 0xff;
+            uint16_t red = (*abgr >> 0) & 0xff;
 
-            if (alpha == 0xff)
-                continue;
+            /*
+             * TODO: decode sRGB -> linear here
+             *
+             * We should decode to 16-bit, meaning we have to prepare
+             * a 16-bit buffer before looping the pixels.
+             */
 
-            if (alpha == 0x00)
-                blue = green = red = 0x00;
-            else {
-                blue = blue * alpha / 0xff;
-                green = green * alpha / 0xff;
-                red = red * alpha / 0xff;
+            if (gamma_correct) {
+                if (alpha == 0x00)
+                    blue = green = red = 0x00;
+                else {
+                    alpha |= alpha << 8;  /* Alpha already linear, expand to 16-bit */
+                    blue = srgb_decode_8_to_16(blue);
+                    green = srgb_decode_8_to_16(green);
+                    red = srgb_decode_8_to_16(red);
+
+                    blue = blue * alpha / 0xffff;
+                    green = green * alpha / 0xffff;
+                    red = red * alpha / 0xffff;
+                }
+
+                *abgr16 = (uint64_t)alpha << 48 | (uint64_t)blue << 32 | (uint64_t)green << 16 | (uint64_t)red;
+                abgr16++;
+            } else {
+                if (alpha == 0x00)
+                    blue = green = red = 0x00;
+                else {
+                    blue = (uint8_t)(blue * alpha / 0xff);
+                    green = (uint8_t)(green * alpha / 0xff);
+                    red = (uint8_t)(red * alpha / 0xff);
+                }
+
+                *abgr = (uint32_t)alpha << 24 | blue << 16 | green << 8 | red;
             }
+        }
 
-            *abgr = (uint32_t)alpha << 24 | blue << 16 | green << 8 | red;
+        if (gamma_correct) {
+            /* Replace default image buffer with 16-bit linear buffer */
+            pixman_image_unref(img);
+            free(data_8bit);
+            img = img_16bit;
         }
 
         nsvgDeleteRasterizer(rast);
+
         tll_push_back(icon->rasterized, ((struct rasterized){img, size}));
     }
 
@@ -808,7 +857,7 @@ render_svg_nanosvg(struct icon *icon, int x, int y, int size,
 
 static void
 render_svg(struct icon *icon, int x, int y, int size,
-           pixman_image_t *pix, cairo_t *cairo)
+           pixman_image_t *pix, cairo_t *cairo, bool gamma_correct)
 {
     assert(icon->type == ICON_SVG);
 
@@ -821,7 +870,7 @@ render_svg(struct icon *icon, int x, int y, int size,
 #if defined(FUZZEL_ENABLE_SVG_LIBRSVG)
     render_svg_librsvg(icon, x, y, size, cairo);
 #elif defined(FUZZEL_ENABLE_SVG_NANOSVG)
-    render_svg_nanosvg(icon, x, y, size, pix, cairo);
+    render_svg_nanosvg(icon, x, y, size, pix, cairo, gamma_correct);
 #endif
 }
 
@@ -908,12 +957,12 @@ render_png_libpng(struct icon *icon, int x, int y, int size,
 
 static void
 render_png(struct icon *icon, int x, int y, int size, pixman_image_t *pix,
-           cairo_t *cairo)
+           cairo_t *cairo, bool gamma_correct)
 {
     assert(icon->type == ICON_PNG);
 
     if (icon->png == NULL) {
-        if (!icon_from_png(icon, icon->path))
+        if (!icon_from_png(icon, icon->path, gamma_correct))
             return;
         LOG_DBG("%s", icon->path);
     }
@@ -1010,7 +1059,7 @@ render_one_match_entry(const struct render *render, const struct matches *matche
             match->application->icon.type == ICON_SVG &&
             img_y > list_end + render->row_height)
         {
-            render_svg(&match->application->icon, img_x, img_y, size, pix, cairo);
+            render_svg(&match->application->icon, img_x, img_y, size, pix, cairo, render->gamma_correct);
         }
     }
 
@@ -1025,11 +1074,11 @@ render_one_match_entry(const struct render *render, const struct matches *matche
             break;
 
         case ICON_PNG:
-            render_png(icon, img_x, img_y, size, pix, cairo);
+            render_png(icon, img_x, img_y, size, pix, cairo, render->gamma_correct);
             break;
 
         case ICON_SVG:
-            render_svg(icon, img_x, img_y, size, pix, cairo);
+            render_svg(icon, img_x, img_y, size, pix, cairo, render->gamma_correct);
             break;
         }
     }
@@ -1242,18 +1291,6 @@ render_init(const struct config *conf, mtx_t *icon_lock)
         .icon_lock = icon_lock,
     };
 
-    render->pix_background_color = rgba2pixman(render->conf->colors.background);
-    render->pix_border_color = rgba2pixman(render->conf->colors.border);
-    render->pix_text_color = rgba2pixman(render->conf->colors.text);
-    render->pix_prompt_color = rgba2pixman(render->conf->colors.prompt);
-    render->pix_input_color = rgba2pixman(render->conf->colors.input);
-    render->pix_match_color = rgba2pixman(render->conf->colors.match);
-    render->pix_selection_color = rgba2pixman(render->conf->colors.selection);
-    render->pix_selection_text_color = rgba2pixman(render->conf->colors.selection_text);
-    render->pix_selection_match_color = rgba2pixman(render->conf->colors.selection_match);
-    render->pix_counter_color = rgba2pixman(render->conf->colors.counter);
-    render->pix_placeholder_color = rgba2pixman(render->conf->colors.placeholder);
-
     if (sem_init(&render->workers.start, 0, 0) < 0 ||
         sem_init(&render->workers.done, 0, 0) < 0)
     {
@@ -1302,6 +1339,25 @@ err_free_render:
     free(render);
     return NULL;
 }
+
+void
+render_initialize_colors(struct render *render, const struct config *conf,
+                         bool gamma_correct)
+{
+    render->gamma_correct = gamma_correct;
+    render->pix_background_color = rgba2pixman(gamma_correct, conf->colors.background);
+    render->pix_border_color = rgba2pixman(gamma_correct, conf->colors.border);
+    render->pix_text_color = rgba2pixman(gamma_correct, conf->colors.text);
+    render->pix_prompt_color = rgba2pixman(gamma_correct, conf->colors.prompt);
+    render->pix_input_color = rgba2pixman(gamma_correct, conf->colors.input);
+    render->pix_match_color = rgba2pixman(gamma_correct, conf->colors.match);
+    render->pix_selection_color = rgba2pixman(gamma_correct, conf->colors.selection);
+    render->pix_selection_text_color = rgba2pixman(gamma_correct, conf->colors.selection_text);
+    render->pix_selection_match_color = rgba2pixman(gamma_correct, conf->colors.selection_match);
+    render->pix_counter_color = rgba2pixman(gamma_correct, conf->colors.counter);
+    render->pix_placeholder_color = rgba2pixman(gamma_correct, conf->colors.placeholder);
+}
+
 
 void
 render_set_subpixel(struct render *render, enum fcft_subpixel subpixel)

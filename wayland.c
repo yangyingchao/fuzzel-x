@@ -23,6 +23,7 @@
 #include <xkbcommon/xkbcommon-compose.h>
 #include <fontconfig/fontconfig.h>
 
+#include <color-management-v1.h>
 #include <cursor-shape-v1.h>
 #include <fractional-scale-v1.h>
 #include <primary-selection-unstable-v1.h>
@@ -165,6 +166,7 @@ struct wayland {
 
     struct wp_viewport *viewport;
     struct wp_fractional_scale_v1 *fractional_scale;
+    struct wp_color_management_surface_v1 *color_management_surface;
 
     struct wl_shm *shm;
     struct zxdg_output_manager_v1 *xdg_output_manager;
@@ -174,12 +176,24 @@ struct wayland {
     struct wl_data_device_manager *data_device_manager;
     struct zwp_primary_selection_device_manager_v1 *primary_selection_device_manager;
 
+    struct {
+        struct wp_color_manager_v1 *manager;
+        struct wp_image_description_v1 *img_description;
+        bool have_intent_perceptual;
+        bool have_feat_parametric;
+        bool have_tf_ext_linear;
+        bool have_primaries_srgb;
+    } color_management;
+
     tll(struct monitor) monitors;
     const struct monitor *monitor;
 
     tll(struct seat) seats;
 
     struct buffer_chain *chain;
+
+    bool shm_have_abgr161616;
+    bool shm_have_xbgr161616;
 };
 
 bool
@@ -372,6 +386,18 @@ reload_cursor_theme(struct seat *seat, float new_scale)
 static void
 shm_format(void *data, struct wl_shm *wl_shm, uint32_t format)
 {
+    struct wayland *wayl = data;
+
+    switch (format) {
+#if 0  /* Don't bother with 10bpc formats right now, since they have too few alpha bits */
+    case WL_SHM_FORMAT_XRGB2101010: wayl->shm_have_xrgb2101010 = true; break;
+    case WL_SHM_FORMAT_ARGB2101010: wayl->shm_have_argb2101010 = true; break;
+    case WL_SHM_FORMAT_XBGR2101010: wayl->shm_have_xbgr2101010 = true; break;
+    case WL_SHM_FORMAT_ABGR2101010: wayl->shm_have_abgr2101010 = true; break;
+#endif
+    case WL_SHM_FORMAT_XBGR16161616: wayl->shm_have_xbgr161616 = true; break;
+    case WL_SHM_FORMAT_ABGR16161616: wayl->shm_have_abgr161616 = true; break;
+    }
 }
 
 static const struct wl_shm_listener shm_listener = {
@@ -1332,8 +1358,16 @@ reload_font(struct wayland *wayl, float new_dpi, float new_scale)
         if (wayl->conf->use_bold)
             strcat(bold_attrs, ":weight=bold");
 
-        font = fcft_from_name(wayl->font_count, (const char **)names, attrs);
-        font_bold = fcft_from_name(wayl->font_count, (const char **)names, bold_attrs);
+        struct fcft_font_options *opts = fcft_font_options_create();
+
+        opts->color_glyphs.srgb_decode = wayl_do_linear_blending(wayl);
+        opts->color_glyphs.format = opts->color_glyphs.srgb_decode
+            ? PIXMAN_a16b16g16r16 : PIXMAN_a8r8g8b8;
+
+        font = fcft_from_name2(wayl->font_count, (const char **)names, attrs, opts);
+        font_bold = fcft_from_name2(wayl->font_count, (const char **)names, bold_attrs, opts);
+
+        fcft_font_options_destroy(opts);
 
         for (size_t i = 0; i < wayl->font_count; i++)
             free(names[i]);
@@ -1575,6 +1609,88 @@ static struct zxdg_output_v1_listener xdg_output_listener = {
     .done = xdg_output_handle_done,
     .name = xdg_output_handle_name,
     .description = xdg_output_handle_description,
+};
+
+static void
+color_manager_create_image_description(struct wayland *wayl)
+{
+    if (!wayl->color_management.have_feat_parametric)
+        return;
+
+    if (!wayl->color_management.have_primaries_srgb)
+        return;
+
+    if (!wayl->color_management.have_tf_ext_linear)
+        return;
+
+    struct wp_image_description_creator_params_v1 *params =
+        wp_color_manager_v1_create_parametric_creator(wayl->color_management.manager);
+
+    wp_image_description_creator_params_v1_set_tf_named(
+        params, WP_COLOR_MANAGER_V1_TRANSFER_FUNCTION_EXT_LINEAR);
+
+    wp_image_description_creator_params_v1_set_primaries_named(
+        params, WP_COLOR_MANAGER_V1_PRIMARIES_SRGB);
+
+    wayl->color_management.img_description =
+        wp_image_description_creator_params_v1_create(params);
+}
+
+static void
+color_manager_supported_intent(void *data,
+                               struct wp_color_manager_v1 *wp_color_manager_v1,
+                               uint32_t render_intent)
+{
+    struct wayland *wayl = data;
+    if (render_intent == WP_COLOR_MANAGER_V1_RENDER_INTENT_PERCEPTUAL)
+        wayl->color_management.have_intent_perceptual = true;
+}
+
+static void
+color_manager_supported_feature(void *data,
+                                struct wp_color_manager_v1 *wp_color_manager_v1,
+                                uint32_t feature)
+{
+    struct wayland *wayl = data;
+
+    if (feature == WP_COLOR_MANAGER_V1_FEATURE_PARAMETRIC)
+        wayl->color_management.have_feat_parametric = true;
+}
+
+static void
+color_manager_supported_tf_named(void *data,
+                                 struct wp_color_manager_v1 *wp_color_manager_v1,
+                                 uint32_t tf)
+{
+    struct wayland *wayl = data;
+    if (tf == WP_COLOR_MANAGER_V1_TRANSFER_FUNCTION_EXT_LINEAR)
+        wayl->color_management.have_tf_ext_linear = true;
+}
+
+static void
+color_manager_supported_primaries_named(void *data,
+                                        struct wp_color_manager_v1 *wp_color_manager_v1,
+                                        uint32_t primaries)
+{
+    struct wayland *wayl = data;
+    if (primaries == WP_COLOR_MANAGER_V1_PRIMARIES_SRGB)
+        wayl->color_management.have_primaries_srgb = true;
+}
+
+static void
+color_manager_done(void *data,
+                   struct wp_color_manager_v1 *wp_color_manager_v1)
+{
+    struct wayland *wayl = data;
+    color_manager_create_image_description(wayl);
+}
+
+static const struct wp_color_manager_v1_listener color_manager_listener = {
+    .supported_intent = &color_manager_supported_intent,
+    .supported_feature = &color_manager_supported_feature,
+    .supported_primaries_named = &color_manager_supported_primaries_named,
+    .supported_tf_named = &color_manager_supported_tf_named,
+    .done = &color_manager_done,
 };
 
 static bool
@@ -1861,6 +1977,19 @@ handle_global(void *data, struct wl_registry *registry,
         tll_foreach(wayl->seats, it)
             seat_add_primary_selection(&it->item);
     }
+
+    else if (strcmp(interface, wp_color_manager_v1_interface.name) == 0) {
+        const uint32_t required = 1;
+        if (!verify_iface_version(interface, version, required))
+            return;
+
+        wayl->color_management.manager = wl_registry_bind(
+            wayl->registry, name, &wp_color_manager_v1_interface, required);
+
+        wp_color_manager_v1_add_listener(
+            wayl->color_management.manager, &color_manager_listener, wayl);
+    }
+
 }
 
 static void
@@ -2041,7 +2170,15 @@ wayl_refresh(struct wayland *wayl)
 
     if (wayl->chain == NULL) {
         wayl->chain =
-            shm_chain_new(wayl->shm, false, 1 + wayl->conf->render_worker_count);
+            shm_chain_new(
+                wayl->shm, false, 1 + wayl->conf->render_worker_count,
+                wayl_do_linear_blending(wayl) && wayl->shm_have_abgr161616
+                    ? PIXMAN_a16b16g16r16
+                    : PIXMAN_a8r8g8b8,
+                wayl_do_linear_blending(wayl) && wayl->shm_have_xbgr161616
+                    ? PIXMAN_a16b16g16r16  /* No PIXMAN_x16b16g16r16 */
+                    : PIXMAN_x8r8g8b8
+                );
 
         if (wayl->chain == NULL)
             abort();
@@ -2411,6 +2548,41 @@ wayl_init(const struct config *conf, struct fdm *fdm,
             wayl->fractional_scale, &fractional_scale_listener, wayl);
     }
 
+    if (conf->gamma_correct) {
+#if !defined(FUZZEL_ENABLE_CAIRO)
+        if (wayl->color_management.img_description != NULL) {
+            assert(wayl->color_management.manager != NULL);
+
+            wayl->color_management_surface = wp_color_manager_v1_get_surface(
+                wayl->color_management.manager, wayl->surface);
+
+            wp_color_management_surface_v1_set_image_description(
+                wayl->color_management_surface, wayl->color_management.img_description,
+                WP_COLOR_MANAGER_V1_RENDER_INTENT_PERCEPTUAL);
+
+            LOG_INFO("gamma-correct blending: enabled");
+        } else {
+            if (wayl->color_management.manager == NULL) {
+                LOG_WARN(
+                    "gamma-corrected-blending: disabling; "
+                    "compositor does not implement the color-management protocol");
+            } else {
+                LOG_WARN(
+                    "gamma-corrected-blending: disabling; "
+                    "compositor does not implement all required color-management features");
+                LOG_WARN("use e.g. 'wayland-info' and verify the compositor implements:");
+                LOG_WARN("  - feature: parametric");
+                LOG_WARN("  - render intent: perceptual");
+                LOG_WARN("  - TF: ext_linear");
+                LOG_WARN("  - primaries: sRGB");
+            }
+        }
+#else
+        LOG_WARN("gamma-correct-blending: disabling; not supported in cairo-enabled builds");
+#endif
+    } else
+        LOG_INFO("gamma-correct blending: disabled");
+
     zwlr_layer_surface_v1_set_keyboard_interactivity(wayl->layer_surface,
         wayl->has_zwlr_layer_shell_kb_inter_on_demand
             ? wayl->conf->keyboard_focus
@@ -2462,6 +2634,12 @@ wayl_destroy(struct wayland *wayl)
         monitor_destroy(&it->item);
     tll_free(wayl->monitors);
 
+    if (wayl->color_management_surface != NULL)
+        wp_color_management_surface_v1_destroy(wayl->color_management_surface);
+    if (wayl->color_management.img_description != NULL)
+        wp_image_description_v1_destroy(wayl->color_management.img_description);
+    if (wayl->color_management.manager != NULL)
+        wp_color_manager_v1_destroy(wayl->color_management.manager);
     if (wayl->data_device_manager != NULL)
         wl_data_device_manager_destroy(wayl->data_device_manager);
     if (wayl->primary_selection_device_manager != NULL)
@@ -2581,4 +2759,15 @@ wayl_clipboard_done(struct wayland *wayl)
 {
     matches_update_incremental(wayl->matches);
     wayl_refresh(wayl);
+}
+
+bool
+wayl_do_linear_blending(const struct wayland *wayl)
+{
+#if !defined(FUZZEL_ENABLE_CAIRO)
+    return wayl->conf->gamma_correct &&
+           wayl->color_management.img_description != NULL;
+#else
+    return false;
+#endif
 }

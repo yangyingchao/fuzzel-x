@@ -92,6 +92,10 @@ struct buffer_chain {
     struct wl_shm *shm;
     size_t pix_instances;
     bool scrollable;
+    pixman_format_code_t pix_fmt_with_alpha;
+    pixman_format_code_t pix_fmt_without_alpha;
+    enum wl_shm_format wl_shm_fmt_with_alpha;
+    enum wl_shm_format wl_shm_fmt_without_alpha;
 };
 
 static tll(struct buffer_private *) deferred;
@@ -283,7 +287,9 @@ instantiate_offset(struct buffer_private *buf, off_t new_offset)
     wl_buf = wl_shm_pool_create_buffer(
         pool->wl_pool, new_offset,
         buf->public.width, buf->public.height, buf->public.stride,
-        buf->with_alpha ? WL_SHM_FORMAT_ARGB8888 : WL_SHM_FORMAT_XRGB8888);
+        buf->with_alpha
+            ? buf->chain->wl_shm_fmt_with_alpha
+            : buf->chain->wl_shm_fmt_without_alpha);
 
     if (wl_buf == NULL) {
         LOG_ERR("failed to create SHM buffer");
@@ -293,7 +299,9 @@ instantiate_offset(struct buffer_private *buf, off_t new_offset)
     /* One pixman image for each worker thread (do we really need multiple?) */
     for (size_t i = 0; i < buf->public.pix_instances; i++) {
         pix[i] = pixman_image_create_bits_no_clear(
-            buf->with_alpha ? PIXMAN_a8r8g8b8 : PIXMAN_x8r8g8b8,
+            buf->with_alpha
+                ? buf->chain->pix_fmt_with_alpha
+                : buf->chain->pix_fmt_without_alpha,
             buf->public.width, buf->public.height,
             (uint32_t *)mmapped, buf->public.stride);
 
@@ -392,7 +400,10 @@ get_new_buffers(struct buffer_chain *chain, size_t count,
     size_t total_size = 0;
     for (size_t i = 0; i < count; i++) {
         stride[i] = stride_for_format_and_width(
-            with_alpha ? PIXMAN_a8r8g8b8 : PIXMAN_x8r8g8b8, widths[i]);
+            with_alpha
+                ? chain->pix_fmt_with_alpha
+                : chain->pix_fmt_without_alpha,
+            widths[i]);
         sizes[i] = stride[i] * heights[i];
         total_size += sizes[i];
     }
@@ -1019,8 +1030,30 @@ shm_unref(struct buffer *_buf)
     }
 }
 
+static enum wl_shm_format
+pix_fmt_to_shm_fmt(pixman_format_code_t pix_fmt)
+{
+    switch (pix_fmt) {
+    default: assert(false); break;
+
+    case PIXMAN_a8r8g8b8: return WL_SHM_FORMAT_ARGB8888;
+    case PIXMAN_x8r8g8b8: return WL_SHM_FORMAT_XRGB8888;
+    case PIXMAN_a8b8g8r8: return WL_SHM_FORMAT_ABGR8888;
+    case PIXMAN_x8b8g8r8: return WL_SHM_FORMAT_XBGR8888;
+    case PIXMAN_a2r10g10b10: return WL_SHM_FORMAT_ARGB2101010;
+    case PIXMAN_x2r10g10b10: return WL_SHM_FORMAT_XRGB2101010;
+    case PIXMAN_a2b10g10r10: return WL_SHM_FORMAT_ABGR2101010;
+    case PIXMAN_x2b10g10r10: return WL_SHM_FORMAT_XBGR2101010;
+    case PIXMAN_a16b16g16r16: return WL_SHM_FORMAT_ABGR16161616;
+    }
+
+    return WL_SHM_FORMAT_ARGB8888;
+}
+
 struct buffer_chain *
-shm_chain_new(struct wl_shm *shm, bool scrollable, size_t pix_instances)
+shm_chain_new(struct wl_shm *shm, bool scrollable, size_t pix_instances,
+              pixman_format_code_t pix_fmt_with_alpha,
+              pixman_format_code_t pix_fmt_without_alpha)
 {
     struct buffer_chain *chain = xmalloc(sizeof(*chain));
     *chain = (struct buffer_chain){
@@ -1028,6 +1061,10 @@ shm_chain_new(struct wl_shm *shm, bool scrollable, size_t pix_instances)
         .shm = shm,
         .pix_instances = pix_instances,
         .scrollable = scrollable,
+        .pix_fmt_with_alpha = pix_fmt_with_alpha,
+        .pix_fmt_without_alpha = pix_fmt_without_alpha,
+        .wl_shm_fmt_with_alpha = pix_fmt_to_shm_fmt(pix_fmt_with_alpha),
+        .wl_shm_fmt_without_alpha = pix_fmt_to_shm_fmt(pix_fmt_without_alpha),
     };
     return chain;
 }

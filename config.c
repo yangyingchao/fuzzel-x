@@ -781,6 +781,9 @@ parse_section_main(struct context *ctx)
         return true;
     }
 
+    else if (strcmp(key, "gamma-correct-blending") == 0)
+        return value_to_bool(ctx, &conf->gamma_correct);
+
     else if (strcmp(key, "render-workers") == 0)
         return value_to_uint16(ctx, 10, &conf->render_worker_count);
 
@@ -1605,6 +1608,7 @@ config_load(struct config *conf, const char *conf_path,
         .font = xstrdup("monospace"),
         .use_bold = false,
         .dpi_aware = DPI_AWARE_AUTO,
+        .gamma_correct = false,
         .render_worker_count = sysconf(_SC_NPROCESSORS_ONLN),
         .match_worker_count = sysconf(_SC_NPROCESSORS_ONLN),
         .icons_enabled = true,

@@ -94,6 +94,36 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	
 	Default: _auto_
 
+*--gamma-correct*
+	Do gamma-correct blending in linear color space. This is how font
+	glyphs are supposed to be rendered, but since nearly no
+	applications or toolkits are doing it on Linux, the result may not
+	look like you are used to.
+	
+	Compared to the default (disabled), bright glyphs on a dark
+	background will appear thicker, and dark glyphs on a light
+	background will appear thinner.
+	
+	FreeType can limit the effect of the latter, with a technique
+	called stem darkening. It is only available for CFF fonts
+	(OpenType, .otf) and disabled by default (in FreeType). You can
+	enable it by setting the environment variable
+	*FREETYPE_PROPERTIES="cff:no-stem-darkening=0"* before starting
+	fuzzel.
+	
+	Also be aware that many fonts have been developed on systems that
+	do not do gamma-correct blending, and may therefore look thicker
+	than intended when rendered with gamma-correct blending, since the
+	font designer set the font weight based on incorrect rendering.
+	
+	In order to represent colors faithfully, higher precision image
+	buffers are required. For this reason, fuzzel uses 16-bit image
+	buffers (instead of 8-bit) when gamma-correct blending is enabled.
+	
+	It is not possible to enable gamma-correct blending in cairo
+	enabled builds of fuzzel, since cairo does not support 16-bit
+	image buffers.
+
 *-p*,*--prompt*=_PROMPT_
 	Prompt to use. Default: _> _.
 

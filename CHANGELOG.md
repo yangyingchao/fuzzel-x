@@ -35,15 +35,25 @@
 * Add support for fallback icons in dmenu mode using comma-separated
   values in the icon metadata ([#504][504]).
 * `--namespace` command line option ([#512][512]).
+* Gamma-correct blending. Disabled by default. Enable with the new
+  `--gamma-correct` command line option, or by setting
+  `gamma-correct-blending=yes` in `fuzzel.ini`. Note that
+  gamma-correct blending **is not supported in cairo enabled builds of
+  fuzzel**, due to the lack of 16-bit image buffers in cairo
+  ([#546][546]).
 
 [504]: https://codeberg.org/dnkl/fuzzel/pulls/504
 [512]: https://codeberg.org/dnkl/fuzzel/pulls/512
+[546]: https://codeberg.org/dnkl/fuzzel/issues/546
 
 
 ### Changed
 
 * Number of render workers is now automatically limited to the number
   of displayed entries.
+* wayland-protocols >= 1.41 is now required.
+* pixman >= 0.46.0 is now required.
+* fcft >= 3.3.1 is now required.
 
 
 ### Deprecated

@@ -351,9 +351,9 @@ icon_themes_destroy(icon_theme_list_t themes)
 
 #if defined(FUZZEL_ENABLE_PNG_LIBPNG)
 static bool
-icon_from_png_libpng(struct icon *icon, const char *file_name)
+icon_from_png_libpng(struct icon *icon, const char *file_name, bool gamma_correct)
 {
-    pixman_image_t *png = png_load(file_name);
+    pixman_image_t *png = png_load(file_name, gamma_correct);
     if (png == NULL)
         return false;
 
@@ -364,10 +364,10 @@ icon_from_png_libpng(struct icon *icon, const char *file_name)
 #endif
 
 bool
-icon_from_png(struct icon *icon, const char *name)
+icon_from_png(struct icon *icon, const char *name, bool gamma_correct)
 {
 #if defined(FUZZEL_ENABLE_PNG_LIBPNG)
-    return icon_from_png_libpng(icon, name);
+    return icon_from_png_libpng(icon, name, gamma_correct);
 #else
     return false;
 #endif

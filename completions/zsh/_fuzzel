@@ -11,6 +11,7 @@ _arguments \
     '(-o --output)'{-o,--output}'[output (monitor) to display on (none)]:output:->outputs' \
     '(-f --font)'{-f,--font}'[font name and style in fontconfig format (monospace)]:font:->fonts' \
     '(-D --dpi-aware)'{-D,--dpi-aware}"[scale fonts using the monitor's DPI (auto)]:dpi_aware:(no yes auto)" \
+    '--gamma-correct[do gamma-correct blending]' \
     '--use-bold[allow fuzzel to use bold fonts]' \
     '--icon-theme[icon theme name (hicolor)]:theme:->icon_theme' \
     '(-I --no-icons)'{-I,--no-icons}'[do not render any icons]' \
