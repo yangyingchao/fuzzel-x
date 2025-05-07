@@ -316,7 +316,7 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	the same layer. Since e.g. lock screens typically use *overlay*,
 	that means fuzzel may or may not appear on top of a lock screen.
 	
-	Default: _top_
+	Default: _overlay_
 
 *--keyboard-focus*=_exclusive_|_on-demand_
 	Keyboard focusing mode, valid modes are *exclusive* and *on-demand*.
