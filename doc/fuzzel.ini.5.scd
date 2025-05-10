@@ -173,8 +173,8 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	ignored. This effectively disables the cache (though, the cache is
 	still updated on exit).
 
-	This can improve search latency when searching very large data
-	sets.
+	Disabling this can improve search latency when searching very
+	large data sets.
 	
 	Default: _yes_
 
