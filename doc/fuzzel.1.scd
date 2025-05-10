@@ -407,7 +407,7 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	
 	Example:
 	```
-	printf "1\tFirst\n2\tSecond" | fuzzel -d --with-nth=2
+	printf "1\\tFirst\\n2\\tSecond" | fuzzel -d --with-nth=2
 	```
 	
 	This will display the entries *First* and *Second*. When one of
@@ -422,7 +422,7 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	
 	Example:
 	```
-	printf "1\tFirst\n2\tSecond" | fuzzel -d --accept-nth=2
+	printf "1\\tFirst\\n2\\tSecond" | fuzzel -d --accept-nth=2
 	```
 	
 	This will display the entries *1   First* and *2   Second*. Depending
