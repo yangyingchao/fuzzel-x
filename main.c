@@ -553,7 +553,8 @@ populate_apps(void *_ctx)
 
     if (dmenu_enabled) {
         if (!conf->prompt_only) {
-            dmenu_load_entries(apps, dmenu_delim, ctx->event_fd, ctx->dmenu_abort_fd);
+            dmenu_load_entries(apps, dmenu_delim, conf->dmenu.render_column,
+                               ctx->event_fd, ctx->dmenu_abort_fd);
             read_cache(cache_path, apps, true);
         }
     } else {

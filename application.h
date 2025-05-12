@@ -78,6 +78,8 @@ struct application {
     char32_list_t keywords;    /* Lower cased! */
     char32_list_t categories;  /* Lower cased! */
 
+    char32_t *dmenu_input;     /* Full dmenu input, may contain multiple columns */
+
     size_t title_len;
     size_t basename_len;
     size_t wexec_len;

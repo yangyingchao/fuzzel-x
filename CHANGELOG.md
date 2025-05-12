@@ -62,8 +62,12 @@
 
 * Crash when `--match-workers >= 100` ([#507][507]).
 * Keyboard modifiers not being reset on keyboard leave events.
+* `--with-nth`: non-selected columns still being matched.
+* Match highlighting being offset when `--with-nth` is used
+  ([#551][551]).
 
 [507]: https://codeberg.org/dnkl/fuzzel/issues/507
+[551]: https://codeberg.org/dnkl/fuzzel/issues/551
 
 
 ### Security

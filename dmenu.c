@@ -25,7 +25,7 @@
 
 void
 dmenu_load_entries(struct application_list *applications, char delim,
-                   int event_fd, int abort_fd)
+                   int with_nth, int event_fd, int abort_fd)
 {
     tll(struct application *) entries = tll_init();
 
@@ -167,14 +167,19 @@ dmenu_load_entries(struct application_list *applications, char delim,
                 continue;
             }
 
-            char32_t *lowercase = xc32dup(wline);
+            char32_t *title = with_nth == 0
+                ? xc32dup(wline)
+                : nth_column(wline, with_nth);
+
+            char32_t *lowercase = xc32dup(title);
             for (size_t i = 0; i < c32len(lowercase); i++)
                 lowercase[i] = toc32lower(lowercase[i]);
 
             struct application *app = xmalloc(sizeof(*app));
             *app = (struct application){
                 .index = app_idx++,
-                .title = wline,
+                .dmenu_input = wline,
+                .title = title,
                 .title_lowercase = lowercase,
                 .title_len = c32len(lowercase),
                 .icon = {.name = icon_name},
@@ -238,8 +243,10 @@ dmenu_execute(const struct application *app, ssize_t index,
 {
     switch (format) {
     case DMENU_MODE_TEXT: {
-        const char32_t *output = app != NULL ? app->title : prompt_text(prompt);
-        
+        const char32_t *output = app != NULL
+            ? app->dmenu_input
+            : prompt_text(prompt);
+
         char32_t *column_output = NULL;
         if (column > 0) {
             column_output = nth_column(output, column);
@@ -247,9 +254,9 @@ dmenu_execute(const struct application *app, ssize_t index,
         }
 
         char *text = ac32tombs(output);
-        if (text != NULL) {
+        if (text != NULL)
             printf("%s\n", text);
-        }
+
         free(column_output);
         free(text);
         break;

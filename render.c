@@ -1112,17 +1112,6 @@ render_one_match_entry(const struct render *render, const struct matches *matche
             /* No newlines, use title as-is */
             match->application->render_title = match->application->title;
         }
-
-        if (render->conf->dmenu.enabled &&
-            render->conf->dmenu.render_column > 0)
-        {
-            char32_t *new_render_title =
-                nth_column(match->application->render_title, render->conf->dmenu.render_column);
-
-            if (match->application->render_title != match->application->title)
-                free(match->application->render_title);
-            match->application->render_title = new_render_title;
-        }
     }
 
     const int y = first_row + render_baseline(render) + idx * render->row_height;
