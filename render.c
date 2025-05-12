@@ -770,27 +770,30 @@ render_svg_nanosvg(struct icon *icon, int x, int y, int size,
 
         float scale = svg->width > svg->height ? size / svg->width : size / svg->height;
 
-        uint8_t *data_8bit = xmalloc(size * size * 4);
+        const int width = roundf(svg->width * scale);
+        const int height = roundf(svg->height * scale);
 
-        nsvgRasterize(rast, svg, 0, 0, scale, data_8bit, size, size, size * 4);
+        uint8_t *data_8bit = xmalloc(width * height * 4);
+
+        nsvgRasterize(rast, svg, 0, 0, scale, data_8bit, width, height, width * 4);
 
         img = pixman_image_create_bits_no_clear(
-            PIXMAN_a8b8g8r8, size, size, (uint32_t *)data_8bit, size * 4);
+            PIXMAN_a8b8g8r8, width, height, (uint32_t *)data_8bit, width * 4);
 
         if (gamma_correct) {
-            data_16bit = xmalloc(size * size * 8);
+            data_16bit = xmalloc(width * height * 8);
             abgr16 = (uint64_t *)data_16bit;
 
             img_16bit = pixman_image_create_bits_no_clear(
-                PIXMAN_a16b16g16r16, size, size, (uint32_t *)data_16bit,
-                size * 8);
+                PIXMAN_a16b16g16r16, width, height, (uint32_t *)data_16bit,
+                width * 8);
         }
 
         /* Nanosvg produces non-premultiplied ABGR, while pixman expects
          * premultiplied */
 
         for (uint32_t *abgr = (uint32_t *)data_8bit;
-             abgr < (uint32_t *)(data_8bit + size * size * 4);
+             abgr < (uint32_t *)(data_8bit + width * height * 4);
              abgr++)
         {
             uint16_t alpha = (*abgr >> 24) & 0xff;
@@ -846,8 +849,14 @@ render_svg_nanosvg(struct icon *icon, int x, int y, int size,
         tll_push_back(icon->rasterized, ((struct rasterized){img, size}));
     }
 
+    const int w = pixman_image_get_width(img);
+    const int h = pixman_image_get_height(img);
+
     pixman_image_composite32(
-        PIXMAN_OP_OVER, img, NULL, pix, 0, 0, 0, 0, x, y, size, size);
+        PIXMAN_OP_OVER, img, NULL, pix, 0, 0, 0, 0,
+        x + (size - w) / 2,
+        y + (size - h) / 2,
+        w, h);
 
 #if defined(FUZZEL_ENABLE_CAIRO)
     cairo_surface_mark_dirty(cairo_get_target(cairo));
