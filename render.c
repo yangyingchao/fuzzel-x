@@ -888,8 +888,8 @@ render_png_libpng(struct icon *icon, int x, int y, int size,
     int height = pixman_image_get_height(png);
     int width = pixman_image_get_width(png);
 
-    if (height > size) {
-        double scale = (double)size / height;
+    if (height > size || width > size) {
+        double scale = (double)size / (height > width ? height : width);
 
         pixman_f_transform_t _scale_transform;
         pixman_f_transform_init_scale(&_scale_transform, 1. / scale, 1. / scale);
@@ -947,7 +947,10 @@ render_png_libpng(struct icon *icon, int x, int y, int size,
     }
 
     pixman_image_composite32(
-        PIXMAN_OP_OVER, png, NULL, pix, 0, 0, 0, 0, x, y, width, height);
+        PIXMAN_OP_OVER, png, NULL, pix, 0, 0, 0, 0,
+        x + (size - width) / 2,
+        y + (size - height) / 2,
+        width, height);
 
 #if defined(FUZZEL_ENABLE_CAIRO)
     cairo_surface_mark_dirty(cairo_get_target(cairo));
