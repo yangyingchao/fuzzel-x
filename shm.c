@@ -413,19 +413,19 @@ get_new_buffers(struct buffer_chain *chain, size_t count,
      */
     errno = 0;
     pool_fd = memfd_create(
-        "foot-wayland-shm-buffer-pool",
+        "fuzzel-wayland-shm-buffer-pool",
         MFD_CLOEXEC | MFD_ALLOW_SEALING | MFD_NOEXEC_SEAL);
 
     if (pool_fd < 0 && errno == EINVAL && MFD_NOEXEC_SEAL != 0) {
         pool_fd = memfd_create(
-            "foot-wayland-shm-buffer-pool", MFD_CLOEXEC | MFD_ALLOW_SEALING);
+            "fuzzel-wayland-shm-buffer-pool", MFD_CLOEXEC | MFD_ALLOW_SEALING);
     }
 
 #elif defined(__FreeBSD__)
     // memfd_create on FreeBSD 13 is SHM_ANON without sealing support
     pool_fd = shm_open(SHM_ANON, O_RDWR | O_CLOEXEC, 0600);
 #else
-    char name[] = "/tmp/foot-wayland-shm-buffer-pool-XXXXXX";
+    char name[] = "/tmp/fuzzel-wayland-shm-buffer-pool-XXXXXX";
     pool_fd = mkostemp(name, O_CLOEXEC);
     unlink(name);
 #endif

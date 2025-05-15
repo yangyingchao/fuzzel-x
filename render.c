@@ -8,7 +8,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <threads.h>
+#include <uchar.h>
 
+#include "column.h"
 #include "macros.h"
 #if HAS_INCLUDE(<pthread_np.h>)
 #include <pthread_np.h>
@@ -1065,35 +1067,8 @@ render_one_match_entry(const struct render *render, const struct matches *matche
         if (render->conf->dmenu.enabled &&
             render->conf->dmenu.render_column > 0)
         {
-            const char32_t *column = match->application->render_title;
-
-            for (unsigned int i = 0;
-                 i < render->conf->dmenu.render_column - 1;
-                 i++)
-            {
-                column = c32chr(column, U'\t');
-
-                if (column == NULL) {
-                    LOG_WARN("%ls: only %u column(s) available",
-                             (const wchar_t *)match->application->title, i + 1);
-                    column = U"";
-                    break;
-                }
-
-                column++;
-            }
-
-            char32_t *new_render_title = NULL;
-            const char32_t *next_tab = c32chr(column, U'\t');
-
-            if (next_tab == NULL)
-                new_render_title = xc32dup(column);
-            else {
-                const size_t len = next_tab - column;
-                new_render_title = xmalloc((len + 1) * sizeof(char32_t));
-                memcpy(new_render_title, column, len * sizeof(char32_t));
-                new_render_title[len] = U'\0';
-            }
+            char32_t *new_render_title =
+                nth_column(match->application->render_title, render->conf->dmenu.render_column);
 
             if (match->application->render_title != match->application->title)
                 free(match->application->render_title);

@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [1.12.0](#1-12-0)
 * [1.11.1](#1-11-1)
 * [1.11.0](#1-11-0)
 * [1.10.2](#1-10-2)
@@ -28,13 +28,19 @@
 * [1.4.1](#1-4-1)
 
 
-## Unreleased
+## 1.12.0
+
 ### Added
 
 * Nanosvg updated to ea6a6aca009422bba0dbad4c80df6e6ba0c82183
 * `--with-nth=N` command line option ([#438][438]).
+* `--accept-nth=N` command line option ([#493][493]).
+* `keyboard-focus=exclusive|on-demand` command line and config option
+  ([#495][495]).
 
 [438]: https://codeberg.org/dnkl/fuzzel/issues/438
+[493]: https://codeberg.org/dnkl/fuzzel/pulls/493
+[495]: https://codeberg.org/dnkl/fuzzel/pulls/495
 
 
 ### Changed
@@ -50,6 +56,9 @@
   instead of `min(horizontal-pad, vertical-pad)` ([#436][436]).
 * `stdout` and `stderr` of the launched application are now preserved,
   instead of being redirected to `/dev/null` ([#480][480]).
+* Version 5 of the `wl_seat` interface is now required.
+* The `pixmaps` sub-directory is no longer searched for in every
+  `XDG_DATA_DIR`; only `/usr/share/pixmaps`.
 
 [419]: https://codeberg.org/dnkl/fuzzel/issues/419
 [439]: https://codeberg.org/dnkl/fuzzel/issues/439
@@ -58,8 +67,6 @@
 [480]: https://codeberg.org/dnkl/fuzzel/issues/480
 
 
-### Deprecated
-### Removed
 ### Fixed
 
 * Custom line heights smaller than the font's actual line height
@@ -71,14 +78,28 @@
 * Crash if compositor sends a key event without having sent a keymap
   event before that ([#482][482]).
 * Filenames matching up to the first period only ([#487][487]).
+* `wl_seat_release()` used while only binding version 4 of the seat
+  interface ([#498][498]).
+* Double close of an FD, causing occasional failures to start fuzzel
+  ([#497][497]).
+* `$HOME/.icons` not searched.
 
 [426]: https://codeberg.org/dnkl/fuzzel/issues/426
 [482]: https://codeberg.org/dnkl/fuzzel/issues/482
 [487]: https://codeberg.org/dnkl/fuzzel/issues/487
+[497]: https://codeberg.org/dnkl/fuzzel/issues/497
 
 
-### Security
 ### Contributors
+
+* Ashish SHUKLA
+* bbb651
+* Christian Fillion
+* Craig Barnes
+* Mark Stosberg
+* Peter Colberg
+* Sertonix
+* Wekuz
 
 
 ## 1.11.1

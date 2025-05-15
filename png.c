@@ -35,7 +35,7 @@ png_load(const char *path)
     uint8_t *image_data = NULL;
 
     /* open file and test for it being a png */
-    if ((fp = fopen(path, "rb")) == NULL) {
+    if ((fp = fopen(path, "rbe")) == NULL) {
         //LOG_ERRNO("%s: failed to open", path);
         goto err;
     }

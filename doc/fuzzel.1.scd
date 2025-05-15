@@ -311,6 +311,20 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	
 	Default: _top_
 
+*--keyboard-focus*=_exclusive_|_on-demand_
+	Keyboard focusing mode, valid modes are *exclusive* and *on-demand*.
+	
+	*exclusive* locks keyboard focus to fuzzel, receiving all keyboard
+	input until closed.
+	
+	*on-demand* makes fuzzel focus like a regular window, allowing other
+	windows to take keyboard focus by e.g. clicking on them.
+	By default switching keyboard focus will immediately close fuzzel,
+	using *--no-exit-on-keyboard-focus-loss* allows interacting with
+	other windows while fuzzel is open.
+	
+	Default: _exclusive_
+
 *--no-exit-on-keyboard-focus-loss*
 	Do not exit when losing keyboard focus. This can be useful on
 	compositors where enabling "focus-follows-mouse" causes fuzzel to
@@ -380,15 +394,28 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	
 	Example:
 	```
-	printf "1\tFirst\n2\tSecond" | fuzzel --with-nth=2
+	printf "1\tFirst\n2\tSecond" | fuzzel -d --with-nth=2
 	```
 	
 	This will display the entries *First* and *Second*. When one of
-	them has selected, the full input line (tabs included) are printed
+	them is selected, the full input line (tabs included) are printed
 	on stdout.
 	
-	Setting it to *0* is the same as not specifying *--with-nth* at
-	all.
+	Setting it to *0* is the same as not specifying *--with-nth* at all.
+
+*--accept-nth*=_N_
+	Output the N:th column (tab separated) of each input line to stdout.
+	dmenu mode only.
+	
+	Example:
+	```
+	printf "1\tFirst\n2\tSecond" | fuzzel -d --accept-nth=2
+	```
+	
+	This will display the entries *1   First* and *2   Second*. Depending
+	on which one is selected, *First* or *Second* will be printed to stdout.
+	
+	Setting it to *0* is the same as not specifying *--accept-nth* at all.
 
 *-R*,*--no-run-if-empty*
 	Exit immediately, without showing the UI, if stdin is

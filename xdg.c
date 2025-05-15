@@ -92,9 +92,11 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename_lowercase,
                    const struct locale_variants *lc_messages,
                    application_llist_t *applications)
 {
-    FILE *f = fdopen(fd, "r");
-    if (f == NULL)
+    FILE *f = fdopen(fd, "re");
+    if (f == NULL) {
+        close(fd);
         return;
+    }
 
     bool is_desktop_entry = false;
 
@@ -563,7 +565,7 @@ scan_dir(int base_fd, const char *terminal, bool include_actions,
         }
 
         if (S_ISDIR(st.st_mode)) {
-            int dir_fd = openat(base_fd, e->d_name, O_RDONLY);
+            int dir_fd = openat(base_fd, e->d_name, O_RDONLY | O_CLOEXEC);
             if (dir_fd == -1) {
                 LOG_ERRNO("%s: failed to open", e->d_name);
                 continue;
@@ -586,7 +588,7 @@ scan_dir(int base_fd, const char *terminal, bool include_actions,
                 continue;
 
             //LOG_DBG("%s", e->d_name);
-            int fd = openat(base_fd, e->d_name, O_RDONLY);
+            int fd = openat(base_fd, e->d_name, O_RDONLY | O_CLOEXEC);
             if (fd == -1)
                 LOG_WARN("%s: failed to open: %s", e->d_name, strerror(errno));
             else {
@@ -625,9 +627,11 @@ scan_dir(int base_fd, const char *terminal, bool include_actions,
                         fd, id, wfile_basename, terminal, include_actions,
                         filter_desktop, desktops,
                         &lc_messages, applications);
-                } else
+                    /* fd closed by parse_desktop_file() */
+                } else {
                     free(id);
-                close(fd);
+                    close(fd);
+                }
             }
         }
     }
@@ -659,7 +663,7 @@ xdg_find_programs(const char *terminal, bool include_actions,
         char path[strlen(it->item.path) + 1 + strlen("applications") + 1];
         sprintf(path, "%s/applications", it->item.path);
 
-        int fd = open(path, O_RDONLY);
+        int fd = open(path, O_RDONLY | O_CLOEXEC);
         if (fd != -1) {
             scan_dir(fd, terminal, include_actions, filter_desktop, desktops, &apps, NULL);
             close(fd);
@@ -747,14 +751,14 @@ xdg_data_dirs(void)
     const char *xdg_data_home = getenv("XDG_DATA_HOME");
     const char *home;
     if (xdg_data_home != NULL && xdg_data_home[0] != '\0') {
-        int fd = open(xdg_data_home, O_RDONLY | O_DIRECTORY);
+        int fd = open(xdg_data_home, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
         if (fd >= 0) {
             struct xdg_data_dir d = {.fd = fd, .path = xstrdup(xdg_data_home)};
             tll_push_back(ret, d);
         }
     } else if ((home = getenv("HOME")) != NULL && home[0] != '\0') {
         char *path = xstrjoin(home, "/.local/share");
-        int fd = open(path, O_RDONLY | O_DIRECTORY);
+        int fd = open(path, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
         if (fd >= 0) {
             struct xdg_data_dir d = {.fd = fd, .path = path};
             tll_push_back(ret, d);
@@ -773,7 +777,7 @@ xdg_data_dirs(void)
              tok != NULL;
              tok = strtok_r(NULL, ":", &ctx))
         {
-            int fd = open(tok, O_RDONLY | O_DIRECTORY);
+            int fd = open(tok, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
             if (fd >= 0) {
                 struct xdg_data_dir d = {.fd = fd, .path = xstrdup(tok)};
                 tll_push_back(ret, d);
@@ -782,8 +786,8 @@ xdg_data_dirs(void)
 
         free(copy);
     } else {
-        int fd1 = open("/usr/local/share", O_RDONLY | O_DIRECTORY);
-        int fd2 = open("/usr/share", O_RDONLY | O_DIRECTORY);
+        int fd1 = open("/usr/local/share", O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+        int fd2 = open("/usr/share", O_RDONLY | O_DIRECTORY | O_CLOEXEC);
 
         if (fd1 >= 0) {
             struct xdg_data_dir d = {.fd = fd1, .path = xstrdup("/usr/local/share")};

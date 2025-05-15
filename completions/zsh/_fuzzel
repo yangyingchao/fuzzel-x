@@ -55,6 +55,7 @@ _arguments \
     '--line-height[override line height from font metrics, in points or pixels]:()' \
     '--letter-spacing[additional letter spacing, in points or pixels]:()' \
     '--layer[which layer to render the fuzzel window on (top)]:layer:(top overlay)' \
+    '--keyboard-focus[keyboard focus mode (exclusive)]:keyboard-focus:(exclusive on-demand)' \
     '--render-workers[number of render worker threads]:render-workers:()' \
     '--match-workers[number of match worker threads]:match-workers:()' \
     '--delayed-filter-ms[time in milliseconds to delay refiltering when there are lots of matches]:delayed-filter-ms:()' \
@@ -63,6 +64,7 @@ _arguments \
     '--dmenu0[dmenu compatibility mode; entries are read from stdin, NUL separated]' \
     '--index[print selected entry's index instead of its text (dmenu mode only)]' \
     '--with-nth[display the N:th column (tab separated) of each input line (dmenu mode only)]:with-nth:()' \
+    '--accept-nth[output the N:th column (tab separated) of each input line (dmenu mode only)]:with-nth:()' \
     '(-R --no-run-if-empty)'{-R,--no-run-if-empty}'[exit immediately without showing the UI if stdin is empty (dmenu mode only)]' \
     '--log-level[log level (warning)]:loglevel:(info warning error none)' \
     '--log-colorize[enable or disable colorization of log output on stderr]:logcolor:(never always auto)' \

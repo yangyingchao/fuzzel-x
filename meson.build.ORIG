@@ -1,5 +1,13 @@
+<<<<<<< HEAD
 project('fuzzel', ['c', 'cpp'],
+        version: '1.11.1',
+||||||| aa8553b
+project('fuzzel', 'c',
+        version: '1.11.1',
+=======
+project('fuzzel', 'c',
         version: '1.12.0',
+>>>>>>> upstream/releases/1.12
         license: 'MIT',
         meson_version: '>=0.58.0',
         default_options: [

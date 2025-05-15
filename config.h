@@ -151,6 +151,7 @@ struct config {
         bool exit_immediately_if_empty;
         char delim;
         unsigned int render_column;
+        unsigned int output_column;
     } dmenu;
 
     enum anchors anchor;
@@ -195,6 +196,7 @@ struct config {
     struct pt_or_px letter_spacing;
 
     enum zwlr_layer_shell_v1_layer layer;
+    enum zwlr_layer_surface_v1_keyboard_interactivity keyboard_focus;
     bool exit_on_kb_focus_loss;
 
     bool list_executables_in_path;

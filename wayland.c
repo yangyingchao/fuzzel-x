@@ -160,6 +160,8 @@ struct wayland {
     struct wl_surface *surface;
     struct zwlr_layer_shell_v1 *layer_shell;
     struct zwlr_layer_surface_v1 *layer_surface;
+    bool has_zwlr_layer_shell_kb_inter_on_demand;
+
     struct wp_viewport *viewport;
     struct wp_fractional_scale_v1 *fractional_scale;
 
@@ -536,7 +538,7 @@ execute_selected(struct seat *seat, bool as_is, int custom_success_exit_code)
     ssize_t index = app != NULL ? app->index : -1;
 
     if (wayl->conf->dmenu.enabled) {
-        dmenu_execute(app, index, wayl->prompt, wayl->conf->dmenu.mode);
+        dmenu_execute(app, index, wayl->prompt, wayl->conf->dmenu.mode, wayl->conf->dmenu.output_column);
         wayl->exit_code = custom_success_exit_code >= 0
             ? custom_success_exit_code
             : EXIT_SUCCESS;
@@ -1718,12 +1720,26 @@ handle_global(void *data, struct wl_registry *registry,
         if (!verify_iface_version(interface, version, required))
             return;
 
+#if defined(ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_ON_DEMAND_SINCE_VERSION)
+        const uint32_t preferred = ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_ON_DEMAND_SINCE_VERSION;
+        wayl->has_zwlr_layer_shell_kb_inter_on_demand =
+            version >= ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_ON_DEMAND_SINCE_VERSION;
+#else
+        const uint32_t preferred = required;
+#endif
+
         wayl->layer_shell = wl_registry_bind(
-            wayl->registry, name, &zwlr_layer_shell_v1_interface, required);
+            wayl->registry, name, &zwlr_layer_shell_v1_interface, min(version, preferred));
+
+        if (wayl->conf->keyboard_focus == ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_ON_DEMAND &&
+            !wayl->has_zwlr_layer_shell_kb_inter_on_demand) {
+            LOG_WARN("keyboard-focus=on-demand requires zwlr_layer_shell_v1 version: %d, found version: %d",
+                ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_ON_DEMAND_SINCE_VERSION, version);
+        }
     }
 
     else if (strcmp(interface, wl_seat_interface.name) == 0) {
-        const uint32_t required = 4;
+        const uint32_t required = 5;
         if (!verify_iface_version(interface, version, required))
             return;
 
@@ -2382,7 +2398,10 @@ wayl_init(const struct config *conf, struct fdm *fdm,
             wayl->fractional_scale, &fractional_scale_listener, wayl);
     }
 
-    zwlr_layer_surface_v1_set_keyboard_interactivity(wayl->layer_surface, 1);
+    zwlr_layer_surface_v1_set_keyboard_interactivity(wayl->layer_surface,
+        wayl->has_zwlr_layer_shell_kb_inter_on_demand
+            ? wayl->conf->keyboard_focus
+            : ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_EXCLUSIVE);
 
     zwlr_layer_surface_v1_add_listener(
         wayl->layer_surface, &layer_surface_listener, wayl);

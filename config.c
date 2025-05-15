@@ -740,7 +740,7 @@ parse_section_main(struct context *ctx)
             return false;
         }
 
-        FILE *include = fopen(include_path, "r");
+        FILE *include = fopen(include_path, "re");
 
         if (include == NULL) {
             LOG_CONTEXTUAL_ERRNO("failed to open");
@@ -988,6 +988,18 @@ parse_section_main(struct context *ctx)
         }
 
         LOG_CONTEXTUAL_ERR("not one of 'top', 'overay'");
+        return false;
+    }
+
+    else if (strcmp(key, "keyboard-focus") == 0) {
+        if (strcasecmp(value, "exclusive") == 0) {
+            conf->keyboard_focus = ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_EXCLUSIVE;
+            return true;
+        } else if (strcasecmp(value, "on-demand") == 0) {
+            conf->keyboard_focus = ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_ON_DEMAND;
+            return true;
+        }
+        LOG_CONTEXTUAL_ERR("not one of 'exclusive', 'on-demand'");
         return false;
     }
 
@@ -1626,6 +1638,7 @@ config_load(struct config *conf, const char *conf_path,
             .exit_immediately_if_empty = false,
             .delim = '\n',
             .render_column = 0,
+            .output_column = 0,
         },
         .anchor = ANCHOR_CENTER,
         .margin = {
@@ -1661,6 +1674,7 @@ config_load(struct config *conf, const char *conf_path,
         .line_height = {-1, 0.0},
         .letter_spacing = {0},
         .layer = ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY,
+        .keyboard_focus = ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_EXCLUSIVE,
         .exit_on_kb_focus_loss = true,
         .list_executables_in_path = false,
         .cache_path = NULL,
@@ -1676,7 +1690,7 @@ config_load(struct config *conf, const char *conf_path,
     }
 
     if (conf_path != NULL) {
-        int fd = open(conf_path, O_RDONLY);
+        int fd = open(conf_path, O_RDONLY | O_CLOEXEC);
         if (fd < 0) {
             LOG_ERRNO("%s: failed to open", conf_path);
             goto out;
