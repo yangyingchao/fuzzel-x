@@ -97,6 +97,18 @@ struct config_key_binding {
 };
 DEFINE_LIST(struct config_key_binding);
 
+enum scaling_filter {
+    SCALING_FILTER_NONE,
+    SCALING_FILTER_NEAREST,
+    SCALING_FILTER_BILINEAR,
+    SCALING_FILTER_BOX,
+    SCALING_FILTER_LINEAR,
+    SCALING_FILTER_CUBIC,
+    SCALING_FILTER_LANCZOS2,
+    SCALING_FILTER_LANCZOS3,
+    SCALING_FILTER_LANCZOS3_STRETCHED,
+};
+
 struct config {
     char *output;
     char32_t *prompt;
@@ -194,6 +206,8 @@ struct config {
     } border;
 
     float image_size_ratio;
+
+    enum scaling_filter png_scaling_filter;
 
     struct pt_or_px line_height;
     struct pt_or_px letter_spacing;

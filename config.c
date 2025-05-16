@@ -984,6 +984,18 @@ parse_section_main(struct context *ctx)
         return true;
     }
 
+    else if (strcmp(key, "scaling-filter") == 0) {
+        _Static_assert(sizeof(conf->png_scaling_filter) == sizeof(int),
+            "enum is not 32-bit");
+
+        return value_to_enum(
+            ctx,
+            (const char *[]){"none", "nearest", "bilinear", "box", "linear",
+                             "cubic", "lanczos2", "lanczos3",
+                             "lanczos3-stretched", NULL},
+            (int *)&conf->png_scaling_filter);
+    }
+
     else if (strcmp(key, "layer") == 0) {
         if (strcasecmp(value, "top") == 0) {
             conf->layer = ZWLR_LAYER_SHELL_V1_LAYER_TOP;
@@ -1664,6 +1676,7 @@ config_load(struct config *conf, const char *conf_path,
             .radius = 10u,
         },
         .image_size_ratio = 0.5,
+        .png_scaling_filter = SCALING_FILTER_BOX,
         .line_height = {-1, 0.0},
         .letter_spacing = {0},
         .layer = ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY,

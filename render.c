@@ -915,7 +915,8 @@ render_svg(struct icon *icon, int x, int y, int size,
 #if defined(FUZZEL_ENABLE_PNG_LIBPNG)
 static void
 render_png_libpng(struct icon *icon, int x, int y, int size,
-                  pixman_image_t *pix, cairo_t *cairo)
+                  pixman_image_t *pix, cairo_t *cairo,
+                  enum scaling_filter scaling_filter)
 {
 #if defined(FUZZEL_ENABLE_CAIRO)
     cairo_surface_flush(cairo_get_target(cairo));
@@ -937,34 +938,111 @@ render_png_libpng(struct icon *icon, int x, int y, int size,
             &scale_transform, &_scale_transform);
         pixman_image_set_transform(png, &scale_transform);
 
-        if (height >= 1000) {
+        const int largest_side = max(width, height);
+
+        if (largest_side >= 1024) {
             if (!icon->png_size_warned) {
                 LOG_WARN(
                     "%s: PNG is too large (%dx%d); "
-                    "downscaling using a less precise filter",
+                    "downscaling using a less precise filter (fast)",
                     icon->path, width, height);
                 icon->png_size_warned = true;
             }
-            pixman_image_set_filter(png, PIXMAN_FILTER_FAST, NULL, 0);
-        } else {
-            int param_count = 0;
-            pixman_kernel_t kernel = PIXMAN_KERNEL_LANCZOS3;
-            pixman_fixed_t *params = pixman_filter_create_separable_convolution(
-                &param_count,
-                pixman_double_to_fixed(1. / scale),
-                pixman_double_to_fixed(1. / scale),
-                kernel, kernel,
-                kernel, kernel,
-                pixman_int_to_fixed(1),
-                pixman_int_to_fixed(1));
 
-            if (params != NULL || param_count == 0) {
-                pixman_image_set_filter(
-                    png, PIXMAN_FILTER_SEPARABLE_CONVOLUTION,
-                    params, param_count);
+            pixman_image_set_filter(png, PIXMAN_FILTER_FAST, NULL, 0);
+        }
+
+        else {
+
+            bool slow_scaling_filter = false;
+
+            switch (scaling_filter) {
+            case SCALING_FILTER_NONE:
+            case SCALING_FILTER_NEAREST:
+            case SCALING_FILTER_BILINEAR:
+            case SCALING_FILTER_BOX:
+                slow_scaling_filter = false;
+                break;
+
+            case SCALING_FILTER_CUBIC:
+            case SCALING_FILTER_LANCZOS3:
+            case SCALING_FILTER_LINEAR:
+            case SCALING_FILTER_LANCZOS2:
+            case SCALING_FILTER_LANCZOS3_STRETCHED:
+                slow_scaling_filter = true;
+                break;
             }
 
-            free(params);
+            if (slow_scaling_filter && largest_side >= 256) {
+                if (!icon->png_size_warned) {
+                    LOG_WARN(
+                        "%s: PNG is too large (%dx%d); "
+                        "downscaling using a less precise filter (box)",
+                        icon->path, width, height);
+                    icon->png_size_warned = true;
+                }
+
+                scaling_filter = SCALING_FILTER_BOX;
+            }
+
+            switch (scaling_filter) {
+            case SCALING_FILTER_NONE:
+                break;
+
+            /*
+             * "simple" filters
+             */
+
+            case SCALING_FILTER_NEAREST:
+                pixman_image_set_filter(png, PIXMAN_FILTER_NEAREST, NULL, 0);
+                break;
+
+            case SCALING_FILTER_BILINEAR:
+                pixman_image_set_filter(png, PIXMAN_FILTER_BILINEAR, NULL, 0);
+                break;
+
+            /*
+             * Separable convolution filters
+             */
+            case SCALING_FILTER_CUBIC:
+            case SCALING_FILTER_LANCZOS3:
+            case SCALING_FILTER_BOX:
+            case SCALING_FILTER_LINEAR:
+            case SCALING_FILTER_LANCZOS2:
+            case SCALING_FILTER_LANCZOS3_STRETCHED: {
+
+                pixman_kernel_t kernel;
+
+                switch (scaling_filter) {
+                case SCALING_FILTER_CUBIC: kernel = PIXMAN_KERNEL_CUBIC; break;
+                case SCALING_FILTER_LANCZOS3: kernel = PIXMAN_KERNEL_LANCZOS3; break;
+                case SCALING_FILTER_BOX: kernel = PIXMAN_KERNEL_BOX; break;
+                case SCALING_FILTER_LINEAR: kernel = PIXMAN_KERNEL_LINEAR; break;
+                case SCALING_FILTER_LANCZOS2: kernel = PIXMAN_KERNEL_LANCZOS2; break;
+                case SCALING_FILTER_LANCZOS3_STRETCHED: kernel = PIXMAN_KERNEL_LANCZOS3_STRETCHED; break;
+                default: assert(false); kernel = PIXMAN_KERNEL_CUBIC; break;
+                }
+
+                int param_count = 0;
+                pixman_fixed_t *params = pixman_filter_create_separable_convolution(
+                    &param_count,
+                    pixman_double_to_fixed(1. / scale),
+                    pixman_double_to_fixed(1. / scale),
+                    kernel, kernel,
+                    kernel, kernel,
+                    pixman_int_to_fixed(1),
+                    pixman_int_to_fixed(1));
+
+                if (params != NULL || param_count == 0) {
+                    pixman_image_set_filter(
+                        png, PIXMAN_FILTER_SEPARABLE_CONVOLUTION,
+                        params, param_count);
+                }
+
+                free(params);
+                break;
+            }
+            }
         }
 
         width *= scale;
@@ -998,7 +1076,8 @@ render_png_libpng(struct icon *icon, int x, int y, int size,
 
 static void
 render_png(struct icon *icon, int x, int y, int size, pixman_image_t *pix,
-           cairo_t *cairo, bool gamma_correct, bool print_timing_info)
+           cairo_t *cairo, bool gamma_correct, bool print_timing_info,
+           enum scaling_filter scaling_filter)
 {
     assert(icon->type == ICON_PNG);
 
@@ -1025,7 +1104,7 @@ render_png(struct icon *icon, int x, int y, int size, pixman_image_t *pix,
     gettimeofday(&start, NULL);
 
 #if defined(FUZZEL_ENABLE_PNG_LIBPNG)
-    render_png_libpng(icon, x, y, size, pix, cairo);
+    render_png_libpng(icon, x, y, size, pix, cairo, scaling_filter);
 #endif
 
     if (print_timing_info) {
@@ -1142,7 +1221,8 @@ render_one_match_entry(const struct render *render, const struct matches *matche
 
         case ICON_PNG:
             render_png(icon, img_x, img_y, size, pix, cairo,
-                       render->gamma_correct, render->conf->print_timing_info);
+                       render->gamma_correct, render->conf->print_timing_info,
+                       render->conf->png_scaling_filter);
             break;
 
         case ICON_SVG:

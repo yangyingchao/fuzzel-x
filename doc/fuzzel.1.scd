@@ -399,6 +399,23 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	refiltering to delayed refiltering (see
 	*--delayed-filter-ms*). Default: _20000_.
 
+*--scaling-filter*=_FILTER_
+	Scaling filter to use when down scaling PNGs. One of *none*,
+	*nearest*, *bilinear*, *box*, *linear*, *cubic*, *lanczos2*,
+	*lanczos3* and *lanczos3-stretched*.
+	
+	*none*, *nearest* and *bilinear* are the fastest options, but also
+	have the worst looking results.
+	
+	*cubic*, *lanczos2*, *lanczos3* and *lanczos3-stretched* are the
+	slowest options, with the best looking results.
+	
+	*box*, and to some degree, *linear*, are in the middle,
+	performance wise, while in most cases still being just as, or
+	close to, as good as *cubic* and the lanczos filters.
+	
+	Default: _box_
+
 *-d*,*--dmenu*
 	dmenu compatibility mode. In this mode, the list entries are read
 	from stdin (newline separated). The selected entry is printed to

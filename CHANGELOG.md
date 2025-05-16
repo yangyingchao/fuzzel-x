@@ -41,10 +41,14 @@
   gamma-correct blending **is not supported in cairo enabled builds of
   fuzzel**, due to the lack of 16-bit image buffers in cairo
   ([#546][546]).
+* `scaling-filter` option (and the corresponding `--scaling-filter`
+  command line option). This option defines which scaling filter
+  fuzzel uses when down scaling PNGs ([#553][553]).
 
 [504]: https://codeberg.org/dnkl/fuzzel/pulls/504
 [512]: https://codeberg.org/dnkl/fuzzel/pulls/512
 [546]: https://codeberg.org/dnkl/fuzzel/issues/546
+[553]: https://codeberg.org/dnkl/fuzzel/issues/553
 
 
 ### Changed
@@ -57,8 +61,8 @@
 * In application mode (not dmenu), fuzzel now ignores icon theme
   directories whose `Context` field is not `Application` or
   `Apps`. This is for performance reasons ([#553][553])
-
-[553]: https://codeberg.org/dnkl/fuzzel/issues/553
+* Default down scaling filter changed from `lanczos3` to `box`
+  ([#553][553]).
 
 
 ### Deprecated

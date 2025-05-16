@@ -421,6 +421,7 @@ print_usage(const char *prog_name)
            "                                 (300)\n"
            "     --delayed-filter-limit=N    used delayed refiltering when the number of\n"
            "                                 matches exceeds this number (10000)\n"
+           "     --scaling-filter=FILTER     filter to use when down scaling PNGs\n"
            "  -d,--dmenu                     dmenu compatibility mode\n"
            "     --dmenu0                    like --dmenu, but input is NUL separated\n"
            "                                 instead of newline separated\n"
@@ -801,6 +802,7 @@ main(int argc, char *const *argv)
     #define OPT_DMENU_ACCEPT_NTH             299
     #define OPT_GAMMA_CORRECT                300
     #define OPT_PRINT_TIMINGS                301
+    #define OPT_SCALING_FILTER               302
 
     static const struct option longopts[] = {
         {"config",               required_argument, 0, OPT_CONFIG},
@@ -865,6 +867,7 @@ main(int argc, char *const *argv)
         {"counter",              no_argument,       0, OPT_COUNTER},
         {"delayed-filter-ms",    required_argument, 0, OPT_DELAYED_FILTER_MS},
         {"delayed-filter-limit", required_argument, 0, OPT_DELAYED_FILTER_LIMIT},
+        {"scaling-filter",       required_argument, 0, OPT_SCALING_FILTER},
 
         /* dmenu mode */
         {"dmenu",                no_argument,       0, 'd'},
@@ -948,6 +951,7 @@ main(int argc, char *const *argv)
         bool placeholder_color_set:1;
         bool counter_set:1;
         bool print_timing_info_set:1;
+        bool scaling_filter_set:1;
     } cmdline_overrides = {{0}};
 
     setlocale(LC_CTYPE, "");
@@ -1738,6 +1742,32 @@ main(int argc, char *const *argv)
             cmdline_overrides.delayed_filter_limit_set = true;
             break;
 
+        case OPT_SCALING_FILTER:
+            if (strcmp(optarg, "none") == 0)
+                cmdline_overrides.conf.png_scaling_filter = SCALING_FILTER_NONE;
+            else if (strcmp(optarg, "nearest") == 0)
+                cmdline_overrides.conf.png_scaling_filter = SCALING_FILTER_NEAREST;
+            else if (strcmp(optarg, "bilinear") == 0)
+                cmdline_overrides.conf.png_scaling_filter = SCALING_FILTER_BILINEAR;
+            else if (strcmp(optarg, "box") == 0)
+                cmdline_overrides.conf.png_scaling_filter = SCALING_FILTER_BOX;
+            else if (strcmp(optarg, "linear") == 0)
+                cmdline_overrides.conf.png_scaling_filter = SCALING_FILTER_LINEAR;
+            else if (strcmp(optarg, "cubic") == 0)
+                cmdline_overrides.conf.png_scaling_filter = SCALING_FILTER_CUBIC;
+            else if (strcmp(optarg, "lanczos2") == 0)
+                cmdline_overrides.conf.png_scaling_filter = SCALING_FILTER_LANCZOS2;
+            else if (strcmp(optarg, "lanczos3") == 0)
+                cmdline_overrides.conf.png_scaling_filter = SCALING_FILTER_LANCZOS3;
+            else if (strcmp(optarg, "lanczos3-stretched") == 0)
+                cmdline_overrides.conf.png_scaling_filter = SCALING_FILTER_LANCZOS3_STRETCHED;
+            else {
+                fprintf(stderr, "%s: invalid scaling-filter", optarg);
+                return EXIT_FAILURE;
+            }
+            cmdline_overrides.scaling_filter_set = true;
+            break;
+
         case OPT_PRINT_TIMINGS:
             cmdline_overrides.conf.print_timing_info = true;
             cmdline_overrides.print_timing_info_set = true;
@@ -1941,6 +1971,8 @@ main(int argc, char *const *argv)
     }
     if (cmdline_overrides.print_timing_info_set)
         conf.print_timing_info = cmdline_overrides.conf.print_timing_info;
+    if (cmdline_overrides.scaling_filter_set)
+        conf.png_scaling_filter = cmdline_overrides.conf.png_scaling_filter;
 
     if (conf.dmenu.enabled) {
         /* We don't have any meta data in dmenu mode */
