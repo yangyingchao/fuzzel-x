@@ -1329,6 +1329,8 @@ render_init(const struct config *conf, mtx_t *icon_lock)
         render->workers.count++;
     }
 
+    LOG_INFO("using %hu render worker threads", render->workers.count);
+
     return render;
 
 err_free_semaphores_and_lock:

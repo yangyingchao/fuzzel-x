@@ -422,6 +422,8 @@ matches_init(struct fdm *fdm, const struct prompt *prompt,
 
             matches->workers.count++;
         }
+
+        LOG_INFO("using %hu match worker threads", matches->workers.count);
     }
 
     int timer_fd = timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
