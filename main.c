@@ -595,7 +595,7 @@ populate_apps(void *_ctx)
 
     if (icons_enabled) {
         gettimeofday(&ctx->timing.icons_theme.start, NULL);
-        icon_theme_list_t icon_themes = icon_load_theme(icon_theme);
+        icon_theme_list_t icon_themes = icon_load_theme(icon_theme, !dmenu_enabled);
         if (tll_length(icon_themes) > 0)
             LOG_INFO("theme: %s", tll_front(icon_themes).name);
         else

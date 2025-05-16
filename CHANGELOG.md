@@ -54,6 +54,11 @@
 * wayland-protocols >= 1.41 is now required.
 * pixman >= 0.46.0 is now required.
 * fcft >= 3.3.1 is now required.
+* In application mode (not dmenu), fuzzel now ignores icon theme
+  directories whose `Context` field is not `Application` or
+  `Apps`. This is for performance reasons ([#553][553])
+
+[553]: https://codeberg.org/dnkl/fuzzel/issues/553
 
 
 ### Deprecated

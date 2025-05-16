@@ -34,8 +34,25 @@
 
 typedef tll(char *) theme_names_t;
 
+static bool
+dir_context_is_allowed(const char *context)
+{
+    static const char *const allowed_contexts[] = {"applications", "apps"};
+
+    if (context == NULL)
+        return NULL;
+
+    for (size_t i = 0; i < sizeof(allowed_contexts) / sizeof(allowed_contexts[0]); i++) {
+        if (strcasecmp(context, allowed_contexts[i]) == 0)
+            return true;
+    }
+
+    return false;
+}
+
 static void
-parse_theme(FILE *index, struct icon_theme *theme, theme_names_t *themes_to_load)
+parse_theme(FILE *index, struct icon_theme *theme, bool filter_context,
+            theme_names_t *themes_to_load)
 {
     char *section = NULL;
     int size = -1;
@@ -72,19 +89,20 @@ parse_theme(FILE *index, struct icon_theme *theme, theme_names_t *themes_to_load
         }
 
         if (line[0] == '[' && line[len - 1] == ']') {
+            if (dir_context_is_allowed(context)) {
+                tll_foreach(theme->dirs, it) {
+                    struct icon_dir *d = &it->item;
 
-            tll_foreach(theme->dirs, it) {
-                struct icon_dir *d = &it->item;
+                    if (section == NULL || strcmp(d->path, section) != 0)
+                        continue;
 
-                if (section == NULL || strcmp(d->path, section) != 0)
-                    continue;
-
-                d->size = size;
-                d->min_size = min_size >= 0 ? min_size : size;
-                d->max_size = max_size >= 0 ? max_size : size;
-                d->scale = scale;
-                d->threshold = threshold;
-                d->type = type;
+                    d->size = size;
+                    d->min_size = min_size >= 0 ? min_size : size;
+                    d->max_size = max_size >= 0 ? max_size : size;
+                    d->scale = scale;
+                    d->threshold = threshold;
+                    d->type = type;
+                }
             }
 
             free(section);
@@ -164,18 +182,20 @@ parse_theme(FILE *index, struct icon_theme *theme, theme_names_t *themes_to_load
         free(line);
     }
 
-    tll_foreach(theme->dirs, it) {
-        struct icon_dir *d = &it->item;
+    if (dir_context_is_allowed(context)) {
+        tll_foreach(theme->dirs, it) {
+            struct icon_dir *d = &it->item;
 
-        if (section == NULL || strcmp(d->path, section) != 0)
-            continue;
+            if (section == NULL || strcmp(d->path, section) != 0)
+                continue;
 
-        d->size = size;
-        d->min_size = min_size >= 0 ? min_size : size;
-        d->max_size = max_size >= 0 ? max_size : size;
-        d->scale = scale;
-        d->threshold = threshold;
-        d->type = type;
+            d->size = size;
+            d->min_size = min_size >= 0 ? min_size : size;
+            d->max_size = max_size >= 0 ? max_size : size;
+            d->scale = scale;
+            d->threshold = threshold;
+            d->type = type;
+        }
     }
 
     tll_foreach(theme->dirs, it) {
@@ -191,7 +211,7 @@ parse_theme(FILE *index, struct icon_theme *theme, theme_names_t *themes_to_load
 
 static bool
 load_theme_in(const char *dir, struct icon_theme *theme,
-              theme_names_t *themes_to_load)
+              bool filter_context, theme_names_t *themes_to_load)
 {
     char path[PATH_MAX];
     xsnprintf(path, sizeof(path), "%s/index.theme", dir);
@@ -200,7 +220,7 @@ load_theme_in(const char *dir, struct icon_theme *theme,
     if (index == NULL)
         return false;
 
-    parse_theme(index, theme, themes_to_load);
+    parse_theme(index, theme, filter_context, themes_to_load);
     fclose(index);
     return true;
 }
@@ -218,7 +238,7 @@ already_loaded_theme(const char *theme_name, icon_theme_list_t themes)
 
 static void
 discover_and_load_theme(const char *theme_name, xdg_data_dirs_t dirs,
-                        theme_names_t *themes_to_load,
+                        theme_names_t *themes_to_load, bool filter_context,
                         icon_theme_list_t *themes)
 {
     tll_foreach(dirs, dir_it) {
@@ -228,7 +248,7 @@ discover_and_load_theme(const char *theme_name, xdg_data_dirs_t dirs,
         sprintf(path, "%s/icons/%s", dir_it->item.path, theme_name);
 
         struct icon_theme theme = {0};
-        if (load_theme_in(path, &theme, themes_to_load)) {
+        if (load_theme_in(path, &theme, filter_context, themes_to_load)) {
             theme.name = xstrdup(theme_name);
             tll_push_back(*themes, theme);
         }
@@ -277,7 +297,7 @@ get_icon_dirs(void)
 }
 
 icon_theme_list_t
-icon_load_theme(const char *name)
+icon_load_theme(const char *name, bool filter_context)
 {
     /* List of themes; first item is the primary theme, subsequent
      * items are inherited items (i.e. fallback themes) */
@@ -304,7 +324,7 @@ icon_load_theme(const char *name)
             continue;
         }
 
-        discover_and_load_theme(theme_name, dirs, &themes_to_load, &themes);
+        discover_and_load_theme(theme_name, dirs, &themes_to_load, filter_context, &themes);
         free(theme_name);
     }
 
@@ -322,7 +342,7 @@ icon_load_theme(const char *name)
          * hicolor has no dependency, thus the themes_to_load here is
          * assumed to stay empty and will be disregarded.
          */
-        discover_and_load_theme("hicolor", dirs, &themes_to_load, &themes);
+        discover_and_load_theme("hicolor", dirs, &themes_to_load, filter_context, &themes);
     }
 
     xdg_data_dirs_destroy(dirs);
