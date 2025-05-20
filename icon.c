@@ -89,7 +89,7 @@ parse_theme(FILE *index, struct icon_theme *theme, bool filter_context,
         }
 
         if (line[0] == '[' && line[len - 1] == ']') {
-            if (dir_context_is_allowed(context)) {
+            if (!filter_context || dir_context_is_allowed(context)) {
                 tll_foreach(theme->dirs, it) {
                     struct icon_dir *d = &it->item;
 
@@ -182,7 +182,7 @@ parse_theme(FILE *index, struct icon_theme *theme, bool filter_context,
         free(line);
     }
 
-    if (dir_context_is_allowed(context)) {
+    if (!filter_context || dir_context_is_allowed(context)) {
         tll_foreach(theme->dirs, it) {
             struct icon_dir *d = &it->item;
 
