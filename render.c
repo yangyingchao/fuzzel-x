@@ -129,31 +129,62 @@ pt_or_px_as_pixels(const struct render *render, const struct pt_or_px *pt_or_px)
         : pt_or_px->px;
 }
 
-static void
+static pixman_region32_t
+rounded_rectangle_region(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t radius)
+{
+
+    int rect_count = ( radius + radius ) + 1;
+    pixman_box32_t rects[rect_count];
+
+    for (int i = 0; i <= radius; i++) {
+        uint16_t ydist = radius - i;
+        uint16_t curve = sqrt(radius * radius - ydist * ydist);
+
+        rects[i] = (pixman_box32_t) {
+            x + radius - curve,
+            y + i,
+            x + width - radius + curve,
+            y + i + 1
+        };
+
+        rects[radius + i] = (pixman_box32_t) {
+            x + radius - curve,
+            y + height - i,
+            x + width - radius + curve,
+            y + height - i + 1
+        };
+    }
+
+    rects[(radius * 2)] = (pixman_box32_t){
+        x,
+        y + radius,
+        x + width,
+        y + height + 1 - radius
+    };
+
+    pixman_region32_t region;
+    pixman_region32_init_rects(&region, rects, rect_count);
+    return region;
+}
+
+static inline void
+fill_region32(pixman_op_t op, pixman_image_t* dest,
+                       const pixman_color_t* color, pixman_region32_t* region)
+{
+    int rectc;
+    pixman_box32_t *rects = pixman_region32_rectangles(region, &rectc);
+    pixman_image_fill_boxes(op, dest, color, rectc, rects);
+
+}
+
+static inline void
 fill_rounded_rectangle(pixman_op_t op, pixman_image_t* dest,
                        const pixman_color_t* color, int16_t x, int16_t y,
                        uint16_t width, uint16_t height, uint16_t radius)
 {
-    int rect_count = ( radius + radius ) + 1;
-    pixman_rectangle16_t rects[rect_count];
-
-    for (int i = 0; i <= radius; i++){
-        uint16_t ydist = radius - i;
-        uint16_t curve = sqrt(radius * radius - ydist * ydist);
-
-        rects[i] = (pixman_rectangle16_t){
-            x + radius - curve, y + i, width - radius * 2 + curve * 2, 1
-        };
-
-        rects[radius + i] = (pixman_rectangle16_t){
-            x + radius - curve, y + height - i, width - radius * 2 + curve * 2, 1
-        };
-    }
-
-    rects[(radius * 2)] = (pixman_rectangle16_t){
-        x, y + radius, width, height + 1 - radius * 2
-    };
-    pixman_image_fill_rectangles(op, dest, color,rect_count, rects);
+    pixman_region32_t region = rounded_rectangle_region(x, y, width, height, radius);
+    fill_region32(op, dest, color, &region);
+    pixman_region32_fini(&region);
 }
 
 void
@@ -196,6 +227,7 @@ render_background(const struct render *render, struct buffer *buf)
         const double brd_rad_scaled = radius * msaa_scale;
         int w = buf->width * msaa_scale;
         int h = buf->height * msaa_scale;
+        int bg_rad = brd_rad_scaled * (1.0 - (float)brd_sz_scaled / (float)brd_rad_scaled);
 
         pixman_image_t *bg_img;
         if (msaa_scale != 1){
@@ -213,7 +245,7 @@ render_background(const struct render *render, struct buffer *buf)
             PIXMAN_OP_SRC, bg_img, &bg, brd_sz_scaled, brd_sz_scaled,
             w-(brd_sz_scaled*2),
             h-(brd_sz_scaled*2),
-            max(brd_rad_scaled - brd_sz_scaled, 0));
+            bg_rad);
 
         if (msaa_scale != 1){
             pixman_f_transform_t ftrans;
