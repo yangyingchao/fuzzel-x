@@ -219,8 +219,10 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	window height. Default: _15_.
 
 *-w*,*--width*
-	Window width, in characters. Margins and borders not
-	included. Default: _30_.
+	Window width, in characters. Margins and borders not included. For
+	variable width fonts this is an estimate, as the exact number of
+	characters that will fit depends on which characters are being
+	displayed. Default: _30_.
 
 *--tabs*=_COUNT_
 	Number of spaces a tab is expanded to. Default: _8_.

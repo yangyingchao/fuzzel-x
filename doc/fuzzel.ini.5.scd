@@ -270,8 +270,10 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	Number of matches to show. Default: _15_.
 
 *width*
-	Window width, in characters. Border and margins are not included
-	in this. Default: _30_.
+	Window width, in characters. Margins and borders not included. For
+	variable width fonts this is an estimate, as the exact number of
+	characters that will fit depends on which characters are being
+	displayed. Default: _30_.
 
 *tabs*
 	Number of spaces a tab is expanded to. Default: _8_.

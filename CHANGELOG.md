@@ -63,6 +63,10 @@
   `Apps`. This is for performance reasons ([#553][553])
 * Default down scaling filter changed from `lanczos3` to `box`
   ([#553][553]).
+* Use the width of 'o' instead of 'W' when calculating the window
+  width ([#560][560]).
+
+[560]: https://codeberg.org/dnkl/fuzzel/issues/560
 
 
 ### Deprecated

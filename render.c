@@ -1564,7 +1564,7 @@ render_set_font_and_update_sizes(struct render *render, struct fcft_font *font,
     render->size_font_by_dpi = size_font_by_dpi;
 
     const struct fcft_glyph *W = fcft_rasterize_char_utf32(
-        font, U'W', render->subpixel);
+        font, U'o', render->subpixel);
 
     const unsigned x_margin = render->conf->pad.x * scale;
     const unsigned y_margin = render->conf->pad.y * scale;
