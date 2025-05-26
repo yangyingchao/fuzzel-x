@@ -80,6 +80,7 @@
 * Match highlighting being offset when `--with-nth` is used
   ([#551][551]).
 * Too wide PNGs bleeding into the text ([#313][313]).
+* Lookup of icon themes in `~/.icons` and `/usr/share/pixmans`.
 
 [507]: https://codeberg.org/dnkl/fuzzel/issues/507
 [551]: https://codeberg.org/dnkl/fuzzel/issues/551

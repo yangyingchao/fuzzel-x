@@ -243,9 +243,8 @@ discover_and_load_theme(const char *theme_name, xdg_data_dirs_t dirs,
 {
     tll_foreach(dirs, dir_it) {
         char path[strlen(dir_it->item.path) + 1 +
-                  strlen("icons") + 1 +
                   strlen(theme_name) + 1];
-        sprintf(path, "%s/icons/%s", dir_it->item.path, theme_name);
+        sprintf(path, "%s/%s", dir_it->item.path, theme_name);
 
         struct icon_theme theme = {0};
         if (load_theme_in(path, &theme, filter_context, themes_to_load)) {
@@ -263,6 +262,23 @@ get_icon_dirs(void)
      */
 
     xdg_data_dirs_t dirs = xdg_data_dirs();
+
+    tll_foreach(dirs, it) {
+        struct xdg_data_dir *d = &it->item;
+        int fd = openat(d->fd, "icons", O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+        if (fd >= 0) {
+            char *p = xasprintf("%s/icons", d->path);
+            free(d->path);
+            close(d->fd);
+
+            d->path = p;
+            d->fd = fd;
+        } else {
+            free(d->path);
+            close(d->fd);
+            tll_remove(dirs, it);
+        }
+    }
 
     const char *home = getenv("HOME");
     if (home != NULL) {
@@ -616,11 +632,10 @@ lookup_icons(const icon_theme_list_t *themes, int icon_size,
             const struct icon_dir *icon_dir = &icon_dir_it->item;
 
             char theme_relative_path[
-                5 + 1 + /* “icons” */
                 strlen(theme->name) + 1 +
                 strlen(icon_dir->path) + 1];
 
-            sprintf(theme_relative_path, "icons/%s/%s",
+            sprintf(theme_relative_path, "%s/%s",
                     theme->name, icon_dir->path);
 
             tll_foreach(*xdg_dirs, xdg_dir_it) {
@@ -720,7 +735,7 @@ lookup_icons(const icon_theme_list_t *themes, int icon_size,
                     }
 
                     char *full_path = xasprintf(
-                        "%s/icons/%s/%s/%s",
+                        "%s/%s/%s/%s",
                         xdg_dir->path, theme->name, icon_dir->path, path);
 
                     if ((path[len - 3] == 's' &&
@@ -752,13 +767,12 @@ lookup_icons(const icon_theme_list_t *themes, int icon_size,
 
             size_t path_len =
                 strlen(icon->min_diff.xdg_dir->path) + 1 +
-                5 + 1 + /* “icons” */
                 strlen(icon->min_diff.theme->name) + 1 +
                 strlen(icon->min_diff.icon_dir->path) + 1 +
                 strlen(icon->name) + 4;
 
             char full_path[path_len + 1];
-            sprintf(full_path, "%s/icons/%s/%s/%s.%s",
+            sprintf(full_path, "%s/%s/%s/%s.%s",
                     icon->min_diff.xdg_dir->path,
                     icon->min_diff.theme->name,
                     icon->min_diff.icon_dir->path,
