@@ -151,7 +151,7 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	
 	Example: _Adwaita_.
 	
-	Default: _hicolor_.
+	Default: _default_.
 
 *-I*,*--no-icons*
 	Do not render any icons.

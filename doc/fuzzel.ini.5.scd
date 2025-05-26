@@ -145,7 +145,7 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 
 *icon-theme*
 	Icon theme. Note that the name is case sensitive. Default:
-	_hicolor_.
+	_default_.
 
 *icons-enabled*
 	Boolean. When enabled, application icons (from the selected

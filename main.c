@@ -351,7 +351,7 @@ print_usage(const char *prog_name)
            "                                 (monospace)\n"
            "     --use-bold                  allow fuzzel to use bold fonts\n"
            "  -D,--dpi-aware=no|yes|auto     enable or disable DPI aware rendering (auto)\n"
-           "     --icon-theme=NAME           icon theme name (\"hicolor\")\n"
+           "     --icon-theme=NAME           icon theme name (\"default\")\n"
            "  -I,--no-icons                  do not render any icons\n"
            "     --hide-before-typing    hide application list until something is typed\n"
            "  -F,--fields=FIELDS             comma separated list of XDG Desktop entry\n"
