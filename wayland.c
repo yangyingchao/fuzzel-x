@@ -1128,9 +1128,9 @@ wl_pointer_axis(void *data, struct wl_pointer *wl_pointer,
     bool refresh = false;
 
     if (value < 0) {
-        refresh = matches_selected_prev_page(wayl->matches, true);
+        refresh = matches_selected_prev(wayl->matches, true);
     } else if (value > 0) {
-        refresh = matches_selected_next_page(wayl->matches, true);
+        refresh = matches_selected_next(wayl->matches, true);
     }
 
     if (refresh) {

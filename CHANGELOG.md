@@ -53,6 +53,7 @@
 
 ### Changed
 
+* Scrolling speed is now line-by-line instead of page-by-page ([#586][586])
 * Number of render workers is now automatically limited to the number
   of displayed entries.
 * wayland-protocols >= 1.41 is now required.
@@ -88,11 +89,13 @@
 [507]: https://codeberg.org/dnkl/fuzzel/issues/507
 [551]: https://codeberg.org/dnkl/fuzzel/issues/551
 [313]: https://codeberg.org/dnkl/fuzzel/issues/313
-
+[586]: https://codeberg.org/dnkl/fuzzel/issues/586
 
 ### Security
 ### Contributors
 
+ * dnkl
+ * Mark Stosberg
 
 ## 1.12.0
 
