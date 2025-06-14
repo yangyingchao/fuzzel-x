@@ -66,6 +66,8 @@
 * Use the width of 'o' instead of 'W' when calculating the window
   width ([#560][560]).
 * Default icon theme from `hicolor` to `default`.
+* Error out (with an appropriate error message) if the command line we
+  attempt to execute has non-specification-compliant quoting.
 
 [560]: https://codeberg.org/dnkl/fuzzel/issues/560
 

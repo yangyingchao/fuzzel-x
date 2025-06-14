@@ -79,6 +79,13 @@ tokenize_cmdline(char *cmdline, char ***argv)
                  * Room for improvement: log warning/error message if
                  * the previous character is not a space.
                  */
+
+                if (search_start != p) {
+                    LOG_ERR("command line contains non-specification-compliant "
+                            "quoting (arguments must be quoted in whole)");
+                    goto err;
+                }
+
                 open_quote = *p;
                 search_start = p + 1;
             } else if (*p == open_quote) {
