@@ -949,6 +949,9 @@ parse_section_main(struct context *ctx)
     else if (strcmp(key, "lines") == 0)
         return value_to_uint32(ctx, 10, &conf->lines);
 
+    else if (strcmp(key, "minimal-lines") == 0)
+        return value_to_bool(ctx, &conf->minimal_lines);
+
     else if (strcmp(key, "width") == 0)
         return value_to_uint32(ctx, 10, &conf->chars);
 

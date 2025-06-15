@@ -1429,6 +1429,16 @@ update_size(struct wayland *wayl)
     wayl->scale = scale;
     wayl->dpi = dpi;
 
+    wayl_resized(wayl);
+}
+
+void
+wayl_resized(struct wayland *wayl)
+{
+    render_resized(wayl->render, &wayl->width, &wayl->height);
+
+    const float scale = wayl->scale;
+
     wayl->width = roundf(roundf(wayl->width / scale) * scale);
     wayl->height = roundf(roundf(wayl->height / scale) * scale);
 
@@ -1443,10 +1453,6 @@ update_size(struct wayland *wayl)
 
     zwlr_layer_surface_v1_set_anchor(
         wayl->layer_surface, wayl->conf->anchor);
-
-    /* Trigger a 'configure' event, after which we'll have the actual width+height */
-    wl_surface_commit(wayl->surface);
-    wl_display_roundtrip(wayl->display);
 }
 
 static void
@@ -2617,6 +2623,8 @@ wayl_init(const struct config *conf, struct fdm *fdm,
     wayl->subpixel = wayl->monitor != NULL
         ? (enum fcft_subpixel)wayl->monitor->subpixel : guess_subpixel(wayl);
     update_size(wayl);
+    wl_surface_commit(wayl->surface);
+    wl_display_roundtrip(wayl->display);
 
     if (wl_display_prepare_read(wayl->display) != 0) {
         LOG_ERRNO("failed to prepare for reading wayland events");

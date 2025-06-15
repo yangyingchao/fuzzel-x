@@ -269,6 +269,13 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 *lines*
 	Number of matches to show. Default: _15_.
 
+*minimal-lines*
+	Boolean. Adjust the number of lines to display to the minimum of
+	_lines_ and the number of input lines. Only effective in dmenu
+	mode. This allows fuzzel to size itself to the actual number of
+	input lines rather than always showing the full _lines_
+	rows. Default: _no_.
+
 *width*
 	Window width, in characters. Margins and borders not included. For
 	variable width fonts this is an estimate, as the exact number of

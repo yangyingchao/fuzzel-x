@@ -44,11 +44,15 @@
 * `scaling-filter` option (and the corresponding `--scaling-filter`
   command line option). This option defines which scaling filter
   fuzzel uses when down scaling PNGs ([#553][553]).
+* `--minimal-lines` command line and config option, causing fuzzel to
+  adjust the number of displayed lines to the minimum of `--lines` and
+  the number of input lines ([#144][144])
 
 [504]: https://codeberg.org/dnkl/fuzzel/pulls/504
 [512]: https://codeberg.org/dnkl/fuzzel/pulls/512
 [546]: https://codeberg.org/dnkl/fuzzel/issues/546
 [553]: https://codeberg.org/dnkl/fuzzel/issues/553
+[144]: https://codeberg.org/dnkl/fuzzel/issues/144
 
 
 ### Changed

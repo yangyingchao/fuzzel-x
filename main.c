@@ -43,9 +43,10 @@
 #include "xsnprintf.h"
 
 #define max(x, y) ((x) > (y) ? (x) : (y))
+#define min(x, y) ((x)  < (y) ? (x) : (y))
 
 struct context {
-    const struct config *conf;
+    struct config *conf;
     const char *cache_path;
     struct wayland *wayl;
     struct render *render;
@@ -372,6 +373,9 @@ print_usage(const char *prog_name)
            "                                 string\n"
            "     --select-index=INDEX        select the entry with index, not compatible with --select\n"
            "  -l,--lines                     number of matches to show\n"
+           "     --minimal-lines             adjust the number of lines to the\n"
+           "                                 minimum of --lines and the number\n"
+           "                                 of input lines (dmenu mode only)\n"
            "  -w,--width                     window width, in characters (margins and\n"
            "                                 borders not included)\n"
            "     --tabs=INT                  number of spaces a tab is expanded to (8)\n"
@@ -653,7 +657,16 @@ process_event(struct context *ctx, enum event_type event)
         if (event == EVENT_APPS_ALL_LOADED) {
             if (conf->dmenu.exit_immediately_if_empty && apps->count == 0)
                 return false;
+
             matches_all_applications_loaded(matches);
+
+            if (conf->dmenu.enabled && conf->minimal_lines) {
+                const size_t effective_lines = min(apps->count, conf->lines);
+                matches_max_matches_per_page_set(matches, effective_lines);
+                ctx->conf->lines = effective_lines;
+                wayl_resized(wayl);
+            }
+
             wayl_ready_to_display(wayl);
         }
 
@@ -679,9 +692,23 @@ process_event(struct context *ctx, enum event_type event)
             }
             else
                 matches_selected_select(matches, select);
+        }
 
-            if (!conf->dmenu.exit_immediately_if_empty)
-                wayl_ready_to_display(wayl);
+        /*
+         * Allow displaying the menu if:
+         *   --no-run-if-empty is NOT enabled, OR we have at least one entry
+         * AND
+         *   --minimal-lines is NOT enabled, OR we have at least --lines number of entries
+         *
+         * In short, display the window as soon as we are sure we
+         * won't exit automatically (due to --no-run-if-empty), and we
+         * know its final size.
+         */
+        if ((!conf->dmenu.exit_immediately_if_empty || apps->count > 0) &&
+            (!(conf->dmenu.enabled && conf->minimal_lines) ||
+             apps->count >= conf->lines))
+        {
+            wayl_ready_to_display(wayl);
         }
         break;
     }
@@ -807,6 +834,7 @@ main(int argc, char *const *argv)
     #define OPT_GAMMA_CORRECT                300
     #define OPT_PRINT_TIMINGS                301
     #define OPT_SCALING_FILTER               302
+    #define OPT_MINIMAL_LINES                303
 
     static const struct option longopts[] = {
         {"config",               required_argument, 0, OPT_CONFIG},
@@ -829,6 +857,7 @@ main(int argc, char *const *argv)
         {"select",               required_argument, 0, OPT_SELECT},
         {"select-index",         required_argument, 0, OPT_SELECT_INDEX},
         {"lines",                required_argument, 0, 'l'},
+        {"minimal-lines",        no_argument,       0, OPT_MINIMAL_LINES},
         {"width",                required_argument, 0, 'w'},
         {"tabs",                 required_argument, 0, OPT_TABS},
         {"horizontal-pad",       required_argument, 0, 'x'},
@@ -911,6 +940,7 @@ main(int argc, char *const *argv)
         bool x_margin_set : 1;
         bool y_margin_set : 1;
         bool lines_set:1;
+        bool minimal_lines_set:1;
         bool chars_set:1;
         bool tabs_set:1;
         bool pad_x_set:1;
@@ -1192,6 +1222,11 @@ main(int argc, char *const *argv)
                 return EXIT_FAILURE;
             }
             cmdline_overrides.lines_set = true;
+            break;
+
+        case OPT_MINIMAL_LINES:
+            cmdline_overrides.conf.minimal_lines = true;
+            cmdline_overrides.minimal_lines_set = true;
             break;
 
         case 'w':
@@ -1885,6 +1920,8 @@ main(int argc, char *const *argv)
         conf.margin.y = cmdline_overrides.conf.margin.y;
     if (cmdline_overrides.lines_set)
         conf.lines = cmdline_overrides.conf.lines;
+    if (cmdline_overrides.minimal_lines_set)
+        conf.minimal_lines = cmdline_overrides.conf.minimal_lines;
     if (cmdline_overrides.chars_set)
         conf.chars = cmdline_overrides.conf.chars;
     if (cmdline_overrides.tabs_set)
@@ -2117,8 +2154,11 @@ main(int argc, char *const *argv)
 
     join_app_thread = true;
 
-    if (!(conf.dmenu.exit_immediately_if_empty))
+    if (!conf.dmenu.exit_immediately_if_empty &&
+        !(conf.dmenu.enabled && conf.minimal_lines))
+    {
         wayl_ready_to_display(wayl);
+    }
 
     wayl_refresh(wayl);
 

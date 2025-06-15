@@ -177,6 +177,7 @@ struct config {
     } margin;
 
     unsigned lines;
+    bool minimal_lines;
     unsigned chars;
     unsigned tabs;  /* Tab stop every number of #spaces */
 

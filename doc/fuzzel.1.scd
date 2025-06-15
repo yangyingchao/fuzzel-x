@@ -218,6 +218,12 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	The (maximum) number of matches to display. This dictates the
 	window height. Default: _15_.
 
+*--minimal-lines*
+	Adjust the number of lines to display to the minimum of _--lines_ and
+	the number of input lines. Only effective in dmenu mode. This allows
+	fuzzel to size itself to the actual number of input lines rather than
+	always showing the full _--lines_ rows.
+
 *-w*,*--width*
 	Window width, in characters. Margins and borders not included. For
 	variable width fonts this is an estimate, as the exact number of

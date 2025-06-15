@@ -37,6 +37,7 @@ complete -c fuzzel -x      -l y-margin                                          
 complete -c fuzzel -x      -l select                                                                            -d "select the first entry that matches the given string"
 complete -c fuzzel -x      -l select-index                                                                      -d "select the entry at index"
 complete -c fuzzel -x -s l -l lines                                                                             -d "maximum number of matches to displayh (15)"
+complete -c fuzzel         -l minimal-lines                                                                     -d "adjust lines to minimum of --lines and input lines (dmenu mode only)"
 complete -c fuzzel -x -s w -l width                                                                             -d "window width, in characters (30)"
 complete -c fuzzel -x -s x -l horizontal-pad                                                                    -d "horizontal padding, in pixels (40)"
 complete -c fuzzel -x -s y -l vertical-pad                                                                      -d "vertical padding, in pixels (8)"

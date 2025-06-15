@@ -29,6 +29,7 @@ _arguments \
     '--select[select the first entry that matches the given string]:()' \
     '--select-index[select the entry with index]:()' \
     '(-l --lines)'{-l,--lines}'[maximum number of matches to display (15)]:()' \
+    '--minimal-lines[adjust lines to minimum of --lines and input lines (dmenu mode only)]' \
     '(-w --width)'{-w,--width}'[window width, in characters (30)]:()' \
     '(-x --horizontal-pad)'{-x,--horizontal-pad}'[horizontal padding, in pixels (40)]:()' \
     '(-y --vertical-pad)'{-y,--vertical-pad}'[vertical padding, in pixels (8)]:()' \

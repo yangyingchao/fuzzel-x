@@ -1339,8 +1339,9 @@ render_match_list(struct render *render, struct buffer *buf,
     }
 
     /* Erase background of the "empty" area, after the last match */
+    const size_t effective_lines = matches_max_matches_per_page(matches);
     render_match_entry_background(
-        render, match_count, render->conf->lines - match_count,
+        render, match_count, effective_lines - match_count,
         buf->pix[0], buf->width);
 
     for (size_t i = 0; i < match_count; i++) {
@@ -1530,38 +1531,20 @@ render_initialize_colors(struct render *render, const struct config *conf,
     render->pix_placeholder_color = rgba2pixman(gamma_correct, conf->colors.placeholder);
 }
 
-
 void
 render_set_subpixel(struct render *render, enum fcft_subpixel subpixel)
 {
     render->subpixel = subpixel;
 }
 
-bool
-render_set_font_and_update_sizes(struct render *render, struct fcft_font *font,
-                                 struct fcft_font *font_bold,
-                                 float scale, float dpi, bool size_font_by_dpi,
-                                 int *new_width, int *new_height)
+void
+render_resized(struct render *render, int *new_width, int *new_height)
 {
-    if (font != NULL) {
-        fcft_destroy(render->font);
-        render->font = font;
-    } else {
-        assert(render->font != NULL);
-        font = render->font;
-    }
+    struct fcft_font *font = render->font;
+    const float scale = render->scale;
 
-    if (font_bold != NULL) {
-        fcft_destroy(render->font_bold);
-        render->font_bold = font_bold;
-    } else {
-        assert(render->font_bold != NULL);
-        font_bold = render->font_bold;
-    }
-
-    render->scale = scale;
-    render->dpi = dpi;
-    render->size_font_by_dpi = size_font_by_dpi;
+    assert(font != NULL);
+    assert(render->font_bold != NULL);
 
     const struct fcft_glyph *W = fcft_rasterize_char_utf32(
         font, U'o', render->subpixel);
@@ -1590,7 +1573,7 @@ render_set_font_and_update_sizes(struct render *render, struct fcft_font *font,
         border_size;                         /* Bottom border */
 
     const unsigned width =
-        border_size +
+        border_size +                        /* Top border */
         x_margin +
         (max((W->advance.x + pt_or_px_as_pixels(
                   render, &render->conf->letter_spacing)),
@@ -1615,7 +1598,35 @@ render_set_font_and_update_sizes(struct render *render, struct fcft_font *font,
         *new_width = width;
     if (new_height != NULL)
         *new_height = height;
+}
 
+bool
+render_set_font_and_update_sizes(struct render *render, struct fcft_font *font,
+                                 struct fcft_font *font_bold,
+                                 float scale, float dpi, bool size_font_by_dpi,
+                                 int *new_width, int *new_height)
+{
+    if (font != NULL) {
+        fcft_destroy(render->font);
+        render->font = font;
+    } else {
+        assert(render->font != NULL);
+        font = render->font;
+    }
+
+    if (font_bold != NULL) {
+        fcft_destroy(render->font_bold);
+        render->font_bold = font_bold;
+    } else {
+        assert(render->font_bold != NULL);
+        font_bold = render->font_bold;
+    }
+
+    render->scale = scale;
+    render->dpi = dpi;
+    render->size_font_by_dpi = size_font_by_dpi;
+
+    render_resized(render, new_width, new_height);
     return true;
 }
 
