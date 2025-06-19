@@ -80,6 +80,7 @@ void wayl_destroy(struct wayland *wayl);
 
 void wayl_refresh(struct wayland *wayl);
 void wayl_flush(struct wayland *wayl);
+void wayl_ready_to_display(struct wayland *wayl);
 
 int wayl_exit_code(const struct wayland *wayl);
 bool wayl_update_cache(const struct wayland *wayl);

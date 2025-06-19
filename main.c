@@ -651,9 +651,10 @@ process_event(struct context *ctx, enum event_type event)
         matches_set_applications(matches, apps);
 
         if (event == EVENT_APPS_ALL_LOADED) {
-            if (ctx->conf->dmenu.exit_immediately_if_empty && apps->count == 0)
+            if (conf->dmenu.exit_immediately_if_empty && apps->count == 0)
                 return false;
             matches_all_applications_loaded(matches);
+            wayl_ready_to_display(wayl);
         }
 
         const size_t match_count = matches_get_count(matches);
@@ -678,6 +679,9 @@ process_event(struct context *ctx, enum event_type event)
             }
             else
                 matches_selected_select(matches, select);
+
+            if (!conf->dmenu.exit_immediately_if_empty)
+                wayl_ready_to_display(wayl);
         }
         break;
     }
@@ -2113,8 +2117,10 @@ main(int argc, char *const *argv)
 
     join_app_thread = true;
 
-    if (!conf.dmenu.exit_immediately_if_empty)
-        wayl_refresh(wayl);
+    if (!(conf.dmenu.exit_immediately_if_empty))
+        wayl_ready_to_display(wayl);
+
+    wayl_refresh(wayl);
 
     while (true) {
         wayl_flush(wayl);

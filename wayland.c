@@ -195,6 +195,8 @@ struct wayland {
 
     bool shm_have_abgr161616;
     bool shm_have_xbgr161616;
+
+    bool ready_to_display;
 };
 
 bool
@@ -2164,6 +2166,9 @@ wayl_refresh(struct wayland *wayl)
     if (!wayl->is_configured)
         return;
 
+    if (!wayl->ready_to_display)
+        return;
+
     if (wayl->frame_cb != NULL) {
         wayl->need_refresh = true;
         return;
@@ -2239,6 +2244,12 @@ commit:
                  (unsigned long long)diff.tv_sec,
                  (unsigned long long)diff.tv_usec);
     }
+}
+
+void
+wayl_ready_to_display(struct wayland *wayl)
+{
+    wayl->ready_to_display = true;
 }
 
 static bool

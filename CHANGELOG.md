@@ -86,6 +86,7 @@
 * Lookup of icon themes in `~/.icons` and `/usr/share/pixmans`.
 * Missing shell completions for `--launch-prefix`.
 * Missing shell completions for `--prompt-only`.
+* Empty window being displayed despite `--no-run-if-empty` being used.
 
 [507]: https://codeberg.org/dnkl/fuzzel/issues/507
 [551]: https://codeberg.org/dnkl/fuzzel/issues/551
