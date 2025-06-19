@@ -18,6 +18,7 @@ _arguments \
     '--hide-before-typing[hide application list until something is typed]' \
     '(-F --fields)'{-F,--fields}'[comma separated list of XDG Desktop entry fields to match ]:fields:(filename name generic exec categories keywords comment)' \
     '(-p --prompt)'{-p,--prompt}'[string to use as input prompt ("> ")]:()' \
+    '--prompt-only[same as prompt, and implies --lines=0]:()' \
     '--placeholder[placeholder text in the input box]:()' \
     '--search[initial search/filter string]:()' \
     '--password[render all input using either "*", or the specified character]:()' \

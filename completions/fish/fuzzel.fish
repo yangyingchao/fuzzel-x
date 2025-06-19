@@ -23,6 +23,7 @@ complete -c fuzzel    -s I -l no-icons                                          
 complete -c fuzzel         -l hide-before-typing                                                            -d "hide application list until something is typed"
 complete -c fuzzel -x -s F -l fields             -a "filename name generic exec categories keywords comment"    -d "comma separated list of XDG Desktop entry fields to match"
 complete -c fuzzel -x -s p -l prompt                                                                            -d "string to use as input prompt (\"> \")"
+complete -c fuzzel -x      -l prompt-only                                                                       -d "same as prompt, and implies --lines=0"
 complete -c fuzzel -x      -l placeholder                                                                       -d "placeholder text in input box"
 complete -c fuzzel -x      -l search                                                                            -d "initial search/filter string"
 complete -c fuzzel         -l password           -a ""                                                          -d "render all input using either '*', or the specified character"
