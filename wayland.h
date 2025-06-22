@@ -58,6 +58,17 @@ struct seat {
         float scale;
     } pointer;
 
+    struct wl_touch *wl_touch;
+    struct {
+        uint32_t serial;
+        struct {
+            int id;
+            double start_y;
+            double current_y;
+            bool scrolling;
+        } active_touch;
+    } touch;
+
     struct wl_data_device *data_device;
     struct zwp_primary_selection_device_v1 *primary_selection_device;
 

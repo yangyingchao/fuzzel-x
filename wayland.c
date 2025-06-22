@@ -288,6 +288,9 @@ seat_destroy(struct seat *seat)
     if (seat->wl_pointer != NULL)
         wl_pointer_release(seat->wl_pointer);
 
+    if (seat->wl_touch != NULL)
+        wl_touch_release(seat->wl_touch);
+
     if (seat->wl_seat != NULL)
         wl_seat_release(seat->wl_seat);
 
@@ -1182,6 +1185,102 @@ static const struct wl_pointer_listener pointer_listener = {
 };
 
 static void
+wl_touch_down(void *data, struct wl_touch *wl_touch, uint32_t serial,
+              uint32_t time, struct wl_surface *surface, int32_t id,
+              wl_fixed_t x, wl_fixed_t y)
+{
+    struct seat *seat = data;
+
+    /* Only track one touch at a time for scrolling */
+    if (seat->touch.active_touch.scrolling)
+        return;
+
+    seat->touch.active_touch.id = id;
+    seat->touch.active_touch.start_y = wl_fixed_to_double(y);
+    seat->touch.active_touch.current_y = wl_fixed_to_double(y);
+    seat->touch.active_touch.scrolling = true;
+    seat->touch.serial = serial;
+}
+
+static void
+wl_touch_up(void *data, struct wl_touch *wl_touch, uint32_t serial,
+            uint32_t time, int32_t id)
+{
+    struct seat *seat = data;
+
+    if (seat->touch.active_touch.id == id) {
+        seat->touch.active_touch.scrolling = false;
+        seat->touch.active_touch.id = -1;
+    }
+}
+
+static void
+wl_touch_motion(void *data, struct wl_touch *wl_touch, uint32_t time,
+                int32_t id, wl_fixed_t x, wl_fixed_t y)
+{
+    struct seat *seat = data;
+
+    if (!seat->touch.active_touch.scrolling || seat->touch.active_touch.id != id)
+        return;
+
+    double new_y = wl_fixed_to_double(y);
+    double delta_y = seat->touch.active_touch.current_y - new_y;
+
+    /* Threshold for scrolling - roughly equivalent to one line */
+    const double scroll_threshold = 20.0;
+
+    if (delta_y > scroll_threshold) {
+        /* Scrolling up - select previous item */
+        matches_selected_prev(seat->wayl->matches, true);
+        wayl_refresh(seat->wayl);
+        seat->touch.active_touch.current_y = new_y;
+    } else if (delta_y < -scroll_threshold) {
+        /* Scrolling down - select next item */
+        matches_selected_next(seat->wayl->matches, true);
+        wayl_refresh(seat->wayl);
+        seat->touch.active_touch.current_y = new_y;
+    }
+}
+
+static void
+wl_touch_frame(void *data, struct wl_touch *wl_touch)
+{
+    /* Touch frame events group related touch events */
+}
+
+static void
+wl_touch_cancel(void *data, struct wl_touch *wl_touch)
+{
+    struct seat *seat = data;
+    seat->touch.active_touch.scrolling = false;
+    seat->touch.active_touch.id = -1;
+}
+
+static void
+wl_touch_shape(void *data, struct wl_touch *wl_touch, int32_t id,
+               wl_fixed_t major, wl_fixed_t minor)
+{
+    /* Touch shape events - not needed for scrolling */
+}
+
+static void
+wl_touch_orientation(void *data, struct wl_touch *wl_touch, int32_t id,
+                     wl_fixed_t orientation)
+{
+    /* Touch orientation events - not needed for scrolling */
+}
+
+static const struct wl_touch_listener touch_listener = {
+    .down = wl_touch_down,
+    .up = wl_touch_up,
+    .motion = wl_touch_motion,
+    .frame = wl_touch_frame,
+    .cancel = wl_touch_cancel,
+    .shape = wl_touch_shape,
+    .orientation = wl_touch_orientation,
+};
+
+static void
 seat_handle_capabilities(void *data, struct wl_seat *wl_seat,
                          enum wl_seat_capability caps)
 {
@@ -1243,6 +1342,22 @@ seat_handle_capabilities(void *data, struct wl_seat *wl_seat,
             seat->pointer.surface = NULL;
             seat->pointer.theme = NULL;
             seat->pointer.cursor = NULL;
+        }
+    }
+
+    if (caps & WL_SEAT_CAPABILITY_TOUCH) {
+        if (seat->wl_touch == NULL) {
+            seat->wl_touch = wl_seat_get_touch(wl_seat);
+            wl_touch_add_listener(seat->wl_touch, &touch_listener, seat);
+
+            /* Initialize touch state */
+            seat->touch.active_touch.id = -1;
+            seat->touch.active_touch.scrolling = false;
+        }
+    } else {
+        if (seat->wl_touch != NULL) {
+            wl_touch_release(seat->wl_touch);
+            seat->wl_touch = NULL;
         }
     }
 }
