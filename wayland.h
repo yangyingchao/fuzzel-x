@@ -63,9 +63,13 @@ struct seat {
         uint32_t serial;
         struct {
             int id;
-            double start_y;
-            double current_y;
+            double start_x, start_y;
+            double current_x, current_y;
+            double last_y;
             bool scrolling;
+            bool is_tap;
+            uint32_t start_time;
+            double accumulated_scroll;
         } active_touch;
     } touch;
 

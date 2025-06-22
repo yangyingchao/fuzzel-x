@@ -3,6 +3,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <locale.h>
+#include <math.h>
 #include <poll.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1191,14 +1192,20 @@ wl_touch_down(void *data, struct wl_touch *wl_touch, uint32_t serial,
 {
     struct seat *seat = data;
 
-    /* Only track one touch at a time for scrolling */
+    /* Only track one touch at a time */
     if (seat->touch.active_touch.scrolling)
         return;
 
     seat->touch.active_touch.id = id;
+    seat->touch.active_touch.start_x = wl_fixed_to_double(x);
     seat->touch.active_touch.start_y = wl_fixed_to_double(y);
+    seat->touch.active_touch.current_x = wl_fixed_to_double(x);
     seat->touch.active_touch.current_y = wl_fixed_to_double(y);
+    seat->touch.active_touch.last_y = wl_fixed_to_double(y);
     seat->touch.active_touch.scrolling = true;
+    seat->touch.active_touch.is_tap = true;
+    seat->touch.active_touch.start_time = time;
+    seat->touch.active_touch.accumulated_scroll = 0.0;
     seat->touch.serial = serial;
 }
 
@@ -1207,8 +1214,32 @@ wl_touch_up(void *data, struct wl_touch *wl_touch, uint32_t serial,
             uint32_t time, int32_t id)
 {
     struct seat *seat = data;
+    struct wayland *wayl = seat->wayl;
 
     if (seat->touch.active_touch.id == id) {
+        /* Check if this was a tap (no significant movement and quick) */
+        if (seat->touch.active_touch.is_tap) {
+            double dx = seat->touch.active_touch.current_x - seat->touch.active_touch.start_x;
+            double dy = seat->touch.active_touch.current_y - seat->touch.active_touch.start_y;
+            double distance = sqrt(dx * dx + dy * dy);
+            uint32_t duration = time - seat->touch.active_touch.start_time;
+
+            /* Tap threshold: less than 10 pixels movement and under 500ms */
+            if (distance < 10.0 && duration < 500) {
+                /* Convert touch coordinates to match selection */
+                int touch_y = (int)seat->touch.active_touch.start_y;
+                size_t tapped_row = render_get_row_num(wayl->render, touch_y, wayl->matches);
+
+                /* If user tapped on a valid row, select and execute it */
+                if (matches_idx_select(wayl->matches, tapped_row)) {
+                    execute_selected(seat, false, -1);
+                } else {
+                    /* Tapped on empty area or input field - focus input */
+                    wayl_refresh(wayl);
+                }
+            }
+        }
+
         seat->touch.active_touch.scrolling = false;
         seat->touch.active_touch.id = -1;
     }
@@ -1223,23 +1254,46 @@ wl_touch_motion(void *data, struct wl_touch *wl_touch, uint32_t time,
     if (!seat->touch.active_touch.scrolling || seat->touch.active_touch.id != id)
         return;
 
+    double new_x = wl_fixed_to_double(x);
     double new_y = wl_fixed_to_double(y);
-    double delta_y = seat->touch.active_touch.current_y - new_y;
 
-    /* Threshold for scrolling - roughly equivalent to one line */
-    const double scroll_threshold = 20.0;
+    /* Update current position */
+    seat->touch.active_touch.current_x = new_x;
+    seat->touch.active_touch.current_y = new_y;
 
-    if (delta_y > scroll_threshold) {
-        /* Scrolling up - select previous item */
-        matches_selected_prev(seat->wayl->matches, true);
-        wayl_refresh(seat->wayl);
-        seat->touch.active_touch.current_y = new_y;
-    } else if (delta_y < -scroll_threshold) {
-        /* Scrolling down - select next item */
-        matches_selected_next(seat->wayl->matches, true);
-        wayl_refresh(seat->wayl);
-        seat->touch.active_touch.current_y = new_y;
+    /* Check if movement is too large to be a tap */
+    double dx = new_x - seat->touch.active_touch.start_x;
+    double dy = new_y - seat->touch.active_touch.start_y;
+    double distance = sqrt(dx * dx + dy * dy);
+
+    if (distance > 10.0) {
+        seat->touch.active_touch.is_tap = false;
     }
+
+    /* Calculate accumulated scroll from last position */
+    double delta_y = new_y - seat->touch.active_touch.last_y;
+    seat->touch.active_touch.accumulated_scroll += delta_y;
+
+    /* Reversed scrolling: positive delta_y (finger moving down) scrolls up in the list */
+    /* Threshold for scrolling - roughly equivalent to one line */
+    const double scroll_threshold = 15.0;
+
+    if (seat->touch.active_touch.accumulated_scroll > scroll_threshold) {
+        /* Finger moving down - select previous item (scroll up in list) */
+        if (matches_selected_prev(seat->wayl->matches, true)) {
+            wayl_refresh(seat->wayl);
+        }
+        seat->touch.active_touch.accumulated_scroll = 0.0;
+    } else if (seat->touch.active_touch.accumulated_scroll < -scroll_threshold) {
+        /* Finger moving up - select next item (scroll down in list) */
+        if (matches_selected_next(seat->wayl->matches, true)) {
+            wayl_refresh(seat->wayl);
+        }
+        seat->touch.active_touch.accumulated_scroll = 0.0;
+    }
+
+    /* Update last position for next delta calculation */
+    seat->touch.active_touch.last_y = new_y;
 }
 
 static void
