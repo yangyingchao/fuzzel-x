@@ -82,6 +82,7 @@ struct render {
     unsigned y_margin;
     unsigned inner_pad;
     unsigned border_size;
+    unsigned border_radius;
     unsigned row_height;
     unsigned icon_height;
 
@@ -190,7 +191,7 @@ fill_rounded_rectangle(pixman_op_t op, pixman_image_t* dest,
 void
 render_background(const struct render *render, struct buffer *buf)
 {
-    unsigned bw = render->conf->border.size;
+    unsigned bw = render->border_size;
 
     pixman_color_t bg = render->pix_background_color;
     pixman_color_t border_color = render->pix_border_color;
@@ -203,7 +204,7 @@ render_background(const struct render *render, struct buffer *buf)
     /* Limit radius if the margins are very small, to prevent e.g. the
        selection "box" from overlapping the corners */
     const unsigned int radius =
-        min(render->conf->border.radius,
+        min(render->border_radius,
             max(render->x_margin,
                 render->y_margin));
 
@@ -1556,6 +1557,7 @@ render_resized(struct render *render, int *new_width, int *new_height)
         : 0;
 
     const unsigned border_size = render->conf->border.size * scale;
+    const unsigned border_radius = render->conf->border.radius * scale;
 
     const unsigned row_height = render->conf->line_height.px >= 0
         ? pt_or_px_as_pixels(render, &render->conf->line_height)
@@ -1582,15 +1584,16 @@ render_resized(struct render *render, int *new_width, int *new_height)
         x_margin +
         border_size;
 
-    LOG_DBG("x-margin: %d, y-margin: %d, border: %d, row-height: %d, "
-            "icon-height: %d, height: %d, width: %d, scale: %f",
-            x_margin, y_margin, border_size, row_height, icon_height,
-            height, width, scale);
+    LOG_DBG("x-margin: %d, y-margin: %d, border-size: %d, border-radius: %d, "
+            "row-height: %d, icon-height: %d, height: %d, width: %d, scale: %f",
+            x_margin, y_margin, border_size, border_radius,
+            row_height, icon_height, height, width, scale);
 
     render->y_margin = y_margin;
     render->x_margin = x_margin;
     render->inner_pad = inner_pad;
     render->border_size = border_size;
+    render->border_radius = border_radius;
     render->row_height = row_height;
     render->icon_height = icon_height;
 
