@@ -47,13 +47,14 @@
 * `--minimal-lines` command line and config option, causing fuzzel to
   adjust the number of displayed lines to the minimum of `--lines` and
   the number of input lines ([#144][144])
+* Touchscreen support ([#594][594])
 
 [504]: https://codeberg.org/dnkl/fuzzel/pulls/504
 [512]: https://codeberg.org/dnkl/fuzzel/pulls/512
 [546]: https://codeberg.org/dnkl/fuzzel/issues/546
 [553]: https://codeberg.org/dnkl/fuzzel/issues/553
 [144]: https://codeberg.org/dnkl/fuzzel/issues/144
-
+[594]: https://codeberg.org/dnkl/fuzzel/issues/594
 
 ### Changed
 

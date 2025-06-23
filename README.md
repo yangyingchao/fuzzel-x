@@ -46,7 +46,7 @@ _Fuzzel, with transparency, on top of a browser window showing a diff of a fuzze
 ### For all modes
 
 - Numerous customizable key bindings, based on Emacs
-- Mouse support
+- Mouse & touchscreen support
 - Paste support
 - Emoji support
 - A number of theming options, which can be set in a separate `include` file

@@ -1266,6 +1266,7 @@ wl_touch_motion(void *data, struct wl_touch *wl_touch, uint32_t time,
     double dy = new_y - seat->touch.active_touch.start_y;
     double distance = sqrt(dx * dx + dy * dy);
 
+    /* Prevents accidental selection while scrolling. */
     if (distance > 10.0) {
         seat->touch.active_touch.is_tap = false;
     }
