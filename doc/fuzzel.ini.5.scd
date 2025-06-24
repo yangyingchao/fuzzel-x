@@ -217,7 +217,8 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	Default: _no_.
 
 *filter-desktop*
-	Boolean. Filter desktop files based on the value of XDG_CURRENT_DESKTOP.
+	Boolean. Filter desktop files based on the value of
+	XDG_CURRENT_DESKTOP. Default: _no_.
 
 *show-actions*
 	Boolean. Some desktop files define "actions", in addition to the

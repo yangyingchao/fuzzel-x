@@ -314,8 +314,9 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 
 *--filter-desktop*=[_no_]
 	Filter the visible desktop entries based on the value of
-	XDG_CURRENT_DESKTOP. If the optional parameter is "no",
-	explicitly disables filtering.
+	XDG_CURRENT_DESKTOP. If the optional parameter is "no", explicitly
+	disables filtering (that is, it overrides the value in the
+	config).
 
 *--fuzzy-min-length*=_VALUE_
 	Search strings shorter than this will not by fuzzy
