@@ -48,6 +48,10 @@
   adjust the number of displayed lines to the minimum of `--lines` and
   the number of input lines ([#144][144])
 * Touchscreen support ([#594][594])
+* `{cmd}` placeholder support in the `terminal` option. When `{cmd}` is
+  present in the terminal command string, it will be replaced with the
+  application command instead of appending the command at the end. Useful
+  for setting the title or app_id. ([#600][600])
 
 [504]: https://codeberg.org/dnkl/fuzzel/pulls/504
 [512]: https://codeberg.org/dnkl/fuzzel/pulls/512
@@ -55,6 +59,7 @@
 [553]: https://codeberg.org/dnkl/fuzzel/issues/553
 [144]: https://codeberg.org/dnkl/fuzzel/issues/144
 [594]: https://codeberg.org/dnkl/fuzzel/issues/594
+[600]: https://codeberg.org/dnkl/fuzzel/issues/600
 
 ### Changed
 

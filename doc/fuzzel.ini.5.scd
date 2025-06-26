@@ -227,8 +227,21 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	fuzzel. Default: _no_.
 
 *terminal*
-	terminal command to use when launching 'terminal' programs,
-	e.g. \"xterm -e\". Default: _$TERMINAL -e_.
+	terminal command to use when launching 'terminal' programs.
+
+	The command may contain the placeholder _{cmd}_ which will be
+	replaced with the actual command to be run. When _{cmd}_ is present,
+	the command is **only** substituted in those locations and is **not**
+	appended at the end.
+
+	Examples:
+	- _foot -a '{cmd}' -T '{cmd}' {cmd}_ sets app-id and title to the
+	  command name, then executes it
+	- _xterm -e {cmd}_ executes the command in xterm
+	- _xterm -e_ (no {cmd}) uses old behavior: appends command after
+	  terminal args
+
+	Default: _$TERMINAL -e_.
 
 *list-executables-in-path*
 	Boolean. When enabled, the list will include executables

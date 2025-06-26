@@ -178,7 +178,20 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 
 *-T*,*--terminal*=_TERMINAL ARGS_
 	Command to launch XDG applications with the property
-	*Terminal=true* (_htop_, for example). Example: _xterm -e_.
+	*Terminal=true* (_htop_, for example).
+
+	The command may contain the placeholder _{cmd}_ which will be
+	replaced with the actual command to be run. When _{cmd}_ is present,
+	the command is **only** substituted in those locations and is **not**
+	appended at the end.
+
+	Examples:
+	- _foot -a '{cmd}' -T '{cmd}' {cmd}_ sets app-id and title to the
+	  command name, then executes it
+	- _xterm -e {cmd}_ executes the command in xterm
+	- _xterm -e_ (no {cmd}) uses old behavior: appends command after
+	  terminal args
+
 	Default: _not set_.
 
 *-a*,*--anchor*=_ANCHOR_
