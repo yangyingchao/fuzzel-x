@@ -448,7 +448,7 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	*dmenu*. Fuzzel will then start in dmenu mode, without the
 	*--dmenu* argument.
 	
-	Fuzzel also supports icons, using Rofi's extended dmenu
+	Fuzzel also supports PNG and SVG icons, using Rofi's extended dmenu
 	protocol. To set an icon for an entry, append
 	*\\0icon\\x1f<icon-name>*. Example:
 	
