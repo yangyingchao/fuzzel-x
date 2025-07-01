@@ -376,6 +376,8 @@ print_usage(const char *prog_name)
            "     --minimal-lines             adjust the number of lines to the\n"
            "                                 minimum of --lines and the number\n"
            "                                 of input lines (dmenu mode only)\n"
+           "     --hide-prompt               hide the prompt line, making the window\n"
+           "                                 smaller (input still accepted)\n"
            "  -w,--width                     window width, in characters (margins and\n"
            "                                 borders not included)\n"
            "     --tabs=INT                  number of spaces a tab is expanded to (8)\n"
@@ -835,6 +837,7 @@ main(int argc, char *const *argv)
     #define OPT_PRINT_TIMINGS                301
     #define OPT_SCALING_FILTER               302
     #define OPT_MINIMAL_LINES                303
+    #define OPT_HIDE_PROMPT                  304
 
     static const struct option longopts[] = {
         {"config",               required_argument, 0, OPT_CONFIG},
@@ -858,6 +861,7 @@ main(int argc, char *const *argv)
         {"select-index",         required_argument, 0, OPT_SELECT_INDEX},
         {"lines",                required_argument, 0, 'l'},
         {"minimal-lines",        no_argument,       0, OPT_MINIMAL_LINES},
+        {"hide-prompt",          no_argument,       0, OPT_HIDE_PROMPT},
         {"width",                required_argument, 0, 'w'},
         {"tabs",                 required_argument, 0, OPT_TABS},
         {"horizontal-pad",       required_argument, 0, 'x'},
@@ -941,6 +945,7 @@ main(int argc, char *const *argv)
         bool y_margin_set : 1;
         bool lines_set:1;
         bool minimal_lines_set:1;
+        bool hide_prompt_set:1;
         bool chars_set:1;
         bool tabs_set:1;
         bool pad_x_set:1;
@@ -1227,6 +1232,11 @@ main(int argc, char *const *argv)
         case OPT_MINIMAL_LINES:
             cmdline_overrides.conf.minimal_lines = true;
             cmdline_overrides.minimal_lines_set = true;
+            break;
+
+        case OPT_HIDE_PROMPT:
+            cmdline_overrides.conf.hide_prompt = true;
+            cmdline_overrides.hide_prompt_set = true;
             break;
 
         case 'w':
@@ -1836,8 +1846,14 @@ main(int argc, char *const *argv)
     int ret = EXIT_FAILURE;
 
     if (select != NULL && select_idx) {
-            LOG_ERRNO("--select and --select-index cannot be used at the same time");
-            return ret;
+        LOG_ERRNO("--select and --select-index cannot be used at the same time");
+        return ret;
+    }
+
+    if (cmdline_overrides.prompt_only_set && cmdline_overrides.conf.hide_prompt) {
+        LOG_ERRNO("--prompt-only and --hide-prompt cannot be used at the same time");
+        config_free(&cmdline_overrides.conf);
+        return ret;
     }
 
     struct config conf = {0};
@@ -1914,6 +1930,8 @@ main(int argc, char *const *argv)
         conf.icons_enabled = cmdline_overrides.conf.icons_enabled;
     if (cmdline_overrides.hide_when_prompt_empty_set)
         conf.hide_when_prompt_empty = cmdline_overrides.conf.hide_when_prompt_empty;
+    if (cmdline_overrides.hide_prompt_set)
+        conf.hide_prompt = cmdline_overrides.conf.hide_prompt;
     if (cmdline_overrides.anchor_set)
         conf.anchor = cmdline_overrides.conf.anchor;
     if (cmdline_overrides.x_margin_set)

@@ -1155,8 +1155,8 @@ first_row_y(const struct render *render)
 {
     return (render->border_size +
             render->y_margin +
-            render->row_height +
-            render->inner_pad);
+            (render->conf->hide_prompt ? 0 : render->row_height) +
+            (render->conf->hide_prompt ? 0 : render->inner_pad));
 }
 
 static void
@@ -1568,8 +1568,8 @@ render_resized(struct render *render, int *new_width, int *new_height)
     const unsigned height =
         border_size +                        /* Top border */
         y_margin +
-        row_height +                         /* The prompt */
-        inner_pad +                          /* Padding between prompt and matches */
+        (render->conf->hide_prompt ? 0 : row_height) +          /* The prompt (hidden if hide_prompt) */
+        (render->conf->hide_prompt ? 0 : inner_pad) +           /* Padding between prompt and matches (only if prompt shown) */
         render->conf->lines * row_height +   /* Matches */
         y_margin +
         border_size;                         /* Bottom border */
@@ -1685,7 +1685,9 @@ render_get_row_num(const struct render *render, int y,
     const int inner_pad = render->inner_pad;
     const int border_size = render->border_size;
     const int row_height = render->row_height;
-    const int first_row = 1 * border_size + y_margin + row_height + inner_pad;
+    const int first_row = 1 * border_size + y_margin +
+        (render->conf->hide_prompt ? 0 : row_height) +
+        (render->conf->hide_prompt ? 0 : inner_pad);
     const size_t match_count = matches_get_count(matches);
     const size_t last_row = first_row + match_count * row_height;
 

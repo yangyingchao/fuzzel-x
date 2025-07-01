@@ -142,6 +142,7 @@ struct config {
     char *icon_theme;
 
     bool hide_when_prompt_empty;
+    bool hide_prompt;
 
     bool actions_enabled;
 

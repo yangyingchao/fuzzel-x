@@ -283,6 +283,11 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 *lines*
 	Number of matches to show. Default: _15_.
 
+*hide-prompt*
+	Boolean. When set, hides the prompt line, making the window smaller.
+	Input is still accepted though the prompt line is not displayed.
+	Cannot be used with *prompt-only*. Default: _no_.
+
 *minimal-lines*
 	Boolean. Adjust the number of lines to display to the minimum of
 	_lines_ and the number of input lines. Only effective in dmenu

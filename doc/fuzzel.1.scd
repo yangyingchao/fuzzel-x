@@ -134,6 +134,11 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	
 	In non-dmenu mode it behaves exactly like *--prompt*.
 
+*--hide-prompt*
+	Hide the prompt line, making the window smaller. Input is still
+	accepted, but the prompt line is not displayed. This option
+	cannot be used at the same time with *--prompt-only*.
+
 *--placeholder*=_TEXT_
 	Text to display as placeholder in the input box. Default: empty.
 
@@ -165,7 +170,8 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	- *filename*: the .desktop file's filename
 	- *name*: the application's name (title)
 	- *generic*: the application's generic name
-	- *exec*: the applications's executable, as specified in the desktop file. Note: may include command line options as well.
+	- *exec*: the applications's executable, as specified in the desktop
+	  file. Note: may include command line options as well.
 	- *keywords*: the application's keywords
 	- *categories*: the application's categories
 	- *comment*: the application's comment

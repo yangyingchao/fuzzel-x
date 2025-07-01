@@ -52,6 +52,9 @@
   present in the terminal command string, it will be replaced with the
   application command instead of appending the command at the end. Useful
   for setting the title or app_id. ([#600][600])
+* `--hide-prompt` command line option to hide the prompt line, reducing
+   window size while still accepting input. This cannot be used
+  simultaneously with `--prompt-only`.i  ([#597][597])
 
 [504]: https://codeberg.org/dnkl/fuzzel/pulls/504
 [512]: https://codeberg.org/dnkl/fuzzel/pulls/512
@@ -59,6 +62,7 @@
 [553]: https://codeberg.org/dnkl/fuzzel/issues/553
 [144]: https://codeberg.org/dnkl/fuzzel/issues/144
 [594]: https://codeberg.org/dnkl/fuzzel/issues/594
+[597]: https://codeberg.org/dnkl/fuzzel/issues/597
 [600]: https://codeberg.org/dnkl/fuzzel/issues/600
 
 ### Changed

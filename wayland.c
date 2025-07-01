@@ -2397,7 +2397,9 @@ wayl_refresh(struct wayland *wayl)
 
     /* Window content */
     matches_lock(wayl->matches);
-    render_prompt(wayl->render, buf, wayl->prompt, wayl->matches);
+    if (!wayl->conf->hide_prompt) {
+        render_prompt(wayl->render, buf, wayl->prompt, wayl->matches);
+    }
     if (wayl->hide_when_prompt_empty) {
         if (prompt_text(wayl->prompt)[0] != '\0') {
             wayl->hide_when_prompt_empty = false;
