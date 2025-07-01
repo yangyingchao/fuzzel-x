@@ -1844,11 +1844,13 @@ main(int argc, char *const *argv)
     bool conf_successful = config_load(&conf, config_path, NULL, check_config);
     if (!conf_successful) {
         config_free(&conf);
+        config_free(&cmdline_overrides.conf);
         return ret;
     }
 
     if (check_config) {
         config_free(&conf);
+        config_free(&cmdline_overrides.conf);
         return EXIT_SUCCESS;
     }
 
