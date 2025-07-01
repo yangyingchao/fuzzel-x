@@ -221,6 +221,7 @@ struct config {
     bool list_executables_in_path;
     char *cache_path;
 
+    bool auto_select;
     bool print_timing_info;
 };
 

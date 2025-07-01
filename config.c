@@ -1034,6 +1034,9 @@ parse_section_main(struct context *ctx)
     else if (strcmp(key, "cache") == 0)
         return value_to_str(ctx, &conf->cache_path);
 
+    else if (strcmp(key, "auto-select") == 0)
+        return value_to_bool(ctx, &conf->auto_select);
+
     else
         LOG_CONTEXTUAL_ERR("not a valid option: %s", key);
 
@@ -1694,6 +1697,7 @@ config_load(struct config *conf, const char *conf_path,
         .exit_on_kb_focus_loss = true,
         .list_executables_in_path = false,
         .cache_path = NULL,
+        .auto_select = false,
         .print_timing_info = false,
     };
 

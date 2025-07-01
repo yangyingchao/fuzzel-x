@@ -230,6 +230,9 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	Select the first entry that matches the given string (case
 	insensitive).
 
+*--auto-select*
+	Automatically select when only one match remains.
+
 *--select-index*=INDEX
 	Select the entry with index, not compatible with --select.
 
@@ -520,7 +523,7 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	Disables syslog logging. Logging is only done on stderr.
 
 *--print-timing-info*
-	Print timing information, to help debug performance issues.
+	Print timing information to help debug performance issues.
 
 *-v*,*--version*
 	Show the version number and quit

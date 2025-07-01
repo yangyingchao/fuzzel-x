@@ -417,6 +417,10 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	*$XDG_CACHE_HOME/fuzzel* will be used. Set to */dev/null* to
 	disable caching. Default: _not set_.
 
+*auto-select*
+	Boolean. When one entry is left, automatically select it.
+	Default: _no_.
+
 # SECTION: colors
 
 All color values are in RGBA.

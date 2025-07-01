@@ -55,7 +55,9 @@
 * `--hide-prompt` command line option to hide the prompt line, reducing
    window size while still accepting input. This cannot be used
   simultaneously with `--prompt-only`.i  ([#597][597])
+* `--auto-select` option. When one entry is left, automatically select it. ([#411][411])
 
+[411]: https://codeberg.org/dnkl/fuzzel/issues/411
 [504]: https://codeberg.org/dnkl/fuzzel/pulls/504
 [512]: https://codeberg.org/dnkl/fuzzel/pulls/512
 [546]: https://codeberg.org/dnkl/fuzzel/issues/546

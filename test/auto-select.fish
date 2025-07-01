@@ -1,0 +1,57 @@
+#!/usr/bin/fish
+
+set got
+
+# Given lines of input as $input and a search string as $search,
+# run Fuzzel with auto-select enabled and set the returned string in $got
+function test_auto_select --argument-names input search
+    rm -f out.txt
+
+    echo -e "$input" \
+        | ./build/fuzzel --dmenu --auto-select --search "$search" >out.txt &
+    # Wait for fuzzel to auto-select and exit
+    sleep .3
+    set got (cat out.txt)
+end
+
+# Test that auto-select works when only one match remains
+test_auto_select "apple\nbanana\ncherry" app
+@test "auto-select should execute when only one match remains" "$got" = "apple"
+
+# Test that auto-select works with partial matches
+test_auto_select "application\napple\nbanana" applic
+@test "auto-select should work with partial matches" "$got" = "application"
+
+# Test that auto-select doesn't trigger with multiple matches
+function test_no_auto_select --argument-names input search
+    rm -f out.txt
+
+    echo -e "$input" \
+        | ./build/fuzzel --dmenu --auto-select --search "$search" >out.txt &
+    # Wait briefly to see if fuzzel auto-selects (it shouldn't)
+    sleep .1
+    # Force exit with Escape
+    wtype -k Escape
+    sleep .1
+    set got (cat out.txt)
+end
+
+test_no_auto_select "apple\napricot\nbanana" ap
+@test "auto-select should not trigger with multiple matches" "$got" = ""
+
+# Test without auto-select flag (should not auto-select)
+function test_normal_mode --argument-names input search
+    rm -f out.txt
+
+    echo -e "$input" \
+        | ./build/fuzzel --dmenu --search "$search" >out.txt &
+    # Wait briefly 
+    sleep .1
+    # Force exit with Escape since it won't auto-select
+    wtype -k Escape
+    sleep .1
+    set got (cat out.txt)
+end
+
+test_normal_mode unique uniqu
+@test "normal mode should not auto-select even with one match" "$got" = ""

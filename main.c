@@ -371,6 +371,8 @@ print_usage(const char *prog_name)
            "     --y-margin=MARGIN           vertical margin, in pixels (0)\n"
            "     --select=STRING             select first entry that matches the given\n"
            "                                 string\n"
+           "     --auto-select               automatically select when only one match\n"
+           "                                 remains\n"
            "     --select-index=INDEX        select the entry with index, not compatible with --select\n"
            "  -l,--lines                     number of matches to show\n"
            "     --minimal-lines             adjust the number of lines to the\n"
@@ -838,6 +840,7 @@ main(int argc, char *const *argv)
     #define OPT_SCALING_FILTER               302
     #define OPT_MINIMAL_LINES                303
     #define OPT_HIDE_PROMPT                  304
+    #define OPT_AUTO_SELECT                  305
 
     static const struct option longopts[] = {
         {"config",               required_argument, 0, OPT_CONFIG},
@@ -905,6 +908,7 @@ main(int argc, char *const *argv)
         {"delayed-filter-ms",    required_argument, 0, OPT_DELAYED_FILTER_MS},
         {"delayed-filter-limit", required_argument, 0, OPT_DELAYED_FILTER_LIMIT},
         {"scaling-filter",       required_argument, 0, OPT_SCALING_FILTER},
+        {"auto-select",          no_argument,       0, OPT_AUTO_SELECT},
 
         /* dmenu mode */
         {"dmenu",                no_argument,       0, 'd'},
@@ -1822,6 +1826,10 @@ main(int argc, char *const *argv)
             cmdline_overrides.print_timing_info_set = true;
             break;
 
+        case OPT_AUTO_SELECT:
+            cmdline_overrides.conf.auto_select = true;
+            break;
+
         case 'v':
             printf("fuzzel %s\n", version_and_features());
             return EXIT_SUCCESS;
@@ -2034,6 +2042,8 @@ main(int argc, char *const *argv)
         conf.print_timing_info = cmdline_overrides.conf.print_timing_info;
     if (cmdline_overrides.scaling_filter_set)
         conf.png_scaling_filter = cmdline_overrides.conf.png_scaling_filter;
+    if (cmdline_overrides.conf.auto_select)
+        conf.auto_select = cmdline_overrides.conf.auto_select;
 
     if (conf.dmenu.enabled) {
         /* We don't have any meta data in dmenu mode */

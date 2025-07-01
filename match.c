@@ -1386,6 +1386,7 @@ match_thread(void *_ctx)
     return -1;
 }
 
+
 static void
 matches_update_internal(struct matches *matches, bool incremental)
 {

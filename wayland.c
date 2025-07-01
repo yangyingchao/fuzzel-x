@@ -571,6 +571,23 @@ get_xdg_activation_token(struct seat *seat, const char *app_id,
     xdg_activation_token_v1_destroy(token);
 }
 
+static void execute_selected(struct seat *seat, bool as_is, int custom_success_exit_code);
+
+static bool
+check_auto_select(struct seat *seat, bool refresh)
+{
+    struct wayland *wayl = seat->wayl;
+
+    /* Check for auto-select after key binding execution */
+    if (refresh && wayl->conf->auto_select) {
+        if (matches_get_total_count(wayl->matches) == 1) {
+            execute_selected(seat, false, -1);
+            return true;
+        }
+    }
+    return false;
+}
+
 static void
 execute_selected(struct seat *seat, bool as_is, int custom_success_exit_code)
 {
@@ -904,6 +921,10 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
             {
                 if (refresh)
                     wayl_refresh(wayl);
+
+                if (check_auto_select(seat, refresh))
+                    goto maybe_repeat;
+
                 goto maybe_repeat;
             }
         }
@@ -919,6 +940,10 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
         {
             if (refresh)
                 wayl_refresh(wayl);
+
+            if (check_auto_select(seat, refresh))
+                goto maybe_repeat;
+
             goto maybe_repeat;
         }
     }
@@ -937,6 +962,15 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
             {
                 if (refresh)
                     wayl_refresh(wayl);
+
+                /* Check for auto-select after key binding execution */
+                if (refresh && wayl->conf->auto_select) {
+                    if (matches_get_total_count(wayl->matches) == 1) {
+                        execute_selected(seat, false, -1);
+                        goto maybe_repeat;
+                    }
+                }
+
                 goto maybe_repeat;
             }
         }
@@ -970,6 +1004,14 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
 
     matches_update_incremental(wayl->matches);
     wayl_refresh(wayl);
+
+    /* Check for auto-select after character insertion */
+    if (wayl->conf->auto_select) {
+        if (matches_get_total_count(wayl->matches) == 1) {
+            execute_selected(seat, false, -1);
+            return;
+        }
+    }
 
 maybe_repeat:
 
