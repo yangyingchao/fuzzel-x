@@ -86,6 +86,8 @@ struct render {
     unsigned row_height;
     unsigned icon_height;
 
+    unsigned input_glyph_offset; /* At which glyph to start rendering input */
+
     struct {
         uint16_t count;
         sem_t start;
@@ -429,6 +431,105 @@ render_cursor(const struct render *render, int x, int baseline, pixman_image_t *
     }
 }
 
+static void
+adjust_input_glyph_offset(struct render *render, const struct prompt *prompt,
+                          size_t count,
+                          const struct fcft_glyph *glyphs[static count],
+                          long kerning[static count],
+                          int start_x, int max_x)
+{
+    struct fcft_font *font = render->font;
+    const size_t cursor_location = prompt_cursor(prompt);
+
+    if (cursor_location == 0)
+        render->input_glyph_offset = 0;
+
+    /* Clamp to input string's length */
+    render->input_glyph_offset = min(render->input_glyph_offset, count - 1);
+
+    /* If cursor position is before the current offset, adjust the
+       offset backward */
+    for (size_t i = 0; i < render->input_glyph_offset; i++) {
+        if (cursor_location == i + 1) {
+            render->input_glyph_offset = i + 1;
+            break;
+        }
+    }
+
+    /* If cursor position is after the current visible portion, adjust the offset forward */
+    int pos = start_x;
+
+    for (size_t i = render->input_glyph_offset; i < count; i++) {
+
+        const struct fcft_glyph *glyph = glyphs[i];
+        if (glyph == NULL)
+            continue;
+
+        const int pixels_needed = max(glyph->x + glyph->width, glyph->advance.x);
+
+        /* Cursor is after this glyph? */
+        if (cursor_location == i + 1) {
+            /* If current glyph doesn't fit, adjust offset so that it does */
+            if (pos + kerning[i] + pixels_needed > max_x) {
+                int needed = (pos + kerning[i] + pixels_needed) - max_x;
+
+                /* Font may be variable width, meaning we may have to scroll multiple characters */
+                while (needed > 0 && render->input_glyph_offset + 1 < count) {
+                    long scrolled_kerning;
+                    fcft_kerning(
+                        font,
+                        glyphs[render->input_glyph_offset]->cp,
+                        glyphs[render->input_glyph_offset + 1]->cp,
+                        &scrolled_kerning, NULL);
+
+                    const int gained =
+                        scrolled_kerning +
+                        glyphs[render->input_glyph_offset]->advance.x;
+
+                    needed -= gained;
+                    pos -= gained;
+                    render->input_glyph_offset++;
+                }
+            }
+        }
+
+        pos += kerning[i] + glyph->advance.x;
+    }
+
+    /* Pull in glyphs from the left, if there's space left */
+    while (render->input_glyph_offset > 0 && max_x > pos) {
+        int total_width = start_x;
+
+        for (size_t i = render->input_glyph_offset; i < count; i++) {
+            const struct fcft_glyph *g = glyphs[i];
+            if (g == NULL)
+                continue;
+
+            const int w = max(g->width, g->advance.x);
+
+            if (total_width + kerning[i] + w > max_x) {
+                break;
+            }
+
+            total_width += kerning[i] + (i + 1 == count ? w : g->advance.x);
+        }
+
+        const struct fcft_glyph *glyph = glyphs[render->input_glyph_offset - 1];
+        const int pixels_needed = max(glyph->x + glyph->width, glyph->advance.x);
+
+        assert(render->input_glyph_offset > 0);
+        assert(render->input_glyph_offset < count);
+
+        const long kern = kerning[render->input_glyph_offset];
+        const int available = max_x - total_width;
+        if (kern + pixels_needed > available)
+            break;
+
+        render->input_glyph_offset--;
+        pos += kern + glyph->advance.x;
+    }
+}
+
 void
 render_prompt(struct render *render, struct buffer *buf,
               const struct prompt *prompt, const struct matches *matches)
@@ -446,21 +547,43 @@ render_prompt(struct render *render, struct buffer *buf,
     size_t text_len = c32len(ptext);
     bool use_placeholder = text_len == 0;
 
-    if (use_placeholder) {
-        ptext = prompt_placeholder(prompt);
-        text_len = c32len(ptext);
-    }
-
     const enum fcft_subpixel subpixel =
         (render->conf->colors.background.a == 1. &&
          render->conf->colors.selection.a == 1.)
         ? render->subpixel : FCFT_SUBPIXEL_NONE;
+
+    const struct fcft_glyph *input_glyphs[text_len];
+    long input_kerning[text_len];
+
+    for (size_t i = 0; i < text_len; i++) {
+        input_glyphs[i] = fcft_rasterize_char_utf32(font, ptext[i], subpixel);
+        if (i == 0)
+            input_kerning[0] = 0;
+        else
+            fcft_kerning(font, ptext[i - 1], ptext[i], &input_kerning[i], NULL);
+    }
+
+    if (use_placeholder) {
+        ptext = prompt_placeholder(prompt);
+        text_len = c32len(ptext);
+    }
 
     int x = render->border_size + render->x_margin;
     int y = render->border_size + render->y_margin + render_baseline(render);
 
     /* Erase background */
     pixman_color_t bg = render->pix_background_color;
+    //pixman_color_t bg = (pixman_color_t){0xffff, 0, 0, 0xffff};
+    pixman_image_fill_rectangles(
+        PIXMAN_OP_SRC, buf->pix[0], &bg, 1,
+        &(pixman_rectangle16_t){
+            render->border_size + render->x_margin - render->x_margin / 3,
+            render->border_size + render->y_margin,
+            buf->width - 2 * (render->border_size + render->x_margin - render->x_margin / 3),
+            render->row_height});
+
+#if 0
+    bg = (pixman_color_t){0, 0xffff, 0, 0xffff};
     pixman_image_fill_rectangles(
         PIXMAN_OP_SRC, buf->pix[0], &bg, 1,
         &(pixman_rectangle16_t){
@@ -468,6 +591,7 @@ render_prompt(struct render *render, struct buffer *buf,
             render->border_size + render->y_margin,
             buf->width - 2 * (render->border_size + render->x_margin),
             render->row_height});
+#endif
 
     int stats_width = conf->match_counter
         ? render_match_count(render, buf, prompt, matches)
@@ -485,7 +609,7 @@ render_prompt(struct render *render, struct buffer *buf,
             prompt_run = fcft_rasterize_text_run_utf32(
                 font, prompt_len, pprompt, subpixel);
         }
-        if (input_run == NULL) {
+        if (input_run == NULL && use_placeholder) {
             input_run = fcft_rasterize_text_run_utf32(
                 font, text_len, ptext, subpixel);
         }
@@ -494,7 +618,9 @@ render_prompt(struct render *render, struct buffer *buf,
     if (prompt_run != NULL) {
         for (size_t i = 0; i < prompt_run->count; i++) {
             const struct fcft_glyph *glyph = prompt_run->glyphs[i];
-            if (x + glyph->width > max_x)
+            const int pixels_needed = max(glyph->x + glyph->width, glyph->advance.x);
+
+            if (x + pixels_needed > max_x)
                 goto out;
 
             render_glyph(buf->pix[0], glyph, x, y, &render->pix_prompt_color);
@@ -516,7 +642,8 @@ render_prompt(struct render *render, struct buffer *buf,
 
             x += x_kern;
 
-            if (x + glyph->width >= max_x)
+            const int pixels_needed = max(glyph->x + glyph->width, glyph->advance.x);
+            if (x + pixels_needed > max_x)
                 goto out;
 
             render_glyph(
@@ -528,19 +655,35 @@ render_prompt(struct render *render, struct buffer *buf,
         }
     }
 
+    /*
+     * Adjust glyph offset (i.e. where in the input string we start
+     * rendering), to ensure the portion containing the cursor is
+     * always visible.
+     */
+    adjust_input_glyph_offset(
+        render, prompt, !use_placeholder ? text_len : 0,
+        input_glyphs, input_kerning, x, max_x);
+
     /* Cursor, if right after the prompt. In all other cases, the
      * cursor will be rendered by the loop below */
-    if (cursor_location == 0 || (conf->password_mode.enabled &&
-                                 conf->password_mode.character == U'\0'))
+    if (cursor_location == render->input_glyph_offset
+        || (conf->password_mode.enabled &&
+            conf->password_mode.character == U'\0'))
     {
         render_cursor(render, x, y, buf->pix[0]);
     }
 
     if (input_run != NULL && !(conf->password_mode.enabled && !use_placeholder)) {
-        for (size_t i = 0; i < input_run->count; i++) {
+        /* We only shape the placeholder string */
+        assert(use_placeholder);
+
+        for (size_t i = render->input_glyph_offset; i < input_run->count; i++) {
             const struct fcft_glyph *glyph = input_run->glyphs[i];
-            if (x + glyph->width > max_x)
+            const int pixels_needed = max(glyph->x + glyph->width, glyph->advance.x);
+
+            if (x + pixels_needed > max_x) {
                 goto out;
+            }
 
             render_glyph(buf->pix[0], glyph, x, y,
                          use_placeholder
@@ -562,7 +705,7 @@ render_prompt(struct render *render, struct buffer *buf,
     } else {
         char32_t prev = 0;
 
-        for (size_t i = 0; i < text_len; i++) {
+        for (size_t i = render->input_glyph_offset; i < text_len; i++) {
             if (conf->password_mode.enabled &&
                 conf->password_mode.character == U'\0' &&
                 !use_placeholder)
@@ -570,24 +713,21 @@ render_prompt(struct render *render, struct buffer *buf,
                 continue;
             }
 
-            char32_t wc = conf->password_mode.enabled && !use_placeholder
-                ? conf->password_mode.character
-                : ptext[i];
-
-            const struct fcft_glyph *glyph = fcft_rasterize_char_utf32(
-                font, wc, subpixel);
+            const struct fcft_glyph *glyph = input_glyphs[i];
 
             if (glyph == NULL) {
-                prev = wc;
+                prev = 0;
                 continue;
             }
 
             long x_kern;
-            fcft_kerning(font, prev, wc, &x_kern, NULL);
+            fcft_kerning(font, prev, glyph->cp, &x_kern, NULL);
 
             x += x_kern;
 
-            if (x + glyph->width >= max_x)
+            const int pixels_needed = max(glyph->x + glyph->width, glyph->advance.x);
+
+            if (x + pixels_needed > max_x)
                 goto out;
 
             render_glyph(
@@ -602,7 +742,7 @@ render_prompt(struct render *render, struct buffer *buf,
             if (cursor_location > 0 && cursor_location - 1 == i)
                 render_cursor(render, x, y, buf->pix[0]);
 
-            prev = wc;
+            prev = glyph->cp;
         }
     }
 
@@ -697,7 +837,7 @@ render_match_text(pixman_image_t *pix, double *_x, double _y, double max_x,
             }
         }
 
-        if (x + (kern != NULL ? kern[i] : 0) + glyphs[i]->advance.x >= max_x) {
+        if (x + (kern != NULL ? kern[i] : 0) + glyphs[i]->advance.x > max_x) {
             const struct fcft_glyph *ellipses =
                 fcft_rasterize_char_utf32(font, U'…', subpixel);
 

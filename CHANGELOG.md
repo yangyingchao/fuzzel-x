@@ -83,8 +83,11 @@
 * Default icon theme from `hicolor` to `default`.
 * Error out (with an appropriate error message) if the command line we
   attempt to execute has non-specification-compliant quoting.
+* Input text now "scrolls" with the cursor, if the string is longer
+  than the available space ([#378][378]).
 
 [560]: https://codeberg.org/dnkl/fuzzel/issues/560
+[378]: https://codeberg.org/dnkl/fuzzel/issues/378
 
 
 ### Deprecated
