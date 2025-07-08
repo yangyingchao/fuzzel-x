@@ -205,7 +205,7 @@ struct config {
     struct {
         unsigned size;
         unsigned radius;
-    } border;
+    } border, selection_border;
 
     float image_size_ratio;
 

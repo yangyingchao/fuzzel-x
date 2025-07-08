@@ -397,6 +397,7 @@ print_usage(const char *prog_name)
            "  -S,--selection-text-color=HEX  text color of selected item (586e75ff)\n"
            "  -M,--selection-match-color=HEX color of matched substring in selection\n"
            "                                 (cb4b16ff)\n"
+           "     --selection-radius          border radius of the selected entry (0)\n"
            "     --counter-color             color of the match count (93a1a1)\n"
            "  -B,--border-width=INT          width of border, in pixels (1)\n"
            "  -r,--border-radius=INT         amount of corner \"roundness\" (10)\n"
@@ -841,6 +842,7 @@ main(int argc, char *const *argv)
     #define OPT_MINIMAL_LINES                303
     #define OPT_HIDE_PROMPT                  304
     #define OPT_AUTO_SELECT                  305
+    #define OPT_SELECTION_RADIUS             306
 
     static const struct option longopts[] = {
         {"config",               required_argument, 0, OPT_CONFIG},
@@ -879,6 +881,7 @@ main(int argc, char *const *argv)
         {"selection-color",      required_argument, 0, 's'},
         {"selection-text-color", required_argument, 0, 'S'},
         {"selection-match-color",required_argument, 0, 'M'},
+        {"selection-radius",     required_argument, 0, OPT_SELECTION_RADIUS},
         {"counter-color",        required_argument, 0, OPT_COUNTER_COLOR},
         {"border-width",         required_argument, 0, 'B'},
         {"border-radius",        required_argument, 0, 'r'},
@@ -963,6 +966,7 @@ main(int argc, char *const *argv)
         bool selection_color_set:1;
         bool selection_text_color_set:1;
         bool selection_match_color_set:1;
+        bool selection_border_radius_set:1;
         bool counter_color_set:1;
         bool border_color_set:1;
         bool border_size_set:1;
@@ -1468,6 +1472,16 @@ main(int argc, char *const *argv)
             cmdline_overrides.conf.colors.selection_text =
                 conf_hex_to_rgba(selection_text_color);
             cmdline_overrides.selection_text_color_set = true;
+            break;
+        }
+
+        case OPT_SELECTION_RADIUS: {
+            if (sscanf(optarg, "%u", &cmdline_overrides.conf.selection_border.radius) != 1) {
+                fprintf(stderr, "%s: invalid selection border radius (must be an integer)\n",
+                        optarg);
+                return EXIT_FAILURE;
+            }
+            cmdline_overrides.selection_border_radius_set = true;
             break;
         }
 
@@ -1978,6 +1992,8 @@ main(int argc, char *const *argv)
         conf.colors.selection_text = cmdline_overrides.conf.colors.selection_text;
     if (cmdline_overrides.selection_match_color_set)
         conf.colors.selection_match = cmdline_overrides.conf.colors.selection_match;
+    if (cmdline_overrides.selection_border_radius_set)
+        conf.selection_border.radius = cmdline_overrides.conf.selection_border.radius;
     if (cmdline_overrides.counter_color_set)
         conf.colors.counter = cmdline_overrides.conf.colors.counter;
     if (cmdline_overrides.border_color_set)

@@ -1100,6 +1100,9 @@ parse_section_border(struct context *ctx)
     else if (strcmp(key, "radius") == 0)
         return value_to_uint32(ctx, 10, &conf->border.radius);
 
+    else if (strcmp(key, "selection-radius") == 0)
+        return value_to_uint32(ctx, 10, &conf->selection_border.radius);
+
     else
         LOG_CONTEXTUAL_ERR("not a valid option: %s", key);
 
@@ -1687,6 +1690,10 @@ config_load(struct config *conf, const char *conf_path,
         .border = {
             .size = 1u,
             .radius = 10u,
+        },
+        .selection_border = {
+            .size = 0u,
+            .radius = 0u,
         },
         .image_size_ratio = 0.5,
         .png_scaling_filter = SCALING_FILTER_BOX,

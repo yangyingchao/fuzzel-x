@@ -53,6 +53,7 @@ complete -c fuzzel -x -s m -l match-color                                       
 complete -c fuzzel -x -s s -l selection-color                                                                   -d "background color of selected item (eee8d5ff)"
 complete -c fuzzel -x -s S -l selection-text-color                                                              -d "text color of selected item (586e75ff)"
 complete -c fuzzel -x -s M -l selection-match-color                                                             -d "color of matched substring of selected item (cb4b16ff)"
+complete -c fuzzel -x      -l selection-radius                                                                  -d "amount of corner \"roundness\" for the selected entry (0)"
 complete -c fuzzel -x      -l counter-color                                                                     -d "color of the match count (93a1a1ff)"
 complete -c fuzzel -x -s B -l border-width                                                                      -d "width of border, in pixels (1)"
 complete -c fuzzel -x -s r -l border-radius                                                                     -d "amount of corner \"roundness\" (10)"

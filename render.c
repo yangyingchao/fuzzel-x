@@ -61,6 +61,9 @@ struct render {
     struct fcft_text_run *prompt_text_run;
     struct fcft_text_run *placeholder_text_run;
 
+    /* Cached selection corners */
+    pixman_image_t *selection_corners;
+
     float scale;
     float dpi;
     bool size_font_by_dpi;
@@ -83,6 +86,7 @@ struct render {
     unsigned inner_pad;
     unsigned border_size;
     unsigned border_radius;
+    unsigned selection_border_radius;
     unsigned row_height;
     unsigned icon_height;
 
@@ -190,6 +194,68 @@ fill_rounded_rectangle(pixman_op_t op, pixman_image_t* dest,
     pixman_region32_fini(&region);
 }
 
+static void
+render_rounded_rectangle(pixman_image_t* dest, pixman_color_t* background,
+                         pixman_color_t* border, unsigned int radius, unsigned bw,
+                         int16_t x, int16_t y, uint16_t width, uint16_t height)
+{
+    if (radius == 0) {
+        pixman_image_fill_rectangles(
+            PIXMAN_OP_SRC, dest, background,
+            1, &(pixman_rectangle16_t){
+            x + bw, y + bw, width - 2 * bw, height - 2 * bw});
+
+        pixman_image_fill_rectangles(
+            PIXMAN_OP_SRC, dest, border,
+            4, (pixman_rectangle16_t[]){
+                {x, y, width, bw},                              /* top */
+                {x, y + bw, bw, height - 2 * bw},               /* left */
+                {x + width - bw, y + bw, bw, height - 2 * bw},  /* right */
+                {x, y + height - bw, width, bw}                 /* bottom */
+            });
+    } else {
+        const int msaa_scale = 2;
+        const double brd_sz_scaled = bw * msaa_scale;
+        const double brd_rad_scaled = radius * msaa_scale;
+        int w = width * msaa_scale;
+        int h = height * msaa_scale;
+        int bg_rad = brd_rad_scaled * (1.0 - (float)brd_sz_scaled / (float)brd_rad_scaled);
+
+        pixman_image_t *bg_img;
+        if (msaa_scale != 1) {
+            bg_img = pixman_image_create_bits(
+                pixman_image_get_format(dest), w, h, NULL, w*4);
+        } else {
+            bg_img = dest;
+        }
+
+        /* Border */
+        fill_rounded_rectangle(
+            PIXMAN_OP_SRC, bg_img, border, 0, 0, w, h, brd_rad_scaled);
+
+        /* Background */
+        fill_rounded_rectangle(
+            PIXMAN_OP_SRC, bg_img, background, brd_sz_scaled, brd_sz_scaled,
+            w-(brd_sz_scaled*2),
+            h-(brd_sz_scaled*2),
+            bg_rad);
+
+        if (msaa_scale != 1) {
+            pixman_f_transform_t ftrans;
+            pixman_transform_t trans;
+            pixman_f_transform_init_scale(&ftrans, msaa_scale, msaa_scale);
+            pixman_transform_from_pixman_f_transform(&trans, &ftrans);
+            pixman_image_set_transform(bg_img, &trans);
+            pixman_image_set_filter(bg_img, PIXMAN_FILTER_BILINEAR, NULL, 0);
+
+            pixman_image_composite32(
+                PIXMAN_OP_OVER, bg_img, NULL, dest, 0, 0, 0, 0, x, y,
+                width, height);
+            pixman_image_unref(bg_img);
+        }
+    }
+}
+
 void
 render_background(const struct render *render, struct buffer *buf)
 {
@@ -210,61 +276,8 @@ render_background(const struct render *render, struct buffer *buf)
             max(render->x_margin,
                 render->y_margin));
 
-    if (radius == 0) {
-        pixman_image_fill_rectangles(
-            PIXMAN_OP_SRC, buf->pix[0], &bg,
-            1, &(pixman_rectangle16_t){
-                bw, bw, buf->width - 2 * bw, buf->height - 2 * bw});
-
-        pixman_image_fill_rectangles(
-            PIXMAN_OP_SRC, buf->pix[0], &border_color,
-            4, (pixman_rectangle16_t[]){
-                {0, 0, buf->width, bw},                          /* top */
-                {0, bw, bw, buf->height - 2 * bw},               /* left */
-                {buf->width - bw, bw, bw, buf->height - 2 * bw}, /* right */
-                {0, buf->height - bw, buf->width, bw}            /* bottom */
-            });
-    } else {
-        const int msaa_scale = 2;
-        const double brd_sz_scaled = bw * msaa_scale;
-        const double brd_rad_scaled = radius * msaa_scale;
-        int w = buf->width * msaa_scale;
-        int h = buf->height * msaa_scale;
-        int bg_rad = brd_rad_scaled * (1.0 - (float)brd_sz_scaled / (float)brd_rad_scaled);
-
-        pixman_image_t *bg_img;
-        if (msaa_scale != 1){
-            bg_img = pixman_image_create_bits(
-                pixman_image_get_format(buf->pix[0]), w, h, NULL, w*4);
-        } else {
-            bg_img = buf->pix[0];
-        }
-
-        /* Border */
-        fill_rounded_rectangle(
-            PIXMAN_OP_SRC, bg_img, &border_color, 0, 0, w, h, brd_rad_scaled);
-
-        /* Background */
-        fill_rounded_rectangle(
-            PIXMAN_OP_SRC, bg_img, &bg, brd_sz_scaled, brd_sz_scaled,
-            w-(brd_sz_scaled*2),
-            h-(brd_sz_scaled*2),
-            bg_rad);
-
-        if (msaa_scale != 1){
-            pixman_f_transform_t ftrans;
-            pixman_transform_t trans;
-            pixman_f_transform_init_scale(&ftrans, msaa_scale, msaa_scale);
-            pixman_transform_from_pixman_f_transform(&trans, &ftrans);
-            pixman_image_set_transform(bg_img, &trans);
-            pixman_image_set_filter(bg_img, PIXMAN_FILTER_BILINEAR, NULL, 0);
-
-            pixman_image_composite32(
-                PIXMAN_OP_SRC, bg_img, NULL, buf->pix[0], 0, 0, 0, 0, 0, 0,
-                buf->width, buf->height);
-            pixman_image_unref(bg_img);
-        }
-    }
+    render_rounded_rectangle(buf->pix[0], &bg, &border_color, radius, bw,
+                             0, 0, buf->width, buf->height);
 }
 
 static void
@@ -1319,7 +1332,7 @@ render_match_entry_background(const struct render *render,
 }
 
 static void
-render_selected_match_entry_background(const struct render *render,
+render_selected_match_entry_background(struct render *render,
                                        int idx, pixman_image_t *pix, int width)
 {
     pixman_color_t bg = render->pix_selection_color;
@@ -1331,12 +1344,23 @@ render_selected_match_entry_background(const struct render *render,
     const int w = width - 2 * (render->border_size + render->x_margin - sel_margin);
     const int h = 1 * render->row_height;
 
-    pixman_image_fill_rectangles(
-        PIXMAN_OP_OVER, pix, &bg, 1, &(pixman_rectangle16_t){x, y, w, h});
+    // limit radius to half of height, any larger and it causes weird shapes
+    // also limit it when horizontal padding is small, to prevent icon pop out
+    const unsigned int radius = min(
+        min(render->selection_border_radius, h / 2), render->x_margin);
+
+    if (render->selection_corners == NULL) {
+        render->selection_corners = pixman_image_create_bits(
+            pixman_image_get_format(pix), w, h, NULL, w * 4);
+        render_rounded_rectangle(render->selection_corners, &bg, &bg, radius, 0, 0, 0, w, h);
+    }
+    pixman_image_composite(
+        PIXMAN_OP_OVER, render->selection_corners, NULL, pix,
+        0, 0, 0, 0, x, y, w, h);
 }
 
 static void
-render_one_match_entry(const struct render *render, const struct matches *matches,
+render_one_match_entry(struct render *render, const struct matches *matches,
                        const struct match *match, bool render_icons,
                        int idx, bool is_selected, int width, int height,
                        pixman_image_t *pix, cairo_t *cairo)
@@ -1699,6 +1723,7 @@ render_resized(struct render *render, int *new_width, int *new_height)
 
     const unsigned border_size = render->conf->border.size * scale;
     const unsigned border_radius = render->conf->border.radius * scale;
+    const unsigned selection_border_radius = render->conf->selection_border.radius * scale;
 
     const unsigned row_height = render->conf->line_height.px >= 0
         ? pt_or_px_as_pixels(render, &render->conf->line_height)
@@ -1735,6 +1760,7 @@ render_resized(struct render *render, int *new_width, int *new_height)
     render->inner_pad = inner_pad;
     render->border_size = border_size;
     render->border_radius = border_radius;
+    render->selection_border_radius = selection_border_radius;
     render->row_height = row_height;
     render->icon_height = icon_height;
 
@@ -1742,6 +1768,12 @@ render_resized(struct render *render, int *new_width, int *new_height)
         *new_width = width;
     if (new_height != NULL)
         *new_height = height;
+
+    /* invalidate cached corners since the size could have changed */
+    if (render->selection_corners != NULL) {
+        pixman_image_unref(render->selection_corners);
+        render->selection_corners = NULL;
+    }
 }
 
 bool
@@ -1812,6 +1844,8 @@ render_destroy(struct render *render)
 
     fcft_text_run_destroy(render->prompt_text_run);
     fcft_text_run_destroy(render->placeholder_text_run);
+
+    pixman_image_unref(render->selection_corners);
 
     fcft_destroy(render->font);
     fcft_destroy(render->font_bold);

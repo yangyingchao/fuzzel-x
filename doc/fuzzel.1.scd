@@ -304,6 +304,11 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	part in each application's name is highlighted with this color.
 	See *COLORS*. Default: _cb4b16ff_.
 
+*--selection-radius*=_INT_
+	The border radius of the selection entry. Like border-radius, this is
+	subjected to output scaling. A larger value means a rounder corner. 0
+	disables rounded corner. Default: _0_.
+
 *--counter-color*=_HEX_
 	The color of the match count stats printed at the right-hand side
 	of the input prompt. See *COLORS*. Default: _93a1a1ff_.

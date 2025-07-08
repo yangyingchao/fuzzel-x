@@ -45,6 +45,7 @@ _arguments \
     '(-s --selection-color)'{-s,--selection-color}'[background color of selected item (eee8d5ff)]:selection-color:()' \
     '(-S --selection-text-color)'{-S,--selection-text-color}'[text color of selected item (586e75ff)]:selection-text-color:()' \
     '(-M --selection-match-color)'{-M,--selection-match-color}'[color of matched substring of selected item (cb4b16ff)]:match-color:()' \
+    '--selection-radius[amount of corner "roundness" for the selected entry (0)]:selection-radius:()' \
     '--counter-color[color of the match count (93a1a1ff)]:counter-color:()' \
     '(-B --border-width)'{-B,--border-width}'[width of border, in pixels (1)]:border-width:()' \
     '(-r --border-radius)'{-r,--border-radius}'[amount of corner "roundness" (10)]:border-radius:()' \

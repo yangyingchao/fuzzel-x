@@ -474,6 +474,10 @@ All color values are in RGBA.
 *radius*
 	Amount of corner "roundness". Default: _10_.
 
+*selection-radius*
+	Amount of corner "roundness" for the selected entry. Default: _0_.
+
+
 # SECTION: dmenu
 
 *mode*

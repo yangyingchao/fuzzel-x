@@ -57,6 +57,8 @@
   simultaneously with `--prompt-only`.i  ([#597][597])
 * `--auto-select` option. When one entry is left, automatically select
   it. ([#411][411])
+* `selection-radius` option and `--selection-radius` flag to set the border
+  radius of the selected entry
 
 [411]: https://codeberg.org/dnkl/fuzzel/issues/411
 [504]: https://codeberg.org/dnkl/fuzzel/pulls/504
