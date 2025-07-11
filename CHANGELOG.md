@@ -87,9 +87,13 @@
   attempt to execute has non-specification-compliant quoting.
 * Input text now "scrolls" with the cursor, if the string is longer
   than the available space ([#378][378]).
+* When using the mouse, the currently selected item is only changed
+  when the mouse is over an item. Before this release, the X
+  coordinate was ignored ([#606][606]).
 
 [560]: https://codeberg.org/dnkl/fuzzel/issues/560
 [378]: https://codeberg.org/dnkl/fuzzel/issues/378
+[606]: https://codeberg.org/dnkl/fuzzel/issues/606
 
 
 ### Deprecated

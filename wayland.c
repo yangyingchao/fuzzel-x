@@ -1076,10 +1076,15 @@ static void
 select_hovered_match(struct seat *seat, bool refresh_always)
 {
     struct wayland *wayl = seat->wayl;
+
     bool refresh = false;
 
-    size_t hovered_row = render_get_row_num(
-        wayl->render, seat->pointer.y, wayl->matches);
+    ssize_t hovered_row = render_get_row_num(
+        wayl->render, wayl->width, seat->pointer.x, seat->pointer.y,
+        wayl->matches);
+
+    if (hovered_row < 0)
+        return;
 
     if (hovered_row != seat->pointer.hovered_row_idx) {
         seat->pointer.hovered_row_idx = hovered_row;
@@ -1141,8 +1146,8 @@ wl_pointer_motion(void *data, struct wl_pointer *wl_pointer,
     const int old_x = seat->pointer.x;
     const int old_y = seat->pointer.y;
 
-    seat->pointer.x = x;
-    seat->pointer.y = y;
+    seat->pointer.x = round(seat->wayl->scale * x);
+    seat->pointer.y = round(seat->wayl->scale * y);
 
     if (old_x != 0 && old_y != 0)
         select_hovered_match(seat, false);
@@ -1157,7 +1162,12 @@ wl_pointer_button(void *data, struct wl_pointer *wl_pointer,
 
     if (state == WL_POINTER_BUTTON_STATE_RELEASED) {
         if (button == BTN_LEFT && seat->pointer.hovered_row_idx != -1) {
-            execute_selected(seat, false, -1);
+            ssize_t clicked_row = render_get_row_num(
+                wayl->render, wayl->width, seat->pointer.x, seat->pointer.y,
+                wayl->matches);
+
+            if (clicked_row == seat->pointer.hovered_row_idx)
+                execute_selected(seat, false, -1);
         }
 
         else if (button == BTN_RIGHT) {
@@ -1269,15 +1279,15 @@ wl_touch_up(void *data, struct wl_touch *wl_touch, uint32_t serial,
             /* Tap threshold: less than 10 pixels movement and under 500ms */
             if (distance < 10.0 && duration < 500) {
                 /* Convert touch coordinates to match selection */
+                int touch_x = (int)seat->touch.active_touch.start_x;
                 int touch_y = (int)seat->touch.active_touch.start_y;
-                size_t tapped_row = render_get_row_num(wayl->render, touch_y, wayl->matches);
+
+                ssize_t tapped_row = render_get_row_num(
+                    wayl->render, wayl->width, touch_x, touch_y, wayl->matches);
 
                 /* If user tapped on a valid row, select and execute it */
-                if (matches_idx_select(wayl->matches, tapped_row)) {
+                if (tapped_row >= 0 && matches_idx_select(wayl->matches, tapped_row)) {
                     execute_selected(seat, false, -1);
-                } else {
-                    /* Tapped on empty area or input field - focus input */
-                    wayl_refresh(wayl);
                 }
             }
         }

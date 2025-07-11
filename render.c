@@ -1816,28 +1816,29 @@ render_destroy(struct render *render)
     free(render);
 }
 
-size_t
-render_get_row_num(const struct render *render, int y,
+ssize_t
+render_get_row_num(const struct render *render, int width, int x, int y,
                    const struct matches *matches)
 {
-    const float scale = render->scale;
     const int y_margin = render->y_margin;
     const int inner_pad = render->inner_pad;
     const int border_size = render->border_size;
     const int row_height = render->row_height;
+
+    const int min_x = render->border_size + render->x_margin - render->x_margin / 3;
+    const int max_x = width - (min_x);
+
     const int first_row = 1 * border_size + y_margin +
         (render->conf->hide_prompt ? 0 : row_height) +
         (render->conf->hide_prompt ? 0 : inner_pad);
+
     const size_t match_count = matches_get_count(matches);
     const size_t last_row = first_row + match_count * row_height;
 
-    y = floor(scale * y);
+    ssize_t row = -1;
 
-    size_t row = -1;
-
-    if (y >= first_row && y < last_row) {
+    if (y >= first_row && y < last_row && x >= min_x && x < max_x)
         row = (y - first_row) / row_height;
-    }
 
     return row;
 }

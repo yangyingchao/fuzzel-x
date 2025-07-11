@@ -37,6 +37,6 @@ void render_match_list(
 
 int render_icon_size(const struct render *render);
 
-size_t render_get_row_num(
-        const struct render *render, int y,
-        const struct matches *matches);
+ssize_t render_get_row_num(
+    const struct render *render, int window_width, int x, int y,
+    const struct matches *matches);

@@ -697,7 +697,7 @@ matches_selected_select(struct matches *matches, const char *_string)
 bool
 matches_idx_select(struct matches *matches, size_t idx)
 {
-    if (idx == -1)
+    if (idx == (size_t)-1)
         return false;
 
     matches->selected = match_get_idx(matches, idx);
