@@ -1813,6 +1813,7 @@ render_destroy(struct render *render)
     fcft_text_run_destroy(render->placeholder_text_run);
 
     fcft_destroy(render->font);
+    fcft_destroy(render->font_bold);
     free(render);
 }
 
