@@ -37,7 +37,7 @@ typedef tll(char *) theme_names_t;
 static bool
 dir_context_is_allowed(const char *context)
 {
-    static const char *const allowed_contexts[] = {"applications", "apps"};
+    static const char *const allowed_contexts[] = {"applications", "apps", "legacy"};
 
     if (context == NULL)
         return NULL;
