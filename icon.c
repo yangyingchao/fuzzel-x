@@ -297,15 +297,24 @@ get_icon_dirs(void)
     }
 
     {
-        const char *path = "/usr/share/pixmaps";
-        int fd = open(path, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
-        if (fd >= 0) {
-            struct xdg_data_dir home_icons = {
-                .path = xstrdup(path),
-                .fd = fd,
-            };
+        /* /usr/local/share/pixmaps and usr/share/pixmaps:
+         * Even if the specification only mentions /usr/share
+         * explicitely as a base dir to look for pixmaps (while icons
+         * is searched in both), some distributions do use
+         * /usr/local/share/pixmaps (e.g. firefox.png under FreeBSD).
+         */
+        const char **paths = (const char *[]) { "/usr/local/share/pixmaps", "/usr/share/pixmaps", NULL };
+        const char *path;
+        while ((path = *paths++) != NULL) {
+            int fd = open(path, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+            if (fd >= 0) {
+                struct xdg_data_dir home_icons = {
+                    .path = xstrdup(path),
+                    .fd = fd,
+                };
 
-            tll_push_back(dirs, home_icons);
+                tll_push_back(dirs, home_icons);
+            }
         }
     }
 
