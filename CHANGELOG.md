@@ -111,7 +111,7 @@
 * Missing shell completions for `--prompt-only`.
 * Empty window being displayed despite `--no-run-if-empty` being used.
 * Fix border width and scaling for mixed-DPI environments ([#595][595])
-* Some icons not found on FreeBSD (`/ysr/local/share/pixmaps` not
+* Some icons not found on FreeBSD (`/usr/local/share/pixmaps` not
   searched) ([#622][622])
 
 [507]: https://codeberg.org/dnkl/fuzzel/issues/507

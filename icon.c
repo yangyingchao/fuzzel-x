@@ -299,7 +299,7 @@ get_icon_dirs(void)
     {
         /* /usr/local/share/pixmaps and usr/share/pixmaps:
          * Even if the specification only mentions /usr/share
-         * explicilty as a base dir to look for pixmaps (while icons
+         * explicitly as a base dir to look for pixmaps (while icons
          * is searched in both), some distributions do use
          * /usr/local/share/pixmaps (e.g. firefox.png under FreeBSD).
          */
