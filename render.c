@@ -234,7 +234,8 @@ render_background(const struct render *render, struct buffer *buf)
 
         pixman_image_t *bg_img;
         if (msaa_scale != 1){
-            bg_img = pixman_image_create_bits(PIXMAN_a8r8g8b8, w, h, NULL, w*4);
+            bg_img = pixman_image_create_bits(
+                pixman_image_get_format(buf->pix[0]), w, h, NULL, w*4);
         } else {
             bg_img = buf->pix[0];
         }
