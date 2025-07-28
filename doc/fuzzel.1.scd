@@ -533,6 +533,19 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 *-v*,*--version*
 	Show the version number and quit
 
+# SEARCH PATHS
+
+Fuzzel searches for XDG *.desktop* files according to the XDG Base Directory
+Specification (see link at bottom), looking in the `applications` subdirectory
+of the paths given by `XDG_DATA_DIRS` and `XDG_DATA_HOME`. By default, these
+are:
+
+- *~/.local/share/applications*
+- */usr/local/share/applitions*
+- */usr/share/application*
+
+See the specification for details.
+
 # CONFIGURATION
 
 fuzzel will search for a configuration file in the following locations,
@@ -591,3 +604,4 @@ _$XDG_RUNTIME_DIR/fuzzel-$WAYLAND_DISPLAY.lock_
 - *fuzzel.ini*(5)
 - *https://specifications.freedesktop.org/desktop-entry-spec/desktop-entry-spec-latest.html*
 - *https://codeberg.org/dnkl/fuzzel*
+- *https://specifications.freedesktop.org/basedir-spec/latest/*
