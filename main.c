@@ -585,7 +585,7 @@ populate_apps(void *_ctx)
 
     if (dmenu_enabled) {
         if (!conf->prompt_only) {
-            dmenu_load_entries(apps, dmenu_delim, conf->dmenu.render_column,
+            dmenu_load_entries(apps, dmenu_delim, conf->dmenu.with_nth_format,
                                ctx->event_fd, ctx->dmenu_abort_fd);
             read_cache(cache_path, apps, true);
         }
@@ -1713,27 +1713,25 @@ main(int argc, char *const *argv)
             cmdline_overrides.dmenu_mode_set = true;
             break;
 
-        case OPT_DMENU_WITH_NTH:
-            if (sscanf(optarg, "%u", &cmdline_overrides.conf.dmenu.render_column) != 1) {
-                fprintf(
-                    stderr,
-                    "%s: invalid with-nth value (must be an integer)\n",
-                    optarg);
-                return EXIT_FAILURE;
-            }
+        case OPT_DMENU_WITH_NTH: {
+            unsigned int with_nth_idx;
+            if (sscanf(optarg, "%u", &with_nth_idx) == 1)
+                cmdline_overrides.conf.dmenu.with_nth_format = xasprintf("{%u}", with_nth_idx);
+            else
+                cmdline_overrides.conf.dmenu.with_nth_format = xstrdup(optarg);
             cmdline_overrides.dmenu_with_nth_set = true;
             break;
+        }
 
-        case OPT_DMENU_ACCEPT_NTH:
-                    if (sscanf(optarg, "%u", &cmdline_overrides.conf.dmenu.output_column) != 1) {
-                        fprintf(
-                            stderr,
-                            "%s: invalid accept-nth value (must be an integer)\n",
-                            optarg);
-                        return EXIT_FAILURE;
-                    }
-                    cmdline_overrides.dmenu_accept_nth_set = true;
-                    break;
+        case OPT_DMENU_ACCEPT_NTH: {
+            unsigned int accept_nth_idx;
+            if (sscanf(optarg, "%u", &accept_nth_idx) == 1)
+                cmdline_overrides.conf.dmenu.accept_nth_format = xasprintf("{%u}", accept_nth_idx);
+            else
+                cmdline_overrides.conf.dmenu.accept_nth_format = xstrdup(optarg);
+            cmdline_overrides.dmenu_accept_nth_set = true;
+            break;
+        }
 
         case OPT_LOG_LEVEL: {
             int lvl = log_level_from_string(optarg);
@@ -2045,10 +2043,14 @@ main(int argc, char *const *argv)
         conf.dmenu.mode = cmdline_overrides.conf.dmenu.mode;
     if (cmdline_overrides.dmenu_exit_immediately_if_empty_set)
         conf.dmenu.exit_immediately_if_empty = cmdline_overrides.conf.dmenu.exit_immediately_if_empty;
-    if (cmdline_overrides.dmenu_with_nth_set)
-        conf.dmenu.render_column = cmdline_overrides.conf.dmenu.render_column;
-    if (cmdline_overrides.dmenu_accept_nth_set)
-        conf.dmenu.output_column = cmdline_overrides.conf.dmenu.output_column;
+    if (cmdline_overrides.dmenu_with_nth_set) {
+        free(conf.dmenu.with_nth_format);
+        conf.dmenu.with_nth_format = cmdline_overrides.conf.dmenu.with_nth_format;
+    }
+    if (cmdline_overrides.dmenu_accept_nth_set) {
+        free(conf.dmenu.accept_nth_format);
+        conf.dmenu.accept_nth_format = cmdline_overrides.conf.dmenu.accept_nth_format;
+    }
     if (cmdline_overrides.conf.list_executables_in_path)
         conf.list_executables_in_path = cmdline_overrides.conf.list_executables_in_path;
     if (cmdline_overrides.render_workers_set)

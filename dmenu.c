@@ -25,7 +25,8 @@
 
 void
 dmenu_load_entries(struct application_list *applications, char delim,
-                   int with_nth, int event_fd, int abort_fd)
+                   const char *with_nth_format,
+                   int event_fd, int abort_fd)
 {
     tll(struct application *) entries = tll_init();
 
@@ -167,9 +168,9 @@ dmenu_load_entries(struct application_list *applications, char delim,
                 continue;
             }
 
-            char32_t *title = with_nth == 0
+            char32_t *title = with_nth_format == 0
                 ? xc32dup(wline)
-                : nth_column(wline, with_nth);
+                : nth_column(wline, with_nth_format);
 
             char32_t *lowercase = xc32dup(title);
             for (size_t i = 0; i < c32len(lowercase); i++)
@@ -239,7 +240,8 @@ out:
 
 bool
 dmenu_execute(const struct application *app, ssize_t index,
-              const struct prompt *prompt, enum dmenu_mode format, unsigned int column)
+              const struct prompt *prompt, enum dmenu_mode format,
+              const char *columns)
 {
     switch (format) {
     case DMENU_MODE_TEXT: {
@@ -248,8 +250,8 @@ dmenu_execute(const struct application *app, ssize_t index,
             : prompt_text(prompt);
 
         char32_t *column_output = NULL;
-        if (column > 0) {
-            column_output = nth_column(output, column);
+        if (columns != NULL) {
+            column_output = nth_column(output, columns);
             output = column_output;
         }
 

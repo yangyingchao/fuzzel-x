@@ -483,10 +483,14 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	Index values start with zero for the first entry.
 	dmenu mode only.
 
-*--with-nth*=_N_
+*--with-nth*=_N_|_FMT_
 	Display the N:th column (tab separated) of each input line. When
 	selected, the full input line is printed on stdout. dmenu mode
 	only.
+	
+	The argument can also be a format string (i.e free-format text),
+	where *{N}* expands to the N:th column. Ranges on the form
+	*{N..M}* and *{N..}* (open-ended) are also supported.
 	
 	Example:
 	```
@@ -499,9 +503,13 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	
 	Setting it to *0* is the same as not specifying *--with-nth* at all.
 
-*--accept-nth*=_N_
+*--accept-nth*=_N_|_FMT_
 	Output the N:th column (tab separated) of each input line to stdout.
 	dmenu mode only.
+	
+	The argument can also be a format string (i.e free-format text),
+	where *{N}* expands to the N:th column. Ranges on the form
+	*{N..M}* and *{N..}* (open-ended) are also supported.
 	
 	Example:
 	```

@@ -166,8 +166,8 @@ struct config {
         enum dmenu_mode mode;
         bool exit_immediately_if_empty;
         char delim;
-        unsigned int render_column;
-        unsigned int output_column;
+        char *with_nth_format;
+        char *accept_nth_format;
     } dmenu;
 
     enum anchors anchor;

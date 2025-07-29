@@ -1661,8 +1661,8 @@ config_load(struct config *conf, const char *conf_path,
             .mode = DMENU_MODE_TEXT,
             .exit_immediately_if_empty = false,
             .delim = '\n',
-            .render_column = 0,
-            .output_column = 0,
+            .with_nth_format = NULL,
+            .accept_nth_format = NULL,
         },
         .anchor = ANCHOR_CENTER,
         .margin = {
@@ -1779,6 +1779,8 @@ config_free(struct config *conf)
     free(conf->font);
     free(conf->icon_theme);
     free(conf->cache_path);
+    free(conf->dmenu.with_nth_format);
+    free(conf->dmenu.accept_nth_format);
     free_key_binding_list(&conf->key_bindings);
 }
 
