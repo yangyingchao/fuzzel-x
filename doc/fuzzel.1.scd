@@ -530,6 +530,9 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 *--print-timing-info*
 	Print timing information to help debug performance issues.
 
+*--no-mouse*
+	Disable mouse input.
+
 *-v*,*--version*
 	Show the version number and quit
 

@@ -1037,6 +1037,9 @@ parse_section_main(struct context *ctx)
     else if (strcmp(key, "auto-select") == 0)
         return value_to_bool(ctx, &conf->auto_select);
 
+    else if (strcmp(key, "enable-mouse") == 0)
+        return value_to_bool(ctx, &conf->enable_mouse);
+
     else
         LOG_CONTEXTUAL_ERR("not a valid option: %s", key);
 
@@ -1706,6 +1709,7 @@ config_load(struct config *conf, const char *conf_path,
         .cache_path = NULL,
         .auto_select = false,
         .print_timing_info = false,
+        .enable_mouse = true,
     };
 
     add_default_key_bindings(conf);

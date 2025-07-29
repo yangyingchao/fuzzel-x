@@ -59,6 +59,7 @@
   it. ([#411][411])
 * `selection-radius` option and `--selection-radius` flag to set the border
   radius of the selected entry
+* `enable-mouse` option and `--no-mouse` flag to disable mouse input
 
 [411]: https://codeberg.org/dnkl/fuzzel/issues/411
 [504]: https://codeberg.org/dnkl/fuzzel/pulls/504

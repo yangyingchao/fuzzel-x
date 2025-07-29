@@ -421,6 +421,10 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	Boolean. When one entry is left, automatically select it.
 	Default: _no_.
 
+*enable-mouse*
+	Boolean. Enable mouse input.
+	Default: _yes_.
+
 # SECTION: colors
 
 All color values are in RGBA.

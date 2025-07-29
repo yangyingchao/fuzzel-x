@@ -450,6 +450,7 @@ print_usage(const char *prog_name)
            "     --log-no-syslog             disable syslog logging\n"
            "     --print-timing-info         print timing information, to help debug\n"
            "                                 performance issues\n"
+           "     --no-mouse                  disable mouse input\n"
            "  -v,--version                   show the version number and quit\n");
     printf("\n");
     printf("All colors are RGBA - i.e. 8-digit hex values, without prefix.\n");
@@ -847,6 +848,7 @@ main(int argc, char *const *argv)
     #define OPT_HIDE_PROMPT                  304
     #define OPT_AUTO_SELECT                  305
     #define OPT_SELECTION_RADIUS             306
+    #define OPT_NO_MOUSE                     307
 
     static const struct option longopts[] = {
         {"config",               required_argument, 0, OPT_CONFIG},
@@ -916,6 +918,7 @@ main(int argc, char *const *argv)
         {"delayed-filter-limit", required_argument, 0, OPT_DELAYED_FILTER_LIMIT},
         {"scaling-filter",       required_argument, 0, OPT_SCALING_FILTER},
         {"auto-select",          no_argument,       0, OPT_AUTO_SELECT},
+        {"no-mouse",             no_argument,       0, OPT_NO_MOUSE},
 
         /* dmenu mode */
         {"dmenu",                no_argument,       0, 'd'},
@@ -1003,6 +1006,7 @@ main(int argc, char *const *argv)
         bool counter_set:1;
         bool print_timing_info_set:1;
         bool scaling_filter_set:1;
+        bool no_mouse_set:1;
     } cmdline_overrides = {{0}};
 
     setlocale(LC_CTYPE, "");
@@ -1848,6 +1852,11 @@ main(int argc, char *const *argv)
             cmdline_overrides.conf.auto_select = true;
             break;
 
+        case OPT_NO_MOUSE:
+            cmdline_overrides.conf.enable_mouse = false;
+            cmdline_overrides.no_mouse_set = true;
+            break;
+
         case 'v':
             printf("fuzzel %s\n", version_and_features());
             return EXIT_SUCCESS;
@@ -2064,6 +2073,8 @@ main(int argc, char *const *argv)
         conf.png_scaling_filter = cmdline_overrides.conf.png_scaling_filter;
     if (cmdline_overrides.conf.auto_select)
         conf.auto_select = cmdline_overrides.conf.auto_select;
+    if (cmdline_overrides.no_mouse_set)
+        conf.enable_mouse = cmdline_overrides.conf.enable_mouse;
 
     if (conf.dmenu.enabled) {
         /* We don't have any meta data in dmenu mode */

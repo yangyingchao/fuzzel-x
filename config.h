@@ -223,6 +223,8 @@ struct config {
 
     bool auto_select;
     bool print_timing_info;
+
+    bool enable_mouse;
 };
 
 typedef tll(char *) config_override_t;

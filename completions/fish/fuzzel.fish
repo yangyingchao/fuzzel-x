@@ -86,6 +86,7 @@ complete -c fuzzel    -s R -l no-run-if-empty                                   
 complete -c fuzzel -x -s d -l log-level          -a "info warning error none"                                   -d "log-level (warning)"
 complete -c fuzzel -x -s l -l log-colorize       -a "always never auto"                                         -d "enable or disable colorization of log output on stderr"
 complete -c fuzzel    -s S -l log-no-syslog                                                                     -d "disable syslog logging"
+complete -c fuzzel         -l no-mouse                                                                          -d "disable mouse input"
 complete -c fuzzel    -s v -l version                                                                           -d "show the version number and quit"
 complete -c fuzzel         -l print-timing-info                                                                 -d "print timing information, to help debug performance issues"
 complete -c fuzzel    -s h -l help                                                                              -d "show help message and quit"
