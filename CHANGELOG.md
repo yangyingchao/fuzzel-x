@@ -81,7 +81,7 @@
 * fcft >= 3.3.1 is now required.
 * In application mode (not dmenu), fuzzel now ignores icon theme
   directories whose `Context` field is not `Application` or
-  `Apps`. This is for performance reasons ([#553][553])
+  `Apps`, or `Legacy`. This is for performance reasons ([#553][553])
 * Default down scaling filter changed from `lanczos3` to `box`
   ([#553][553]).
 * Use the width of 'o' instead of 'W' when calculating the window
