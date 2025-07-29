@@ -484,9 +484,9 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	dmenu mode only.
 
 *--with-nth*=_N_|_FMT_
-	Display the N:th column (tab separated) of each input line. When
-	selected, the full input line is printed on stdout. dmenu mode
-	only.
+	Display the N:th column (tab separated by default, see
+	*--nth-delimiter*) of each input line. When selected, the full
+	input line is printed on stdout. dmenu mode only.
 	
 	The argument can also be a format string (i.e free-format text),
 	where *{N}* expands to the N:th column. Ranges on the form
@@ -504,8 +504,8 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	Setting it to *0* is the same as not specifying *--with-nth* at all.
 
 *--accept-nth*=_N_|_FMT_
-	Output the N:th column (tab separated) of each input line to stdout.
-	dmenu mode only.
+	Output the N:th column (tab separated by default, see
+	*--nth-delimiter*) of each input line to stdout.  dmenu mode only.
 	
 	The argument can also be a format string (i.e free-format text),
 	where *{N}* expands to the N:th column. Ranges on the form
@@ -520,6 +520,12 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	on which one is selected, *First* or *Second* will be printed to stdout.
 	
 	Setting it to *0* is the same as not specifying *--accept-nth* at all.
+
+*--nth-delimiter*=_CHARACTER_
+	Field (column) delimiter for *--with-nth* and *--accept-nth*. Must
+	be a single ASCII character.
+	
+	Default: _\\t_ (tab)
 
 *-R*,*--no-run-if-empty*
 	Exit immediately, without showing the UI, if stdin is

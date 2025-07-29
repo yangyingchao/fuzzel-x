@@ -9,11 +9,13 @@
 
 void dmenu_load_entries(
     struct application_list *applications, char delim,
-    const char *with_nth_format, int event_fd, int abort_fd);
+    const char *with_nth_format, char nth_delim,
+    int event_fd, int abort_fd);
 
 bool dmenu_execute(
     const struct application *app, ssize_t index,
-    const struct prompt *prompt, enum dmenu_mode format, const char *columns);
+    const struct prompt *prompt, enum dmenu_mode format,
+    const char *nth_format, char nth_delim);
 
 void dmenu_try_icon_list(
     struct application_list *applications,

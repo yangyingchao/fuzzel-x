@@ -436,10 +436,12 @@ print_usage(const char *prog_name)
            "                                 instead of newline separated\n"
            "     --index                     print selected entry's index instead of of the \n"
            "                                 entry's text (dmenu mode only)\n"
-           "     --with-nth=N                display the N:th column (tab separated) of each\n"
-           "                                 input line (dmenu only)\n"
-           "     --accept-nth=N              output the N:th column (tab separated) of each\n"
-           "                                 input line (dmenu only)\n"
+           "     --with-nth=N|FMT            display the N:th column (tab separated by\n"
+           "                                 default) of each input line (dmenu only)\n"
+           "     --accept-nth=N|FMT          output the N:th column (tab separated by\n"
+           "                                 default) of each input line (dmenu only)\n"
+           "     --nth-delimiter=CHARACTER   field (column) character, for --with-nth and\n"
+           "                                 --accept-nth\n"
            "  -R,--no-run-if-empty           exit immediately without showing UI if stdin\n"
            "                                 is empty (dmenu mode only)\n"
            "     --log-level={info|warning|error|none}\n"
@@ -564,6 +566,8 @@ populate_apps(void *_ctx)
     bool dmenu_enabled = conf->dmenu.enabled;
     bool icons_enabled = conf->icons_enabled;
     char dmenu_delim = conf->dmenu.delim;
+    char dmenu_nth_delim = conf->dmenu.nth_delim;
+    const char *dmenu_with_nth_format = conf->dmenu.with_nth_format;
     bool filter_desktop = conf->filter_desktop;
     bool list_exec_in_path = conf->list_executables_in_path;
     char_list_t desktops = tll_init();
@@ -585,8 +589,9 @@ populate_apps(void *_ctx)
 
     if (dmenu_enabled) {
         if (!conf->prompt_only) {
-            dmenu_load_entries(apps, dmenu_delim, conf->dmenu.with_nth_format,
-                               ctx->event_fd, ctx->dmenu_abort_fd);
+            dmenu_load_entries(
+                apps, dmenu_delim, dmenu_with_nth_format, dmenu_nth_delim,
+                ctx->event_fd, ctx->dmenu_abort_fd);
             read_cache(cache_path, apps, true);
         }
     } else {
@@ -849,6 +854,7 @@ main(int argc, char *const *argv)
     #define OPT_AUTO_SELECT                  305
     #define OPT_SELECTION_RADIUS             306
     #define OPT_NO_MOUSE                     307
+    #define OPT_DMENU_NTH_DELIM              308
 
     static const struct option longopts[] = {
         {"config",               required_argument, 0, OPT_CONFIG},
@@ -925,6 +931,7 @@ main(int argc, char *const *argv)
         {"dmenu0",               no_argument,       0, OPT_DMENU_NULL},
         {"no-run-if-empty",      no_argument,       0, 'R'},
         {"index",                no_argument,       0, OPT_DMENU_INDEX},
+        {"nth-delimiter",        required_argument, 0, OPT_DMENU_NTH_DELIM},
         {"with-nth",             required_argument, 0, OPT_DMENU_WITH_NTH},
         {"accept-nth",           required_argument, 0, OPT_DMENU_ACCEPT_NTH},
 
@@ -990,6 +997,7 @@ main(int argc, char *const *argv)
         bool dmenu_mode_set:1;
         bool dmenu_exit_immediately_if_empty_set:1;
         bool dmenu_delim_set:1;
+        bool dmenu_nth_delim_set:1;
         bool dmenu_with_nth_set:1;
         bool dmenu_accept_nth_set:1;
         bool layer_set:1;
@@ -1713,6 +1721,20 @@ main(int argc, char *const *argv)
             cmdline_overrides.dmenu_mode_set = true;
             break;
 
+        case OPT_DMENU_NTH_DELIM:
+            if (strlen(optarg) != 1) {
+                fprintf(
+                    stderr,
+                    "%s: invalid nth-delimiter. Must be a single ASCII character",
+                    optarg);
+                return EXIT_FAILURE;
+            }
+
+            cmdline_overrides.conf.dmenu.nth_delim = optarg[0];
+            cmdline_overrides.dmenu_nth_delim_set = true;
+            printf("LKDJFLKDJF: delim: %c (%x)\n", cmdline_overrides.conf.dmenu.nth_delim, cmdline_overrides.conf.dmenu.nth_delim);
+            break;
+
         case OPT_DMENU_WITH_NTH: {
             unsigned int with_nth_idx;
             if (sscanf(optarg, "%u", &with_nth_idx) == 1)
@@ -2043,6 +2065,8 @@ main(int argc, char *const *argv)
         conf.dmenu.mode = cmdline_overrides.conf.dmenu.mode;
     if (cmdline_overrides.dmenu_exit_immediately_if_empty_set)
         conf.dmenu.exit_immediately_if_empty = cmdline_overrides.conf.dmenu.exit_immediately_if_empty;
+    if (cmdline_overrides.dmenu_nth_delim_set)
+        conf.dmenu.nth_delim = cmdline_overrides.conf.dmenu.nth_delim;
     if (cmdline_overrides.dmenu_with_nth_set) {
         free(conf.dmenu.with_nth_format);
         conf.dmenu.with_nth_format = cmdline_overrides.conf.dmenu.with_nth_format;

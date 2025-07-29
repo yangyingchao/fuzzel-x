@@ -166,6 +166,7 @@ struct config {
         enum dmenu_mode mode;
         bool exit_immediately_if_empty;
         char delim;
+        char nth_delim;
         char *with_nth_format;
         char *accept_nth_format;
     } dmenu;

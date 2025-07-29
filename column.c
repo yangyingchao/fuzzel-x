@@ -14,9 +14,8 @@
 #include "xmalloc.h"
 
 char32_t *
-nth_column(const char32_t *string, const char *nth_format)
+nth_column(const char32_t *string, char32_t delim, const char *nth_format)
 {
-    const char32_t delim = U'\t';
     const char32_t *string_end = string + c32len(string);
     xassert(*string_end == U'\0');
 
@@ -127,13 +126,13 @@ nth_column(const char32_t *string, const char *nth_format)
                 idx_start = 0;
         }
 
-        xassert(idx_end >= idx_start);
-
         if (idx_start == 0 || idx_start > col_count || idx_end > col_count) {
             /* Invalid index */
             p++;
             continue;
         }
+
+        xassert(idx_end >= idx_start);
 
         /* Non-template prefix length */
         const size_t copy_len = arg_start - copy_start;

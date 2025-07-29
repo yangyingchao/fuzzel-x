@@ -25,7 +25,7 @@
 
 void
 dmenu_load_entries(struct application_list *applications, char delim,
-                   const char *with_nth_format,
+                   const char *with_nth_format, char nth_delim,
                    int event_fd, int abort_fd)
 {
     tll(struct application *) entries = tll_init();
@@ -170,7 +170,7 @@ dmenu_load_entries(struct application_list *applications, char delim,
 
             char32_t *title = with_nth_format == 0
                 ? xc32dup(wline)
-                : nth_column(wline, with_nth_format);
+                : nth_column(wline, nth_delim, with_nth_format);
 
             char32_t *lowercase = xc32dup(title);
             for (size_t i = 0; i < c32len(lowercase); i++)
@@ -241,7 +241,7 @@ out:
 bool
 dmenu_execute(const struct application *app, ssize_t index,
               const struct prompt *prompt, enum dmenu_mode format,
-              const char *columns)
+              const char *nth_format, char nth_delim)
 {
     switch (format) {
     case DMENU_MODE_TEXT: {
@@ -250,8 +250,8 @@ dmenu_execute(const struct application *app, ssize_t index,
             : prompt_text(prompt);
 
         char32_t *column_output = NULL;
-        if (columns != NULL) {
-            column_output = nth_column(output, columns);
+        if (nth_format != NULL) {
+            column_output = nth_column(output, nth_delim, nth_format);
             output = column_output;
         }
 
@@ -277,38 +277,38 @@ try_icon_list(struct application *app, icon_theme_list_t themes, int icon_size)
 {
     if (app->icon.name == NULL || strchr(app->icon.name, ',') == NULL)
         return;
-    
+
     if (app->icon.type != ICON_NONE) {
         return;
     }
-    
+
     char *icon_list = xstrdup(app->icon.name);
     char *saveptr = NULL;
-    
+
     for (char *icon_name = strtok_r(icon_list, ",", &saveptr);
          icon_name != NULL;
          icon_name = strtok_r(NULL, ",", &saveptr))
     {
         free(app->icon.name);
         app->icon.name = xstrdup(icon_name);
-        
+
         app->icon.type = ICON_NONE;
         app->icon.path = NULL;
         app->icon.svg = NULL;
         app->icon.png = NULL;
-        
+
         struct application_list temp_list = {
             .v = &app,
             .count = 1,
             .visible_count = 1
         };
-        
+
         icon_lookup_application_icons(themes, icon_size, &temp_list);
-        
+
         if (app->icon.type != ICON_NONE)
             break;
     }
-    
+
     free(icon_list);
 }
 
