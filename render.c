@@ -1845,7 +1845,8 @@ render_destroy(struct render *render)
     fcft_text_run_destroy(render->prompt_text_run);
     fcft_text_run_destroy(render->placeholder_text_run);
 
-    pixman_image_unref(render->selection_corners);
+    if (render->selection_corners != NULL)
+        pixman_image_unref(render->selection_corners);
 
     fcft_destroy(render->font);
     fcft_destroy(render->font_bold);
