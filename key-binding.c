@@ -35,7 +35,7 @@ kb_manager_new(void)
 void
 kb_manager_destroy(struct kb_manager *mgr)
 {
-    assert(tll_length(mgr->binding_sets) == 0);
+    assert(mgr == NULL || tll_length(mgr->binding_sets) == 0);
     free(mgr);
 }
 
