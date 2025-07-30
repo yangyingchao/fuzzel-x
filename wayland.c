@@ -588,6 +588,40 @@ check_auto_select(struct seat *seat, bool refresh)
     return false;
 }
 
+/*
+ * NOTE: this function is expected to be called from an outside
+ * context. It MUST NOT be called while inside a fdm_handler()
+ * callchain */
+bool
+wayl_check_auto_select(struct wayland *wayl)
+{
+    if (tll_length(wayl->seats) == 0)
+        return false;
+
+    struct seat *seat = &tll_front(wayl->seats);
+
+    /*
+     * This is finicky... check_auto_select() _may_ result in an
+     * application being executed.
+     *
+     * Part of this involves retrieving and XDG activation token. This
+     * requires a display roundtrip. The roundtrip will *not* work
+     * wl_display_prepare_read() is active.
+     *
+     * So, we need to cancel the pending read, do our thing, and then
+     * re-endter prepare_read().
+     *
+     * This will *not* work if wl_display_prepare_read() is *not*
+     * active, hence the warning above, that this function must not be
+     * called while inside an fdm_handler() callchain, since
+     * fdm_handler() does read from the wayland socket.
+     */
+    wl_display_cancel_read(wayl->display);
+    bool ret = check_auto_select(seat, true);
+    wl_display_prepare_read(wayl->display);
+    return ret;
+}
+
 static void
 execute_selected(struct seat *seat, bool as_is, int custom_success_exit_code)
 {
@@ -963,13 +997,8 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
                 if (refresh)
                     wayl_refresh(wayl);
 
-                /* Check for auto-select after key binding execution */
-                if (refresh && wayl->conf->auto_select) {
-                    if (matches_get_total_count(wayl->matches) == 1) {
-                        execute_selected(seat, false, -1);
-                        goto maybe_repeat;
-                    }
-                }
+                if (check_auto_select(seat, refresh))
+                    goto maybe_repeat;
 
                 goto maybe_repeat;
             }
@@ -2453,6 +2482,7 @@ wayl_refresh(struct wayland *wayl)
         }
     }
     render_match_list(wayl->render, buf, wayl->prompt, wayl->matches);
+
 skip_list:
     matches_unlock(wayl->matches);
 

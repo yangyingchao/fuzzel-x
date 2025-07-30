@@ -737,6 +737,10 @@ process_event(struct context *ctx, enum event_type event)
     }
 
     wayl_refresh(wayl);
+
+    if (event == EVENT_APPS_ALL_LOADED)
+        wayl_check_auto_select(wayl);
+
     return true;
 }
 

@@ -106,3 +106,5 @@ void wayl_clipboard_done(struct wayland *wayl);
 bool wayl_do_linear_blending(const struct wayland *wayl);
 
 void wayl_resized(struct wayland *wayl);
+
+bool wayl_check_auto_select(struct wayland *wayl);
