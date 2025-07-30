@@ -55,3 +55,39 @@ end
 
 test_normal_mode unique uniqu
 @test "normal mode should not auto-select even with one match" "$got" = ""
+
+# Test --auto-select with --search option
+function test_auto_select_with_search --argument-names input search
+    rm -f out.txt
+
+    echo -e "$input" \
+        | $FUZZEL_TEST_BIN --dmenu --auto-select --search "$search" >out.txt &
+    # Wait for fuzzel to auto-select and exit
+    sleep .3
+    set got (cat out.txt)
+end
+
+# Test that auto-select works with --search when only one match remains
+test_auto_select_with_search "application\napple\nbanana" "applic"
+@test "auto-select with --search should work when only one match remains" "$got" = "application"
+
+# Test that auto-select works with --search for exact matches
+test_auto_select_with_search "calculator\ncalendar\ncamera" "calculator"
+@test "auto-select with --search should work for exact matches" "$got" = "calculator"
+
+# Test that auto-select with --search doesn't trigger with multiple matches
+function test_auto_select_with_search_multiple --argument-names input search
+    rm -f out.txt
+
+    echo -e "$input" \
+        | $FUZZEL_TEST_BIN --dmenu --auto-select --search "$search" >out.txt &
+    # Wait briefly to see if fuzzel auto-selects (it shouldn't)
+    sleep .1
+    # Force exit with Escape
+    wtype -k Escape
+    sleep .1
+    set got (cat out.txt)
+end
+
+test_auto_select_with_search_multiple "apple\napricot\nbanana" "ap"
+@test "auto-select with --search should not trigger with multiple matches" "$got" = ""
