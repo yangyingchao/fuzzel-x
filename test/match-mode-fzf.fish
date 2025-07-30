@@ -8,7 +8,7 @@ function test_fzf_mode --argument-names input search
     rm -f out.txt
 
     echo -e "$input" \
-        | fuzzel --dmenu --match-mode=fzf --search "$search" >out.txt &
+        | $FUZZEL_TEST_BIN --dmenu --match-mode=fzf --search "$search" >out.txt &
     # Wait for fuzzel to launch
     sleep .1
     wtype -k Return

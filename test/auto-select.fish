@@ -8,7 +8,7 @@ function test_auto_select --argument-names input search
     rm -f out.txt
 
     echo -e "$input" \
-        | ./build/fuzzel --dmenu --auto-select --search "$search" >out.txt &
+        | $FUZZEL_TEST_BIN --dmenu --auto-select --search "$search" >out.txt &
     # Wait for fuzzel to auto-select and exit
     sleep .3
     set got (cat out.txt)
@@ -27,7 +27,7 @@ function test_no_auto_select --argument-names input search
     rm -f out.txt
 
     echo -e "$input" \
-        | ./build/fuzzel --dmenu --auto-select --search "$search" >out.txt &
+        | $FUZZEL_TEST_BIN --dmenu --auto-select --search "$search" >out.txt &
     # Wait briefly to see if fuzzel auto-selects (it shouldn't)
     sleep .1
     # Force exit with Escape
@@ -44,7 +44,7 @@ function test_normal_mode --argument-names input search
     rm -f out.txt
 
     echo -e "$input" \
-        | ./build/fuzzel --dmenu --search "$search" >out.txt &
+        | $FUZZEL_TEST_BIN --dmenu --search "$search" >out.txt &
     # Wait briefly 
     sleep .1
     # Force exit with Escape since it won't auto-select

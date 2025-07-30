@@ -159,7 +159,7 @@ srgb_funcs = custom_target(
   command: [python, generate_srgb_funcs, '@OUTPUT0@', '@OUTPUT1@']
 )
 
-executable(
+fuzzel = executable(
   'fuzzel',
   'application.c', 'application.h',
   'char32.c', 'char32.h',
@@ -203,6 +203,27 @@ executable(
                  tllist,
                  fcft],
   install: true)
+
+fish = find_program('fish', required: false)
+if fish.found()
+  if run_command(fish, '-c fishtape -v', check: false).returncode() == 0
+    foreach test_case : [
+      #'auto-select',
+      'match-mode-fzf'
+    ]
+      test(test_case, fish,
+           args: ['-c',
+                  'fishtape @0@/test/@1@.fish'.format(meson.current_source_dir(),
+                                                      test_case)],
+           env: {'FUZZEL_TEST_BIN': fuzzel.full_path(),
+                 'MALLOC_PERTURB_': '0',
+                 'ASAN_OPTIONS': 'non-empty-invalid-value=0',
+                 'UBSAN_OPTIONS': 'non-empty-invalid-value=0',
+                 'MSAN_OPTIONS': 'non-empty-invalid-value=0'},
+           is_parallel : false)
+    endforeach
+  endif
+endif
 
 install_data(
   'fuzzel.ini',
