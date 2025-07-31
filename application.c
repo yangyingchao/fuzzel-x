@@ -16,6 +16,7 @@
 #define LOG_ENABLE_DBG 0
 #include "log.h"
 #include "char32.h"
+#include "debug.h"
 #include "xmalloc.h"
 
 static void
@@ -222,6 +223,9 @@ application_execute(const struct application *app, const struct prompt *prompt,
     LOG_DBG("argv:");
     for (size_t i = 0; argv[i] != NULL; i++)
         LOG_DBG("  %zu: \"%s\"", i, argv[i]);
+
+    xassert(argv != NULL);
+    xassert(argv[0] != NULL);
 
     int pipe_fds[2];
     if (pipe2(pipe_fds, O_CLOEXEC) == -1) {
