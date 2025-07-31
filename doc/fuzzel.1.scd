@@ -535,10 +535,10 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 
 # SEARCH PATHS
 
-Fuzzel searches for XDG *.desktop* files according to the XDG Base Directory
-Specification (see link at bottom), looking in the `applications` subdirectory
-of the paths given by `XDG_DATA_DIRS` and `XDG_DATA_HOME`. By default, these
-are:
+Fuzzel searches for XDG *.desktop* files according to the XDG Base
+Directory Specification (see link at bottom), looking in the
+*applications* subdirectory of the paths given by *XDG_DATA_DIRS* and
+*XDG_DATA_HOME*. By default, these are:
 
 - *~/.local/share/applications*
 - */usr/local/share/applitions*
