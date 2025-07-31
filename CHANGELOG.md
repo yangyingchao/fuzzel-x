@@ -130,6 +130,7 @@
 ### Contributors
 
  * dnkl
+ * joeledwardson
  * Mark Stosberg
 
 ## 1.12.0
