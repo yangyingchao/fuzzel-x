@@ -118,6 +118,8 @@
 * Fix border width and scaling for mixed-DPI environments ([#595][595])
 * Some icons not found on FreeBSD (`/usr/local/share/pixmaps` not
   searched) ([#622][622])
+* Segfault when "execute" action is pressed before there's any item in the
+  list. ([#638][638])
 
 [507]: https://codeberg.org/dnkl/fuzzel/issues/507
 [551]: https://codeberg.org/dnkl/fuzzel/issues/551
@@ -125,7 +127,7 @@
 [586]: https://codeberg.org/dnkl/fuzzel/issues/586
 [595]: https://codeberg.org/dnkl/fuzzel/issues/595
 [622]: https://codeberg.org/dnkl/fuzzel/issues/622
-
+[638]: https://codeberg.org/dnkl/fuzzel/issues/638
 
 ### Security
 ### Contributors

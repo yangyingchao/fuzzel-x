@@ -794,7 +794,9 @@ execute_binding(struct seat *seat, const struct key_binding *binding, bool *refr
         return true;
 
     case BIND_ACTION_MATCHES_EXECUTE:
-        execute_selected(seat, false, -1);
+        /* Ignore execute action until there's at least one item in the list */
+        if (matches_get_total_count(wayl->matches) > 0)
+            execute_selected(seat, false, -1);
         return true;
 
     case BIND_ACTION_MATCHES_EXECUTE_OR_NEXT:
