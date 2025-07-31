@@ -1004,14 +1004,7 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
 
     matches_update_incremental(wayl->matches);
     wayl_refresh(wayl);
-
-    /* Check for auto-select after character insertion */
-    if (wayl->conf->auto_select) {
-        if (matches_get_total_count(wayl->matches) == 1) {
-            execute_selected(seat, false, -1);
-            return;
-        }
-    }
+    check_auto_select(seat, true);
 
 maybe_repeat:
 
