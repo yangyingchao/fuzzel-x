@@ -702,7 +702,10 @@ xdg_find_programs(const char *terminal, bool include_actions,
 
     mtx_lock(&applications->lock);
     applications->count = tll_length(apps);
-    applications->v = xmalloc(tll_length(apps) * sizeof(applications->v[0]));
+    if (applications->count > 0)
+        applications->v = xmalloc(tll_length(apps) * sizeof(applications->v[0]));
+    else
+        applications->v = NULL;
 
     size_t i = 0;
     tll_foreach(apps, it) {
