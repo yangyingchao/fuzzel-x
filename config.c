@@ -1751,6 +1751,7 @@ config_load(struct config *conf, const char *conf_path,
         ret = true;
 
     fclose(f);
+    conf_file.fd = -1;
 
 out:
 
