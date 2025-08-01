@@ -126,7 +126,9 @@ nth_column(const char32_t *string, char32_t delim, const char *nth_format)
                 idx_start = 0;
         }
 
-        if (idx_start == 0 || idx_start > col_count || idx_end > col_count) {
+        if (idx_start == 0 || idx_start > col_count ||
+            idx_end > col_count || idx_end < idx_start)
+        {
             /* Invalid index */
             p++;
             continue;
