@@ -205,7 +205,8 @@ fuzzel = executable(
   install: true)
 
 fish = find_program('fish', required: false)
-if fish.found()
+wtype = find_program('wtype', required: false)
+if fish.found() and wtype.found()
   if run_command(fish, '-c fishtape -v', check: false).returncode() == 0
     foreach test_case : [
       'accept-nth',
