@@ -208,8 +208,9 @@ fish = find_program('fish', required: false)
 if fish.found()
   if run_command(fish, '-c fishtape -v', check: false).returncode() == 0
     foreach test_case : [
+      'accept-nth',
       'auto-select',
-      'match-mode-fzf'
+      'match-mode-fzf',
     ]
       test(test_case, fish,
            args: ['-c',
