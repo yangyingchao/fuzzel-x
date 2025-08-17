@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [1.13.0](#1-13-0)
 * [1.12.0](#1-12-0)
 * [1.11.1](#1-11-1)
 * [1.11.0](#1-11-0)
@@ -29,7 +29,8 @@
 * [1.4.1](#1-4-1)
 
 
-## Unreleased
+## 1.13.0
+
 ### Added
 
 * Add support for fallback icons in dmenu mode using comma-separated
@@ -71,6 +72,7 @@
 [597]: https://codeberg.org/dnkl/fuzzel/issues/597
 [600]: https://codeberg.org/dnkl/fuzzel/issues/600
 
+
 ### Changed
 
 * Scrolling speed is now line-by-line instead of page-by-page
@@ -101,8 +103,6 @@
 [606]: https://codeberg.org/dnkl/fuzzel/issues/606
 
 
-### Deprecated
-### Removed
 ### Fixed
 
 * Crash when `--match-workers >= 100` ([#507][507]).
@@ -129,12 +129,22 @@
 [622]: https://codeberg.org/dnkl/fuzzel/issues/622
 [638]: https://codeberg.org/dnkl/fuzzel/issues/638
 
-### Security
+
 ### Contributors
 
- * dnkl
- * joeledwardson
- * Mark Stosberg
+* alex-huff
+* bbb651
+* e-tho
+* frosty
+* Gingeh
+* Guillaume Outters
+* Hubert Hirtz
+* joeledwardson
+* Konstantin Pospelov
+* Mark Stosberg
+* Ronan Pigott
+* wispl
+
 
 ## 1.12.0
 
