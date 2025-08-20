@@ -32,6 +32,10 @@
  #include <nanosvg/nanosvgrast.h>
 #endif
 
+#if defined(FUZZEL_ENABLE_SVG_RESVG)
+ #include <resvg.h>
+#endif
+
 #define LOG_MODULE "render"
 #define LOG_ENABLE_DBG 0
 #include "log.h"
@@ -1057,6 +1061,130 @@ render_svg_nanosvg(struct icon *icon, int x, int y, int size,
 }
 #endif /* FUZZEL_ENABLE_SVG_NANOSVG */
 
+#if defined(FUZZEL_ENABLE_SVG_RESVG)
+static void
+render_svg_resvg(struct icon *icon, int x, int y, int size,
+                 pixman_image_t *pix, cairo_t *cairo, bool gamma_correct)
+{
+#if defined(FUZZEL_ENABLE_CAIRO)
+    cairo_surface_flush(cairo_get_target(cairo));
+#endif
+
+    pixman_image_t *img = NULL;
+
+    /* Look for a cached image, at the correct size */
+    tll_foreach(icon->rasterized, it) {
+        if (it->item.size == size) {
+            img = it->item.pix;
+            break;
+        }
+    }
+
+    if (img == NULL) {
+        resvg_render_tree *tree = icon->svg;
+        resvg_size svg_size = resvg_get_image_size(tree);
+
+        if (svg_size.width == 0 || svg_size.height == 0)
+            return;
+
+        float scale = svg_size.width > svg_size.height ? size / svg_size.width : size / svg_size.height;
+
+        const int width = roundf(svg_size.width * scale);
+        const int height = roundf(svg_size.height * scale);
+
+        uint8_t *data_8bit = xmalloc(width * height * 4);
+        memset(data_8bit, 0, width * height * 4);
+
+        /* resvg renders to RGBA8888 premultiplied */
+        resvg_transform transform = resvg_transform_identity();
+        transform.a = scale;
+        transform.d = scale;
+        resvg_render(tree, transform, width, height, (char *)data_8bit);
+
+        if (gamma_correct) {
+            /* For gamma-correct blending, create 16-bit buffer and image */
+            uint8_t *data_16bit = xmalloc(width * height * 8);
+            uint64_t *abgr16 = (uint64_t *)data_16bit;
+
+            /* resvg produces premultiplied RGBA, need to convert to ABGR16 for pixman */
+            for (uint32_t *rgba = (uint32_t *)data_8bit;
+                 rgba < (uint32_t *)(data_8bit + width * height * 4);
+                 rgba++)
+            {
+                uint16_t red = (*rgba >> 0) & 0xff;
+                uint16_t green = (*rgba >> 8) & 0xff;
+                uint16_t blue = (*rgba >> 16) & 0xff;
+                uint16_t alpha = (*rgba >> 24) & 0xff;
+
+                /* Decode sRGB to linear for gamma-correct blending */
+                if (alpha == 0x00) {
+                    blue = green = red = 0x00;
+                } else {
+                    /* First, un-premultiply */
+                    blue = (uint16_t)(blue * 0xff / alpha);
+                    green = (uint16_t)(green * 0xff / alpha);
+                    red = (uint16_t)(red * 0xff / alpha);
+
+                    /* Convert to linear 16-bit */
+                    alpha |= alpha << 8;  /* Alpha already linear, expand to 16-bit */
+                    blue = srgb_decode_8_to_16(blue);
+                    green = srgb_decode_8_to_16(green);
+                    red = srgb_decode_8_to_16(red);
+
+                    /* Re-premultiply in 16-bit linear space */
+                    blue = blue * alpha / 0xffff;
+                    green = green * alpha / 0xffff;
+                    red = red * alpha / 0xffff;
+                }
+
+                *abgr16 = (uint64_t)alpha << 48 | (uint64_t)blue << 32 | (uint64_t)green << 16 | (uint64_t)red;
+                abgr16++;
+            }
+
+            /* Free the 8-bit buffer as we've converted everything to 16-bit */
+            free(data_8bit);
+
+            /* Create 16-bit pixman image */
+            img = pixman_image_create_bits_no_clear(
+                PIXMAN_a16b16g16r16, width, height, (uint32_t *)data_16bit,
+                width * 8);
+        } else {
+            /* Convert RGBA to ABGR (already premultiplied) */
+            for (uint32_t *rgba = (uint32_t *)data_8bit;
+                 rgba < (uint32_t *)(data_8bit + width * height * 4);
+                 rgba++)
+            {
+                uint16_t red = (*rgba >> 0) & 0xff;
+                uint16_t green = (*rgba >> 8) & 0xff;
+                uint16_t blue = (*rgba >> 16) & 0xff;
+                uint16_t alpha = (*rgba >> 24) & 0xff;
+
+                *rgba = (uint32_t)alpha << 24 | blue << 16 | green << 8 | red;
+            }
+
+            /* Create 8-bit pixman image */
+            img = pixman_image_create_bits_no_clear(
+                PIXMAN_a8b8g8r8, width, height, (uint32_t *)data_8bit, width * 4);
+        }
+
+        tll_push_back(icon->rasterized, ((struct rasterized){img, size}));
+    }
+
+    const int w = pixman_image_get_width(img);
+    const int h = pixman_image_get_height(img);
+
+    pixman_image_composite32(
+        PIXMAN_OP_OVER, img, NULL, pix, 0, 0, 0, 0,
+        x + (size - w) / 2,
+        y + (size - h) / 2,
+        w, h);
+
+#if defined(FUZZEL_ENABLE_CAIRO)
+    cairo_surface_mark_dirty(cairo_get_target(cairo));
+#endif
+}
+#endif /* FUZZEL_ENABLE_SVG_RESVG */
+
 static void
 render_svg(struct icon *icon, int x, int y, int size,
            pixman_image_t *pix, cairo_t *cairo, bool gamma_correct,
@@ -1091,6 +1219,8 @@ render_svg(struct icon *icon, int x, int y, int size,
     render_svg_librsvg(icon, x, y, size, cairo);
 #elif defined(FUZZEL_ENABLE_SVG_NANOSVG)
     render_svg_nanosvg(icon, x, y, size, pix, cairo, gamma_correct);
+#elif defined(FUZZEL_ENABLE_SVG_RESVG)
+    render_svg_resvg(icon, x, y, size, pix, cairo, gamma_correct);
 #endif
 
     if (print_timing_info) {

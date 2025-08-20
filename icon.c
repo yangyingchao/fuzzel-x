@@ -23,6 +23,10 @@
  #include <nanosvg/nanosvg.h>
 #endif
 
+#if defined(FUZZEL_ENABLE_SVG_RESVG)
+ #include <resvg.h>
+#endif
+
 #include <tllist.h>
 
 #define LOG_MODULE "icon"
@@ -452,6 +456,43 @@ icon_from_svg_nanosvg(struct icon *icon, const char *file_name)
 }
 #endif
 
+#if defined(FUZZEL_ENABLE_SVG_RESVG)
+static bool
+icon_from_svg_resvg(struct icon *icon, const char *file_name)
+{
+    resvg_options *opt = resvg_options_create();
+    if (opt == NULL) {
+        return false;
+    }
+
+    /* Set DPI to 96, same as nanosvg */
+    resvg_options_set_dpi(opt, 96);
+
+    resvg_render_tree *tree = NULL;
+    int32_t result = resvg_parse_tree_from_file(file_name, opt, &tree);
+    resvg_options_destroy(opt);
+
+    if (result != RESVG_OK || tree == NULL) {
+        /* Only log actual parsing errors, not just files that aren't valid SVGs */
+        if (result == RESVG_ERROR_PARSING_FAILED || 
+            result == RESVG_ERROR_MALFORMED_GZIP ||
+            result == RESVG_ERROR_INVALID_SIZE) {
+            LOG_DBG("%s: resvg failed to parse SVG (code %d)", file_name, result);
+        }
+        return false;
+    }
+
+    if (resvg_is_image_empty(tree)) {
+        resvg_tree_destroy(tree);
+        return false;
+    }
+
+    icon->type = ICON_SVG;
+    icon->svg = tree;
+    return true;
+}
+#endif
+
 bool
 icon_from_svg(struct icon *icon, const char *name)
 {
@@ -459,6 +500,8 @@ icon_from_svg(struct icon *icon, const char *name)
     return icon_from_svg_librsvg(icon, name);
 #elif defined(FUZZEL_ENABLE_SVG_NANOSVG)
     return icon_from_svg_nanosvg(icon, name);
+#elif defined(FUZZEL_ENABLE_SVG_RESVG)
+    return icon_from_svg_resvg(icon, name);
 #else
     return false;
 #endif
@@ -508,6 +551,8 @@ icon_reset(struct icon *icon)
             g_object_unref(icon->svg);
 #elif defined(FUZZEL_ENABLE_SVG_NANOSVG)
             nsvgDelete(icon->svg);
+#elif defined(FUZZEL_ENABLE_SVG_RESVG)
+            resvg_tree_destroy(icon->svg);
 #endif
             icon->svg = NULL;
         }
@@ -548,7 +593,7 @@ icon_file_exists(int dir_fd, char *path, size_t path_len)
     path[path_len - 1] = 'g';
 
     if (faccessat(dir_fd, path, R_OK, 0) < 0) {
-#if defined(FUZZEL_ENABLE_SVG_NANOSVG) || defined(FUZZEL_ENABLE_SVG_LIBRSVG)
+#if defined(FUZZEL_ENABLE_SVG_NANOSVG) || defined(FUZZEL_ENABLE_SVG_LIBRSVG) || defined(FUZZEL_ENABLE_SVG_RESVG)
         path[path_len - 3] = 's';
         path[path_len - 2] = 'v';
         path[path_len - 1] = 'g';
@@ -560,7 +605,7 @@ icon_file_exists(int dir_fd, char *path, size_t path_len)
 
     return true;
 
-#elif defined(FUZZEL_ENABLE_SVG_NANOSVG) || defined(FUZZEL_ENABLE_SVG_LIBRSVG)
+#elif defined(FUZZEL_ENABLE_SVG_NANOSVG) || defined(FUZZEL_ENABLE_SVG_LIBRSVG) || defined(FUZZEL_ENABLE_SVG_RESVG)
     path[path_len - 3] = 's';
     path[path_len - 2] = 'v';
     path[path_len - 1] = 'g';

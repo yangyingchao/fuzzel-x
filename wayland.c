@@ -2843,7 +2843,9 @@ wayl_init(const struct config *conf, struct fdm *fdm,
     }
 
     if (conf->gamma_correct) {
-#if !defined(FUZZEL_ENABLE_CAIRO)
+#if defined(FUZZEL_ENABLE_CAIRO)
+        LOG_WARN("gamma-correct-blending: disabling; not supported in cairo-enabled builds");
+#else
         if (wayl->color_management.img_description != NULL) {
             assert(wayl->color_management.manager != NULL);
 
@@ -2871,8 +2873,6 @@ wayl_init(const struct config *conf, struct fdm *fdm,
                 LOG_WARN("  - primaries: sRGB");
             }
         }
-#else
-        LOG_WARN("gamma-correct-blending: disabling; not supported in cairo-enabled builds");
 #endif
     } else
         LOG_INFO("gamma-correct blending: disabled");

@@ -322,6 +322,8 @@ version_and_features(void)
              '+', "(nanosvg)",
 #elif defined(FUZZEL_ENABLE_SVG_LIBRSVG)
              '+', "(librsvg)",
+#elif defined(FUZZEL_ENABLE_SVG_RESVG)
+             '+', "(resvg)",
 #else
              '-', "",
 #endif

@@ -12,6 +12,10 @@
  #include <nanosvg/nanosvg.h>
 #endif
 
+#if defined(FUZZEL_ENABLE_SVG_RESVG)
+ #include <resvg.h>
+#endif
+
 #include <fcft/fcft.h>
 #include <tllist.h>
 
@@ -39,6 +43,8 @@ struct icon {
         RsvgHandle *svg;
 #elif defined(FUZZEL_ENABLE_SVG_NANOSVG)
         NSVGimage *svg;
+#elif defined(FUZZEL_ENABLE_SVG_RESVG)
+        resvg_render_tree *svg;
 #else
         void *svg;
 #endif
