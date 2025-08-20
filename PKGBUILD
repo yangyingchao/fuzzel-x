@@ -1,6 +1,6 @@
-CAIRO=enabled        # disabled|enabled
+CAIRO=disabled       # disabled|enabled
 PNG_BACKEND=libpng   # none|libpng
-SVG_BACKEND=librsvg  # none|librsvg|nanosvg (librsvg force-enables cairo, nanosvg is bundled)
+SVG_BACKEND=resvg    # none|librsvg|nanosvg|resvg (librsvg force-enables cairo, nanosvg is bundled)
 
 pkgname=fuzzel
 pkgver=1.13.1
@@ -21,6 +21,10 @@ fi
 if [[ ${SVG_BACKEND} == librsvg ]]; then
     depends+=( 'librsvg' )
     CAIRO=enabled
+fi
+
+if [[ ${SVG_BACKEND} == resvg ]]; then
+    depends+=( 'resvg' )
 fi
 
 if [[ ${CAIRO} == enabled ]]; then
