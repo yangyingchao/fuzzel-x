@@ -1,4 +1,5 @@
 #include "wayland.h"
+#include "char32.h"
 
 #include <ctype.h>
 #include <errno.h>
@@ -796,8 +797,8 @@ execute_binding(struct seat *seat, const struct key_binding *binding, bool *refr
         return true;
 
     case BIND_ACTION_MATCHES_EXECUTE:
-        /* Ignore execute action until there's at least one item in the list */
-        if (matches_get_total_count(wayl->matches) > 0)
+        /* Ignore execute action if prompt empty and no matches */
+        if (prompt_text(wayl->prompt)[0] != '\0' || matches_get_total_count(wayl->matches) != 0)
             execute_selected(seat, false, -1);
         return true;
 

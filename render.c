@@ -249,7 +249,7 @@ render_rounded_rectangle(pixman_image_t* dest, pixman_color_t* background,
             pixman_image_set_filter(bg_img, PIXMAN_FILTER_BILINEAR, NULL, 0);
 
             pixman_image_composite32(
-                PIXMAN_OP_OVER, bg_img, NULL, dest, 0, 0, 0, 0, x, y,
+                PIXMAN_OP_SRC, bg_img, NULL, dest, 0, 0, 0, 0, x, y,
                 width, height);
             pixman_image_unref(bg_img);
         }
@@ -569,12 +569,17 @@ render_prompt(struct render *render, struct buffer *buf,
     const struct fcft_glyph *input_glyphs[text_len];
     long input_kerning[text_len];
 
-    for (size_t i = 0; i < text_len; i++) {
-        input_glyphs[i] = fcft_rasterize_char_utf32(font, ptext[i], subpixel);
-        if (i == 0)
-            input_kerning[0] = 0;
-        else
-            fcft_kerning(font, ptext[i - 1], ptext[i], &input_kerning[i], NULL);
+    {
+        const bool use_password = conf->password_mode.enabled && !use_placeholder;
+
+        for (size_t i = 0; i < text_len; i++) {
+            char32_t wc = use_password ? conf->password_mode.character : ptext[i];
+            input_glyphs[i] = fcft_rasterize_char_utf32(font, wc, subpixel);
+            if (i == 0 || use_password)
+                input_kerning[i] = 0;
+            else
+                fcft_kerning(font, ptext[i - 1], ptext[i], &input_kerning[i], NULL);
+        }
     }
 
     if (use_placeholder) {
