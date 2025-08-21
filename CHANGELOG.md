@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [1.13.1](#1-13-1)
 * [1.13.0](#1-13-0)
 * [1.12.0](#1-12-0)
 * [1.11.1](#1-11-1)
@@ -30,11 +30,8 @@
 * [1.4.1](#1-4-1)
 
 
-## Unreleased
-### Added
-### Changed
-### Deprecated
-### Removed
+## 1.13.1
+
 ### Fixed
 
 * Regression: input not being returned in dmenu mode ([#647][647])
@@ -47,11 +44,11 @@
 [652]: https://codeberg.org/dnkl/fuzzel/issues/652
 
 
-### Security
 ### Contributors
 
  * Mark Stosberg
  * rehanzo
+
 
 ## 1.13.0
 
