@@ -37,7 +37,7 @@
 ### Removed
 ### Fixed
 
-* Regression: input not being returned in dmenu mode ([#647][#647])
+* Regression: input not being returned in dmenu mode ([#647][647])
 * Regression: `--password` not working ([#653][653]).
 * Regression: Part of the background transparency disappearing after typing ([#652][652]).
 
