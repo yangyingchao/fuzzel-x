@@ -3,7 +3,7 @@ PNG_BACKEND=libpng   # none|libpng
 SVG_BACKEND=librsvg  # none|librsvg|nanosvg (librsvg force-enables cairo, nanosvg is bundled)
 
 pkgname=fuzzel
-pkgver=1.13.0
+pkgver=1.13.1
 pkgrel=1
 pkgdesc="Simplistic application launcher for wayland"
 arch=('x86_64' 'aarch64')
