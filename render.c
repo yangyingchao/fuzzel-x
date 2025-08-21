@@ -249,7 +249,7 @@ render_rounded_rectangle(pixman_image_t* dest, pixman_color_t* background,
             pixman_image_set_filter(bg_img, PIXMAN_FILTER_BILINEAR, NULL, 0);
 
             pixman_image_composite32(
-                PIXMAN_OP_OVER, bg_img, NULL, dest, 0, 0, 0, 0, x, y,
+                PIXMAN_OP_SRC, bg_img, NULL, dest, 0, 0, 0, 0, x, y,
                 width, height);
             pixman_image_unref(bg_img);
         }
