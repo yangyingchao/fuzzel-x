@@ -38,8 +38,11 @@
 ### Fixed
 
 * Fixed input not being returned in dmenu mode ([#647][#647])
+* Regression: `--password` not working ([#653][653]).
 
 [647]: https://codeberg.org/dnkl/fuzzel/issues/647
+[653]: https://codeberg.org/dnkl/fuzzel/issues/653
+
 
 ### Security
 ### Contributors
