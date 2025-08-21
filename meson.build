@@ -211,6 +211,7 @@ if fish.found() and wtype.found()
     foreach test_case : [
       'accept-nth',
       'auto-select',
+      'execute',
       'match-mode-fzf',
     ]
       test(test_case, fish,

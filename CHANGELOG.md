@@ -36,9 +36,16 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* Fixed input not being returned in dmenu mode ([#647][#647])
+
+[647]: https://codeberg.org/dnkl/fuzzel/issues/647
+
 ### Security
 ### Contributors
 
+ * Mark Stosberg
+ * rehanzo
 
 ## 1.13.0
 
