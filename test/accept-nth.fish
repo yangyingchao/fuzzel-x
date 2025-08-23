@@ -39,3 +39,6 @@ test_accept_nth "apple\tbanana\tcherry" "apple" "{2.} {2...}"
 
 test_accept_nth "apple\tbanana\tcherry" "apple" "{..2}"
 @test "--accept-nth with invalid open index range" "$got" = "{..2}"
+
+test_accept_nth "first\t\tthird" "first" "{3}"
+@test "--accept-nth with empty column" "$got" = "third"
