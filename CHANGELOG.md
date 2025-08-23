@@ -37,6 +37,13 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* `--with-nth` and `--accept-nth` crashing if a column is empty
+  (e.g. `\tsecond column`, or `first\t\tthird`) ([#658][658])
+
+[658]: https://codeberg.org/dnkl/fuzzel/issues/658
+
+
 ### Security
 ### Contributors
 

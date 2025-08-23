@@ -30,7 +30,7 @@ nth_column(const char32_t *string, char32_t delim, const char *nth_format)
 
     col_starts[0] = string;
     for (size_t i = 1; i < col_count; i++) {
-        const char32_t *next = c32chr(col_starts[i - 1] + 1, delim);
+        const char32_t *next = c32chr(col_starts[i - 1], delim);
 
         xassert(next != NULL);
         col_starts[i] = next + 1;
@@ -40,9 +40,8 @@ nth_column(const char32_t *string, char32_t delim, const char *nth_format)
     col_lens[col_count - 1] = string_end - col_starts[col_count - 1];
 
     for (size_t i = 0; i < col_count; i++) {
-        LOG_DBG("col #%zu: \"%.*ls\"", i,
-                (int)col_lens[i],
-                (const wchar_t *)col_starts[i]);
+        LOG_DBG("col #%zu: \"%.*ls\" (%zu chars)", i,
+                (int)col_lens[i], (const wchar_t *)col_starts[i], col_lens[i]);
     }
 
     /* TODO: allocate dynamically */
