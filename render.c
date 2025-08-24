@@ -1145,19 +1145,6 @@ render_svg_resvg(struct icon *icon, int x, int y, int size,
                 PIXMAN_a16b16g16r16, width, height, (uint32_t *)data_16bit,
                 width * 8);
         } else {
-            /* Convert RGBA to ABGR (already premultiplied) */
-            for (uint32_t *rgba = (uint32_t *)data_8bit;
-                 rgba < (uint32_t *)(data_8bit + width * height * 4);
-                 rgba++)
-            {
-                uint16_t red = (*rgba >> 0) & 0xff;
-                uint16_t green = (*rgba >> 8) & 0xff;
-                uint16_t blue = (*rgba >> 16) & 0xff;
-                uint16_t alpha = (*rgba >> 24) & 0xff;
-
-                *rgba = (uint32_t)alpha << 24 | blue << 16 | green << 8 | red;
-            }
-
             /* Create 8-bit pixman image */
             img = pixman_image_create_bits_no_clear(
                 PIXMAN_a8b8g8r8, width, height, (uint32_t *)data_8bit, width * 4);
