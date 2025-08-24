@@ -960,30 +960,28 @@ render_svg_nanosvg(struct icon *icon, int x, int y, int size,
         if (rast == NULL)
             return;
 
-        /* For gamma-correct blending */
-        uint8_t *data_16bit = NULL;
-        pixman_image_t *img_16bit = NULL;
-        uint64_t *abgr16 = NULL;
-
         float scale = svg->width > svg->height ? size / svg->width : size / svg->height;
 
         const int width = roundf(svg->width * scale);
         const int height = roundf(svg->height * scale);
 
         uint8_t *data_8bit = xmalloc(width * height * 4);
+        uint8_t *data_16bit = NULL;
+        uint64_t *abgr16 = NULL;
 
         nsvgRasterize(rast, svg, 0, 0, scale, data_8bit, width, height, width * 4);
 
-        img = pixman_image_create_bits_no_clear(
-            PIXMAN_a8b8g8r8, width, height, (uint32_t *)data_8bit, width * 4);
-
         if (gamma_correct) {
+            /* For gamma-correct blending, create 16-bit buffer and image */
             data_16bit = xmalloc(width * height * 8);
             abgr16 = (uint64_t *)data_16bit;
 
-            img_16bit = pixman_image_create_bits_no_clear(
+            img = pixman_image_create_bits_no_clear(
                 PIXMAN_a16b16g16r16, width, height, (uint32_t *)data_16bit,
                 width * 8);
+        } else {
+            img = pixman_image_create_bits_no_clear(
+                PIXMAN_a8b8g8r8, width, height, (uint32_t *)data_8bit, width * 4);
         }
 
         /* Nanosvg produces non-premultiplied ABGR, while pixman expects
@@ -1035,10 +1033,8 @@ render_svg_nanosvg(struct icon *icon, int x, int y, int size,
         }
 
         if (gamma_correct) {
-            /* Replace default image buffer with 16-bit linear buffer */
-            pixman_image_unref(img);
+            /* Free the 8-bit buffer as we've converted everything to 16-bit */
             free(data_8bit);
-            img = img_16bit;
         }
 
         nsvgDeleteRasterizer(rast);
