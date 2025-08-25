@@ -70,6 +70,16 @@ struct application {
     char32_t *render_title;
     size_t index;
 
+    /* Additional metadata for desktop entries */
+    char *desktop_file_path;  /* Full path to the .desktop file */
+    char *action_id;          /* Action identifier if this is an action entry */
+    char32_t *original_name;  /* Non-localized name */
+    char32_t *localized_name; /* Localized name */
+    char32_t *action_name;    /* Action name (if applicable) */
+    char32_t *localized_action_name; /* Localized action name */
+    char32_t *original_generic_name;  /* Non-localized generic name */
+    char32_t *localized_generic_name; /* Localized generic name */
+
     /*
      * To get good search performance, we cache both the lower-case
      * versions of metadata, and their (string) lengths. This way, we

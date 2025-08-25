@@ -57,9 +57,17 @@
   either the mouse or the arrow keys). Previously, the same _index_
   would stay selected (meaning the actually selected entry may have
   changed). ([#684][684]).
+ * More environment variables are now passed to --launch-prefix. This saves
+   launcher that need more details from reparsing the desktop file, spending
+   up launching. ([#292][292])
 
+[292]: https://codeberg.org/dnkl/fuzzel/issues/292
+[684]: https://codeberg.org/dnkl/fuzzel/issues/684
 
 ### Deprecated
+
+ * FUZZEL_DESKTOP_FILE_ID has been deprecated and will be removed in a future release. The replacement is DESKTOP_ENTRY_ID which is consistent with other DESKTOP_ENTRY_* variables we now export.
+
 ### Removed
 ### Fixed
 

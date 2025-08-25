@@ -249,9 +249,22 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 
 *launch-prefix*
 	Prefix to add before argv of executed program.
-	If set, fuzzel will pass the Desktop File ID of the chosen application
-	(see the Desktop Entry specification) in the FUZZEL_DESKTOP_FILE_ID
-	environment variables.
+	If set, fuzzel will pass desktop file metadata through environment
+	variables:
+
+	- DESKTOP_ENTRY_ID (also exported as FUZZEL_DESKTOP_FILE_ID for backward compatibility)
+	- DESKTOP_ENTRY_PATH
+	- DESKTOP_ENTRY_NAME
+	- DESKTOP_ENTRY_COMMENT
+	- DESKTOP_ENTRY_NAME_L (Localized)
+	- DESKTOP_ENTRY_COMMENT_L (Localized)
+	- DESKTOP_ENTRY_ICON
+	And if launching an action:
+	- DESKTOP_ENTRY_ACTION (Action identifier)
+	- DESKTOP_ENTRY_ACTION_NAME
+	- DESKTOP_ENTRY_ACTION_NAME_L (Localized)
+	- DESKTOP_ENTRY_ACTION_ICON
+
 	Default: _not set_.
 
 *anchor*

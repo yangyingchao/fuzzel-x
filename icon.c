@@ -474,7 +474,7 @@ icon_from_svg_resvg(struct icon *icon, const char *file_name)
 
     if (result != RESVG_OK || tree == NULL) {
         /* Only log actual parsing errors, not just files that aren't valid SVGs */
-        if (result == RESVG_ERROR_PARSING_FAILED || 
+        if (result == RESVG_ERROR_PARSING_FAILED ||
             result == RESVG_ERROR_MALFORMED_GZIP ||
             result == RESVG_ERROR_INVALID_SIZE) {
             LOG_DBG("%s: resvg failed to parse SVG (code %d)", file_name, result);

@@ -407,8 +407,9 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 *--launch-prefix*=_COMMAND_
 	Command to launch XDG applications with.
 	If set, fuzzel will pass the Desktop File ID of the chosen application
-	(see the Desktop Entry specification) in the FUZZEL_DESKTOP_FILE_ID
-	environment variables. Default: _not set_.
+	(see the Desktop Entry specification) in the DESKTOP_ENTRY_ID
+	environment variable (also exported as FUZZEL_DESKTOP_FILE_ID for
+	backward compatibility). Default: _not set_.
 
 *--list-executables-in-path*
 	Include executables from the PATH environment variable. Applies to
