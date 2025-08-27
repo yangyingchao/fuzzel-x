@@ -48,8 +48,11 @@
 
 * `--with-nth` and `--accept-nth` crashing if a column is empty
   (e.g. `\tsecond column`, or `first\t\tthird`) ([#658][658])
+* Regression: `--accept-nth=0` and `--with-nth=0` not being treated as
+  if not specified at all ([#670][670]).
 
 [658]: https://codeberg.org/dnkl/fuzzel/issues/658
+[670]: https://codeberg.org/dnkl/fuzzel/issues/670
 
 
 ### Security

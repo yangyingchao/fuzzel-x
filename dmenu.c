@@ -168,7 +168,7 @@ dmenu_load_entries(struct application_list *applications, char delim,
                 continue;
             }
 
-            char32_t *title = with_nth_format == 0
+            char32_t *title = with_nth_format == NULL
                 ? xc32dup(wline)
                 : nth_column(wline, nth_delim, with_nth_format);
 
