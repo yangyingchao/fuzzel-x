@@ -37,7 +37,7 @@ pkgver() {
 }
 
 build() {
-  meson \
+  meson setup \
       --prefix=/usr                \
       --buildtype=release          \
       --wrap-mode=nofallback       \
