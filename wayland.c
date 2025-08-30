@@ -1221,23 +1221,53 @@ wl_pointer_axis(void *data, struct wl_pointer *wl_pointer,
 {
     struct seat *seat = data;
     struct wayland *wayl = seat->wayl;
-    if (!wayl->enable_mouse) return;
-    bool refresh = false;
 
-    if (value < 0) {
-        refresh = matches_selected_prev(wayl->matches, true);
-    } else if (value > 0) {
-        refresh = matches_selected_next(wayl->matches, true);
+    if (!wayl->enable_mouse)
+        return;
+
+    if (axis != WL_POINTER_AXIS_VERTICAL_SCROLL)
+        return;
+
+    const double amount = wl_fixed_to_double(value);
+
+    if (signbit(seat->pointer.accumulated_scroll) != signbit(amount)) {
+        /* Reversed direction, reset accumulated */
+        seat->pointer.accumulated_scroll = 0.;
     }
 
-    if (refresh) {
-        select_hovered_match(seat, true);
-    }
+    seat->pointer.accumulated_scroll += amount;
 }
 
 static void
 wl_pointer_frame(void *data, struct wl_pointer *wl_pointer)
 {
+    const double threshold = 20;
+
+    struct seat *seat = data;
+    struct wayland *wayl = seat->wayl;
+
+    if (seat->pointer.discrete_used) {
+        seat->pointer.discrete_used = false;
+        return;
+    }
+
+    if (!wayl->enable_mouse)
+        return;
+
+    bool refresh = false;
+
+    while (fabs(seat->pointer.accumulated_scroll) > threshold) {
+        if (seat->pointer.accumulated_scroll > 0.) {
+            seat->pointer.accumulated_scroll -= threshold;
+            refresh = matches_selected_next(wayl->matches, true);
+        } else {
+            seat->pointer.accumulated_scroll += threshold;
+            refresh = matches_selected_prev(wayl->matches, true);
+        }
+    }
+
+    if (refresh)
+        select_hovered_match(seat, true);
 }
 
 static void
@@ -1256,6 +1286,28 @@ static void
 wl_pointer_axis_discrete(void *data, struct wl_pointer *wl_pointer,
                          uint32_t axis, int32_t discrete)
 {
+    struct seat *seat = data;
+    struct wayland *wayl = seat->wayl;
+
+    if (!wayl->enable_mouse)
+        return;
+
+    if (axis != WL_POINTER_AXIS_VERTICAL_SCROLL)
+        return;
+
+    seat->pointer.discrete_used = true;
+
+    bool refresh = false;
+    if (discrete > 0) {
+        for (int i = 0; i < discrete; i++)
+            refresh = matches_selected_next(wayl->matches, true);
+    } else {
+        for (int i = 0; i < -discrete; i++)
+            refresh = matches_selected_prev(wayl->matches, true);
+    }
+
+    if (refresh)
+        select_hovered_match(seat, true);
 }
 
 static const struct wl_pointer_listener pointer_listener = {

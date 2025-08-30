@@ -56,6 +56,9 @@ struct seat {
         struct wl_cursor_theme *theme;
         struct wl_cursor *cursor;
         float scale;
+
+        bool discrete_used;
+        double accumulated_scroll;
     } pointer;
 
     struct wl_touch *wl_touch;
