@@ -2416,15 +2416,14 @@ frame_callback(void *data, struct wl_callback *wl_callback, uint32_t callback_da
     wl_callback_destroy(wayl->frame_cb);
     wayl->frame_cb = NULL;
 
-    if (wayl->need_refresh) {
-        wayl->need_refresh = false;
-        wayl_refresh(wayl);
-    }
+    const bool need_refresh =
+        wayl->need_refresh || wayl->render_first_frame_transparent;
 
-    if (wayl->render_first_frame_transparent) {
-        wayl->render_first_frame_transparent = false;
+    wayl->need_refresh = false;
+    wayl->render_first_frame_transparent = false;
+
+    if (need_refresh)
         wayl_refresh(wayl);
-    }
 }
 
 void
@@ -2510,7 +2509,8 @@ commit:
     if (wayl->conf->print_timing_info) {
         gettimeofday(&stop, NULL);
         timersub(&stop, &start, &diff);
-        LOG_WARN("frame rendered in %llus %lluµs",
+        LOG_WARN("%sframe rendered in %llus %lluµs",
+                 wayl->render_first_frame_transparent ? "transparent " : "",
                  (unsigned long long)diff.tv_sec,
                  (unsigned long long)diff.tv_usec);
     }
