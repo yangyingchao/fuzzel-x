@@ -2259,10 +2259,23 @@ main(int argc, char *const *argv)
 
     join_app_thread = true;
 
-    if (!conf.dmenu.exit_immediately_if_empty &&
-        !(conf.dmenu.enabled && conf.minimal_lines))
-    {
-        wayl_ready_to_display(wayl);
+    /*
+     * Render immediately, even if empty
+     *
+     * We do this in dmenu mode only; we assume there's at least one
+     * .desktop file in application mode, and we don't want to waste
+     * resources on rendering an empty window while loading the
+     * applications.
+     *
+     * Even if we're in dmenu mode, we don't always render immediately
+     *  - exit-immediately-if-empty: we don't want to display anything
+     *    if the final list is empty
+     *  - minimal-lines: we need to know how many items we're going to
+     *    display
+     */
+    if (conf.dmenu.enabled) {
+        if (!conf.dmenu.exit_immediately_if_empty && !conf.minimal_lines)
+            wayl_ready_to_display(wayl);
     }
 
     wayl_refresh(wayl);
