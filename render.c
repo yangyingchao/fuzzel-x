@@ -1185,7 +1185,7 @@ render_svg(struct icon *icon, int x, int y, int size,
             return;
         }
 
-        time_end(start_load, "%s loaded", icon->path);
+        time_finish(start_load, NULL, "%s loaded", icon->path);
         LOG_DBG("%s", icon->path);
     }
 
@@ -1199,7 +1199,7 @@ render_svg(struct icon *icon, int x, int y, int size,
     render_svg_resvg(icon, x, y, size, pix, cairo, gamma_correct);
 #endif
 
-    time_end(render_start, "%s rendered", icon->path);
+    time_finish(render_start, NULL, "%s rendered", icon->path);
 }
 
 #if defined(FUZZEL_ENABLE_PNG_LIBPNG)
@@ -1379,7 +1379,7 @@ render_png(struct icon *icon, int x, int y, int size, pixman_image_t *pix,
             return;
         }
 
-        time_end(start_load, "%s loaded", icon->path);
+        time_finish(start_load, NULL, "%s loaded", icon->path);
         LOG_DBG("%s", icon->path);
     }
 
@@ -1389,7 +1389,7 @@ render_png(struct icon *icon, int x, int y, int size, pixman_image_t *pix,
     render_png_libpng(icon, x, y, size, pix, cairo, scaling_filter);
 #endif
 
-    time_end(start_render, "%s rendered", icon->path);
+    time_finish(start_render, NULL, "%s rendered", icon->path);
 }
 
 static int

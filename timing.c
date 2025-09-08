@@ -67,8 +67,8 @@ time_since_boot(const char *fmt, ...)
     LOG_WARN("%s: %lds %ldµs since bootup", msg, diff.tv_sec, diff.tv_nsec / 1000);
 }
 
-struct timespec *
-time_begin(void)
+static struct timespec *
+time_stamp(void)
 {
     if (!enabled)
         return NULL;
@@ -81,22 +81,44 @@ time_begin(void)
     return ret;
 }
 
-void
-time_end(struct timespec *start, const char *fmt, ...)
+struct timespec *
+time_begin(void)
 {
-    if (start == NULL)
-        return;
+    return time_stamp();
+}
 
+struct timespec *
+time_end(void)
+{
+    return time_stamp();
+}
+
+void
+time_finish(struct timespec *start, struct timespec *stop, const char *fmt, ...)
+{
     if (!enabled) {
         free(start);
+        free(stop);
         return;
     }
 
-    struct timespec stop;
-    clock_gettime(CLOCK_MONOTONIC, &stop);
+    if (start == NULL)
+        return;
+
+    if (stop == NULL) {
+        stop = malloc(sizeof(*stop));
+
+        if (stop == NULL) {
+            free(start);
+            free(stop);
+            return;
+        }
+
+        clock_gettime(CLOCK_MONOTONIC, stop);
+    }
 
     struct timespec diff;
-    timespec_sub(&stop, start, &diff);
+    timespec_sub(stop, start, &diff);
 
     va_list va1, va2;
     va_start(va1, fmt);
@@ -112,4 +134,5 @@ time_end(struct timespec *start, const char *fmt, ...)
     LOG_WARN("%s in %lds %ldµs", msg, diff.tv_sec, diff.tv_nsec / 1000);
 
     free(start);
+    free(stop);
 }

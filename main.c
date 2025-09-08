@@ -67,19 +67,16 @@ struct context {
 
     struct {
         struct {
-            struct timeval start;
-            struct timeval stop;
-            struct timeval diff;
+            struct timespec *start;
+            struct timespec *stop;
         } apps;
         struct {
-            struct timeval start;
-            struct timeval stop;
-            struct timeval diff;
+            struct timespec *start;
+            struct timespec *stop;
         } icons_theme;
         struct {
-            struct timeval start;
-            struct timeval stop;
-            struct timeval diff;
+            struct timespec *start;
+            struct timespec *stop;
         } icons;
     } timing;
 };
@@ -591,6 +588,8 @@ populate_apps(void *_ctx)
         }
     }
 
+    ctx->timing.apps.start = time_begin();
+
     if (dmenu_enabled) {
         if (!conf->prompt_only) {
             dmenu_load_entries(
@@ -599,31 +598,29 @@ populate_apps(void *_ctx)
             read_cache(cache_path, apps, true);
         }
     } else {
-        gettimeofday(&ctx->timing.apps.start, NULL);
         xdg_find_programs(terminal, actions_enabled, filter_desktop, &desktops, apps);
         if (list_exec_in_path)
             path_find_programs(apps);
         read_cache(cache_path, apps, false);
-        gettimeofday(&ctx->timing.apps.stop, NULL);
-        timersub(&ctx->timing.apps.stop, &ctx->timing.apps.start, &ctx->timing.apps.diff);
     }
     tll_free_and_free(desktops, free);
+
+    ctx->timing.apps.stop = time_end();
 
     int r = send_event(ctx->event_fd, EVENT_APPS_ALL_LOADED);
     if (r != 0)
         return r;
 
     if (icons_enabled) {
-        gettimeofday(&ctx->timing.icons_theme.start, NULL);
+        ctx->timing.icons_theme.start = time_begin();
         icon_theme_list_t icon_themes = icon_load_theme(icon_theme, !dmenu_enabled);
         if (tll_length(icon_themes) > 0)
             LOG_INFO("theme: %s", tll_front(icon_themes).name);
         else
             LOG_WARN("%s: icon theme not found", icon_theme);
-        gettimeofday(&ctx->timing.icons_theme.stop, NULL);
-        timersub(&ctx->timing.icons_theme.stop, &ctx->timing.icons_theme.start, &ctx->timing.icons_theme.diff);
+        ctx->timing.icons_theme.stop = time_end();
 
-        gettimeofday(&ctx->timing.icons.start, NULL);
+        ctx->timing.icons.start = time_begin();
         mtx_lock(ctx->icon_lock);
         {
             *ctx->themes = icon_themes;
@@ -637,8 +634,7 @@ populate_apps(void *_ctx)
             }
         }
         mtx_unlock(ctx->icon_lock);
-        gettimeofday(&ctx->timing.icons.stop, NULL);
-        timersub(&ctx->timing.icons.stop, &ctx->timing.icons.start, &ctx->timing.icons.diff);
+        ctx->timing.icons.stop = time_end();
 
         r = send_event(ctx->event_fd, EVENT_ICONS_LOADED);
         if (r != 0)
@@ -661,10 +657,9 @@ process_event(struct context *ctx, enum event_type event)
     switch (event) {
     case EVENT_APPS_SOME_LOADED:
     case EVENT_APPS_ALL_LOADED: {
-        if (event == EVENT_APPS_ALL_LOADED && conf->print_timing_info) {
-            LOG_WARN("apps loaded in %llus %lluµs",
-                     (unsigned long long)ctx->timing.apps.diff.tv_sec,
-                     (unsigned long long)ctx->timing.apps.diff.tv_usec);
+        if (event == EVENT_APPS_ALL_LOADED) {
+            time_finish(
+                ctx->timing.apps.start, ctx->timing.apps.stop, "apps loaded");
         }
         /* Update matches list, then refresh the GUI */
         matches_set_applications(matches, apps);
@@ -730,14 +725,10 @@ process_event(struct context *ctx, enum event_type event)
 
     case EVENT_ICONS_LOADED:
         /* Just need to refresh the GUI */
-        if (conf->print_timing_info) {
-            LOG_WARN("icon themes loaded in %llus %lluµs",
-                     (unsigned long long)ctx->timing.icons_theme.diff.tv_sec,
-                     (unsigned long long)ctx->timing.icons_theme.diff.tv_usec);
-            LOG_WARN("icon paths resolved in %llus %lluµs",
-                     (unsigned long long)ctx->timing.icons.diff.tv_sec,
-                     (unsigned long long)ctx->timing.icons.diff.tv_usec);
-        }
+        time_finish(ctx->timing.icons_theme.start, ctx->timing.icons_theme.stop,
+                    "icon themes loaded");
+        time_finish(ctx->timing.icons.start, ctx->timing.icons.stop,
+                    "icon paths resolved");
         matches_icons_loaded(matches);
         break;
 
@@ -2259,7 +2250,6 @@ main(int argc, char *const *argv)
     if (!fdm_add(fdm, event_pipe[0], EPOLLIN, &fdm_apps_populated, &ctx))
         goto out;
 
-    gettimeofday(&ctx.timing.apps.start, NULL);
     if (thrd_create(&app_thread_id, &populate_apps, &ctx) != thrd_success) {
         LOG_ERR("failed to create thread");
         goto out;

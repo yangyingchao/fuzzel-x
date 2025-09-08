@@ -2597,8 +2597,9 @@ commit:
     assert(!wayl->need_refresh);
     commit_buffer(wayl, buf);
 done:
-    time_end(
-        start_frame, "%sframe rendered",
+
+    time_finish(
+        start_frame, NULL, "%sframe rendered",
         wayl->render_first_frame_transparent ? "transparent " : "");
 }
 
