@@ -108,15 +108,12 @@ time_finish(struct timespec *start, struct timespec *stop, const char *fmt, ...)
         return;
 
     if (stop == NULL) {
-        stop = malloc(sizeof(*stop));
+        stop = time_stamp();
 
         if (stop == NULL) {
             free(start);
-            free(stop);
             return;
         }
-
-        clock_gettime(CLOCK_MONOTONIC, stop);
     }
 
     struct timespec diff;
