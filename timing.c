@@ -64,7 +64,7 @@ time_since_boot(const char *fmt, ...)
     va_end(va2);
 
 
-    LOG_WARN("%s: %lds %ldµs since bootup", msg, diff.tv_sec, diff.tv_nsec / 1000);
+    LOG_WARN("%s: %lds %ldµs since boot-up", msg, diff.tv_sec, diff.tv_nsec / 1000);
 }
 
 static struct timespec *
