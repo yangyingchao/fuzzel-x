@@ -30,6 +30,7 @@
 #include <cursor-shape-v1.h>
 #include <fractional-scale-v1.h>
 #include <primary-selection-unstable-v1.h>
+#include <single-pixel-buffer-v1.h>
 #include <viewporter.h>
 #include <wlr-layer-shell-unstable-v1.h>
 #include <xdg-activation-v1.h>
@@ -188,6 +189,8 @@ struct wayland {
         bool have_tf_ext_linear;
         bool have_primaries_srgb;
     } color_management;
+
+    struct wp_single_pixel_buffer_manager_v1 *single_pixel_manager;
 
     tll(struct monitor) monitors;
     const struct monitor *monitor;
@@ -2312,6 +2315,16 @@ handle_global(void *data, struct wl_registry *registry,
             wayl->color_management.manager, &color_manager_listener, wayl);
     }
 
+    else if (strcmp(interface, wp_single_pixel_buffer_manager_v1_interface.name) == 0) {
+        const uint32_t required = 1;
+        if (!verify_iface_version(interface, version, required))
+            return;
+
+        wayl->single_pixel_manager = wl_registry_bind(
+            wayl->registry, name,
+            &wp_single_pixel_buffer_manager_v1_interface, required);
+    }
+
 }
 
 static void
@@ -2511,6 +2524,29 @@ wayl_refresh(struct wayland *wayl)
             abort();
     }
 
+    /*
+     * Optimized version of transparent frame, using the single-pixel
+     * protocol. Fallback version below, after shm_get_buffer().
+     */
+    if (wayl->render_first_frame_transparent &&
+        wayl->single_pixel_manager != NULL &&
+        wayl->viewport != NULL)
+    {
+        struct wl_buffer *single =
+            wp_single_pixel_buffer_manager_v1_create_u32_rgba_buffer(
+                wayl->single_pixel_manager, 0, 0, 0, 0);
+
+        struct buffer buf = {
+            .width = wayl->width,
+            .height = wayl->height,
+            .wl_buf = single,
+        };
+
+        commit_buffer(wayl, &buf);
+        wl_buffer_destroy(single);
+        goto done;
+    }
+
     struct buffer *buf = shm_get_buffer(wayl->chain, wayl->width, wayl->height, true);
 
     pixman_region32_t clip;
@@ -2519,10 +2555,12 @@ wayl_refresh(struct wayland *wayl)
     pixman_region32_fini(&clip);
 
     if (wayl->render_first_frame_transparent) {
+        /* Fallback version of transparent frame */
         pixman_color_t transparent = {0};
         pixman_image_fill_rectangles(
             PIXMAN_OP_SRC, buf->pix[0], &transparent,
             1, &(pixman_rectangle16_t){0, 0, wayl->width, wayl->height});
+
         goto commit;
     }
 
@@ -2558,6 +2596,7 @@ commit:
     assert(!wayl->need_refresh);
     commit_buffer(wayl, buf);
 
+done:
     if (wayl->conf->print_timing_info) {
         gettimeofday(&stop, NULL);
         timersub(&stop, &start, &diff);
@@ -2982,6 +3021,8 @@ wayl_destroy(struct wayland *wayl)
         monitor_destroy(&it->item);
     tll_free(wayl->monitors);
 
+    if (wayl->single_pixel_manager != NULL)
+        wp_single_pixel_buffer_manager_v1_destroy(wayl->single_pixel_manager);
     if (wayl->color_management_surface != NULL)
         wp_color_management_surface_v1_destroy(wayl->color_management_surface);
     if (wayl->color_management.img_description != NULL)
