@@ -213,6 +213,7 @@ fuzzel = executable(
   'xdg.c', 'xdg.h',
   'xmalloc.c', 'xmalloc.h',
   'xsnprintf.c', 'xsnprintf.h',
+  'timing.c', 'timing.h',
   wl_proto_src + wl_proto_headers, version, srgb_funcs,
   dependencies: [math,
                  threads,

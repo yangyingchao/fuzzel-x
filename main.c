@@ -42,6 +42,8 @@
 #include "xmalloc.h"
 #include "xsnprintf.h"
 
+#include "timing.h"
+
 #define max(x, y) ((x) > (y) ? (x) : (y))
 #define min(x, y) ((x)  < (y) ? (x) : (y))
 
@@ -804,6 +806,8 @@ fdm_apps_populated(struct fdm *fdm, int fd, int events, void *data)
 int
 main(int argc, char *const *argv)
 {
+    time_init();
+
     #define OPT_LETTER_SPACING               256
     #define OPT_LAUNCH_PREFIX                257
     #define OPT_SHOW_ACTIONS                 258
@@ -1913,6 +1917,7 @@ main(int argc, char *const *argv)
         }
     }
 
+
     log_init(log_colorize, log_syslog, LOG_FACILITY_USER, log_level);
     LOG_INFO("%s", version_and_features());
 
@@ -2131,6 +2136,9 @@ main(int argc, char *const *argv)
             close(STDIN_FILENO);  /* To catch reads */
         }
     }
+
+    if (conf.print_timing_info)
+        time_enable();
 
     _Static_assert((int)LOG_CLASS_ERROR == (int)FCFT_LOG_CLASS_ERROR,
                    "fcft log level enum offset");

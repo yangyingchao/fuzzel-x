@@ -51,6 +51,8 @@
 #include "xmalloc.h"
 #include "xsnprintf.h"
 
+#include "timing.h"
+
 #define min(x, y) ((x) < (y) ? (x) : (y))
 
 struct font_spec {
@@ -2505,8 +2507,7 @@ wayl_refresh(struct wayland *wayl)
         return;
     }
 
-    struct timeval start, stop, diff;
-    gettimeofday(&start, NULL);
+    struct timespec *start_frame = time_begin();
 
     if (wayl->chain == NULL) {
         wayl->chain =
@@ -2595,16 +2596,10 @@ commit:
     /* No pending frames - render immediately */
     assert(!wayl->need_refresh);
     commit_buffer(wayl, buf);
-
 done:
-    if (wayl->conf->print_timing_info) {
-        gettimeofday(&stop, NULL);
-        timersub(&stop, &start, &diff);
-        LOG_WARN("%sframe rendered in %llus %lluµs",
-                 wayl->render_first_frame_transparent ? "transparent " : "",
-                 (unsigned long long)diff.tv_sec,
-                 (unsigned long long)diff.tv_usec);
-    }
+    time_end(
+        start_frame, "%sframe rendered",
+        wayl->render_first_frame_transparent ? "transparent " : "");
 }
 
 void

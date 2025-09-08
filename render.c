@@ -13,6 +13,8 @@
 
 #include "column.h"
 #include "macros.h"
+#include "timing.h"
+
 #if HAS_INCLUDE(<pthread_np.h>)
 #include <pthread_np.h>
 #define pthread_setname_np(thread, name) (pthread_set_name_np(thread, name), 0)
@@ -1176,27 +1178,18 @@ render_svg(struct icon *icon, int x, int y, int size,
     assert(icon->type == ICON_SVG);
 
     if (icon->svg == NULL) {
-        struct timeval start, stop, diff;
-        gettimeofday(&start, NULL);
+        struct timespec *start_load = time_begin();
 
-        if (!icon_from_svg(icon, icon->path))
+        if (!icon_from_svg(icon, icon->path)) {
+            free(start_load);
             return;
-
-        if (print_timing_info) {
-            gettimeofday(&stop, NULL);
-            timersub(&stop, &start, &diff);
-
-            LOG_WARN("%s loaded in %llus %lluµs",
-                     icon->path,
-                     (unsigned long long)diff.tv_sec,
-                     (unsigned long long)diff.tv_usec);
         }
 
+        time_end(start_load, "%s loaded", icon->path);
         LOG_DBG("%s", icon->path);
     }
 
-    struct timeval start, stop, diff;
-    gettimeofday(&start, NULL);
+    struct timespec *render_start = time_begin();
 
 #if defined(FUZZEL_ENABLE_SVG_LIBRSVG)
     render_svg_librsvg(icon, x, y, size, cairo);
@@ -1206,15 +1199,7 @@ render_svg(struct icon *icon, int x, int y, int size,
     render_svg_resvg(icon, x, y, size, pix, cairo, gamma_correct);
 #endif
 
-    if (print_timing_info) {
-        gettimeofday(&stop, NULL);
-        timersub(&stop, &start, &diff);
-
-        LOG_WARN("%s rendered in %llus %lluµs",
-                 icon->path,
-                 (unsigned long long)diff.tv_sec,
-                 (unsigned long long)diff.tv_usec);
-    }
+    time_end(render_start, "%s rendered", icon->path);
 }
 
 #if defined(FUZZEL_ENABLE_PNG_LIBPNG)
@@ -1387,39 +1372,24 @@ render_png(struct icon *icon, int x, int y, int size, pixman_image_t *pix,
     assert(icon->type == ICON_PNG);
 
     if (icon->png == NULL) {
-        struct timeval start, stop, diff;
-        gettimeofday(&start, NULL);
+        struct timespec *start_load = time_begin();
 
-        if (!icon_from_png(icon, icon->path, gamma_correct))
+        if (!icon_from_png(icon, icon->path, gamma_correct)) {
+            free(start_load);
             return;
-
-        if (print_timing_info) {
-            gettimeofday(&stop, NULL);
-            timersub(&stop, &start, &diff);
-            LOG_WARN("%s loaded in %llus %lluµs",
-                     icon->path,
-                     (unsigned long long)diff.tv_sec,
-                     (unsigned long long)diff.tv_usec);
         }
 
+        time_end(start_load, "%s loaded", icon->path);
         LOG_DBG("%s", icon->path);
     }
 
-    struct timeval start, stop, diff;
-    gettimeofday(&start, NULL);
+    struct timespec *start_render = time_begin();
 
 #if defined(FUZZEL_ENABLE_PNG_LIBPNG)
     render_png_libpng(icon, x, y, size, pix, cairo, scaling_filter);
 #endif
 
-    if (print_timing_info) {
-        gettimeofday(&stop, NULL);
-        timersub(&stop, &start, &diff);
-        LOG_WARN("%s rendered in %llus %lluµs",
-                 icon->path,
-                 (unsigned long long)diff.tv_sec,
-                 (unsigned long long)diff.tv_usec);
-    }
+    time_end(start_render, "%s rendered", icon->path);
 }
 
 static int
