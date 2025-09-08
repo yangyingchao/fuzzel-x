@@ -64,7 +64,9 @@ time_since_boot(const char *fmt, ...)
     va_end(va2);
 
 
-    LOG_WARN("%s: %lds %ldµs since boot-up", msg, diff.tv_sec, diff.tv_nsec / 1000);
+    LOG_WARN("%s: %llds %lldµs since boot-up", msg,
+             (unsigned long long)diff.tv_sec,
+             (unsigned long long)diff.tv_nsec / 1000);
 }
 
 static struct timespec *
@@ -131,7 +133,9 @@ time_finish(struct timespec *start, struct timespec *stop, const char *fmt, ...)
     xvsnprintf(msg, len + 1, fmt, va2);
     va_end(va2);
 
-    LOG_WARN("%s in %lds %ldµs", msg, diff.tv_sec, diff.tv_nsec / 1000);
+    LOG_WARN("%s in %llds %lldµs", msg,
+             (unsigned long long)diff.tv_sec,
+             (unsigned long long)diff.tv_nsec / 1000);
 
     free(start);
     free(stop);
