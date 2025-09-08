@@ -9,13 +9,13 @@
 #include "log.h"
 #include "xsnprintf.h"
 
-static struct timespec bootup = {0};
+static struct timespec boot_up = {0};
 static bool enabled = false;
 
 void
 time_init(void)
 {
-    clock_gettime(CLOCK_MONOTONIC, &bootup);
+    clock_gettime(CLOCK_MONOTONIC, &boot_up);
 }
 
 void
@@ -50,7 +50,7 @@ time_since_boot(const char *fmt, ...)
     clock_gettime(CLOCK_MONOTONIC, &stop);
 
     struct timespec diff;
-    timespec_sub(&stop, &bootup, &diff);
+    timespec_sub(&stop, &boot_up, &diff);
 
     va_list va1, va2;
     va_start(va1, fmt);
