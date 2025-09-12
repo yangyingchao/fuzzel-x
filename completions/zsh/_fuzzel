@@ -72,7 +72,8 @@ _arguments \
     '--dmenu0[dmenu compatibility mode; entries are read from stdin, NUL separated]' \
     '--index[print selected entry'\''s index instead of its text (dmenu mode only)]' \
     '--with-nth[display the N:th column (tab separated by default) of each input line (dmenu mode only)]:with-nth:()' \
-    '--accept-nth[output the N:th column (tab separated by default) of each input line (dmenu mode only)]:with-nth:()' \
+    '--accept-nth[output the N:th column (tab separated by default) of each input line (dmenu mode only)]:accept-nth:()' \
+    '--match-nth[match against the N:th column (tab separated by default) of each input line (dmenu only)]:match-nth:()' \
     '--nth-delimiter[field delimiter for --with-nth and --accept-nth]:nth-delim:()' \
     '(-R --no-run-if-empty)'{-R,--no-run-if-empty}'[exit immediately without showing the UI if stdin is empty (dmenu mode only)]' \
     '--log-level[log level (warning)]:loglevel:(info warning error none)' \

@@ -82,6 +82,7 @@ complete -c fuzzel         -l dmenu0                                            
 complete -c fuzzel         -l index                                                                             -d "print selected entry's index instead of its text (dmenu mode only)"
 complete -c fuzzel -x      -l with-nth                                                                          -d "display the N:th column (tab separated by default) of each input line (dmenu only)"
 complete -c fuzzel -x      -l accept-nth                                                                        -d "output the N:th column (tab separated by default) of each input line (dmenu only)"
+complete -c fuzzel -x      -l match-nth                                                                         -d "match against the N:th column (tab separated by default) of each input line (dmenu only)"
 complete -c fuzzel -x      -l nth-delimiter                                                                     -d "field delimiter for --with-nth and --accept-nth"
 complete -c fuzzel    -s R -l no-run-if-empty                                                                   -d "exit immediately without showing the UI if stdin is empty (dmenu mode only)"
 complete -c fuzzel -x -s d -l log-level          -a "info warning error none"                                   -d "log-level (warning)"
