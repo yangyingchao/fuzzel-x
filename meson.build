@@ -241,6 +241,7 @@ if fish.found() and wtype.found()
       'auto-select',
       'execute',
       'match-mode-fzf',
+      'match-nth',
     ]
       test(test_case, fish,
            args: ['-c',
