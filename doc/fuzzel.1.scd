@@ -501,7 +501,8 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	them is selected, the full input line (tabs included) are printed
 	on stdout.
 
-	Setting it to *0* is the same as not specifying *--with-nth* at all.
+	Setting it to *0* is the same as not specifying *--with-nth* at
+	all.
 
 *--accept-nth*=_N_|_FMT_
 	Output the N:th column (1-based, tab separated by default, see
@@ -516,10 +517,34 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	printf "1\\tFirst\\n2\\tSecond" | fuzzel -d --accept-nth=2
 	```
 
-	This will display the entries *1   First* and *2   Second*. Depending
-	on which one is selected, *First* or *Second* will be printed to stdout.
+	This will display the entries *1 First* and *2 Second*. Depending
+	on which one is selected, *First* or *Second* will be printed to
+	stdout.
 
-	Setting it to *0* is the same as not specifying *--accept-nth* at all.
+	Setting it to *0* is the same as not specifying *--accept-nth* at
+	all.
+
+*--match-nth*=_N_|_FMT_
+	Match against the N:th column (1-based, tab separated by default,
+	see *--nth-delimiter*) of each input line. This is instead of
+	matching against the displayed value (which can be changed with
+	*--with-nth*).
+
+	The argument can also be a format string (i.e free-format text),
+	where *{N}* expands to the N:th column. Ranges on the form
+	*{N..M}* and *{N..}* (open-ended) are also supported.
+
+	Example:
+	```
+	printf "123\t456\t789" | fuzzel -d --with-nth=1 --accept-nth=2 --match-nth=3
+	```
+
+	This will display the entry *123*, but matching will *only* be
+	done against *789* (specifically, *123* will not match). When
+	selected, *456* is printed on stdout.
+
+	Setting it to *0* is the same as not specifying *--match-nth* at
+	all.
 
 *--nth-delimiter*=_CHARACTER_
 	Field (column) delimiter for *--with-nth* and *--accept-nth*. Must
