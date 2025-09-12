@@ -34,12 +34,16 @@
 ## Unreleased
 ### Added
 
- * Faster, more accurate SVG rendering with `resvg` backend. It does not
-   require cairo and supports gamma correction. Packagers are advised to
-   prefer this backend. The librsvg and nanosvg backends may be removed
-   in a future release ([#650][650]).
+* Faster, more accurate SVG rendering with `resvg` backend. It does
+  not require cairo and supports gamma correction. Packagers are
+  advised to prefer this backend. The librsvg and nanosvg backends may
+  be removed in a future release ([#650][650]).
+* `--match-nth=N` command line option, allowing dmenu entries to be
+  matched against text other than what is being displayed
+  ([#589][589]).
 
 [650]: https://codeberg.org/dnkl/fuzzel/issues/650
+[589]: https://codeberg.org/dnkl/fuzzel/issues/589
 
 ### Changed
 ### Deprecated
