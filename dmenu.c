@@ -25,8 +25,8 @@
 
 void
 dmenu_load_entries(struct application_list *applications, char delim,
-                   const char *with_nth_format, char nth_delim,
-                   int event_fd, int abort_fd)
+                   const char *with_nth_format, const char *match_nth_format,
+                   char nth_delim, int event_fd, int abort_fd)
 {
     tll(struct application *) entries = tll_init();
 
@@ -176,10 +176,21 @@ dmenu_load_entries(struct application_list *applications, char delim,
             for (size_t i = 0; i < c32len(lowercase); i++)
                 lowercase[i] = toc32lower(lowercase[i]);
 
+            char32_t *match_nth = match_nth_format != NULL
+                ? nth_column(wline, nth_delim, match_nth_format)
+                : NULL;
+
+            if (match_nth != NULL) {
+                for (size_t i = 0; i < c32len(match_nth); i++)
+                    match_nth[i] = toc32lower(match_nth[i]);
+            }
+
             struct application *app = xmalloc(sizeof(*app));
             *app = (struct application){
                 .index = app_idx++,
                 .dmenu_input = wline,
+                .dmenu_match_nth = match_nth,
+                .dmenu_match_nth_len = match_nth != NULL ? c32len(match_nth) : 0,
                 .title = title,
                 .title_lowercase = lowercase,
                 .title_len = c32len(lowercase),

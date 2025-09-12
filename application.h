@@ -85,12 +85,14 @@ struct application {
     char32_list_t categories;  /* Lower cased! */
 
     char32_t *dmenu_input;     /* Full dmenu input, may contain multiple columns */
+    char32_t *dmenu_match_nth; /* What to match against, with --match-nth= */
 
     size_t title_len;
     size_t basename_len;
     size_t wexec_len;
     size_t generic_name_len;
     size_t comment_len;
+    size_t dmenu_match_nth_len;
     /* keywords and categories lengths not cached */
 
     struct icon icon;

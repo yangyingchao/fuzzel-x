@@ -43,8 +43,7 @@ enum match_fields {
     MATCH_COMMENT =    0x10,
     MATCH_KEYWORDS =   0x20,
     MATCH_CATEGORIES = 0x40,
-
-    MATCH_END = MATCH_COMMENT + 1,
+    MATCH_NTH =        0x80,
 };
 
 enum anchors {
@@ -169,6 +168,7 @@ struct config {
         char nth_delim;
         char *with_nth_format;
         char *accept_nth_format;
+        char *match_nth_format;
     } dmenu;
 
     enum anchors anchor;

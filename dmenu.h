@@ -9,8 +9,8 @@
 
 void dmenu_load_entries(
     struct application_list *applications, char delim,
-    const char *with_nth_format, char nth_delim,
-    int event_fd, int abort_fd);
+    const char *with_nth_format, const char *match_nth_format,
+    char nth_delim, int event_fd, int abort_fd);
 
 bool dmenu_execute(
     const struct application *app, ssize_t index,

@@ -1782,6 +1782,7 @@ config_free(struct config *conf)
     free(conf->cache_path);
     free(conf->dmenu.with_nth_format);
     free(conf->dmenu.accept_nth_format);
+    free(conf->dmenu.match_nth_format);
     free_key_binding_list(&conf->key_bindings);
 }
 

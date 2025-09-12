@@ -346,6 +346,7 @@ applications_destroy(struct application_list *apps)
         tll_free_and_free(app->categories, free);
 
         free(app->dmenu_input);
+        free(app->dmenu_match_nth);
 
         switch (app->icon.type) {
         case ICON_NONE:

@@ -441,6 +441,9 @@ print_usage(const char *prog_name)
            "                                 default) of each input line (dmenu only)\n"
            "     --accept-nth=N|FMT          output the N:th column (tab separated by\n"
            "                                 default) of each input line (dmenu only)\n"
+           "     --match-nth=N|FMT           match against the N:th column (tab separated by\n"
+           "                                 default) of each input line, instead of what is\n"
+           "                                 being displayed (dmenu only)\n"
            "     --nth-delimiter=CHARACTER   field (column) character, for --with-nth and\n"
            "                                 --accept-nth\n"
            "  -R,--no-run-if-empty           exit immediately without showing UI if stdin\n"
@@ -569,6 +572,7 @@ populate_apps(void *_ctx)
     char dmenu_delim = conf->dmenu.delim;
     char dmenu_nth_delim = conf->dmenu.nth_delim;
     const char *dmenu_with_nth_format = conf->dmenu.with_nth_format;
+    const char *dmenu_match_nth_format = conf->dmenu.match_nth_format;
     bool filter_desktop = conf->filter_desktop;
     bool list_exec_in_path = conf->list_executables_in_path;
     char_list_t desktops = tll_init();
@@ -593,8 +597,8 @@ populate_apps(void *_ctx)
     if (dmenu_enabled) {
         if (!conf->prompt_only) {
             dmenu_load_entries(
-                apps, dmenu_delim, dmenu_with_nth_format, dmenu_nth_delim,
-                ctx->event_fd, ctx->dmenu_abort_fd);
+                apps, dmenu_delim, dmenu_with_nth_format, dmenu_match_nth_format,
+                dmenu_nth_delim, ctx->event_fd, ctx->dmenu_abort_fd);
             read_cache(cache_path, apps, true);
         }
     } else {
@@ -852,6 +856,7 @@ main(int argc, char *const *argv)
     #define OPT_SELECTION_RADIUS             306
     #define OPT_NO_MOUSE                     307
     #define OPT_DMENU_NTH_DELIM              308
+    #define OPT_DMENU_MATCH_NTH              309
 
     static const struct option longopts[] = {
         {"config",               required_argument, 0, OPT_CONFIG},
@@ -931,6 +936,7 @@ main(int argc, char *const *argv)
         {"nth-delimiter",        required_argument, 0, OPT_DMENU_NTH_DELIM},
         {"with-nth",             required_argument, 0, OPT_DMENU_WITH_NTH},
         {"accept-nth",           required_argument, 0, OPT_DMENU_ACCEPT_NTH},
+        {"match-nth",            required_argument, 0, OPT_DMENU_MATCH_NTH},
 
         /* Misc */
         {"log-level",            required_argument, 0, OPT_LOG_LEVEL},
@@ -997,6 +1003,7 @@ main(int argc, char *const *argv)
         bool dmenu_nth_delim_set:1;
         bool dmenu_with_nth_set:1;
         bool dmenu_accept_nth_set:1;
+        bool dmenu_match_nth_set:1;
         bool layer_set:1;
         bool keyboard_focus_set:1;
         bool no_exit_on_keyboard_focus_loss_set:1;
@@ -1768,6 +1775,25 @@ main(int argc, char *const *argv)
             break;
         }
 
+        case OPT_DMENU_MATCH_NTH: {
+            free(cmdline_overrides.conf.dmenu.match_nth_format);
+            cmdline_overrides.conf.dmenu.match_nth_format = NULL;
+
+            unsigned int match_nth_idx;
+            if (sscanf(optarg, "%u", &match_nth_idx) == 1) {
+                if (match_nth_idx == 0) {
+                    /* Do nothing more - i.e. leave it unset */
+                } else {
+                    cmdline_overrides.conf.dmenu.match_nth_format =
+                        xasprintf("{%u}", match_nth_idx);
+                }
+            } else if (optarg[0] != '\0')
+                cmdline_overrides.conf.dmenu.match_nth_format = xstrdup(optarg);
+
+            cmdline_overrides.dmenu_match_nth_set = true;
+            break;
+        }
+
         case OPT_LOG_LEVEL: {
             int lvl = log_level_from_string(optarg);
             if (lvl < 0) {
@@ -2089,6 +2115,10 @@ main(int argc, char *const *argv)
         free(conf.dmenu.accept_nth_format);
         conf.dmenu.accept_nth_format = cmdline_overrides.conf.dmenu.accept_nth_format;
     }
+    if (cmdline_overrides.dmenu_match_nth_set) {
+        free(conf.dmenu.match_nth_format);
+        conf.dmenu.match_nth_format = cmdline_overrides.conf.dmenu.match_nth_format;
+    }
     if (cmdline_overrides.conf.list_executables_in_path)
         conf.list_executables_in_path = cmdline_overrides.conf.list_executables_in_path;
     if (cmdline_overrides.render_workers_set)
@@ -2118,7 +2148,8 @@ main(int argc, char *const *argv)
 
     if (conf.dmenu.enabled) {
         /* We don't have any meta data in dmenu mode */
-        conf.match_fields = MATCH_NAME;
+        conf.match_fields = conf.dmenu.match_nth_format != NULL
+            ? MATCH_NTH : MATCH_NAME;
 
         if (conf.prompt_only) {
             conf.lines = 0;
