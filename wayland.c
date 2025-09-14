@@ -2435,12 +2435,12 @@ static const struct wl_callback_listener frame_listener = {
 };
 
 static void
-commit_buffer(struct wayland *wayl, struct buffer *buf)
+commit_buffer(struct wayland *wayl, struct buffer *buf, bool force_viewport)
 {
     const float scale = wayl->scale;
     assert(scale >= 1);
 
-    if (wayl->preferred_fractional_scale > 0) {
+    if (wayl->preferred_fractional_scale > 0 || force_viewport) {
         LOG_DBG("scaling by a factor of %.2f using fractional scaling", scale);
 
         assert(wayl->viewport != NULL);
@@ -2543,7 +2543,7 @@ wayl_refresh(struct wayland *wayl)
             .wl_buf = single,
         };
 
-        commit_buffer(wayl, &buf);
+        commit_buffer(wayl, &buf, true);
         wl_buffer_destroy(single);
         goto done;
     }
@@ -2595,7 +2595,7 @@ skip_list:
 commit:
     /* No pending frames - render immediately */
     assert(!wayl->need_refresh);
-    commit_buffer(wayl, buf);
+    commit_buffer(wayl, buf, false);
 done:
 
     time_finish(
