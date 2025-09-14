@@ -446,6 +446,8 @@ print_usage(const char *prog_name)
            "                                 being displayed (dmenu only)\n"
            "     --nth-delimiter=CHARACTER   field (column) character, for --with-nth and\n"
            "                                 --accept-nth\n"
+           "     --only-match                do not allow custom entries, only return a\n"
+           "                                 selected item\n"
            "  -R,--no-run-if-empty           exit immediately without showing UI if stdin\n"
            "                                 is empty (dmenu mode only)\n"
            "     --log-level={info|warning|error|none}\n"
@@ -857,6 +859,7 @@ main(int argc, char *const *argv)
     #define OPT_NO_MOUSE                     307
     #define OPT_DMENU_NTH_DELIM              308
     #define OPT_DMENU_MATCH_NTH              309
+    #define OPT_DMENU_ONLY_MATCH             310
 
     static const struct option longopts[] = {
         {"config",               required_argument, 0, OPT_CONFIG},
@@ -937,6 +940,7 @@ main(int argc, char *const *argv)
         {"with-nth",             required_argument, 0, OPT_DMENU_WITH_NTH},
         {"accept-nth",           required_argument, 0, OPT_DMENU_ACCEPT_NTH},
         {"match-nth",            required_argument, 0, OPT_DMENU_MATCH_NTH},
+        {"only-match",           no_argument,       0, OPT_DMENU_ONLY_MATCH},
 
         /* Misc */
         {"log-level",            required_argument, 0, OPT_LOG_LEVEL},
@@ -1004,6 +1008,7 @@ main(int argc, char *const *argv)
         bool dmenu_with_nth_set:1;
         bool dmenu_accept_nth_set:1;
         bool dmenu_match_nth_set:1;
+        bool dmenu_only_match_set:1;
         bool layer_set:1;
         bool keyboard_focus_set:1;
         bool no_exit_on_keyboard_focus_loss_set:1;
@@ -1794,6 +1799,11 @@ main(int argc, char *const *argv)
             break;
         }
 
+        case OPT_DMENU_ONLY_MATCH:
+            cmdline_overrides.conf.dmenu.only_match = true;
+            cmdline_overrides.dmenu_only_match_set = true;
+            break;
+
         case OPT_LOG_LEVEL: {
             int lvl = log_level_from_string(optarg);
             if (lvl < 0) {
@@ -2119,6 +2129,8 @@ main(int argc, char *const *argv)
         free(conf.dmenu.match_nth_format);
         conf.dmenu.match_nth_format = cmdline_overrides.conf.dmenu.match_nth_format;
     }
+    if (cmdline_overrides.dmenu_only_match_set)
+        conf.dmenu.only_match = cmdline_overrides.conf.dmenu.only_match;
     if (cmdline_overrides.conf.list_executables_in_path)
         conf.list_executables_in_path = cmdline_overrides.conf.list_executables_in_path;
     if (cmdline_overrides.render_workers_set)

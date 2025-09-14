@@ -552,6 +552,14 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 
 	Default: _\\t_ (tab)
 
+*--only-match*
+	Do not allow custom entries, only return a selected item. In this
+	mode, fuzzel always returns an entry. It will not return if no
+	matching entry is selected.
+
+	The exception to this is the *execute-input* key binding, which
+	always executes/selects the input text.
+
 *-R*,*--no-run-if-empty*
 	Exit immediately, without showing the UI, if stdin is
 	empty. dmenu mode only.

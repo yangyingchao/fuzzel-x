@@ -75,6 +75,7 @@ _arguments \
     '--accept-nth[output the N:th column (tab separated by default) of each input line (dmenu mode only)]:accept-nth:()' \
     '--match-nth[match against the N:th column (tab separated by default) of each input line (dmenu only)]:match-nth:()' \
     '--nth-delimiter[field delimiter for --with-nth and --accept-nth]:nth-delim:()' \
+    '--only-match[do not allow custom entries, only return a selected item]:only-match:()' \
     '(-R --no-run-if-empty)'{-R,--no-run-if-empty}'[exit immediately without showing the UI if stdin is empty (dmenu mode only)]' \
     '--log-level[log level (warning)]:loglevel:(info warning error none)' \
     '--log-colorize[enable or disable colorization of log output on stderr]:logcolor:(never always auto)' \

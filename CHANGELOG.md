@@ -41,9 +41,12 @@
 * `--match-nth=N` command line option, allowing dmenu entries to be
   matched against text other than what is being displayed
   ([#589][589]).
+* `--only-match` command line option, preventing the user from
+  executing "custom" input in dmenu mode ([#651][651]).
 
 [650]: https://codeberg.org/dnkl/fuzzel/issues/650
 [589]: https://codeberg.org/dnkl/fuzzel/issues/589
+[651]: https://codeberg.org/dnkl/fuzzel/issues/651
 
 ### Changed
 ### Deprecated

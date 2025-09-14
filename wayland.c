@@ -801,11 +801,25 @@ execute_binding(struct seat *seat, const struct key_binding *binding, bool *refr
         paste_from_primary(seat);
         return true;
 
-    case BIND_ACTION_MATCHES_EXECUTE:
-        /* Ignore execute action if prompt empty and no matches */
-        if (prompt_text(wayl->prompt)[0] != '\0' || matches_get_total_count(wayl->matches) != 0)
-            execute_selected(seat, false, -1);
+    case BIND_ACTION_MATCHES_EXECUTE: {
+        const size_t match_count = matches_get_total_count(wayl->matches);
+
+        if (prompt_text(wayl->prompt)[0] == '\0' && match_count == 0) {
+            /* Empty prompt, and no matches -> do nothing */
+            return true;
+        }
+
+        const bool dmenu_enabled = wayl->conf->dmenu.enabled;
+        const bool only_match = wayl->conf->dmenu.only_match;
+
+        if (dmenu_enabled && only_match && match_count == 0) {
+            /* --only-match, and no matches -> do nothing */
+            return true;
+        }
+
+        execute_selected(seat, false, -1);
         return true;
+    }
 
     case BIND_ACTION_MATCHES_EXECUTE_OR_NEXT:
         if (matches_get_total_count(wayl->matches) == 1)
