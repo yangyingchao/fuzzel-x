@@ -45,10 +45,15 @@
   executing "custom" input in dmenu mode ([#651][651]).
 * `--nth-delimiter=CHR` option added support for custom delimiter in 1.13
   but is just now documented in the changelog.
+* The ability to set a custom "message" above the prompt, controlled
+  with the new command line options `--mesg`, `--mesg-mode` and
+  `--message-color` (and the corresponding config options `mesg`,
+  `mesg-mode` and `colors.message`) ([#454][454]).
 
 [650]: https://codeberg.org/dnkl/fuzzel/issues/650
 [589]: https://codeberg.org/dnkl/fuzzel/issues/589
 [651]: https://codeberg.org/dnkl/fuzzel/issues/651
+[454]: https://codeberg.org/dnkl/fuzzel/issues/454
 
 ### Changed
 

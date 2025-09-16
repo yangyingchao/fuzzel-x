@@ -38,6 +38,7 @@ _arguments \
     '(-P --inner-pad)'{-P,--inner-pad}'[vertical padding between prompt and matches, in pixels (0)]:()' \
     '(-b --background)'{-b,--background}'[background color (fdf6e3ff)]:background:()' \
     '(-t --text-color)'{-t,--text-color}'[text color (657b83ff)]:text-color:()' \
+    '--message-color[color of the message text (657b83ff)]:message-color:()' \
     '--prompt-color[color of the prompt text (586e75ff)]:prompt-color:()' \
     '--placeholder-color[color of the placeholder text (93a1a1ff)]:()' \
     '--input-color[color of the input string (657b83ff)]:input-color:()' \
@@ -76,6 +77,8 @@ _arguments \
     '--match-nth[match against the N:th column (tab separated by default) of each input line (dmenu only)]:match-nth:()' \
     '--nth-delimiter[field delimiter for --with-nth and --accept-nth]:nth-delim:()' \
     '--only-match[do not allow custom entries, only return a selected item]:only-match:()' \
+    '--mesg[string to use as informational message above the prompt]:()' \
+    '--mesg-mode[how to deal with message lines longer than the ui (wrap)]:match_mode:(wrap expand)' \
     '(-R --no-run-if-empty)'{-R,--no-run-if-empty}'[exit immediately without showing the UI if stdin is empty (dmenu mode only)]' \
     '--log-level[log level (warning)]:loglevel:(info warning error none)' \
     '--log-colorize[enable or disable colorization of log output on stderr]:logcolor:(never always auto)' \

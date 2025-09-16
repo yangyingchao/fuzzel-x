@@ -35,6 +35,12 @@ enum match_mode {
     MATCH_MODE_FUZZY,
 };
 
+enum message_mode {
+    MESSAGE_MODE_WRAP,
+    MESSAGE_MODE_EXPAND,
+};
+
+
 enum match_fields {
     MATCH_NAME =       0x01,
     MATCH_FILENAME =   0x02,
@@ -113,6 +119,8 @@ struct config {
     char32_t *prompt;
     char32_t *placeholder;
     char32_t *search_text;
+    char32_t *message;
+    enum message_mode message_mode;
     bool prompt_only;
     enum match_fields match_fields;
 
@@ -194,6 +202,7 @@ struct config {
         struct rgba background;
         struct rgba border;
         struct rgba text;
+        struct rgba message;
         struct rgba prompt;
         struct rgba input;
         struct rgba match;

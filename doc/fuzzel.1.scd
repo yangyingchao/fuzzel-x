@@ -142,6 +142,15 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 *--placeholder*=_TEXT_
 	Text to display as placeholder in the input box. Default: empty.
 
+*--mesg*=_STRING_
+	Message to display above the prompt. Can contain some informational
+	message, or can be used for having your prompt be above the input
+	instead of in front. Supports newlines.
+
+*--mesg-mode*=_wrap_|_expand_
+	How to handle lines in *--mesg* when they are longer than *--width*.
+	See *fuzzel.ini*(5) for details. The default is *wrap*.
+
 *--search*=_TEXT_
 	Initial search/filter string. This option pre-fills the input box
 	with the specified string, letting you pre-filter the result.
@@ -272,6 +281,9 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 
 *-t*,*--text-color*=_HEX_
 	Text color. See *COLORS*. Default: _657b83ff_.
+
+*--message-color*=_HEX_
+	Message color. See *COLORS*. Default: _657b83ff_.
 
 *--prompt-color*=_HEX_
 	Text (foreground) color of prompt character(s). See

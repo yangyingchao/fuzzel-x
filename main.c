@@ -364,6 +364,9 @@ print_usage(const char *prog_name)
            "     --placeholder=TEXT          placeholder text in input box\n"
            "     --search=TEXT               initial search/filter string\n"
            "     --password=[CHARACTER]      render all input as CHARACTER ('*' by default)\n"
+           "     --mesg                      show informational message above the prompt\n"
+           "     --mesg-mode=wrap|expand     how to deal with message lines longer than\n"
+           "                                 the ui (wrap)\n"
            "  -T,--terminal                  terminal command to use when launching\n"
            "                                 'terminal' programs, e.g. \"xterm -e\".\n"
            "                                 Not used in dmenu mode (not set)\n"
@@ -392,6 +395,7 @@ print_usage(const char *prog_name)
            "  -t,--text-color=HEX            text color of matched entries (657b83ff)\n"
            "     --prompt-color=HEX          text color of the prompt (586e75ff)\n"
            "     --placeholder-color=HEX     text color of the placeholder text (93a1a1)\n"
+           "     --message-color=HEX         text color of the message (657b83ff)\n"
            "     --input-color=HEX           text color of the input string (657b83ff)\n"
            "  -m,--match-color=HEX           color of matched substring (cb4b16ff)\n"
            "  -s,--selection-color=HEX       background color of selected item (eee8d5ff)\n"
@@ -460,6 +464,7 @@ print_usage(const char *prog_name)
            "                                 performance issues\n"
            "     --no-mouse                  disable mouse input\n"
            "  -v,--version                   show the version number and quit\n");
+
     printf("\n");
     printf("All colors are RGBA - i.e. 8-digit hex values, without prefix.\n");
 }
@@ -860,6 +865,9 @@ main(int argc, char *const *argv)
     #define OPT_DMENU_NTH_DELIM              308
     #define OPT_DMENU_MATCH_NTH              309
     #define OPT_DMENU_ONLY_MATCH             310
+    #define OPT_DMENU_MESSAGE                311
+    #define OPT_DMENU_MESSAGE_MODE           312
+    #define OPT_MESSAGE_COLOR                313
 
     static const struct option longopts[] = {
         {"config",               required_argument, 0, OPT_CONFIG},
@@ -891,6 +899,7 @@ main(int argc, char *const *argv)
         {"inner-pad",            required_argument, 0, 'P'},
         {"background-color",     required_argument, 0, 'b'},
         {"text-color",           required_argument, 0, 't'},
+        {"message-color",        required_argument, 0, OPT_MESSAGE_COLOR},
         {"prompt-color",         required_argument, 0, OPT_PROMPT_COLOR},
         {"placeholder-color",    required_argument, 0, OPT_PLACEHOLDER_COLOR},
         {"input-color",          required_argument, 0, OPT_INPUT_COLOR},
@@ -941,6 +950,8 @@ main(int argc, char *const *argv)
         {"accept-nth",           required_argument, 0, OPT_DMENU_ACCEPT_NTH},
         {"match-nth",            required_argument, 0, OPT_DMENU_MATCH_NTH},
         {"only-match",           no_argument,       0, OPT_DMENU_ONLY_MATCH},
+        {"mesg",                 required_argument, 0, OPT_DMENU_MESSAGE},
+        {"mesg-mode",            required_argument, 0, OPT_DMENU_MESSAGE_MODE},
 
         /* Misc */
         {"log-level",            required_argument, 0, OPT_LOG_LEVEL},
@@ -981,6 +992,7 @@ main(int argc, char *const *argv)
         bool pad_inner_set:1;
         bool background_color_set:1;
         bool text_color_set:1;
+        bool message_color_set:1;
         bool prompt_color_set:1;
         bool input_color_set:1;
         bool match_color_set:1;
@@ -1009,6 +1021,7 @@ main(int argc, char *const *argv)
         bool dmenu_accept_nth_set:1;
         bool dmenu_match_nth_set:1;
         bool dmenu_only_match_set:1;
+        bool mesg_mode_set:1;
         bool layer_set:1;
         bool keyboard_focus_set:1;
         bool no_exit_on_keyboard_focus_loss_set:1;
@@ -1391,6 +1404,23 @@ main(int argc, char *const *argv)
             }
             cmdline_overrides.conf.colors.text = conf_hex_to_rgba(text_color);
             cmdline_overrides.text_color_set = true;
+            break;
+        }
+
+        case OPT_MESSAGE_COLOR: {
+            const char *clr_start = optarg;
+            if (clr_start[0] == '#')
+                clr_start++;
+
+            errno = 0;
+            char *end = NULL;
+            uint32_t message_color = strtoul(clr_start, &end, 16);
+            if (errno != 0 || end == NULL || *end != '\0' || (end - clr_start) != 8) {
+                fprintf(stderr, "message-color: %s: invalid color\n", optarg);
+                return EXIT_FAILURE;
+            }
+            cmdline_overrides.conf.colors.message = conf_hex_to_rgba(message_color);
+            cmdline_overrides.message_color_set = true;
             break;
         }
 
@@ -1804,6 +1834,30 @@ main(int argc, char *const *argv)
             cmdline_overrides.dmenu_only_match_set = true;
             break;
 
+        case OPT_DMENU_MESSAGE:
+            free(cmdline_overrides.conf.message);
+            cmdline_overrides.conf.message = ambstoc32(optarg);
+
+            if (cmdline_overrides.conf.message == NULL) {
+                fprintf(stderr, "%s: invalid dmenu message\n", optarg);
+                return EXIT_FAILURE;
+            }
+
+            break;
+
+        case OPT_DMENU_MESSAGE_MODE:
+            if (strcmp(optarg, "wrap") == 0)
+                cmdline_overrides.conf.message_mode = MESSAGE_MODE_WRAP;
+            else if (strcmp(optarg, "expand") == 0)
+                cmdline_overrides.conf.message_mode = MESSAGE_MODE_EXPAND;
+            else {
+                fprintf(stderr, "%s: invalid mesg-mode. Must be 'wrap' or 'expand'\n", optarg);
+                return EXIT_FAILURE;
+            }
+
+            cmdline_overrides.mesg_mode_set = true;
+            break;
+
         case OPT_LOG_LEVEL: {
             int lvl = log_level_from_string(optarg);
             if (lvl < 0) {
@@ -2061,6 +2115,8 @@ main(int argc, char *const *argv)
         conf.colors.background = cmdline_overrides.conf.colors.background;
     if (cmdline_overrides.text_color_set)
         conf.colors.text = cmdline_overrides.conf.colors.text;
+    if (cmdline_overrides.message_color_set)
+        conf.colors.message = cmdline_overrides.conf.colors.message;
     if (cmdline_overrides.prompt_color_set)
         conf.colors.prompt = cmdline_overrides.conf.colors.prompt;
     if (cmdline_overrides.placeholder_color_set)
@@ -2131,6 +2187,12 @@ main(int argc, char *const *argv)
     }
     if (cmdline_overrides.dmenu_only_match_set)
         conf.dmenu.only_match = cmdline_overrides.conf.dmenu.only_match;
+    if (cmdline_overrides.conf.message != NULL) {
+        free(conf.message);
+        conf.message = cmdline_overrides.conf.message;
+    }
+    if (cmdline_overrides.mesg_mode_set)
+        conf.message_mode = cmdline_overrides.conf.message_mode;
     if (cmdline_overrides.conf.list_executables_in_path)
         conf.list_executables_in_path = cmdline_overrides.conf.list_executables_in_path;
     if (cmdline_overrides.render_workers_set)

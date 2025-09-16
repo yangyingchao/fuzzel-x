@@ -143,6 +143,23 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	String to use as input prompt. Note that trailing spaces are
 	trimmed, unless the string is quoted. Default: _"> "_.
 
+*mesg*
+	Message to display above the prompt. Can contain some informational
+	message, or can be used for having your prompt be above the input
+	instead of in front. Supports newlines.
+	For details on how long lines are treated, see *mesg-mode*.
+
+*mesg-mode*
+	One of *wrap*, and *expand*.
+
+	*wrap*: any line that is longer than *width* is wrapped to the
+	following line. Wraps on space boundaries if available, trimming
+	leading spaces caused by truncation. If no space is available,
+	the line is broken up after *width* characters.
+
+	*expand*: If the longest line in *mesg* is longer than *width*,
+	make the dialogue box wider to accommodate *mesg*.
+
 *icon-theme*
 	Icon theme. Note that the name is case sensitive. Default:
 	_default_.
@@ -449,6 +466,10 @@ All color values are in RGBA.
 	Text (foreground) color of unselected entries. Default:
 	_657b83ff_.
 
+*message*
+	Text (foreground) color of the message string. Default:
+	_657b83ff_.
+
 *prompt*
 	Text (foreground) color of prompt character(s). Default:
 	_586e75ff_.
@@ -507,7 +528,6 @@ All color values are in RGBA.
 	Boolean. If enabled, fuzzel will not run at all (i.e. it will not
 	open a window, and will not print anything on stdout) if there's
 	nothing on stdin. Default: _no_.
-
 
 # SECTION: key-bindings
 

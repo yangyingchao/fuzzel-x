@@ -65,6 +65,7 @@ struct render {
 
     /* Cached fcft text runs */
     struct fcft_text_run *prompt_text_run;
+    struct fcft_text_run *message_text_run;
     struct fcft_text_run *placeholder_text_run;
 
     /* Cached selection corners */
@@ -78,6 +79,7 @@ struct render {
     pixman_color_t pix_background_color;
     pixman_color_t pix_border_color;
     pixman_color_t pix_text_color;
+    pixman_color_t pix_message_color;
     pixman_color_t pix_prompt_color;
     pixman_color_t pix_input_color;
     pixman_color_t pix_match_color;
@@ -95,6 +97,7 @@ struct render {
     unsigned selection_border_radius;
     unsigned row_height;
     unsigned icon_height;
+    unsigned message_height;
 
     unsigned input_glyph_offset; /* At which glyph to start rendering input */
 
@@ -550,6 +553,173 @@ adjust_input_glyph_offset(struct render *render, const struct prompt *prompt,
     }
 }
 
+static void
+current_line_boundaries(char32_t* remaining_message, const struct config *conf,
+                        char32_t** current_line_end, char32_t** next_line_start)
+{
+    char32_t* next_linebreak = c32chr(remaining_message, U'\n');
+    // Unless word wrapping, the current line boundaries are the whole line
+    // If the line is shorter than the configured width, we can also immediately return
+    if (conf->message_mode != MESSAGE_MODE_WRAP
+        || (next_linebreak != NULL && next_linebreak - remaining_message <= conf->chars)
+        || (next_linebreak == NULL && c32len(remaining_message) <= conf->chars)
+    ) {
+        if (next_linebreak) {
+            *current_line_end = next_linebreak-1;
+            // Do not skip leading spaces after a linebreak,
+            // as intentional spaces likely exist for formatting purposes.
+            *next_line_start = next_linebreak+1;
+        } else {
+            *current_line_end = remaining_message + c32len(remaining_message) - 1;
+            *next_line_start = NULL;
+        }
+        goto strip_trailing_spaces;
+    }
+
+    // Wrapping logic
+    char32_t* last_space = NULL;
+    *current_line_end = remaining_message;
+    while (*current_line_end - remaining_message < conf->chars) {
+        if (**current_line_end == U' ') {
+            last_space = *current_line_end;
+        }
+        (*current_line_end)++;
+    }
+
+    // If there is no space in the line, all we can really do (without
+    // changing the string) is stop at the end character and move to
+    // the next line.
+    // Might be nice to have a configurable "wrapping character" option
+    // later.
+    // current_line_end is already conf->chars characters after remaining_message
+    // here due to the space-searching loop
+    if (last_space == NULL) {
+        // Bumped one beyond conf->chars before the loop ends
+        (*current_line_end)--;
+        *next_line_start = *current_line_end + 1;
+        // Consistency. Should never happen here, but good to check.
+        goto strip_leading_spaces;
+    }
+
+
+    // If there is a space in the line, break on it.
+    *current_line_end = last_space-1;
+    *next_line_start = last_space+1;
+
+strip_leading_spaces:
+    while (*next_line_start != NULL && c32len(*next_line_start) > 0 && **next_line_start == U' ')
+        (*next_line_start)++;
+    if (c32len(*next_line_start) == 0)
+        *next_line_start = NULL;
+
+strip_trailing_spaces:
+    while (
+        *current_line_end != NULL
+        && *current_line_end > remaining_message
+        && **current_line_end == U' ')
+    {
+        (*current_line_end)--;
+    }
+
+}
+
+void
+render_message(struct render *render, struct buffer *buf)
+{
+    if (!render->conf->message) return;
+
+    struct fcft_font *font = render->font;
+    assert(font != NULL);
+
+    const char32_t *message = render->conf->message;
+    size_t message_len = c32len(message);
+
+    const enum fcft_subpixel subpixel =
+        (render->conf->colors.background.a == 1. &&
+         render->conf->colors.message.a == 1.)
+        ? render->subpixel : FCFT_SUBPIXEL_NONE;
+
+
+    int x = render->border_size + render->x_margin;
+    int y = render->border_size + render->y_margin + render_baseline(render);
+
+    /* Erase background */
+    pixman_color_t bg = render->pix_background_color;
+    //pixman_color_t bg = (pixman_color_t){0xffff, 0, 0, 0xffff};
+    pixman_image_fill_rectangles(
+        PIXMAN_OP_SRC, buf->pix[0], &bg, 1,
+        &(pixman_rectangle16_t){
+            render->border_size + render->x_margin - render->x_margin / 3,
+            render->border_size + render->y_margin,
+            buf->width - 2 * (render->border_size + render->x_margin - render->x_margin / 3),
+            render->message_height});
+
+    struct fcft_text_run *message_run = render->message_text_run;
+
+    if (fcft_capabilities() & FCFT_CAPABILITY_TEXT_RUN_SHAPING && message_run == NULL) {
+        message_run = fcft_rasterize_text_run_utf32(
+            font, message_len, message, subpixel);
+    }
+
+    char32_t* current_pos = render->conf->message;
+    char32_t* current_line_end = NULL;
+    char32_t* next_line_start = NULL;
+    while (current_pos != NULL) {
+        current_line_boundaries(current_pos, render->conf,
+                                &current_line_end, &next_line_start);
+
+        if (message_run != NULL) {
+            for (; current_pos <= current_line_end; current_pos++) {
+                int i = current_pos - render->conf->message;
+                const struct fcft_glyph *glyph = message_run->glyphs[i];
+
+                render_glyph(buf->pix[0], glyph, x, y, &render->pix_message_color);
+                x += glyph->advance.x;
+            }
+        } else {
+            char32_t prev = 0;
+            for (; current_pos <= current_line_end; current_pos++) {
+                int i = current_pos - render->conf->message;
+                const char32_t wc = message[i];
+                if (wc == U'\n') {
+                    x = render->border_size + render->x_margin;
+                    y += render->row_height;
+                    continue;
+                }
+
+                const struct fcft_glyph *glyph = fcft_rasterize_char_utf32(font, wc, subpixel);
+
+                if (glyph == NULL) {
+                    prev = wc;
+                    continue;
+                }
+
+                long x_kern;
+                fcft_kerning(font, prev, wc, &x_kern, NULL);
+
+                x += x_kern;
+
+                render_glyph(
+                    buf->pix[0], glyph, x, y, &render->pix_message_color);
+                x += glyph->advance.x;
+                x += pt_or_px_as_pixels(render, &render->conf->letter_spacing);
+
+                prev = wc;
+            }
+        }
+
+        current_pos = next_line_start;
+        x = render->border_size + render->x_margin;
+        y += render->row_height;
+    }
+
+
+    if (render->message_text_run == NULL)
+        render->message_text_run = message_run;
+    else if (message_run != render->message_text_run)
+        fcft_text_run_destroy(message_run);
+}
+
 void
 render_prompt(struct render *render, struct buffer *buf,
               const struct prompt *prompt, const struct matches *matches)
@@ -594,7 +764,7 @@ render_prompt(struct render *render, struct buffer *buf,
     }
 
     int x = render->border_size + render->x_margin;
-    int y = render->border_size + render->y_margin + render_baseline(render);
+    int y = render->border_size + render->y_margin + render_baseline(render) + render->message_height;
 
     /* Erase background */
     pixman_color_t bg = render->pix_background_color;
@@ -603,7 +773,7 @@ render_prompt(struct render *render, struct buffer *buf,
         PIXMAN_OP_SRC, buf->pix[0], &bg, 1,
         &(pixman_rectangle16_t){
             render->border_size + render->x_margin - render->x_margin / 3,
-            render->border_size + render->y_margin,
+            render->border_size + render->y_margin + render->message_height,
             buf->width - 2 * (render->border_size + render->x_margin - render->x_margin / 3),
             render->row_height});
 
@@ -1398,7 +1568,8 @@ first_row_y(const struct render *render)
     return (render->border_size +
             render->y_margin +
             (render->conf->hide_prompt ? 0 : render->row_height) +
-            (render->conf->hide_prompt ? 0 : render->inner_pad));
+            (render->conf->hide_prompt ? 0 : render->inner_pad) +
+            render->message_height);
 }
 
 static void
@@ -1775,6 +1946,7 @@ render_initialize_colors(struct render *render, const struct config *conf,
     render->pix_background_color = rgba2pixman(gamma_correct, conf->colors.background);
     render->pix_border_color = rgba2pixman(gamma_correct, conf->colors.border);
     render->pix_text_color = rgba2pixman(gamma_correct, conf->colors.text);
+    render->pix_message_color = rgba2pixman(gamma_correct, conf->colors.message);
     render->pix_prompt_color = rgba2pixman(gamma_correct, conf->colors.prompt);
     render->pix_input_color = rgba2pixman(gamma_correct, conf->colors.input);
     render->pix_match_color = rgba2pixman(gamma_correct, conf->colors.match);
@@ -1819,12 +1991,33 @@ render_resized(struct render *render, int *new_width, int *new_height)
 
     const unsigned icon_height = max(0, row_height - font->descent);
 
+    unsigned message_lines = 0;
+    unsigned longest_message_line = 0;
+    if (render->conf->message != NULL) {
+        char32_t* current_pos = render->conf->message;
+        char32_t* current_line_end = NULL;
+        char32_t* next_line_start = NULL;
+        while (current_pos != NULL) {
+            message_lines++;
+            current_line_boundaries(current_pos, render->conf,
+                                    &current_line_end, &next_line_start);
+
+            if (render->conf->message_mode == MESSAGE_MODE_EXPAND
+                && current_line_end + 1 - current_pos > longest_message_line)
+            {
+                longest_message_line = current_line_end + 1 - current_pos;
+            }
+            current_pos = next_line_start;
+        }
+    }
+
     const unsigned height =
         border_size +                        /* Top border */
         y_margin +
         (render->conf->hide_prompt ? 0 : row_height) +          /* The prompt (hidden if hide_prompt) */
         (render->conf->hide_prompt ? 0 : inner_pad) +           /* Padding between prompt and matches (only if prompt shown) */
         render->conf->lines * row_height +   /* Matches */
+        message_lines * row_height +         /* Message */
         y_margin +
         border_size;                         /* Bottom border */
 
@@ -1834,7 +2027,7 @@ render_resized(struct render *render, int *new_width, int *new_height)
         (max((W->advance.x + pt_or_px_as_pixels(
                   render, &render->conf->letter_spacing)),
              0)
-         * render->conf->chars) +
+         * max(render->conf->chars, longest_message_line)) +
         x_margin +
         border_size;
 
@@ -1851,6 +2044,7 @@ render_resized(struct render *render, int *new_width, int *new_height)
     render->selection_border_radius = selection_border_radius;
     render->row_height = row_height;
     render->icon_height = icon_height;
+    render->message_height = message_lines * render->row_height;
 
     if (new_width != NULL)
         *new_width = width;
@@ -1931,6 +2125,7 @@ render_destroy(struct render *render)
     tll_free(render->workers.queue);
 
     fcft_text_run_destroy(render->prompt_text_run);
+    fcft_text_run_destroy(render->message_text_run);
     fcft_text_run_destroy(render->placeholder_text_run);
 
     if (render->selection_corners != NULL)
@@ -1949,11 +2144,12 @@ render_get_row_num(const struct render *render, int width, int x, int y,
     const int inner_pad = render->inner_pad;
     const int border_size = render->border_size;
     const int row_height = render->row_height;
+    const int message_height = render->message_height;
 
     const int min_x = render->border_size + render->x_margin - render->x_margin / 3;
     const int max_x = width - (min_x);
 
-    const int first_row = 1 * border_size + y_margin +
+    const int first_row = message_height + border_size + y_margin +
         (render->conf->hide_prompt ? 0 : row_height) +
         (render->conf->hide_prompt ? 0 : inner_pad);
 
@@ -1972,7 +2168,9 @@ void
 render_flush_text_run_cache(struct render *render)
 {
     fcft_text_run_destroy(render->prompt_text_run);
+    fcft_text_run_destroy(render->message_text_run);
     fcft_text_run_destroy(render->placeholder_text_run);
     render->prompt_text_run = NULL;
+    render->message_text_run = NULL;
     render->placeholder_text_run = NULL;
 }

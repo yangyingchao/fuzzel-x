@@ -797,6 +797,19 @@ parse_section_main(struct context *ctx)
     else if (strcmp(key, "placeholder") == 0)
         return value_to_wchars(ctx, &conf->placeholder);
 
+    else if (strcmp(key, "message") == 0)
+        return value_to_wchars(ctx, &conf->message);
+
+    else if (strcmp(key, "message-mode") == 0) {
+        _Static_assert(sizeof(conf->message_mode) == sizeof(int),
+                       "enum is not 32-bit");
+
+        return value_to_enum(
+            ctx,
+            (const char *[]){"wrap", "expand", NULL},
+            (int *)&conf->message_mode);
+    }
+
     else if (strcmp(key, "icon-theme") == 0)
         return value_to_str(ctx, &conf->icon_theme);
 
@@ -1057,6 +1070,9 @@ parse_section_colors(struct context *ctx)
 
     else if (strcmp(key, "text") == 0)
         return value_to_color(ctx, true, &conf->colors.text);
+
+    else if (strcmp(key, "message") == 0)
+        return value_to_color(ctx, true, &conf->colors.message);
 
     else if (strcmp(key, "prompt") == 0)
         return value_to_color(ctx, true, &conf->colors.prompt);
@@ -1628,6 +1644,8 @@ config_load(struct config *conf, const char *conf_path,
         .prompt = xc32dup(U"> "),
         .placeholder = xc32dup(U""),
         .search_text = xc32dup(U""),
+        .message = NULL,
+        .message_mode = MESSAGE_MODE_WRAP,
         .match_fields = MATCH_FILENAME | MATCH_NAME | MATCH_GENERIC,
         .password_mode = {
             .character = U'\0',
@@ -1682,6 +1700,7 @@ config_load(struct config *conf, const char *conf_path,
             .background = conf_hex_to_rgba(0xfdf6e3ff),
             .border = conf_hex_to_rgba(0x002b36ff),
             .text = conf_hex_to_rgba(0x657b83ff),
+            .message = conf_hex_to_rgba(0x657b83ff),
             .prompt = conf_hex_to_rgba(0x586e75ff),
             .input = conf_hex_to_rgba(0x657b83ff),
             .match = conf_hex_to_rgba(0xcb4b16ff),
@@ -1775,6 +1794,7 @@ config_free(struct config *conf)
     free(conf->prompt);
     free(conf->placeholder);
     free(conf->search_text);
+    free(conf->message);
     free(conf->terminal);
     free(conf->launch_prefix);
     free(conf->font);
