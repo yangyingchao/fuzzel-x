@@ -16,6 +16,7 @@
 #define LOG_ENABLE_DBG 0
 #include "log.h"
 #include "char32.h"
+#include "debug.h"
 #include "xmalloc.h"
 
 static void
@@ -79,6 +80,13 @@ tokenize_cmdline(char *cmdline, char ***argv)
                  * Room for improvement: log warning/error message if
                  * the previous character is not a space.
                  */
+
+                if (search_start != p) {
+                    LOG_ERR("command line contains non-specification-compliant "
+                            "quoting (arguments must be quoted in whole)");
+                    goto err;
+                }
+
                 open_quote = *p;
                 search_start = p + 1;
             } else if (*p == open_quote) {
@@ -216,6 +224,9 @@ application_execute(const struct application *app, const struct prompt *prompt,
     for (size_t i = 0; argv[i] != NULL; i++)
         LOG_DBG("  %zu: \"%s\"", i, argv[i]);
 
+    xassert(argv != NULL);
+    xassert(argv[0] != NULL);
+
     int pipe_fds[2];
     if (pipe2(pipe_fds, O_CLOEXEC) == -1) {
         LOG_ERRNO("failed to create pipe");
@@ -333,6 +344,8 @@ applications_destroy(struct application_list *apps)
 
         tll_free_and_free(app->keywords, free);
         tll_free_and_free(app->categories, free);
+
+        free(app->dmenu_input);
 
         switch (app->icon.type) {
         case ICON_NONE:

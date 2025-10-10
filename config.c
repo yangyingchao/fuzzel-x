@@ -45,6 +45,7 @@ static const char *const binding_action_map[] = {
     [BIND_ACTION_CURSOR_LEFT_WORD] = "cursor-left-word",
     [BIND_ACTION_CURSOR_RIGHT] = "cursor-right",
     [BIND_ACTION_CURSOR_RIGHT_WORD] = "cursor-right-word",
+    [BIND_ACTION_DELETE_LINE] = "delete-line",
     [BIND_ACTION_DELETE_PREV] = "delete-prev",
     [BIND_ACTION_DELETE_PREV_WORD] = "delete-prev-word",
     [BIND_ACTION_DELETE_LINE_BACKWARD] = "delete-line-backward",
@@ -757,6 +758,9 @@ parse_section_main(struct context *ctx)
         return ret;
     }
 
+    else if (strcmp(key, "namespace") == 0)
+        return value_to_str(ctx, &conf->namespace);
+
     else if (strcmp(key, "output") == 0)
         return value_to_str(ctx, &conf->output);
 
@@ -777,6 +781,9 @@ parse_section_main(struct context *ctx)
         }
         return true;
     }
+
+    else if (strcmp(key, "gamma-correct-blending") == 0)
+        return value_to_bool(ctx, &conf->gamma_correct);
 
     else if (strcmp(key, "render-workers") == 0)
         return value_to_uint16(ctx, 10, &conf->render_worker_count);
@@ -943,6 +950,12 @@ parse_section_main(struct context *ctx)
     else if (strcmp(key, "lines") == 0)
         return value_to_uint32(ctx, 10, &conf->lines);
 
+    else if (strcmp(key, "minimal-lines") == 0)
+        return value_to_bool(ctx, &conf->minimal_lines);
+
+    else if (strcmp(key, "hide-prompt") == 0)
+        return value_to_bool(ctx, &conf->hide_prompt);
+
     else if (strcmp(key, "width") == 0)
         return value_to_uint32(ctx, 10, &conf->chars);
 
@@ -978,6 +991,18 @@ parse_section_main(struct context *ctx)
         return true;
     }
 
+    else if (strcmp(key, "scaling-filter") == 0) {
+        _Static_assert(sizeof(conf->png_scaling_filter) == sizeof(int),
+            "enum is not 32-bit");
+
+        return value_to_enum(
+            ctx,
+            (const char *[]){"none", "nearest", "bilinear", "box", "linear",
+                             "cubic", "lanczos2", "lanczos3",
+                             "lanczos3-stretched", NULL},
+            (int *)&conf->png_scaling_filter);
+    }
+
     else if (strcmp(key, "layer") == 0) {
         if (strcasecmp(value, "top") == 0) {
             conf->layer = ZWLR_LAYER_SHELL_V1_LAYER_TOP;
@@ -987,7 +1012,7 @@ parse_section_main(struct context *ctx)
             return true;
         }
 
-        LOG_CONTEXTUAL_ERR("not one of 'top', 'overay'");
+        LOG_CONTEXTUAL_ERR("not one of 'top', 'overlay'");
         return false;
     }
 
@@ -1008,6 +1033,12 @@ parse_section_main(struct context *ctx)
 
     else if (strcmp(key, "cache") == 0)
         return value_to_str(ctx, &conf->cache_path);
+
+    else if (strcmp(key, "auto-select") == 0)
+        return value_to_bool(ctx, &conf->auto_select);
+
+    else if (strcmp(key, "enable-mouse") == 0)
+        return value_to_bool(ctx, &conf->enable_mouse);
 
     else
         LOG_CONTEXTUAL_ERR("not a valid option: %s", key);
@@ -1071,6 +1102,9 @@ parse_section_border(struct context *ctx)
 
     else if (strcmp(key, "radius") == 0)
         return value_to_uint32(ctx, 10, &conf->border.radius);
+
+    else if (strcmp(key, "selection-radius") == 0)
+        return value_to_uint32(ctx, 10, &conf->selection_border.radius);
 
     else
         LOG_CONTEXTUAL_ERR("not a valid option: %s", key);
@@ -1518,6 +1552,8 @@ add_default_key_bindings(struct config *conf)
         {BIND_ACTION_CURSOR_RIGHT_WORD, m_alt, {{XKB_KEY_f}}},
         {BIND_ACTION_CURSOR_RIGHT_WORD, m_ctrl, {{XKB_KEY_Right}}},
 
+        {BIND_ACTION_DELETE_LINE, m_ctrl_shift, {{XKB_KEY_BackSpace}}},
+
         {BIND_ACTION_DELETE_PREV, m_none, {{XKB_KEY_BackSpace}}},
         {BIND_ACTION_DELETE_PREV, m_ctrl, {{XKB_KEY_h}}},
 
@@ -1603,6 +1639,7 @@ config_load(struct config *conf, const char *conf_path,
     bool ret = !errors_are_fatal;
     *conf = (struct config) {
         .output = NULL,
+        .namespace = xstrdup("launcher"),
         .prompt = xc32dup(U"> "),
         .placeholder = xc32dup(U""),
         .search_text = xc32dup(U""),
@@ -1616,10 +1653,12 @@ config_load(struct config *conf, const char *conf_path,
         .font = xstrdup("monospace"),
         .use_bold = false,
         .dpi_aware = DPI_AWARE_AUTO,
+        .gamma_correct = false,
         .render_worker_count = sysconf(_SC_NPROCESSORS_ONLN),
         .match_worker_count = sysconf(_SC_NPROCESSORS_ONLN),
+        .filter_desktop = false,
         .icons_enabled = true,
-        .icon_theme = xstrdup("hicolor"),
+        .icon_theme = xstrdup("default"),
         .hide_when_prompt_empty = false,
         .actions_enabled = false,
         .match_mode = MATCH_MODE_FZF,
@@ -1637,8 +1676,9 @@ config_load(struct config *conf, const char *conf_path,
             .mode = DMENU_MODE_TEXT,
             .exit_immediately_if_empty = false,
             .delim = '\n',
-            .render_column = 0,
-            .output_column = 0,
+            .nth_delim = '\t',
+            .with_nth_format = NULL,
+            .accept_nth_format = NULL,
         },
         .anchor = ANCHOR_CENTER,
         .margin = {
@@ -1670,7 +1710,12 @@ config_load(struct config *conf, const char *conf_path,
             .size = 1u,
             .radius = 10u,
         },
+        .selection_border = {
+            .size = 0u,
+            .radius = 0u,
+        },
         .image_size_ratio = 0.5,
+        .png_scaling_filter = SCALING_FILTER_BOX,
         .line_height = {-1, 0.0},
         .letter_spacing = {0},
         .layer = ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY,
@@ -1678,6 +1723,9 @@ config_load(struct config *conf, const char *conf_path,
         .exit_on_kb_focus_loss = true,
         .list_executables_in_path = false,
         .cache_path = NULL,
+        .auto_select = false,
+        .print_timing_info = false,
+        .enable_mouse = true,
     };
 
     add_default_key_bindings(conf);
@@ -1723,6 +1771,7 @@ config_load(struct config *conf, const char *conf_path,
         ret = true;
 
     fclose(f);
+    conf_file.fd = -1;
 
 out:
 
@@ -1736,6 +1785,7 @@ out:
 void
 config_free(struct config *conf)
 {
+    free(conf->namespace);
     free(conf->output);
     free(conf->prompt);
     free(conf->placeholder);
@@ -1745,6 +1795,8 @@ config_free(struct config *conf)
     free(conf->font);
     free(conf->icon_theme);
     free(conf->cache_path);
+    free(conf->dmenu.with_nth_format);
+    free(conf->dmenu.accept_nth_format);
     free_key_binding_list(&conf->key_bindings);
 }
 

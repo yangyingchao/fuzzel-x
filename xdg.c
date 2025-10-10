@@ -1,5 +1,6 @@
 #include "xdg.h"
 
+#include <assert.h>
 #include <ctype.h>
 #include <errno.h>
 #include <limits.h>
@@ -414,7 +415,53 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename_lowercase,
             a->name = ambstoc32("<no title>");
 
         if (a->use_terminal && terminal != NULL && a->exec != NULL) {
-            char *exec_with_terminal = xstrjoin3(terminal, " ", a->exec);
+            char *exec_with_terminal;
+
+            // Check if terminal command contains {cmd} placeholder
+            if (strstr(terminal, "{cmd}") != NULL) {
+                // Replace all occurrences of {cmd} with the actual command
+                const char *placeholder = "{cmd}";
+                const size_t placeholder_len = 5; // strlen("{cmd}")
+                const size_t exec_len = strlen(a->exec);
+                const size_t terminal_len = strlen(terminal);
+
+                // Count occurrences of {cmd}
+                size_t occurrences = 0;
+                const char *pos = terminal;
+                while ((pos = strstr(pos, placeholder)) != NULL) {
+                    occurrences++;
+                    pos += placeholder_len;
+                }
+
+                // Calculate final string size
+                assert(terminal_len >= occurrences * placeholder_len); // should be true, so let's assert it is
+                size_t final_len = terminal_len - occurrences * placeholder_len + occurrences * exec_len + 1;
+                exec_with_terminal = xmalloc(final_len);
+
+                // Replace all {cmd} occurrences
+                const char *src = terminal;
+                char *dst = exec_with_terminal;
+                while ((pos = strstr(src, placeholder)) != NULL) {
+                    // Copy part before {cmd}
+                    size_t prefix_len = pos - src;
+                    memcpy(dst, src, prefix_len);
+                    dst += prefix_len;
+
+                    // Copy the exec command
+                    memcpy(dst, a->exec, exec_len);
+                    dst += exec_len;
+
+                    // Move past {cmd}
+                    src = pos + placeholder_len;
+                }
+
+                // Copy remaining part
+                strcpy(dst, src);
+            } else {
+                // Use the old behavior: "terminal command exec"
+                exec_with_terminal = xstrjoin3(terminal, " ", a->exec);
+            }
+
             free(a->exec);
             a->exec = exec_with_terminal;
         }
@@ -672,7 +719,12 @@ xdg_find_programs(const char *terminal, bool include_actions,
 
     mtx_lock(&applications->lock);
     applications->count = tll_length(apps);
-    applications->v = xmalloc(tll_length(apps) * sizeof(applications->v[0]));
+    if (applications->count > 0) {
+        applications->v = xmalloc(tll_length(apps) * sizeof(applications->v[0]));
+    } else {
+        LOG_WARN("No applications found. See SEARCH PATHS in `man fuzzel` for details.");
+        applications->v = NULL;
+    }
 
     size_t i = 0;
     tll_foreach(apps, it) {

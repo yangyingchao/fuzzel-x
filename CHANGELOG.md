@@ -1,5 +1,7 @@
 # Changelog
 
+* [1.13.1](#1-13-1)
+* [1.13.0](#1-13-0)
 * [1.12.0](#1-12-0)
 * [1.11.1](#1-11-1)
 * [1.11.0](#1-11-0)
@@ -28,20 +30,161 @@
 * [1.4.1](#1-4-1)
 
 
+## 1.13.1
+
+### Fixed
+
+* Regression: input not being returned in dmenu mode ([#647][647])
+* Regression: `--password` not working ([#653][653]).
+* Regression: Part of the background transparency disappearing after
+  typing ([#652][652]).
+
+[647]: https://codeberg.org/dnkl/fuzzel/issues/647
+[653]: https://codeberg.org/dnkl/fuzzel/issues/653
+[652]: https://codeberg.org/dnkl/fuzzel/issues/652
+
+
+### Contributors
+
+ * Mark Stosberg
+ * rehanzo
+
+
+## 1.13.0
+
+### Added
+
+* Add support for fallback icons in dmenu mode using comma-separated
+  values in the icon metadata ([#504][504]).
+* `--namespace` command line option ([#512][512]).
+* Gamma-correct blending. Disabled by default. Enable with the new
+  `--gamma-correct` command line option, or by setting
+  `gamma-correct-blending=yes` in `fuzzel.ini`. Note that
+  gamma-correct blending **is not supported in cairo enabled builds of
+  fuzzel**, due to the lack of 16-bit image buffers in cairo
+  ([#546][546]).
+* `scaling-filter` option (and the corresponding `--scaling-filter`
+  command line option). This option defines which scaling filter
+  fuzzel uses when down scaling PNGs ([#553][553]).
+* `--minimal-lines` command line and config option, causing fuzzel to
+  adjust the number of displayed lines to the minimum of `--lines` and
+  the number of input lines ([#144][144])
+* Touchscreen support ([#594][594])
+* `{cmd}` placeholder support in the `terminal` option. When `{cmd}` is
+  present in the terminal command string, it will be replaced with the
+  application command instead of appending the command at the end. Useful
+  for setting the title or app_id. ([#600][600])
+* `--hide-prompt` command line option to hide the prompt line, reducing
+   window size while still accepting input. This cannot be used
+  simultaneously with `--prompt-only`.i  ([#597][597])
+* `--auto-select` option. When one entry is left, automatically select
+  it. ([#411][411])
+* `selection-radius` option and `--selection-radius` flag to set the border
+  radius of the selected entry
+* `enable-mouse` option and `--no-mouse` flag to disable mouse input
+
+[411]: https://codeberg.org/dnkl/fuzzel/issues/411
+[504]: https://codeberg.org/dnkl/fuzzel/pulls/504
+[512]: https://codeberg.org/dnkl/fuzzel/pulls/512
+[546]: https://codeberg.org/dnkl/fuzzel/issues/546
+[553]: https://codeberg.org/dnkl/fuzzel/issues/553
+[144]: https://codeberg.org/dnkl/fuzzel/issues/144
+[594]: https://codeberg.org/dnkl/fuzzel/issues/594
+[597]: https://codeberg.org/dnkl/fuzzel/issues/597
+[600]: https://codeberg.org/dnkl/fuzzel/issues/600
+
+
+### Changed
+
+* Scrolling speed is now line-by-line instead of page-by-page
+  ([#586][586])
+* Number of render workers is now automatically limited to the number
+  of displayed entries.
+* wayland-protocols >= 1.41 is now required.
+* pixman >= 0.46.0 is now required.
+* fcft >= 3.3.1 is now required.
+* In application mode (not dmenu), fuzzel now ignores icon theme
+  directories whose `Context` field is not `Application` or
+  `Apps`, or `Legacy`. This is for performance reasons ([#553][553])
+* Default down scaling filter changed from `lanczos3` to `box`
+  ([#553][553]).
+* Use the width of 'o' instead of 'W' when calculating the window
+  width ([#560][560]).
+* Default icon theme from `hicolor` to `default`.
+* Error out (with an appropriate error message) if the command line we
+  attempt to execute has non-specification-compliant quoting.
+* Input text now "scrolls" with the cursor, if the string is longer
+  than the available space ([#378][378]).
+* When using the mouse, the currently selected item is only changed
+  when the mouse is over an item. Before this release, the X
+  coordinate was ignored ([#606][606]).
+
+[560]: https://codeberg.org/dnkl/fuzzel/issues/560
+[378]: https://codeberg.org/dnkl/fuzzel/issues/378
+[606]: https://codeberg.org/dnkl/fuzzel/issues/606
+
+
+### Fixed
+
+* Crash when `--match-workers >= 100` ([#507][507]).
+* Keyboard modifiers not being reset on keyboard leave events.
+* `--with-nth`: non-selected columns still being matched.
+* Match highlighting being offset when `--with-nth` is used
+  ([#551][551]).
+* Too wide PNGs bleeding into the text ([#313][313]).
+* Lookup of icon themes in `~/.icons` and `/usr/share/pixmans`.
+* Missing shell completions for `--launch-prefix`.
+* Missing shell completions for `--prompt-only`.
+* Empty window being displayed despite `--no-run-if-empty` being used.
+* Fix border width and scaling for mixed-DPI environments ([#595][595])
+* Some icons not found on FreeBSD (`/usr/local/share/pixmaps` not
+  searched) ([#622][622])
+* Segfault when "execute" action is pressed before there's any item in the
+  list. ([#638][638])
+
+[507]: https://codeberg.org/dnkl/fuzzel/issues/507
+[551]: https://codeberg.org/dnkl/fuzzel/issues/551
+[313]: https://codeberg.org/dnkl/fuzzel/issues/313
+[586]: https://codeberg.org/dnkl/fuzzel/issues/586
+[595]: https://codeberg.org/dnkl/fuzzel/issues/595
+[622]: https://codeberg.org/dnkl/fuzzel/issues/622
+[638]: https://codeberg.org/dnkl/fuzzel/issues/638
+
+
+### Contributors
+
+* alex-huff
+* bbb651
+* e-tho
+* frosty
+* Gingeh
+* Guillaume Outters
+* Hubert Hirtz
+* joeledwardson
+* Konstantin Pospelov
+* Mark Stosberg
+* Ronan Pigott
+* wispl
+
+
 ## 1.12.0
 
 ### Added
 
 * Nanosvg updated to ea6a6aca009422bba0dbad4c80df6e6ba0c82183
+* `--select-index` command line option ([#447][447]).
 * `--with-nth=N` command line option ([#438][438]).
 * `--accept-nth=N` command line option ([#493][493]).
 * `keyboard-focus=exclusive|on-demand` command line and config option
   ([#495][495]).
+* New key binding: `delete-line` corresponding to C-S-Backspace in Emacs,
+  Which deletes the entire input ([#472][472]).
 
+[447]: https://codeberg.org/dnkl/fuzzel/issues/447
 [438]: https://codeberg.org/dnkl/fuzzel/issues/438
 [493]: https://codeberg.org/dnkl/fuzzel/pulls/493
 [495]: https://codeberg.org/dnkl/fuzzel/pulls/495
-
+[472]: https://codeberg.org/dnkl/fuzzel/pulls/472
 
 ### Changed
 
@@ -87,6 +230,7 @@
 [426]: https://codeberg.org/dnkl/fuzzel/issues/426
 [482]: https://codeberg.org/dnkl/fuzzel/issues/482
 [487]: https://codeberg.org/dnkl/fuzzel/issues/487
+[498]: https://codeberg.org/dnkl/fuzzel/issues/498
 [497]: https://codeberg.org/dnkl/fuzzel/issues/497
 
 

@@ -1,5 +1,5 @@
 project('fuzzel', ['c', 'cpp'],
-        version: '1.12.0',
+        version: '1.13.1',
         license: 'MIT',
         meson_version: '>=0.58.0',
         default_options: [
@@ -57,10 +57,10 @@ endif
 math = cc.find_library('m')
 threads = [dependency('threads'), cc.find_library('stdthreads', required: false)]
 fontconfig = dependency('fontconfig')
-pixman = dependency('pixman-1')
+pixman = dependency('pixman-1', version: '>=0.46.0')
 cairo = dependency('cairo', required: get_option('enable-cairo'))
 libepoll = dependency('epoll-shim', required: false)
-wayland_protocols = dependency('wayland-protocols', version: '>=1.32')
+wayland_protocols = dependency('wayland-protocols', version: '>=1.41')
 wayland_client = dependency('wayland-client')
 wayland_cursor = dependency('wayland-cursor')
 xkb = dependency('xkbcommon')
@@ -68,7 +68,7 @@ system_nanosvg = cc.find_library('nanosvg', required: get_option('system-nanosvg
 system_nanosvgrast = cc.find_library('nanosvgrast', required: get_option('system-nanosvg'))
 
 tllist = dependency('tllist', version: '>=1.0.1', fallback: 'tllist')
-fcft = dependency('fcft', version: ['>=3.0.0', '<4.0.0'], fallback: 'fcft')
+fcft = dependency('fcft', version: ['>=3.3.1', '<4.0.0'], fallback: 'fcft')
 
 if cairo.found()
   add_project_arguments('-DFUZZEL_ENABLE_CAIRO=1', language: 'c')
@@ -127,6 +127,7 @@ wl_proto_xml = [
   wayland_protocols_datadir + '/stable/viewporter/viewporter.xml',
   wayland_protocols_datadir + '/staging/fractional-scale/fractional-scale-v1.xml',
   wayland_protocols_datadir / 'unstable/primary-selection/primary-selection-unstable-v1.xml',
+  wayland_protocols_datadir / 'staging/color-management/color-management-v1.xml',
 ]
 
 foreach prot : wl_proto_xml
@@ -151,7 +152,15 @@ version = custom_target(
   output: 'version.h',
   command: [env, 'LC_ALL=C', generate_version_sh, meson.project_version(), '@CURRENT_SOURCE_DIR@', '@OUTPUT@'])
 
-executable(
+python = find_program('python3', native: true)
+generate_srgb_funcs = files('srgb.py')
+srgb_funcs = custom_target(
+  'generate_srgb_funcs',
+  output: ['srgb.c', 'srgb.h'],
+  command: [python, generate_srgb_funcs, '@OUTPUT0@', '@OUTPUT1@']
+)
+
+fuzzel = executable(
   'fuzzel',
   'application.c', 'application.h',
   'char32.c', 'char32.h',
@@ -180,7 +189,7 @@ executable(
   'xdg.c', 'xdg.h',
   'xmalloc.c', 'xmalloc.h',
   'xsnprintf.c', 'xsnprintf.h',
-  wl_proto_src + wl_proto_headers, version,
+  wl_proto_src + wl_proto_headers, version, srgb_funcs,
   dependencies: [math,
                  threads,
                  pixman,
@@ -196,6 +205,30 @@ executable(
                  tllist,
                  fcft],
   install: true)
+
+fish = find_program('fish', required: false)
+wtype = find_program('wtype', required: false)
+if fish.found() and wtype.found()
+  if run_command(fish, '-c fishtape -v', check: false).returncode() == 0
+    foreach test_case : [
+      'accept-nth',
+      'auto-select',
+      'execute',
+      'match-mode-fzf',
+    ]
+      test(test_case, fish,
+           args: ['-c',
+                  'fishtape @0@/test/@1@.fish'.format(meson.current_source_dir(),
+                                                      test_case)],
+           env: {'FUZZEL_TEST_BIN': fuzzel.full_path(),
+                 'MALLOC_PERTURB_': '0',
+                 'ASAN_OPTIONS': 'non-empty-invalid-value=0',
+                 'UBSAN_OPTIONS': 'non-empty-invalid-value=0',
+                 'MSAN_OPTIONS': 'non-empty-invalid-value=0'},
+           is_parallel : false)
+    endforeach
+  endif
+endif
 
 install_data(
   'fuzzel.ini',

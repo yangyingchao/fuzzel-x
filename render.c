@@ -9,6 +9,7 @@
 #include <string.h>
 #include <threads.h>
 #include <uchar.h>
+#include <sys/time.h>
 
 #include "column.h"
 #include "macros.h"
@@ -36,6 +37,7 @@
 #include "log.h"
 #include "char32.h"
 #include "icon.h"
+#include "srgb.h"
 #include "stride.h"
 #include "xmalloc.h"
 #include "xsnprintf.h"
@@ -59,10 +61,14 @@ struct render {
     struct fcft_text_run *prompt_text_run;
     struct fcft_text_run *placeholder_text_run;
 
+    /* Cached selection corners */
+    pixman_image_t *selection_corners;
+
     float scale;
     float dpi;
     bool size_font_by_dpi;
 
+    bool gamma_correct;
     pixman_color_t pix_background_color;
     pixman_color_t pix_border_color;
     pixman_color_t pix_text_color;
@@ -79,8 +85,12 @@ struct render {
     unsigned y_margin;
     unsigned inner_pad;
     unsigned border_size;
+    unsigned border_radius;
+    unsigned selection_border_radius;
     unsigned row_height;
     unsigned icon_height;
+
+    unsigned input_glyph_offset; /* At which glyph to start rendering input */
 
     struct {
         uint16_t count;
@@ -99,19 +109,20 @@ struct render {
 };
 
 static pixman_color_t
-rgba2pixman(struct rgba rgba)
+rgba2pixman(bool gamma_correct, struct rgba rgba)
 {
-    uint16_t r = rgba.r * 65535.0;
-    uint16_t g = rgba.g * 65535.0;
-    uint16_t b = rgba.b * 65535.0;
-    uint16_t a = rgba.a * 65535.0;
-
-    return (pixman_color_t){
-        .red = (uint32_t)r * a / 0xffff,
-        .green = (uint32_t)g * a / 0xffff,
-        .blue = (uint32_t)b * a / 0xffff,
-        .alpha = a,
+    pixman_color_t pix_color = {
+        .alpha = rgba.a * 65535. + 0.5,
+        .red = gamma_correct ? srgb_decode_8_to_16(rgba.r * 255 + 0.5) : rgba.r * 65535. + 0.5,
+        .green = gamma_correct ? srgb_decode_8_to_16(rgba.g * 255 + 0.5) : rgba.g * 65535. + 0.5,
+        .blue = gamma_correct ? srgb_decode_8_to_16(rgba.b * 255 + 0.5) : rgba.b * 65535. + 0.5,
     };
+
+    pix_color.red = (uint32_t)pix_color.red * pix_color.alpha / 0xffff;
+    pix_color.green = (uint32_t)pix_color.green * pix_color.alpha / 0xffff;
+    pix_color.blue = (uint32_t)pix_color.blue * pix_color.alpha / 0xffff;
+
+    return pix_color;
 }
 
 static int
@@ -125,37 +136,130 @@ pt_or_px_as_pixels(const struct render *render, const struct pt_or_px *pt_or_px)
         : pt_or_px->px;
 }
 
-static void
+static pixman_region32_t
+rounded_rectangle_region(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t radius)
+{
+
+    int rect_count = ( radius + radius ) + 1;
+    pixman_box32_t rects[rect_count];
+
+    for (int i = 0; i <= radius; i++) {
+        uint16_t ydist = radius - i;
+        uint16_t curve = sqrt(radius * radius - ydist * ydist);
+
+        rects[i] = (pixman_box32_t) {
+            x + radius - curve,
+            y + i,
+            x + width - radius + curve,
+            y + i + 1
+        };
+
+        rects[radius + i] = (pixman_box32_t) {
+            x + radius - curve,
+            y + height - i,
+            x + width - radius + curve,
+            y + height - i + 1
+        };
+    }
+
+    rects[(radius * 2)] = (pixman_box32_t){
+        x,
+        y + radius,
+        x + width,
+        y + height + 1 - radius
+    };
+
+    pixman_region32_t region;
+    pixman_region32_init_rects(&region, rects, rect_count);
+    return region;
+}
+
+static inline void
+fill_region32(pixman_op_t op, pixman_image_t* dest,
+                       const pixman_color_t* color, pixman_region32_t* region)
+{
+    int rectc;
+    pixman_box32_t *rects = pixman_region32_rectangles(region, &rectc);
+    pixman_image_fill_boxes(op, dest, color, rectc, rects);
+
+}
+
+static inline void
 fill_rounded_rectangle(pixman_op_t op, pixman_image_t* dest,
                        const pixman_color_t* color, int16_t x, int16_t y,
                        uint16_t width, uint16_t height, uint16_t radius)
 {
-    int rect_count = ( radius + radius ) + 1;
-    pixman_rectangle16_t rects[rect_count];
+    pixman_region32_t region = rounded_rectangle_region(x, y, width, height, radius);
+    fill_region32(op, dest, color, &region);
+    pixman_region32_fini(&region);
+}
 
-    for (int i = 0; i <= radius; i++){
-        uint16_t ydist = radius - i;
-        uint16_t curve = sqrt(radius * radius - ydist * ydist);
+static void
+render_rounded_rectangle(pixman_image_t* dest, pixman_color_t* background,
+                         pixman_color_t* border, unsigned int radius, unsigned bw,
+                         int16_t x, int16_t y, uint16_t width, uint16_t height)
+{
+    if (radius == 0) {
+        pixman_image_fill_rectangles(
+            PIXMAN_OP_SRC, dest, background,
+            1, &(pixman_rectangle16_t){
+            x + bw, y + bw, width - 2 * bw, height - 2 * bw});
 
-        rects[i] = (pixman_rectangle16_t){
-            x + radius - curve, y + i, width - radius * 2 + curve * 2, 1
-        };
+        pixman_image_fill_rectangles(
+            PIXMAN_OP_SRC, dest, border,
+            4, (pixman_rectangle16_t[]){
+                {x, y, width, bw},                              /* top */
+                {x, y + bw, bw, height - 2 * bw},               /* left */
+                {x + width - bw, y + bw, bw, height - 2 * bw},  /* right */
+                {x, y + height - bw, width, bw}                 /* bottom */
+            });
+    } else {
+        const int msaa_scale = 2;
+        const double brd_sz_scaled = bw * msaa_scale;
+        const double brd_rad_scaled = radius * msaa_scale;
+        int w = width * msaa_scale;
+        int h = height * msaa_scale;
+        int bg_rad = brd_rad_scaled * (1.0 - (float)brd_sz_scaled / (float)brd_rad_scaled);
 
-        rects[radius + i] = (pixman_rectangle16_t){
-            x + radius - curve, y + height - i, width - radius * 2 + curve * 2, 1
-        };
+        pixman_image_t *bg_img;
+        if (msaa_scale != 1) {
+            bg_img = pixman_image_create_bits(
+                pixman_image_get_format(dest), w, h, NULL, w*4);
+        } else {
+            bg_img = dest;
+        }
+
+        /* Border */
+        fill_rounded_rectangle(
+            PIXMAN_OP_SRC, bg_img, border, 0, 0, w, h, brd_rad_scaled);
+
+        /* Background */
+        fill_rounded_rectangle(
+            PIXMAN_OP_SRC, bg_img, background, brd_sz_scaled, brd_sz_scaled,
+            w-(brd_sz_scaled*2),
+            h-(brd_sz_scaled*2),
+            bg_rad);
+
+        if (msaa_scale != 1) {
+            pixman_f_transform_t ftrans;
+            pixman_transform_t trans;
+            pixman_f_transform_init_scale(&ftrans, msaa_scale, msaa_scale);
+            pixman_transform_from_pixman_f_transform(&trans, &ftrans);
+            pixman_image_set_transform(bg_img, &trans);
+            pixman_image_set_filter(bg_img, PIXMAN_FILTER_BILINEAR, NULL, 0);
+
+            pixman_image_composite32(
+                PIXMAN_OP_SRC, bg_img, NULL, dest, 0, 0, 0, 0, x, y,
+                width, height);
+            pixman_image_unref(bg_img);
+        }
     }
-
-    rects[(radius * 2)] = (pixman_rectangle16_t){
-        x, y + radius, width, height + 1 - radius * 2
-    };
-    pixman_image_fill_rectangles(op, dest, color,rect_count, rects);
 }
 
 void
 render_background(const struct render *render, struct buffer *buf)
 {
-    unsigned bw = render->conf->border.size;
+    unsigned bw = render->border_size;
 
     pixman_color_t bg = render->pix_background_color;
     pixman_color_t border_color = render->pix_border_color;
@@ -168,63 +272,12 @@ render_background(const struct render *render, struct buffer *buf)
     /* Limit radius if the margins are very small, to prevent e.g. the
        selection "box" from overlapping the corners */
     const unsigned int radius =
-        min(render->conf->border.radius,
+        min(render->border_radius,
             max(render->x_margin,
                 render->y_margin));
 
-    if (radius == 0) {
-        pixman_image_fill_rectangles(
-            PIXMAN_OP_SRC, buf->pix[0], &bg,
-            1, &(pixman_rectangle16_t){
-                bw, bw, buf->width - 2 * bw, buf->height - 2 * bw});
-
-        pixman_image_fill_rectangles(
-            PIXMAN_OP_SRC, buf->pix[0], &border_color,
-            4, (pixman_rectangle16_t[]){
-                {0, 0, buf->width, bw},                          /* top */
-                {0, bw, bw, buf->height - 2 * bw},               /* left */
-                {buf->width - bw, bw, bw, buf->height - 2 * bw}, /* right */
-                {0, buf->height - bw, buf->width, bw}            /* bottom */
-            });
-    } else {
-        const int msaa_scale = 2;
-        const double brd_sz_scaled = bw * msaa_scale;
-        const double brd_rad_scaled = radius * msaa_scale;
-        int w = buf->width * msaa_scale;
-        int h = buf->height * msaa_scale;
-
-        pixman_image_t *bg_img;
-        if (msaa_scale != 1){
-            bg_img = pixman_image_create_bits(PIXMAN_a8r8g8b8, w, h, NULL, w*4);
-        } else {
-            bg_img = buf->pix[0];
-        }
-
-        /* Border */
-        fill_rounded_rectangle(
-            PIXMAN_OP_SRC, bg_img, &border_color, 0, 0, w, h, brd_rad_scaled);
-
-        /* Background */
-        fill_rounded_rectangle(
-            PIXMAN_OP_SRC, bg_img, &bg, brd_sz_scaled, brd_sz_scaled,
-            w-(brd_sz_scaled*2),
-            h-(brd_sz_scaled*2),
-            max(brd_rad_scaled - brd_sz_scaled, 0));
-
-        if (msaa_scale != 1){
-            pixman_f_transform_t ftrans;
-            pixman_transform_t trans;
-            pixman_f_transform_init_scale(&ftrans, msaa_scale, msaa_scale);
-            pixman_transform_from_pixman_f_transform(&trans, &ftrans);
-            pixman_image_set_transform(bg_img, &trans);
-            pixman_image_set_filter(bg_img, PIXMAN_FILTER_BILINEAR, NULL, 0);
-
-            pixman_image_composite32(
-                PIXMAN_OP_SRC, bg_img, NULL, buf->pix[0], 0, 0, 0, 0, 0, 0,
-                buf->width, buf->height);
-            pixman_image_unref(bg_img);
-        }
-    }
+    render_rounded_rectangle(buf->pix[0], &bg, &border_color, radius, bw,
+                             0, 0, buf->width, buf->height);
 }
 
 static void
@@ -392,6 +445,105 @@ render_cursor(const struct render *render, int x, int baseline, pixman_image_t *
     }
 }
 
+static void
+adjust_input_glyph_offset(struct render *render, const struct prompt *prompt,
+                          size_t count,
+                          const struct fcft_glyph *glyphs[static count],
+                          long kerning[static count],
+                          int start_x, int max_x)
+{
+    struct fcft_font *font = render->font;
+    const size_t cursor_location = prompt_cursor(prompt);
+
+    if (cursor_location == 0)
+        render->input_glyph_offset = 0;
+
+    /* Clamp to input string's length */
+    render->input_glyph_offset = min(render->input_glyph_offset, count - 1);
+
+    /* If cursor position is before the current offset, adjust the
+       offset backward */
+    for (size_t i = 0; i < render->input_glyph_offset; i++) {
+        if (cursor_location == i + 1) {
+            render->input_glyph_offset = i + 1;
+            break;
+        }
+    }
+
+    /* If cursor position is after the current visible portion, adjust the offset forward */
+    int pos = start_x;
+
+    for (size_t i = render->input_glyph_offset; i < count; i++) {
+
+        const struct fcft_glyph *glyph = glyphs[i];
+        if (glyph == NULL)
+            continue;
+
+        const int pixels_needed = max(glyph->x + glyph->width, glyph->advance.x);
+
+        /* Cursor is after this glyph? */
+        if (cursor_location == i + 1) {
+            /* If current glyph doesn't fit, adjust offset so that it does */
+            if (pos + kerning[i] + pixels_needed > max_x) {
+                int needed = (pos + kerning[i] + pixels_needed) - max_x;
+
+                /* Font may be variable width, meaning we may have to scroll multiple characters */
+                while (needed > 0 && render->input_glyph_offset + 1 < count) {
+                    long scrolled_kerning;
+                    fcft_kerning(
+                        font,
+                        glyphs[render->input_glyph_offset]->cp,
+                        glyphs[render->input_glyph_offset + 1]->cp,
+                        &scrolled_kerning, NULL);
+
+                    const int gained =
+                        scrolled_kerning +
+                        glyphs[render->input_glyph_offset]->advance.x;
+
+                    needed -= gained;
+                    pos -= gained;
+                    render->input_glyph_offset++;
+                }
+            }
+        }
+
+        pos += kerning[i] + glyph->advance.x;
+    }
+
+    /* Pull in glyphs from the left, if there's space left */
+    while (render->input_glyph_offset > 0 && max_x > pos) {
+        int total_width = start_x;
+
+        for (size_t i = render->input_glyph_offset; i < count; i++) {
+            const struct fcft_glyph *g = glyphs[i];
+            if (g == NULL)
+                continue;
+
+            const int w = max(g->width, g->advance.x);
+
+            if (total_width + kerning[i] + w > max_x) {
+                break;
+            }
+
+            total_width += kerning[i] + (i + 1 == count ? w : g->advance.x);
+        }
+
+        const struct fcft_glyph *glyph = glyphs[render->input_glyph_offset - 1];
+        const int pixels_needed = max(glyph->x + glyph->width, glyph->advance.x);
+
+        assert(render->input_glyph_offset > 0);
+        assert(render->input_glyph_offset < count);
+
+        const long kern = kerning[render->input_glyph_offset];
+        const int available = max_x - total_width;
+        if (kern + pixels_needed > available)
+            break;
+
+        render->input_glyph_offset--;
+        pos += kern + glyph->advance.x;
+    }
+}
+
 void
 render_prompt(struct render *render, struct buffer *buf,
               const struct prompt *prompt, const struct matches *matches)
@@ -409,21 +561,48 @@ render_prompt(struct render *render, struct buffer *buf,
     size_t text_len = c32len(ptext);
     bool use_placeholder = text_len == 0;
 
-    if (use_placeholder) {
-        ptext = prompt_placeholder(prompt);
-        text_len = c32len(ptext);
-    }
-
     const enum fcft_subpixel subpixel =
         (render->conf->colors.background.a == 1. &&
          render->conf->colors.selection.a == 1.)
         ? render->subpixel : FCFT_SUBPIXEL_NONE;
+
+    const struct fcft_glyph *input_glyphs[text_len];
+    long input_kerning[text_len];
+
+    {
+        const bool use_password = conf->password_mode.enabled && !use_placeholder;
+
+        for (size_t i = 0; i < text_len; i++) {
+            char32_t wc = use_password ? conf->password_mode.character : ptext[i];
+            input_glyphs[i] = fcft_rasterize_char_utf32(font, wc, subpixel);
+            if (i == 0 || use_password)
+                input_kerning[i] = 0;
+            else
+                fcft_kerning(font, ptext[i - 1], ptext[i], &input_kerning[i], NULL);
+        }
+    }
+
+    if (use_placeholder) {
+        ptext = prompt_placeholder(prompt);
+        text_len = c32len(ptext);
+    }
 
     int x = render->border_size + render->x_margin;
     int y = render->border_size + render->y_margin + render_baseline(render);
 
     /* Erase background */
     pixman_color_t bg = render->pix_background_color;
+    //pixman_color_t bg = (pixman_color_t){0xffff, 0, 0, 0xffff};
+    pixman_image_fill_rectangles(
+        PIXMAN_OP_SRC, buf->pix[0], &bg, 1,
+        &(pixman_rectangle16_t){
+            render->border_size + render->x_margin - render->x_margin / 3,
+            render->border_size + render->y_margin,
+            buf->width - 2 * (render->border_size + render->x_margin - render->x_margin / 3),
+            render->row_height});
+
+#if 0
+    bg = (pixman_color_t){0, 0xffff, 0, 0xffff};
     pixman_image_fill_rectangles(
         PIXMAN_OP_SRC, buf->pix[0], &bg, 1,
         &(pixman_rectangle16_t){
@@ -431,6 +610,7 @@ render_prompt(struct render *render, struct buffer *buf,
             render->border_size + render->y_margin,
             buf->width - 2 * (render->border_size + render->x_margin),
             render->row_height});
+#endif
 
     int stats_width = conf->match_counter
         ? render_match_count(render, buf, prompt, matches)
@@ -448,7 +628,7 @@ render_prompt(struct render *render, struct buffer *buf,
             prompt_run = fcft_rasterize_text_run_utf32(
                 font, prompt_len, pprompt, subpixel);
         }
-        if (input_run == NULL) {
+        if (input_run == NULL && use_placeholder) {
             input_run = fcft_rasterize_text_run_utf32(
                 font, text_len, ptext, subpixel);
         }
@@ -457,7 +637,9 @@ render_prompt(struct render *render, struct buffer *buf,
     if (prompt_run != NULL) {
         for (size_t i = 0; i < prompt_run->count; i++) {
             const struct fcft_glyph *glyph = prompt_run->glyphs[i];
-            if (x + glyph->width > max_x)
+            const int pixels_needed = max(glyph->x + glyph->width, glyph->advance.x);
+
+            if (x + pixels_needed > max_x)
                 goto out;
 
             render_glyph(buf->pix[0], glyph, x, y, &render->pix_prompt_color);
@@ -479,7 +661,8 @@ render_prompt(struct render *render, struct buffer *buf,
 
             x += x_kern;
 
-            if (x + glyph->width >= max_x)
+            const int pixels_needed = max(glyph->x + glyph->width, glyph->advance.x);
+            if (x + pixels_needed > max_x)
                 goto out;
 
             render_glyph(
@@ -491,19 +674,35 @@ render_prompt(struct render *render, struct buffer *buf,
         }
     }
 
+    /*
+     * Adjust glyph offset (i.e. where in the input string we start
+     * rendering), to ensure the portion containing the cursor is
+     * always visible.
+     */
+    adjust_input_glyph_offset(
+        render, prompt, !use_placeholder ? text_len : 0,
+        input_glyphs, input_kerning, x, max_x);
+
     /* Cursor, if right after the prompt. In all other cases, the
      * cursor will be rendered by the loop below */
-    if (cursor_location == 0 || (conf->password_mode.enabled &&
-                                 conf->password_mode.character == U'\0'))
+    if (cursor_location == render->input_glyph_offset
+        || (conf->password_mode.enabled &&
+            conf->password_mode.character == U'\0'))
     {
         render_cursor(render, x, y, buf->pix[0]);
     }
 
     if (input_run != NULL && !(conf->password_mode.enabled && !use_placeholder)) {
-        for (size_t i = 0; i < input_run->count; i++) {
+        /* We only shape the placeholder string */
+        assert(use_placeholder);
+
+        for (size_t i = render->input_glyph_offset; i < input_run->count; i++) {
             const struct fcft_glyph *glyph = input_run->glyphs[i];
-            if (x + glyph->width > max_x)
+            const int pixels_needed = max(glyph->x + glyph->width, glyph->advance.x);
+
+            if (x + pixels_needed > max_x) {
                 goto out;
+            }
 
             render_glyph(buf->pix[0], glyph, x, y,
                          use_placeholder
@@ -525,7 +724,7 @@ render_prompt(struct render *render, struct buffer *buf,
     } else {
         char32_t prev = 0;
 
-        for (size_t i = 0; i < text_len; i++) {
+        for (size_t i = render->input_glyph_offset; i < text_len; i++) {
             if (conf->password_mode.enabled &&
                 conf->password_mode.character == U'\0' &&
                 !use_placeholder)
@@ -533,24 +732,21 @@ render_prompt(struct render *render, struct buffer *buf,
                 continue;
             }
 
-            char32_t wc = conf->password_mode.enabled && !use_placeholder
-                ? conf->password_mode.character
-                : ptext[i];
-
-            const struct fcft_glyph *glyph = fcft_rasterize_char_utf32(
-                font, wc, subpixel);
+            const struct fcft_glyph *glyph = input_glyphs[i];
 
             if (glyph == NULL) {
-                prev = wc;
+                prev = 0;
                 continue;
             }
 
             long x_kern;
-            fcft_kerning(font, prev, wc, &x_kern, NULL);
+            fcft_kerning(font, prev, glyph->cp, &x_kern, NULL);
 
             x += x_kern;
 
-            if (x + glyph->width >= max_x)
+            const int pixels_needed = max(glyph->x + glyph->width, glyph->advance.x);
+
+            if (x + pixels_needed > max_x)
                 goto out;
 
             render_glyph(
@@ -565,7 +761,7 @@ render_prompt(struct render *render, struct buffer *buf,
             if (cursor_location > 0 && cursor_location - 1 == i)
                 render_cursor(render, x, y, buf->pix[0]);
 
-            prev = wc;
+            prev = glyph->cp;
         }
     }
 
@@ -660,7 +856,7 @@ render_match_text(pixman_image_t *pix, double *_x, double _y, double max_x,
             }
         }
 
-        if (x + (kern != NULL ? kern[i] : 0) + glyphs[i]->advance.x >= max_x) {
+        if (x + (kern != NULL ? kern[i] : 0) + glyphs[i]->advance.x > max_x) {
             const struct fcft_glyph *ellipses =
                 fcft_rasterize_char_utf32(font, U'…', subpixel);
 
@@ -737,7 +933,7 @@ render_svg_librsvg(const struct icon *icon, int x, int y, int size,
 #if defined(FUZZEL_ENABLE_SVG_NANOSVG)
 static void
 render_svg_nanosvg(struct icon *icon, int x, int y, int size,
-                   pixman_image_t *pix, cairo_t *cairo)
+                   pixman_image_t *pix, cairo_t *cairo, bool gamma_correct)
 {
 #if defined(FUZZEL_ENABLE_CAIRO)
     cairo_surface_flush(cairo_get_target(cairo));
@@ -760,45 +956,100 @@ render_svg_nanosvg(struct icon *icon, int x, int y, int size,
         if (rast == NULL)
             return;
 
+        /* For gamma-correct blending */
+        uint8_t *data_16bit = NULL;
+        pixman_image_t *img_16bit = NULL;
+        uint64_t *abgr16 = NULL;
+
         float scale = svg->width > svg->height ? size / svg->width : size / svg->height;
 
-        uint8_t *data = xmalloc(size * size * 4);
-        nsvgRasterize(rast, svg, 0, 0, scale, data, size, size, size * 4);
+        const int width = roundf(svg->width * scale);
+        const int height = roundf(svg->height * scale);
+
+        uint8_t *data_8bit = xmalloc(width * height * 4);
+
+        nsvgRasterize(rast, svg, 0, 0, scale, data_8bit, width, height, width * 4);
 
         img = pixman_image_create_bits_no_clear(
-            PIXMAN_a8b8g8r8, size, size, (uint32_t *)data, size * 4);
+            PIXMAN_a8b8g8r8, width, height, (uint32_t *)data_8bit, width * 4);
+
+        if (gamma_correct) {
+            data_16bit = xmalloc(width * height * 8);
+            abgr16 = (uint64_t *)data_16bit;
+
+            img_16bit = pixman_image_create_bits_no_clear(
+                PIXMAN_a16b16g16r16, width, height, (uint32_t *)data_16bit,
+                width * 8);
+        }
 
         /* Nanosvg produces non-premultiplied ABGR, while pixman expects
          * premultiplied */
-        for (uint32_t *abgr = (uint32_t *)data;
-             abgr < (uint32_t *)(data + size * size * 4);
+
+        for (uint32_t *abgr = (uint32_t *)data_8bit;
+             abgr < (uint32_t *)(data_8bit + width * height * 4);
              abgr++)
         {
-            uint8_t alpha = (*abgr >> 24) & 0xff;
-            uint8_t blue = (*abgr >> 16) & 0xff;
-            uint8_t green = (*abgr >> 8) & 0xff;
-            uint8_t red = (*abgr >> 0) & 0xff;
+            uint16_t alpha = (*abgr >> 24) & 0xff;
+            uint16_t blue = (*abgr >> 16) & 0xff;
+            uint16_t green = (*abgr >> 8) & 0xff;
+            uint16_t red = (*abgr >> 0) & 0xff;
 
-            if (alpha == 0xff)
-                continue;
+            /*
+             * TODO: decode sRGB -> linear here
+             *
+             * We should decode to 16-bit, meaning we have to prepare
+             * a 16-bit buffer before looping the pixels.
+             */
 
-            if (alpha == 0x00)
-                blue = green = red = 0x00;
-            else {
-                blue = blue * alpha / 0xff;
-                green = green * alpha / 0xff;
-                red = red * alpha / 0xff;
+            if (gamma_correct) {
+                if (alpha == 0x00)
+                    blue = green = red = 0x00;
+                else {
+                    alpha |= alpha << 8;  /* Alpha already linear, expand to 16-bit */
+                    blue = srgb_decode_8_to_16(blue);
+                    green = srgb_decode_8_to_16(green);
+                    red = srgb_decode_8_to_16(red);
+
+                    blue = blue * alpha / 0xffff;
+                    green = green * alpha / 0xffff;
+                    red = red * alpha / 0xffff;
+                }
+
+                *abgr16 = (uint64_t)alpha << 48 | (uint64_t)blue << 32 | (uint64_t)green << 16 | (uint64_t)red;
+                abgr16++;
+            } else {
+                if (alpha == 0x00)
+                    blue = green = red = 0x00;
+                else {
+                    blue = (uint8_t)(blue * alpha / 0xff);
+                    green = (uint8_t)(green * alpha / 0xff);
+                    red = (uint8_t)(red * alpha / 0xff);
+                }
+
+                *abgr = (uint32_t)alpha << 24 | blue << 16 | green << 8 | red;
             }
+        }
 
-            *abgr = (uint32_t)alpha << 24 | blue << 16 | green << 8 | red;
+        if (gamma_correct) {
+            /* Replace default image buffer with 16-bit linear buffer */
+            pixman_image_unref(img);
+            free(data_8bit);
+            img = img_16bit;
         }
 
         nsvgDeleteRasterizer(rast);
+
         tll_push_back(icon->rasterized, ((struct rasterized){img, size}));
     }
 
+    const int w = pixman_image_get_width(img);
+    const int h = pixman_image_get_height(img);
+
     pixman_image_composite32(
-        PIXMAN_OP_OVER, img, NULL, pix, 0, 0, 0, 0, x, y, size, size);
+        PIXMAN_OP_OVER, img, NULL, pix, 0, 0, 0, 0,
+        x + (size - w) / 2,
+        y + (size - h) / 2,
+        w, h);
 
 #if defined(FUZZEL_ENABLE_CAIRO)
     cairo_surface_mark_dirty(cairo_get_target(cairo));
@@ -808,27 +1059,56 @@ render_svg_nanosvg(struct icon *icon, int x, int y, int size,
 
 static void
 render_svg(struct icon *icon, int x, int y, int size,
-           pixman_image_t *pix, cairo_t *cairo)
+           pixman_image_t *pix, cairo_t *cairo, bool gamma_correct,
+           bool print_timing_info)
 {
     assert(icon->type == ICON_SVG);
 
     if (icon->svg == NULL) {
+        struct timeval start, stop, diff;
+        gettimeofday(&start, NULL);
+
         if (!icon_from_svg(icon, icon->path))
             return;
+
+        if (print_timing_info) {
+            gettimeofday(&stop, NULL);
+            timersub(&stop, &start, &diff);
+
+            LOG_WARN("%s loaded in %llus %lluµs",
+                     icon->path,
+                     (unsigned long long)diff.tv_sec,
+                     (unsigned long long)diff.tv_usec);
+        }
+
         LOG_DBG("%s", icon->path);
     }
+
+    struct timeval start, stop, diff;
+    gettimeofday(&start, NULL);
 
 #if defined(FUZZEL_ENABLE_SVG_LIBRSVG)
     render_svg_librsvg(icon, x, y, size, cairo);
 #elif defined(FUZZEL_ENABLE_SVG_NANOSVG)
-    render_svg_nanosvg(icon, x, y, size, pix, cairo);
+    render_svg_nanosvg(icon, x, y, size, pix, cairo, gamma_correct);
 #endif
+
+    if (print_timing_info) {
+        gettimeofday(&stop, NULL);
+        timersub(&stop, &start, &diff);
+
+        LOG_WARN("%s rendered in %llus %lluµs",
+                 icon->path,
+                 (unsigned long long)diff.tv_sec,
+                 (unsigned long long)diff.tv_usec);
+    }
 }
 
 #if defined(FUZZEL_ENABLE_PNG_LIBPNG)
 static void
 render_png_libpng(struct icon *icon, int x, int y, int size,
-                  pixman_image_t *pix, cairo_t *cairo)
+                  pixman_image_t *pix, cairo_t *cairo,
+                  enum scaling_filter scaling_filter)
 {
 #if defined(FUZZEL_ENABLE_CAIRO)
     cairo_surface_flush(cairo_get_target(cairo));
@@ -839,8 +1119,8 @@ render_png_libpng(struct icon *icon, int x, int y, int size,
     int height = pixman_image_get_height(png);
     int width = pixman_image_get_width(png);
 
-    if (height > size) {
-        double scale = (double)size / height;
+    if (height > size || width > size) {
+        double scale = (double)size / (height > width ? height : width);
 
         pixman_f_transform_t _scale_transform;
         pixman_f_transform_init_scale(&_scale_transform, 1. / scale, 1. / scale);
@@ -850,34 +1130,111 @@ render_png_libpng(struct icon *icon, int x, int y, int size,
             &scale_transform, &_scale_transform);
         pixman_image_set_transform(png, &scale_transform);
 
-        if (height >= 1000) {
+        const int largest_side = max(width, height);
+
+        if (largest_side >= 1024) {
             if (!icon->png_size_warned) {
                 LOG_WARN(
                     "%s: PNG is too large (%dx%d); "
-                    "downscaling using a less precise filter",
+                    "downscaling using a less precise filter (fast)",
                     icon->path, width, height);
                 icon->png_size_warned = true;
             }
-            pixman_image_set_filter(png, PIXMAN_FILTER_FAST, NULL, 0);
-        } else {
-            int param_count = 0;
-            pixman_kernel_t kernel = PIXMAN_KERNEL_LANCZOS3;
-            pixman_fixed_t *params = pixman_filter_create_separable_convolution(
-                &param_count,
-                pixman_double_to_fixed(1. / scale),
-                pixman_double_to_fixed(1. / scale),
-                kernel, kernel,
-                kernel, kernel,
-                pixman_int_to_fixed(1),
-                pixman_int_to_fixed(1));
 
-            if (params != NULL || param_count == 0) {
-                pixman_image_set_filter(
-                    png, PIXMAN_FILTER_SEPARABLE_CONVOLUTION,
-                    params, param_count);
+            pixman_image_set_filter(png, PIXMAN_FILTER_FAST, NULL, 0);
+        }
+
+        else {
+
+            bool slow_scaling_filter = false;
+
+            switch (scaling_filter) {
+            case SCALING_FILTER_NONE:
+            case SCALING_FILTER_NEAREST:
+            case SCALING_FILTER_BILINEAR:
+            case SCALING_FILTER_BOX:
+                slow_scaling_filter = false;
+                break;
+
+            case SCALING_FILTER_CUBIC:
+            case SCALING_FILTER_LANCZOS3:
+            case SCALING_FILTER_LINEAR:
+            case SCALING_FILTER_LANCZOS2:
+            case SCALING_FILTER_LANCZOS3_STRETCHED:
+                slow_scaling_filter = true;
+                break;
             }
 
-            free(params);
+            if (slow_scaling_filter && largest_side >= 256) {
+                if (!icon->png_size_warned) {
+                    LOG_WARN(
+                        "%s: PNG is too large (%dx%d); "
+                        "downscaling using a less precise filter (box)",
+                        icon->path, width, height);
+                    icon->png_size_warned = true;
+                }
+
+                scaling_filter = SCALING_FILTER_BOX;
+            }
+
+            switch (scaling_filter) {
+            case SCALING_FILTER_NONE:
+                break;
+
+            /*
+             * "simple" filters
+             */
+
+            case SCALING_FILTER_NEAREST:
+                pixman_image_set_filter(png, PIXMAN_FILTER_NEAREST, NULL, 0);
+                break;
+
+            case SCALING_FILTER_BILINEAR:
+                pixman_image_set_filter(png, PIXMAN_FILTER_BILINEAR, NULL, 0);
+                break;
+
+            /*
+             * Separable convolution filters
+             */
+            case SCALING_FILTER_CUBIC:
+            case SCALING_FILTER_LANCZOS3:
+            case SCALING_FILTER_BOX:
+            case SCALING_FILTER_LINEAR:
+            case SCALING_FILTER_LANCZOS2:
+            case SCALING_FILTER_LANCZOS3_STRETCHED: {
+
+                pixman_kernel_t kernel;
+
+                switch (scaling_filter) {
+                case SCALING_FILTER_CUBIC: kernel = PIXMAN_KERNEL_CUBIC; break;
+                case SCALING_FILTER_LANCZOS3: kernel = PIXMAN_KERNEL_LANCZOS3; break;
+                case SCALING_FILTER_BOX: kernel = PIXMAN_KERNEL_BOX; break;
+                case SCALING_FILTER_LINEAR: kernel = PIXMAN_KERNEL_LINEAR; break;
+                case SCALING_FILTER_LANCZOS2: kernel = PIXMAN_KERNEL_LANCZOS2; break;
+                case SCALING_FILTER_LANCZOS3_STRETCHED: kernel = PIXMAN_KERNEL_LANCZOS3_STRETCHED; break;
+                default: assert(false); kernel = PIXMAN_KERNEL_CUBIC; break;
+                }
+
+                int param_count = 0;
+                pixman_fixed_t *params = pixman_filter_create_separable_convolution(
+                    &param_count,
+                    pixman_double_to_fixed(1. / scale),
+                    pixman_double_to_fixed(1. / scale),
+                    kernel, kernel,
+                    kernel, kernel,
+                    pixman_int_to_fixed(1),
+                    pixman_int_to_fixed(1));
+
+                if (params != NULL || param_count == 0) {
+                    pixman_image_set_filter(
+                        png, PIXMAN_FILTER_SEPARABLE_CONVOLUTION,
+                        params, param_count);
+                }
+
+                free(params);
+                break;
+            }
+            }
         }
 
         width *= scale;
@@ -898,7 +1255,10 @@ render_png_libpng(struct icon *icon, int x, int y, int size,
     }
 
     pixman_image_composite32(
-        PIXMAN_OP_OVER, png, NULL, pix, 0, 0, 0, 0, x, y, width, height);
+        PIXMAN_OP_OVER, png, NULL, pix, 0, 0, 0, 0,
+        x + (size - width) / 2,
+        y + (size - height) / 2,
+        width, height);
 
 #if defined(FUZZEL_ENABLE_CAIRO)
     cairo_surface_mark_dirty(cairo_get_target(cairo));
@@ -908,19 +1268,45 @@ render_png_libpng(struct icon *icon, int x, int y, int size,
 
 static void
 render_png(struct icon *icon, int x, int y, int size, pixman_image_t *pix,
-           cairo_t *cairo)
+           cairo_t *cairo, bool gamma_correct, bool print_timing_info,
+           enum scaling_filter scaling_filter)
 {
     assert(icon->type == ICON_PNG);
 
     if (icon->png == NULL) {
-        if (!icon_from_png(icon, icon->path))
+        struct timeval start, stop, diff;
+        gettimeofday(&start, NULL);
+
+        if (!icon_from_png(icon, icon->path, gamma_correct))
             return;
+
+        if (print_timing_info) {
+            gettimeofday(&stop, NULL);
+            timersub(&stop, &start, &diff);
+            LOG_WARN("%s loaded in %llus %lluµs",
+                     icon->path,
+                     (unsigned long long)diff.tv_sec,
+                     (unsigned long long)diff.tv_usec);
+        }
+
         LOG_DBG("%s", icon->path);
     }
 
+    struct timeval start, stop, diff;
+    gettimeofday(&start, NULL);
+
 #if defined(FUZZEL_ENABLE_PNG_LIBPNG)
-    render_png_libpng(icon, x, y, size, pix, cairo);
+    render_png_libpng(icon, x, y, size, pix, cairo, scaling_filter);
 #endif
+
+    if (print_timing_info) {
+        gettimeofday(&stop, NULL);
+        timersub(&stop, &start, &diff);
+        LOG_WARN("%s rendered in %llus %lluµs",
+                 icon->path,
+                 (unsigned long long)diff.tv_sec,
+                 (unsigned long long)diff.tv_usec);
+    }
 }
 
 static int
@@ -928,8 +1314,8 @@ first_row_y(const struct render *render)
 {
     return (render->border_size +
             render->y_margin +
-            render->row_height +
-            render->inner_pad);
+            (render->conf->hide_prompt ? 0 : render->row_height) +
+            (render->conf->hide_prompt ? 0 : render->inner_pad));
 }
 
 static void
@@ -951,7 +1337,7 @@ render_match_entry_background(const struct render *render,
 }
 
 static void
-render_selected_match_entry_background(const struct render *render,
+render_selected_match_entry_background(struct render *render,
                                        int idx, pixman_image_t *pix, int width)
 {
     pixman_color_t bg = render->pix_selection_color;
@@ -963,12 +1349,23 @@ render_selected_match_entry_background(const struct render *render,
     const int w = width - 2 * (render->border_size + render->x_margin - sel_margin);
     const int h = 1 * render->row_height;
 
-    pixman_image_fill_rectangles(
-        PIXMAN_OP_OVER, pix, &bg, 1, &(pixman_rectangle16_t){x, y, w, h});
+    // limit radius to half of height, any larger and it causes weird shapes
+    // also limit it when horizontal padding is small, to prevent icon pop out
+    const unsigned int radius = min(
+        min(render->selection_border_radius, h / 2), render->x_margin);
+
+    if (render->selection_corners == NULL) {
+        render->selection_corners = pixman_image_create_bits(
+            pixman_image_get_format(pix), w, h, NULL, w * 4);
+        render_rounded_rectangle(render->selection_corners, &bg, &bg, radius, 0, 0, 0, w, h);
+    }
+    pixman_image_composite(
+        PIXMAN_OP_OVER, render->selection_corners, NULL, pix,
+        0, 0, 0, 0, x, y, w, h);
 }
 
 static void
-render_one_match_entry(const struct render *render, const struct matches *matches,
+render_one_match_entry(struct render *render, const struct matches *matches,
                        const struct match *match, bool render_icons,
                        int idx, bool is_selected, int width, int height,
                        pixman_image_t *pix, cairo_t *cairo)
@@ -1010,7 +1407,8 @@ render_one_match_entry(const struct render *render, const struct matches *matche
             match->application->icon.type == ICON_SVG &&
             img_y > list_end + render->row_height)
         {
-            render_svg(&match->application->icon, img_x, img_y, size, pix, cairo);
+            render_svg(&match->application->icon, img_x, img_y, size, pix, cairo,
+                       render->gamma_correct, render->conf->print_timing_info);
         }
     }
 
@@ -1025,11 +1423,14 @@ render_one_match_entry(const struct render *render, const struct matches *matche
             break;
 
         case ICON_PNG:
-            render_png(icon, img_x, img_y, size, pix, cairo);
+            render_png(icon, img_x, img_y, size, pix, cairo,
+                       render->gamma_correct, render->conf->print_timing_info,
+                       render->conf->png_scaling_filter);
             break;
 
         case ICON_SVG:
-            render_svg(icon, img_x, img_y, size, pix, cairo);
+            render_svg(icon, img_x, img_y, size, pix, cairo,
+                       render->gamma_correct, render->conf->print_timing_info);
             break;
         }
     }
@@ -1062,17 +1463,6 @@ render_one_match_entry(const struct render *render, const struct matches *matche
         } else {
             /* No newlines, use title as-is */
             match->application->render_title = match->application->title;
-        }
-
-        if (render->conf->dmenu.enabled &&
-            render->conf->dmenu.render_column > 0)
-        {
-            char32_t *new_render_title =
-                nth_column(match->application->render_title, render->conf->dmenu.render_column);
-
-            if (match->application->render_title != match->application->title)
-                free(match->application->render_title);
-            match->application->render_title = new_render_title;
         }
     }
 
@@ -1120,8 +1510,9 @@ render_match_list(struct render *render, struct buffer *buf,
     }
 
     /* Erase background of the "empty" area, after the last match */
+    const size_t effective_lines = matches_max_matches_per_page(matches);
     render_match_entry_background(
-        render, match_count, render->conf->lines - match_count,
+        render, match_count, effective_lines - match_count,
         buf->pix[0], buf->width);
 
     for (size_t i = 0; i < match_count; i++) {
@@ -1242,18 +1633,6 @@ render_init(const struct config *conf, mtx_t *icon_lock)
         .icon_lock = icon_lock,
     };
 
-    render->pix_background_color = rgba2pixman(render->conf->colors.background);
-    render->pix_border_color = rgba2pixman(render->conf->colors.border);
-    render->pix_text_color = rgba2pixman(render->conf->colors.text);
-    render->pix_prompt_color = rgba2pixman(render->conf->colors.prompt);
-    render->pix_input_color = rgba2pixman(render->conf->colors.input);
-    render->pix_match_color = rgba2pixman(render->conf->colors.match);
-    render->pix_selection_color = rgba2pixman(render->conf->colors.selection);
-    render->pix_selection_text_color = rgba2pixman(render->conf->colors.selection_text);
-    render->pix_selection_match_color = rgba2pixman(render->conf->colors.selection_match);
-    render->pix_counter_color = rgba2pixman(render->conf->colors.counter);
-    render->pix_placeholder_color = rgba2pixman(render->conf->colors.placeholder);
-
     if (sem_init(&render->workers.start, 0, 0) < 0 ||
         sem_init(&render->workers.done, 0, 0) < 0)
     {
@@ -1267,10 +1646,12 @@ render_init(const struct config *conf, mtx_t *icon_lock)
         goto err_free_semaphores;
     }
 
-    render->workers.threads = xcalloc(render->conf->render_worker_count,
-                                      sizeof(render->workers.threads[0]));
+    const size_t num_workers = min(conf->render_worker_count, conf->lines);
 
-    for (size_t i = 0; i < render->conf->render_worker_count; i++) {
+    render->workers.threads = xcalloc(
+        num_workers, sizeof(render->workers.threads[0]));
+
+    for (size_t i = 0; i < num_workers; i++) {
         struct thread_context *ctx = xmalloc(sizeof(*ctx));
         *ctx = (struct thread_context){
             .render = render,
@@ -1289,6 +1670,8 @@ render_init(const struct config *conf, mtx_t *icon_lock)
         render->workers.count++;
     }
 
+    LOG_INFO("using %hu render worker threads", render->workers.count);
+
     return render;
 
 err_free_semaphores_and_lock:
@@ -1302,9 +1685,100 @@ err_free_render:
 }
 
 void
+render_initialize_colors(struct render *render, const struct config *conf,
+                         bool gamma_correct)
+{
+    render->gamma_correct = gamma_correct;
+    render->pix_background_color = rgba2pixman(gamma_correct, conf->colors.background);
+    render->pix_border_color = rgba2pixman(gamma_correct, conf->colors.border);
+    render->pix_text_color = rgba2pixman(gamma_correct, conf->colors.text);
+    render->pix_prompt_color = rgba2pixman(gamma_correct, conf->colors.prompt);
+    render->pix_input_color = rgba2pixman(gamma_correct, conf->colors.input);
+    render->pix_match_color = rgba2pixman(gamma_correct, conf->colors.match);
+    render->pix_selection_color = rgba2pixman(gamma_correct, conf->colors.selection);
+    render->pix_selection_text_color = rgba2pixman(gamma_correct, conf->colors.selection_text);
+    render->pix_selection_match_color = rgba2pixman(gamma_correct, conf->colors.selection_match);
+    render->pix_counter_color = rgba2pixman(gamma_correct, conf->colors.counter);
+    render->pix_placeholder_color = rgba2pixman(gamma_correct, conf->colors.placeholder);
+}
+
+void
 render_set_subpixel(struct render *render, enum fcft_subpixel subpixel)
 {
     render->subpixel = subpixel;
+}
+
+void
+render_resized(struct render *render, int *new_width, int *new_height)
+{
+    struct fcft_font *font = render->font;
+    const float scale = render->scale;
+
+    assert(font != NULL);
+    assert(render->font_bold != NULL);
+
+    const struct fcft_glyph *W = fcft_rasterize_char_utf32(
+        font, U'o', render->subpixel);
+
+    const unsigned x_margin = render->conf->pad.x * scale;
+    const unsigned y_margin = render->conf->pad.y * scale;
+    const unsigned inner_pad = render->conf->lines > 0
+        ? render->conf->pad.inner * scale
+        : 0;
+
+    const unsigned border_size = render->conf->border.size * scale;
+    const unsigned border_radius = render->conf->border.radius * scale;
+    const unsigned selection_border_radius = render->conf->selection_border.radius * scale;
+
+    const unsigned row_height = render->conf->line_height.px >= 0
+        ? pt_or_px_as_pixels(render, &render->conf->line_height)
+        : max(font->height, font->ascent + font->descent);
+
+    const unsigned icon_height = max(0, row_height - font->descent);
+
+    const unsigned height =
+        border_size +                        /* Top border */
+        y_margin +
+        (render->conf->hide_prompt ? 0 : row_height) +          /* The prompt (hidden if hide_prompt) */
+        (render->conf->hide_prompt ? 0 : inner_pad) +           /* Padding between prompt and matches (only if prompt shown) */
+        render->conf->lines * row_height +   /* Matches */
+        y_margin +
+        border_size;                         /* Bottom border */
+
+    const unsigned width =
+        border_size +                        /* Top border */
+        x_margin +
+        (max((W->advance.x + pt_or_px_as_pixels(
+                  render, &render->conf->letter_spacing)),
+             0)
+         * render->conf->chars) +
+        x_margin +
+        border_size;
+
+    LOG_DBG("x-margin: %d, y-margin: %d, border-size: %d, border-radius: %d, "
+            "row-height: %d, icon-height: %d, height: %d, width: %d, scale: %f",
+            x_margin, y_margin, border_size, border_radius,
+            row_height, icon_height, height, width, scale);
+
+    render->y_margin = y_margin;
+    render->x_margin = x_margin;
+    render->inner_pad = inner_pad;
+    render->border_size = border_size;
+    render->border_radius = border_radius;
+    render->selection_border_radius = selection_border_radius;
+    render->row_height = row_height;
+    render->icon_height = icon_height;
+
+    if (new_width != NULL)
+        *new_width = width;
+    if (new_height != NULL)
+        *new_height = height;
+
+    /* invalidate cached corners since the size could have changed */
+    if (render->selection_corners != NULL) {
+        pixman_image_unref(render->selection_corners);
+        render->selection_corners = NULL;
+    }
 }
 
 bool
@@ -1333,59 +1807,7 @@ render_set_font_and_update_sizes(struct render *render, struct fcft_font *font,
     render->dpi = dpi;
     render->size_font_by_dpi = size_font_by_dpi;
 
-    const struct fcft_glyph *W = fcft_rasterize_char_utf32(
-        font, U'W', render->subpixel);
-
-    const unsigned x_margin = render->conf->pad.x * scale;
-    const unsigned y_margin = render->conf->pad.y * scale;
-    const unsigned inner_pad = render->conf->lines > 0
-        ? render->conf->pad.inner * scale
-        : 0;
-
-    const unsigned border_size = render->conf->border.size * scale;
-
-    const unsigned row_height = render->conf->line_height.px >= 0
-        ? pt_or_px_as_pixels(render, &render->conf->line_height)
-        : max(font->height, font->ascent + font->descent);
-
-    const unsigned icon_height = max(0, row_height - font->descent);
-
-    const unsigned height =
-        border_size +                        /* Top border */
-        y_margin +
-        row_height +                         /* The prompt */
-        inner_pad +                          /* Padding between prompt and matches */
-        render->conf->lines * row_height +   /* Matches */
-        y_margin +
-        border_size;                         /* Bottom border */
-
-    const unsigned width =
-        border_size +
-        x_margin +
-        (max((W->advance.x + pt_or_px_as_pixels(
-                  render, &render->conf->letter_spacing)),
-             0)
-         * render->conf->chars) +
-        x_margin +
-        border_size;
-
-    LOG_DBG("x-margin: %d, y-margin: %d, border: %d, row-height: %d, "
-            "icon-height: %d, height: %d, width: %d, scale: %f",
-            x_margin, y_margin, border_size, row_height, icon_height,
-            height, width, scale);
-
-    render->y_margin = y_margin;
-    render->x_margin = x_margin;
-    render->inner_pad = inner_pad;
-    render->border_size = border_size;
-    render->row_height = row_height;
-    render->icon_height = icon_height;
-
-    if (new_width != NULL)
-        *new_width = width;
-    if (new_height != NULL)
-        *new_height = height;
-
+    render_resized(render, new_width, new_height);
     return true;
 }
 
@@ -1428,30 +1850,37 @@ render_destroy(struct render *render)
     fcft_text_run_destroy(render->prompt_text_run);
     fcft_text_run_destroy(render->placeholder_text_run);
 
+    if (render->selection_corners != NULL)
+        pixman_image_unref(render->selection_corners);
+
     fcft_destroy(render->font);
+    fcft_destroy(render->font_bold);
     free(render);
 }
 
-size_t
-render_get_row_num(const struct render *render, int y,
+ssize_t
+render_get_row_num(const struct render *render, int width, int x, int y,
                    const struct matches *matches)
 {
-    const float scale = render->scale;
     const int y_margin = render->y_margin;
     const int inner_pad = render->inner_pad;
     const int border_size = render->border_size;
     const int row_height = render->row_height;
-    const int first_row = 1 * border_size + y_margin + row_height + inner_pad;
+
+    const int min_x = render->border_size + render->x_margin - render->x_margin / 3;
+    const int max_x = width - (min_x);
+
+    const int first_row = 1 * border_size + y_margin +
+        (render->conf->hide_prompt ? 0 : row_height) +
+        (render->conf->hide_prompt ? 0 : inner_pad);
+
     const size_t match_count = matches_get_count(matches);
     const size_t last_row = first_row + match_count * row_height;
 
-    y = floor(scale * y);
+    ssize_t row = -1;
 
-    size_t row = -1;
-
-    if (y >= first_row && y < last_row) {
+    if (y >= first_row && y < last_row && x >= min_x && x < max_x)
         row = (y - first_row) / row_height;
-    }
 
     return row;
 }

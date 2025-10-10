@@ -422,6 +422,8 @@ matches_init(struct fdm *fdm, const struct prompt *prompt,
 
             matches->workers.count++;
         }
+
+        LOG_INFO("using %hu match worker threads", matches->workers.count);
     }
 
     int timer_fd = timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC | TFD_NONBLOCK);
@@ -695,7 +697,7 @@ matches_selected_select(struct matches *matches, const char *_string)
 bool
 matches_idx_select(struct matches *matches, size_t idx)
 {
-    if (idx == -1)
+    if (idx == (size_t)-1)
         return false;
 
     matches->selected = match_get_idx(matches, idx);
@@ -1346,8 +1348,12 @@ match_thread(void *_ctx)
     sigfillset(&mask);
     pthread_sigmask(SIG_SETMASK, &mask, NULL);
 
+    /*
+     * Note: using 'mtch' instead of 'match', to allow for core IDs >
+     * 99.
+     */
     char proc_title[16];
-    xsnprintf(proc_title, sizeof(proc_title), "fuzzel:match:%d", my_id);
+    xsnprintf(proc_title, sizeof(proc_title), "fuzzel:mtch:%d", my_id);
 
     if (pthread_setname_np(pthread_self(), proc_title) < 0)
         LOG_ERRNO("render worker %d: failed to set process title", my_id);
@@ -1424,6 +1430,7 @@ match_thread(void *_ctx)
 
     return -1;
 }
+
 
 static void
 matches_update_internal(struct matches *matches, bool incremental)

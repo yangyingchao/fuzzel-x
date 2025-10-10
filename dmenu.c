@@ -1,5 +1,6 @@
 #include "dmenu.h"
 #include "column.h"
+#include "icon.h"
 
 #include <stdlib.h>
 #include <stdbool.h>
@@ -24,6 +25,7 @@
 
 void
 dmenu_load_entries(struct application_list *applications, char delim,
+                   const char *with_nth_format, char nth_delim,
                    int event_fd, int abort_fd)
 {
     tll(struct application *) entries = tll_init();
@@ -129,6 +131,12 @@ dmenu_load_entries(struct application_list *applications, char delim,
              * entry:
              *
              *  “hello world\0icon\x1ffirefox”
+             *
+             * We also support fallback icons using comma-separated values.
+             * When the primary icon is not found, subsequent icons in the
+             * list will be tried until one is successfully loaded:
+             *
+             *  “hello world\0icon\x1ffirefox,web-browser,application-x-executable”
              */
             char *icon_name = NULL;
             const char *extra = memchr(buffer, '\0', entry_len);
@@ -160,14 +168,19 @@ dmenu_load_entries(struct application_list *applications, char delim,
                 continue;
             }
 
-            char32_t *lowercase = xc32dup(wline);
+            char32_t *title = with_nth_format == 0
+                ? xc32dup(wline)
+                : nth_column(wline, nth_delim, with_nth_format);
+
+            char32_t *lowercase = xc32dup(title);
             for (size_t i = 0; i < c32len(lowercase); i++)
                 lowercase[i] = toc32lower(lowercase[i]);
 
             struct application *app = xmalloc(sizeof(*app));
             *app = (struct application){
                 .index = app_idx++,
-                .title = wline,
+                .dmenu_input = wline,
+                .title = title,
                 .title_lowercase = lowercase,
                 .title_len = c32len(lowercase),
                 .icon = {.name = icon_name},
@@ -227,22 +240,25 @@ out:
 
 bool
 dmenu_execute(const struct application *app, ssize_t index,
-              const struct prompt *prompt, enum dmenu_mode format, unsigned int column)
+              const struct prompt *prompt, enum dmenu_mode format,
+              const char *nth_format, char nth_delim)
 {
     switch (format) {
     case DMENU_MODE_TEXT: {
-        const char32_t *output = app != NULL ? app->title : prompt_text(prompt);
-        
+        const char32_t *output = app != NULL
+            ? app->dmenu_input
+            : prompt_text(prompt);
+
         char32_t *column_output = NULL;
-        if (column > 0) {
-            column_output = nth_column(output, column);
+        if (nth_format != NULL) {
+            column_output = nth_column(output, nth_delim, nth_format);
             output = column_output;
         }
 
         char *text = ac32tombs(output);
-        if (text != NULL) {
+        if (text != NULL)
             printf("%s\n", text);
-        }
+
         free(column_output);
         free(text);
         break;
@@ -254,4 +270,53 @@ dmenu_execute(const struct application *app, ssize_t index,
     }
 
     return true;
+}
+
+static void
+try_icon_list(struct application *app, icon_theme_list_t themes, int icon_size)
+{
+    if (app->icon.name == NULL || strchr(app->icon.name, ',') == NULL)
+        return;
+
+    if (app->icon.type != ICON_NONE) {
+        return;
+    }
+
+    char *icon_list = xstrdup(app->icon.name);
+    char *saveptr = NULL;
+
+    for (char *icon_name = strtok_r(icon_list, ",", &saveptr);
+         icon_name != NULL;
+         icon_name = strtok_r(NULL, ",", &saveptr))
+    {
+        free(app->icon.name);
+        app->icon.name = xstrdup(icon_name);
+
+        app->icon.type = ICON_NONE;
+        app->icon.path = NULL;
+        app->icon.svg = NULL;
+        app->icon.png = NULL;
+
+        struct application_list temp_list = {
+            .v = &app,
+            .count = 1,
+            .visible_count = 1
+        };
+
+        icon_lookup_application_icons(themes, icon_size, &temp_list);
+
+        if (app->icon.type != ICON_NONE)
+            break;
+    }
+
+    free(icon_list);
+}
+
+void
+dmenu_try_icon_list(struct application_list *applications, icon_theme_list_t themes, int icon_size)
+{
+    for (size_t i = 0; i < applications->count; i++) {
+        struct application *app = applications->v[i];
+        try_icon_list(app, themes, icon_size);
+    }
 }

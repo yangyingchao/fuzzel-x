@@ -97,6 +97,18 @@ struct config_key_binding {
 };
 DEFINE_LIST(struct config_key_binding);
 
+enum scaling_filter {
+    SCALING_FILTER_NONE,
+    SCALING_FILTER_NEAREST,
+    SCALING_FILTER_BILINEAR,
+    SCALING_FILTER_BOX,
+    SCALING_FILTER_LINEAR,
+    SCALING_FILTER_CUBIC,
+    SCALING_FILTER_LANCZOS2,
+    SCALING_FILTER_LANCZOS3,
+    SCALING_FILTER_LANCZOS3_STRETCHED,
+};
+
 struct config {
     char *output;
     char32_t *prompt;
@@ -104,6 +116,8 @@ struct config {
     char32_t *search_text;
     bool prompt_only;
     enum match_fields match_fields;
+
+    char *namespace;
 
     struct {
         char32_t character;
@@ -117,6 +131,7 @@ struct config {
     char *font;
     bool use_bold;
     enum dpi_aware dpi_aware;
+    bool gamma_correct;
 
     uint16_t render_worker_count;
     uint16_t match_worker_count;
@@ -127,6 +142,7 @@ struct config {
     char *icon_theme;
 
     bool hide_when_prompt_empty;
+    bool hide_prompt;
 
     bool actions_enabled;
 
@@ -150,8 +166,9 @@ struct config {
         enum dmenu_mode mode;
         bool exit_immediately_if_empty;
         char delim;
-        unsigned int render_column;
-        unsigned int output_column;
+        char nth_delim;
+        char *with_nth_format;
+        char *accept_nth_format;
     } dmenu;
 
     enum anchors anchor;
@@ -162,6 +179,7 @@ struct config {
     } margin;
 
     unsigned lines;
+    bool minimal_lines;
     unsigned chars;
     unsigned tabs;  /* Tab stop every number of #spaces */
 
@@ -188,9 +206,11 @@ struct config {
     struct {
         unsigned size;
         unsigned radius;
-    } border;
+    } border, selection_border;
 
     float image_size_ratio;
+
+    enum scaling_filter png_scaling_filter;
 
     struct pt_or_px line_height;
     struct pt_or_px letter_spacing;
@@ -203,6 +223,11 @@ struct config {
     char *cache_path;
 
     char *l10n_plugin_path;
+
+    bool auto_select;
+    bool print_timing_info;
+
+    bool enable_mouse;
 };
 
 typedef tll(char *) config_override_t;

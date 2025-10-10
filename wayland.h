@@ -1,5 +1,8 @@
 #pragma once
 
+#include <stdbool.h>
+#include <stdint.h>
+
 #include <fcft/fcft.h>
 
 #include "clipboard.h"
@@ -55,6 +58,21 @@ struct seat {
         float scale;
     } pointer;
 
+    struct wl_touch *wl_touch;
+    struct {
+        uint32_t serial;
+        struct {
+            int id;
+            double start_x, start_y;
+            double current_x, current_y;
+            double last_y;
+            bool scrolling;
+            bool is_tap;
+            uint32_t start_time;
+            double accumulated_scroll;
+        } active_touch;
+    } touch;
+
     struct wl_data_device *data_device;
     struct zwp_primary_selection_device_v1 *primary_selection_device;
 
@@ -77,9 +95,16 @@ void wayl_destroy(struct wayland *wayl);
 
 void wayl_refresh(struct wayland *wayl);
 void wayl_flush(struct wayland *wayl);
+void wayl_ready_to_display(struct wayland *wayl);
 
 int wayl_exit_code(const struct wayland *wayl);
 bool wayl_update_cache(const struct wayland *wayl);
 
 void wayl_clipboard_data(struct wayland *wayl, char *data, size_t size);
 void wayl_clipboard_done(struct wayland *wayl);
+
+bool wayl_do_linear_blending(const struct wayland *wayl);
+
+void wayl_resized(struct wayland *wayl);
+
+bool wayl_check_auto_select(struct wayland *wayl);

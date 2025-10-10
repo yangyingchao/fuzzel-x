@@ -15,6 +15,7 @@
 #include <sys/file.h>
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
+#include <sys/time.h>
 #include <fcntl.h>
 #include <dirent.h>
 
@@ -43,9 +44,10 @@
 #include "plugin.h"
 
 #define max(x, y) ((x) > (y) ? (x) : (y))
+#define min(x, y) ((x)  < (y) ? (x) : (y))
 
 struct context {
-    const struct config *conf;
+    struct config *conf;
     const char *cache_path;
     struct wayland *wayl;
     struct render *render;
@@ -61,6 +63,24 @@ struct context {
 
     int event_fd;
     int dmenu_abort_fd;
+
+    struct {
+        struct {
+            struct timeval start;
+            struct timeval stop;
+            struct timeval diff;
+        } apps;
+        struct {
+            struct timeval start;
+            struct timeval stop;
+            struct timeval diff;
+        } icons_theme;
+        struct {
+            struct timeval start;
+            struct timeval stop;
+            struct timeval diff;
+        } icons;
+    } timing;
 };
 
 struct cache_entry {
@@ -327,12 +347,13 @@ print_usage(const char *prog_name)
            "                                 otherwise exit with 1\n"
            "     --cache=PATH                load most recently launched applications from\n"
            "                                 PATH (XDG_CACHE_HOME/fuzzel)\n"
+           "  -n,--namespace=NAMESPACE       layer shell surface namespace\n"
            "  -o,--output=OUTPUT             output (monitor) to display on (none)\n"
            "  -f,--font=FONT                 font name and style, in FontConfig format\n"
            "                                 (monospace)\n"
            "     --use-bold                  allow fuzzel to use bold fonts\n"
            "  -D,--dpi-aware=no|yes|auto     enable or disable DPI aware rendering (auto)\n"
-           "     --icon-theme=NAME           icon theme name (\"hicolor\")\n"
+           "     --icon-theme=NAME           icon theme name (\"default\")\n"
            "  -I,--no-icons                  do not render any icons\n"
            "     --hide-before-typing    hide application list until something is typed\n"
            "  -F,--fields=FIELDS             comma separated list of XDG Desktop entry\n"
@@ -351,8 +372,15 @@ print_usage(const char *prog_name)
            "     --y-margin=MARGIN           vertical margin, in pixels (0)\n"
            "     --select=STRING             select first entry that matches the given\n"
            "                                 string\n"
+           "     --auto-select               automatically select when only one match\n"
+           "                                 remains\n"
            "     --select-index=INDEX        select the entry with index, not compatible with --select\n"
            "  -l,--lines                     number of matches to show\n"
+           "     --minimal-lines             adjust the number of lines to the\n"
+           "                                 minimum of --lines and the number\n"
+           "                                 of input lines (dmenu mode only)\n"
+           "     --hide-prompt               hide the prompt line, making the window\n"
+           "                                 smaller (input still accepted)\n"
            "  -w,--width                     window width, in characters (margins and\n"
            "                                 borders not included)\n"
            "     --tabs=INT                  number of spaces a tab is expanded to (8)\n"
@@ -370,6 +398,7 @@ print_usage(const char *prog_name)
            "  -S,--selection-text-color=HEX  text color of selected item (586e75ff)\n"
            "  -M,--selection-match-color=HEX color of matched substring in selection\n"
            "                                 (cb4b16ff)\n"
+           "     --selection-radius          border radius of the selected entry (0)\n"
            "     --counter-color             color of the match count (93a1a1)\n"
            "  -B,--border-width=INT          width of border, in pixels (1)\n"
            "  -r,--border-radius=INT         amount of corner \"roundness\" (10)\n"
@@ -402,15 +431,18 @@ print_usage(const char *prog_name)
            "                                 (300)\n"
            "     --delayed-filter-limit=N    used delayed refiltering when the number of\n"
            "                                 matches exceeds this number (10000)\n"
+           "     --scaling-filter=FILTER     filter to use when down scaling PNGs\n"
            "  -d,--dmenu                     dmenu compatibility mode\n"
            "     --dmenu0                    like --dmenu, but input is NUL separated\n"
            "                                 instead of newline separated\n"
            "     --index                     print selected entry's index instead of of the \n"
            "                                 entry's text (dmenu mode only)\n"
-           "     --with-nth=N                display the N:th column (tab separated) of each\n"
-           "                                 input line (dmenu only)\n"
-           "     --accept-nth=N              output the N:th column (tab separated) of each\n"
-           "                                 input line (dmenu only)\n"
+           "     --with-nth=N|FMT            display the N:th column (tab separated by\n"
+           "                                 default) of each input line (dmenu only)\n"
+           "     --accept-nth=N|FMT          output the N:th column (tab separated by\n"
+           "                                 default) of each input line (dmenu only)\n"
+           "     --nth-delimiter=CHARACTER   field (column) character, for --with-nth and\n"
+           "                                 --accept-nth\n"
            "  -R,--no-run-if-empty           exit immediately without showing UI if stdin\n"
            "                                 is empty (dmenu mode only)\n"
            "     --log-level={info|warning|error|none}\n"
@@ -419,6 +451,9 @@ print_usage(const char *prog_name)
            "                                 enable/disable colorization of log output on\n"
            "                                 stderr\n"
            "     --log-no-syslog             disable syslog logging\n"
+           "     --print-timing-info         print timing information, to help debug\n"
+           "                                 performance issues\n"
+           "     --no-mouse                  disable mouse input\n"
            "  -v,--version                   show the version number and quit\n");
     printf("\n");
     printf("All colors are RGBA - i.e. 8-digit hex values, without prefix.\n");
@@ -440,6 +475,10 @@ font_reloaded(struct wayland *wayl, struct fcft_font *font, void *data)
         if (conf->icons_enabled) {
             icon_lookup_application_icons(
                 *ctx->themes, ctx->icon_size, ctx->apps);
+
+            if (conf->dmenu.enabled) {
+                dmenu_try_icon_list(ctx->apps, *ctx->themes, ctx->icon_size);
+            }
         }
     }
     mtx_unlock(ctx->icon_lock);
@@ -528,6 +567,8 @@ populate_apps(void *_ctx)
     bool dmenu_enabled = conf->dmenu.enabled;
     bool icons_enabled = conf->icons_enabled;
     char dmenu_delim = conf->dmenu.delim;
+    char dmenu_nth_delim = conf->dmenu.nth_delim;
+    const char *dmenu_with_nth_format = conf->dmenu.with_nth_format;
     bool filter_desktop = conf->filter_desktop;
     bool list_exec_in_path = conf->list_executables_in_path;
     char_list_t desktops = tll_init();
@@ -549,14 +590,19 @@ populate_apps(void *_ctx)
 
     if (dmenu_enabled) {
         if (!conf->prompt_only) {
-            dmenu_load_entries(apps, dmenu_delim, ctx->event_fd, ctx->dmenu_abort_fd);
+            dmenu_load_entries(
+                apps, dmenu_delim, dmenu_with_nth_format, dmenu_nth_delim,
+                ctx->event_fd, ctx->dmenu_abort_fd);
             read_cache(cache_path, apps, true);
         }
     } else {
+        gettimeofday(&ctx->timing.apps.start, NULL);
         xdg_find_programs(terminal, actions_enabled, filter_desktop, &desktops, apps);
         if (list_exec_in_path)
             path_find_programs(apps);
         read_cache(cache_path, apps, false);
+        gettimeofday(&ctx->timing.apps.stop, NULL);
+        timersub(&ctx->timing.apps.stop, &ctx->timing.apps.start, &ctx->timing.apps.diff);
     }
     tll_free_and_free(desktops, free);
 
@@ -565,21 +611,31 @@ populate_apps(void *_ctx)
         return r;
 
     if (icons_enabled) {
-        icon_theme_list_t icon_themes = icon_load_theme(icon_theme);
+        gettimeofday(&ctx->timing.icons_theme.start, NULL);
+        icon_theme_list_t icon_themes = icon_load_theme(icon_theme, !dmenu_enabled);
         if (tll_length(icon_themes) > 0)
             LOG_INFO("theme: %s", tll_front(icon_themes).name);
         else
             LOG_WARN("%s: icon theme not found", icon_theme);
+        gettimeofday(&ctx->timing.icons_theme.stop, NULL);
+        timersub(&ctx->timing.icons_theme.stop, &ctx->timing.icons_theme.start, &ctx->timing.icons_theme.diff);
 
+        gettimeofday(&ctx->timing.icons.start, NULL);
         mtx_lock(ctx->icon_lock);
         {
             *ctx->themes = icon_themes;
             if (ctx->icon_size > 0) {
                 icon_lookup_application_icons(
                     *ctx->themes, ctx->icon_size, apps);
+
+                if (dmenu_enabled) {
+                    dmenu_try_icon_list(apps, *ctx->themes, ctx->icon_size);
+                }
             }
         }
         mtx_unlock(ctx->icon_lock);
+        gettimeofday(&ctx->timing.icons.stop, NULL);
+        timersub(&ctx->timing.icons.stop, &ctx->timing.icons.start, &ctx->timing.icons.diff);
 
         r = send_event(ctx->event_fd, EVENT_ICONS_LOADED);
         if (r != 0)
@@ -602,13 +658,28 @@ process_event(struct context *ctx, enum event_type event)
     switch (event) {
     case EVENT_APPS_SOME_LOADED:
     case EVENT_APPS_ALL_LOADED: {
+        if (event == EVENT_APPS_ALL_LOADED && conf->print_timing_info) {
+            LOG_WARN("apps loaded in %llus %lluµs",
+                     (unsigned long long)ctx->timing.apps.diff.tv_sec,
+                     (unsigned long long)ctx->timing.apps.diff.tv_usec);
+        }
         /* Update matches list, then refresh the GUI */
         matches_set_applications(matches, apps);
 
         if (event == EVENT_APPS_ALL_LOADED) {
-            if (ctx->conf->dmenu.exit_immediately_if_empty && apps->count == 0)
+            if (conf->dmenu.exit_immediately_if_empty && apps->count == 0)
                 return false;
+
             matches_all_applications_loaded(matches);
+
+            if (conf->dmenu.enabled && conf->minimal_lines) {
+                const size_t effective_lines = min(apps->count, conf->lines);
+                matches_max_matches_per_page_set(matches, effective_lines);
+                ctx->conf->lines = effective_lines;
+                wayl_resized(wayl);
+            }
+
+            wayl_ready_to_display(wayl);
         }
 
         const size_t match_count = matches_get_count(matches);
@@ -634,11 +705,36 @@ process_event(struct context *ctx, enum event_type event)
             else
                 matches_selected_select(matches, select);
         }
+
+        /*
+         * Allow displaying the menu if:
+         *   --no-run-if-empty is NOT enabled, OR we have at least one entry
+         * AND
+         *   --minimal-lines is NOT enabled, OR we have at least --lines number of entries
+         *
+         * In short, display the window as soon as we are sure we
+         * won't exit automatically (due to --no-run-if-empty), and we
+         * know its final size.
+         */
+        if ((!conf->dmenu.exit_immediately_if_empty || apps->count > 0) &&
+            (!(conf->dmenu.enabled && conf->minimal_lines) ||
+             apps->count >= conf->lines))
+        {
+            wayl_ready_to_display(wayl);
+        }
         break;
     }
 
     case EVENT_ICONS_LOADED:
         /* Just need to refresh the GUI */
+        if (conf->print_timing_info) {
+            LOG_WARN("icon themes loaded in %llus %lluµs",
+                     (unsigned long long)ctx->timing.icons_theme.diff.tv_sec,
+                     (unsigned long long)ctx->timing.icons_theme.diff.tv_usec);
+            LOG_WARN("icon paths resolved in %llus %lluµs",
+                     (unsigned long long)ctx->timing.icons.diff.tv_sec,
+                     (unsigned long long)ctx->timing.icons.diff.tv_usec);
+        }
         matches_icons_loaded(matches);
         break;
 
@@ -648,6 +744,10 @@ process_event(struct context *ctx, enum event_type event)
     }
 
     wayl_refresh(wayl);
+
+    if (event == EVENT_APPS_ALL_LOADED)
+        wayl_check_auto_select(wayl);
+
     return true;
 }
 
@@ -747,15 +847,26 @@ main(int argc, char *const *argv)
     #define OPT_HIDE_WHEN_PROMPT_EMPTY       297
     #define OPT_DMENU_WITH_NTH               298
     #define OPT_DMENU_ACCEPT_NTH             299
+    #define OPT_GAMMA_CORRECT                300
+    #define OPT_PRINT_TIMINGS                301
+    #define OPT_SCALING_FILTER               302
+    #define OPT_MINIMAL_LINES                303
+    #define OPT_HIDE_PROMPT                  304
+    #define OPT_AUTO_SELECT                  305
+    #define OPT_SELECTION_RADIUS             306
+    #define OPT_NO_MOUSE                     307
+    #define OPT_DMENU_NTH_DELIM              308
 
     static const struct option longopts[] = {
         {"config",               required_argument, 0, OPT_CONFIG},
         {"check-config",         no_argument,       0, OPT_CHECK_CONFIG},
+        {"namespace",            required_argument, 0, 'n'},
         {"cache",                required_argument, 0, OPT_CACHE},
         {"output"  ,             required_argument, 0, 'o'},
         {"font",                 required_argument, 0, 'f'},
         {"use-bold",             no_argument,       0, OPT_USE_BOLD},
         {"dpi-aware",            required_argument, 0, 'D'},
+        {"gamma-correct",        no_argument,       0, OPT_GAMMA_CORRECT},
         {"icon-theme",           required_argument, 0, OPT_ICON_THEME},
         {"no-icons",             no_argument,       0, 'I'},
         {"hide-before-typing", no_argument,     0, OPT_HIDE_WHEN_PROMPT_EMPTY},
@@ -767,6 +878,8 @@ main(int argc, char *const *argv)
         {"select",               required_argument, 0, OPT_SELECT},
         {"select-index",         required_argument, 0, OPT_SELECT_INDEX},
         {"lines",                required_argument, 0, 'l'},
+        {"minimal-lines",        no_argument,       0, OPT_MINIMAL_LINES},
+        {"hide-prompt",          no_argument,       0, OPT_HIDE_PROMPT},
         {"width",                required_argument, 0, 'w'},
         {"tabs",                 required_argument, 0, OPT_TABS},
         {"horizontal-pad",       required_argument, 0, 'x'},
@@ -781,6 +894,7 @@ main(int argc, char *const *argv)
         {"selection-color",      required_argument, 0, 's'},
         {"selection-text-color", required_argument, 0, 'S'},
         {"selection-match-color",required_argument, 0, 'M'},
+        {"selection-radius",     required_argument, 0, OPT_SELECTION_RADIUS},
         {"counter-color",        required_argument, 0, OPT_COUNTER_COLOR},
         {"border-width",         required_argument, 0, 'B'},
         {"border-radius",        required_argument, 0, 'r'},
@@ -809,12 +923,16 @@ main(int argc, char *const *argv)
         {"counter",              no_argument,       0, OPT_COUNTER},
         {"delayed-filter-ms",    required_argument, 0, OPT_DELAYED_FILTER_MS},
         {"delayed-filter-limit", required_argument, 0, OPT_DELAYED_FILTER_LIMIT},
+        {"scaling-filter",       required_argument, 0, OPT_SCALING_FILTER},
+        {"auto-select",          no_argument,       0, OPT_AUTO_SELECT},
+        {"no-mouse",             no_argument,       0, OPT_NO_MOUSE},
 
         /* dmenu mode */
         {"dmenu",                no_argument,       0, 'd'},
         {"dmenu0",               no_argument,       0, OPT_DMENU_NULL},
         {"no-run-if-empty",      no_argument,       0, 'R'},
         {"index",                no_argument,       0, OPT_DMENU_INDEX},
+        {"nth-delimiter",        required_argument, 0, OPT_DMENU_NTH_DELIM},
         {"with-nth",             required_argument, 0, OPT_DMENU_WITH_NTH},
         {"accept-nth",           required_argument, 0, OPT_DMENU_ACCEPT_NTH},
 
@@ -823,6 +941,7 @@ main(int argc, char *const *argv)
         {"log-colorize",         optional_argument, 0, OPT_LOG_COLORIZE},
         {"log-no-syslog",        no_argument,       0, OPT_LOG_NO_SYSLOG},
         {"version",              no_argument,       0, 'v'},
+        {"print-timing-info",    no_argument,       0, OPT_PRINT_TIMINGS},
         {"help",                 no_argument,       0, 'h'},
         {NULL,                   no_argument,       0, 0},
     };
@@ -839,6 +958,7 @@ main(int argc, char *const *argv)
         struct config conf;
 
         bool dpi_aware_set:1;
+        bool gamma_correct_set:1;
         bool match_fields_set:1;
         bool icons_disabled_set:1;
         bool hide_when_prompt_empty_set:1;
@@ -846,6 +966,8 @@ main(int argc, char *const *argv)
         bool x_margin_set : 1;
         bool y_margin_set : 1;
         bool lines_set:1;
+        bool minimal_lines_set:1;
+        bool hide_prompt_set:1;
         bool chars_set:1;
         bool tabs_set:1;
         bool pad_x_set:1;
@@ -859,6 +981,7 @@ main(int argc, char *const *argv)
         bool selection_color_set:1;
         bool selection_text_color_set:1;
         bool selection_match_color_set:1;
+        bool selection_border_radius_set:1;
         bool counter_color_set:1;
         bool border_color_set:1;
         bool border_size_set:1;
@@ -875,6 +998,7 @@ main(int argc, char *const *argv)
         bool dmenu_mode_set:1;
         bool dmenu_exit_immediately_if_empty_set:1;
         bool dmenu_delim_set:1;
+        bool dmenu_nth_delim_set:1;
         bool dmenu_with_nth_set:1;
         bool dmenu_accept_nth_set:1;
         bool layer_set:1;
@@ -889,6 +1013,9 @@ main(int argc, char *const *argv)
         bool delayed_filter_limit_set:1;
         bool placeholder_color_set:1;
         bool counter_set:1;
+        bool print_timing_info_set:1;
+        bool scaling_filter_set:1;
+        bool no_mouse_set:1;
     } cmdline_overrides = {{0}};
 
     setlocale(LC_CTYPE, "");
@@ -907,7 +1034,7 @@ main(int argc, char *const *argv)
     }
 
     while (true) {
-        int c = getopt_long(argc, argv, ":o:f:D:IF:ia:l:w:x:y:p:P:b:t:m:s:S:M:B:r:C:T:dRvh", longopts, NULL);
+        int c = getopt_long(argc, argv, ":n:o:f:D:IF:ia:l:w:x:y:p:P:b:t:m:s:S:M:B:r:C:T:dRvh", longopts, NULL);
         if (c == -1)
             break;
 
@@ -918,6 +1045,10 @@ main(int argc, char *const *argv)
 
         case OPT_CHECK_CONFIG:
             check_config = true;
+            break;
+
+        case 'n':
+            cmdline_overrides.conf.namespace = optarg;
             break;
 
         case OPT_CACHE:
@@ -953,6 +1084,11 @@ main(int argc, char *const *argv)
                 return EXIT_FAILURE;
             }
             cmdline_overrides.dpi_aware_set = true;
+            break;
+
+        case OPT_GAMMA_CORRECT:
+            cmdline_overrides.conf.gamma_correct = true;
+            cmdline_overrides.gamma_correct_set = true;
             break;
 
         case 'i':
@@ -1116,6 +1252,16 @@ main(int argc, char *const *argv)
                 return EXIT_FAILURE;
             }
             cmdline_overrides.lines_set = true;
+            break;
+
+        case OPT_MINIMAL_LINES:
+            cmdline_overrides.conf.minimal_lines = true;
+            cmdline_overrides.minimal_lines_set = true;
+            break;
+
+        case OPT_HIDE_PROMPT:
+            cmdline_overrides.conf.hide_prompt = true;
+            cmdline_overrides.hide_prompt_set = true;
             break;
 
         case 'w':
@@ -1346,6 +1492,16 @@ main(int argc, char *const *argv)
             break;
         }
 
+        case OPT_SELECTION_RADIUS: {
+            if (sscanf(optarg, "%u", &cmdline_overrides.conf.selection_border.radius) != 1) {
+                fprintf(stderr, "%s: invalid selection border radius (must be an integer)\n",
+                        optarg);
+                return EXIT_FAILURE;
+            }
+            cmdline_overrides.selection_border_radius_set = true;
+            break;
+        }
+
         case 'M': {
             const char *clr_start = optarg;
             if (clr_start[0] == '#')
@@ -1566,27 +1722,39 @@ main(int argc, char *const *argv)
             cmdline_overrides.dmenu_mode_set = true;
             break;
 
-        case OPT_DMENU_WITH_NTH:
-            if (sscanf(optarg, "%u", &cmdline_overrides.conf.dmenu.render_column) != 1) {
+        case OPT_DMENU_NTH_DELIM:
+            if (strlen(optarg) != 1) {
                 fprintf(
                     stderr,
-                    "%s: invalid with-nth value (must be an integer)\n",
+                    "%s: invalid nth-delimiter. Must be a single ASCII character",
                     optarg);
                 return EXIT_FAILURE;
             }
-            cmdline_overrides.dmenu_with_nth_set = true;
+
+            cmdline_overrides.conf.dmenu.nth_delim = optarg[0];
+            cmdline_overrides.dmenu_nth_delim_set = true;
+            printf("LKDJFLKDJF: delim: %c (%x)\n", cmdline_overrides.conf.dmenu.nth_delim, cmdline_overrides.conf.dmenu.nth_delim);
             break;
 
-        case OPT_DMENU_ACCEPT_NTH:
-                    if (sscanf(optarg, "%u", &cmdline_overrides.conf.dmenu.output_column) != 1) {
-                        fprintf(
-                            stderr,
-                            "%s: invalid accept-nth value (must be an integer)\n",
-                            optarg);
-                        return EXIT_FAILURE;
-                    }
-                    cmdline_overrides.dmenu_accept_nth_set = true;
-                    break;
+        case OPT_DMENU_WITH_NTH: {
+            unsigned int with_nth_idx;
+            if (sscanf(optarg, "%u", &with_nth_idx) == 1)
+                cmdline_overrides.conf.dmenu.with_nth_format = xasprintf("{%u}", with_nth_idx);
+            else
+                cmdline_overrides.conf.dmenu.with_nth_format = xstrdup(optarg);
+            cmdline_overrides.dmenu_with_nth_set = true;
+            break;
+        }
+
+        case OPT_DMENU_ACCEPT_NTH: {
+            unsigned int accept_nth_idx;
+            if (sscanf(optarg, "%u", &accept_nth_idx) == 1)
+                cmdline_overrides.conf.dmenu.accept_nth_format = xasprintf("{%u}", accept_nth_idx);
+            else
+                cmdline_overrides.conf.dmenu.accept_nth_format = xstrdup(optarg);
+            cmdline_overrides.dmenu_accept_nth_set = true;
+            break;
+        }
 
         case OPT_LOG_LEVEL: {
             int lvl = log_level_from_string(optarg);
@@ -1670,6 +1838,46 @@ main(int argc, char *const *argv)
             cmdline_overrides.delayed_filter_limit_set = true;
             break;
 
+        case OPT_SCALING_FILTER:
+            if (strcmp(optarg, "none") == 0)
+                cmdline_overrides.conf.png_scaling_filter = SCALING_FILTER_NONE;
+            else if (strcmp(optarg, "nearest") == 0)
+                cmdline_overrides.conf.png_scaling_filter = SCALING_FILTER_NEAREST;
+            else if (strcmp(optarg, "bilinear") == 0)
+                cmdline_overrides.conf.png_scaling_filter = SCALING_FILTER_BILINEAR;
+            else if (strcmp(optarg, "box") == 0)
+                cmdline_overrides.conf.png_scaling_filter = SCALING_FILTER_BOX;
+            else if (strcmp(optarg, "linear") == 0)
+                cmdline_overrides.conf.png_scaling_filter = SCALING_FILTER_LINEAR;
+            else if (strcmp(optarg, "cubic") == 0)
+                cmdline_overrides.conf.png_scaling_filter = SCALING_FILTER_CUBIC;
+            else if (strcmp(optarg, "lanczos2") == 0)
+                cmdline_overrides.conf.png_scaling_filter = SCALING_FILTER_LANCZOS2;
+            else if (strcmp(optarg, "lanczos3") == 0)
+                cmdline_overrides.conf.png_scaling_filter = SCALING_FILTER_LANCZOS3;
+            else if (strcmp(optarg, "lanczos3-stretched") == 0)
+                cmdline_overrides.conf.png_scaling_filter = SCALING_FILTER_LANCZOS3_STRETCHED;
+            else {
+                fprintf(stderr, "%s: invalid scaling-filter", optarg);
+                return EXIT_FAILURE;
+            }
+            cmdline_overrides.scaling_filter_set = true;
+            break;
+
+        case OPT_PRINT_TIMINGS:
+            cmdline_overrides.conf.print_timing_info = true;
+            cmdline_overrides.print_timing_info_set = true;
+            break;
+
+        case OPT_AUTO_SELECT:
+            cmdline_overrides.conf.auto_select = true;
+            break;
+
+        case OPT_NO_MOUSE:
+            cmdline_overrides.conf.enable_mouse = false;
+            cmdline_overrides.no_mouse_set = true;
+            break;
+
         case 'v':
             printf("fuzzel %s\n", version_and_features());
             return EXIT_SUCCESS;
@@ -1694,19 +1902,27 @@ main(int argc, char *const *argv)
     int ret = EXIT_FAILURE;
 
     if (select != NULL && select_idx) {
-            LOG_ERRNO("--select and --select-index cannot be used at the same time");
-            return ret;
+        LOG_ERRNO("--select and --select-index cannot be used at the same time");
+        return ret;
+    }
+
+    if (cmdline_overrides.prompt_only_set && cmdline_overrides.conf.hide_prompt) {
+        LOG_ERRNO("--prompt-only and --hide-prompt cannot be used at the same time");
+        config_free(&cmdline_overrides.conf);
+        return ret;
     }
 
     struct config conf = {0};
     bool conf_successful = config_load(&conf, config_path, NULL, check_config);
     if (!conf_successful) {
         config_free(&conf);
+        config_free(&cmdline_overrides.conf);
         return ret;
     }
 
     if (check_config) {
         config_free(&conf);
+        config_free(&cmdline_overrides.conf);
         return EXIT_SUCCESS;
     }
 
@@ -1714,6 +1930,10 @@ main(int argc, char *const *argv)
     if (cmdline_overrides.conf.output != NULL) {
         free(conf.output);
         conf.output = xstrdup(cmdline_overrides.conf.output);
+    }
+    if (cmdline_overrides.conf.namespace != NULL) {
+        free(conf.namespace);
+        conf.namespace = xstrdup(cmdline_overrides.conf.namespace);
     }
     if (cmdline_overrides.conf.prompt != NULL) {
         free(conf.prompt);
@@ -1758,12 +1978,16 @@ main(int argc, char *const *argv)
     }
     if (cmdline_overrides.dpi_aware_set)
         conf.dpi_aware = cmdline_overrides.conf.dpi_aware;
+    if (cmdline_overrides.gamma_correct_set)
+        conf.gamma_correct = cmdline_overrides.conf.gamma_correct;
     if (cmdline_overrides.match_fields_set)
         conf.match_fields = cmdline_overrides.conf.match_fields;
     if (cmdline_overrides.icons_disabled_set)
         conf.icons_enabled = cmdline_overrides.conf.icons_enabled;
     if (cmdline_overrides.hide_when_prompt_empty_set)
         conf.hide_when_prompt_empty = cmdline_overrides.conf.hide_when_prompt_empty;
+    if (cmdline_overrides.hide_prompt_set)
+        conf.hide_prompt = cmdline_overrides.conf.hide_prompt;
     if (cmdline_overrides.anchor_set)
         conf.anchor = cmdline_overrides.conf.anchor;
     if (cmdline_overrides.x_margin_set)
@@ -1772,6 +1996,8 @@ main(int argc, char *const *argv)
         conf.margin.y = cmdline_overrides.conf.margin.y;
     if (cmdline_overrides.lines_set)
         conf.lines = cmdline_overrides.conf.lines;
+    if (cmdline_overrides.minimal_lines_set)
+        conf.minimal_lines = cmdline_overrides.conf.minimal_lines;
     if (cmdline_overrides.chars_set)
         conf.chars = cmdline_overrides.conf.chars;
     if (cmdline_overrides.tabs_set)
@@ -1800,6 +2026,8 @@ main(int argc, char *const *argv)
         conf.colors.selection_text = cmdline_overrides.conf.colors.selection_text;
     if (cmdline_overrides.selection_match_color_set)
         conf.colors.selection_match = cmdline_overrides.conf.colors.selection_match;
+    if (cmdline_overrides.selection_border_radius_set)
+        conf.selection_border.radius = cmdline_overrides.conf.selection_border.radius;
     if (cmdline_overrides.counter_color_set)
         conf.colors.counter = cmdline_overrides.conf.colors.counter;
     if (cmdline_overrides.border_color_set)
@@ -1838,10 +2066,16 @@ main(int argc, char *const *argv)
         conf.dmenu.mode = cmdline_overrides.conf.dmenu.mode;
     if (cmdline_overrides.dmenu_exit_immediately_if_empty_set)
         conf.dmenu.exit_immediately_if_empty = cmdline_overrides.conf.dmenu.exit_immediately_if_empty;
-    if (cmdline_overrides.dmenu_with_nth_set)
-        conf.dmenu.render_column = cmdline_overrides.conf.dmenu.render_column;
-    if (cmdline_overrides.dmenu_accept_nth_set)
-        conf.dmenu.output_column = cmdline_overrides.conf.dmenu.output_column;
+    if (cmdline_overrides.dmenu_nth_delim_set)
+        conf.dmenu.nth_delim = cmdline_overrides.conf.dmenu.nth_delim;
+    if (cmdline_overrides.dmenu_with_nth_set) {
+        free(conf.dmenu.with_nth_format);
+        conf.dmenu.with_nth_format = cmdline_overrides.conf.dmenu.with_nth_format;
+    }
+    if (cmdline_overrides.dmenu_accept_nth_set) {
+        free(conf.dmenu.accept_nth_format);
+        conf.dmenu.accept_nth_format = cmdline_overrides.conf.dmenu.accept_nth_format;
+    }
     if (cmdline_overrides.conf.list_executables_in_path)
         conf.list_executables_in_path = cmdline_overrides.conf.list_executables_in_path;
     if (cmdline_overrides.render_workers_set)
@@ -1860,6 +2094,14 @@ main(int argc, char *const *argv)
         free(conf.cache_path);
         conf.cache_path = xstrdup(cmdline_overrides.conf.cache_path);
     }
+    if (cmdline_overrides.print_timing_info_set)
+        conf.print_timing_info = cmdline_overrides.conf.print_timing_info;
+    if (cmdline_overrides.scaling_filter_set)
+        conf.png_scaling_filter = cmdline_overrides.conf.png_scaling_filter;
+    if (cmdline_overrides.conf.auto_select)
+        conf.auto_select = cmdline_overrides.conf.auto_select;
+    if (cmdline_overrides.no_mouse_set)
+        conf.enable_mouse = cmdline_overrides.conf.enable_mouse;
 
     if (conf.dmenu.enabled) {
         /* We don't have any meta data in dmenu mode */
@@ -1980,6 +2222,8 @@ main(int argc, char *const *argv)
              &font_reloaded, &ctx)) == NULL)
         goto out;
 
+    render_initialize_colors(render, &conf, wayl_do_linear_blending(wayl));
+
     matches_set_wayland(matches, wayl);
     ctx.wayl = wayl;
 
@@ -1994,6 +2238,7 @@ main(int argc, char *const *argv)
     if (!fdm_add(fdm, event_pipe[0], EPOLLIN, &fdm_apps_populated, &ctx))
         goto out;
 
+    gettimeofday(&ctx.timing.apps.start, NULL);
     if (thrd_create(&app_thread_id, &populate_apps, &ctx) != thrd_success) {
         LOG_ERR("failed to create thread");
         goto out;
@@ -2001,8 +2246,13 @@ main(int argc, char *const *argv)
 
     join_app_thread = true;
 
-    if (!conf.dmenu.exit_immediately_if_empty)
-        wayl_refresh(wayl);
+    if (!conf.dmenu.exit_immediately_if_empty &&
+        !(conf.dmenu.enabled && conf.minimal_lines))
+    {
+        wayl_ready_to_display(wayl);
+    }
+
+    wayl_refresh(wayl);
 
     while (true) {
         wayl_flush(wayl);

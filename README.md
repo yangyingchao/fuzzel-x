@@ -53,7 +53,7 @@ _Fuzzel, with transparency, on top of a browser window showing a diff of a fuzze
 ### For all modes
 
 - Numerous customizable key bindings, based on Emacs
-- Mouse support
+- Mouse & touchscreen support
 - Paste support
 - Emoji support
 - A number of theming options, which can be set in a separate `include` file
@@ -161,3 +161,11 @@ Fuzzel is released under the [MIT license](LICENSE).
 
 Fuzzel uses nanosvg, released under the [Zlib
 license](3rd-party/nanosvg/LICENSE.txt).
+
+
+# Sponsoring/donations
+
+* Liberapay: https://liberapay.com/dnkl
+* GitHub Sponsors: https://github.com/sponsors/dnkl
+
+[![Donate using Liberapay](https://liberapay.com/assets/widgets/donate.svg)](https://liberapay.com/dnkl/donate)

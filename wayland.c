@@ -1,16 +1,20 @@
 #include "wayland.h"
+#include "char32.h"
 
-#include <stdlib.h>
-#include <string.h>
 #include <ctype.h>
-#include <wctype.h>
-#include <unistd.h>
 #include <errno.h>
 #include <locale.h>
+#include <math.h>
+#include <poll.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <wctype.h>
 
 #include <sys/mman.h>
 #include <sys/epoll.h>
 #include <sys/timerfd.h>
+#include <sys/time.h>
 
 #include <wayland-client.h>
 #include <wayland-cursor.h>
@@ -22,6 +26,7 @@
 #include <xkbcommon/xkbcommon-compose.h>
 #include <fontconfig/fontconfig.h>
 
+#include <color-management-v1.h>
 #include <cursor-shape-v1.h>
 #include <fractional-scale-v1.h>
 #include <primary-selection-unstable-v1.h>
@@ -140,6 +145,7 @@ struct wayland {
     enum fcft_subpixel subpixel;
     bool font_is_sized_by_dpi;
     bool hide_when_prompt_empty;
+    bool enable_mouse;
 
     enum { KEEP_RUNNING, EXIT_UPDATE_CACHE, EXIT} status;
     int exit_code;
@@ -164,6 +170,7 @@ struct wayland {
 
     struct wp_viewport *viewport;
     struct wp_fractional_scale_v1 *fractional_scale;
+    struct wp_color_management_surface_v1 *color_management_surface;
 
     struct wl_shm *shm;
     struct zxdg_output_manager_v1 *xdg_output_manager;
@@ -173,12 +180,26 @@ struct wayland {
     struct wl_data_device_manager *data_device_manager;
     struct zwp_primary_selection_device_manager_v1 *primary_selection_device_manager;
 
+    struct {
+        struct wp_color_manager_v1 *manager;
+        struct wp_image_description_v1 *img_description;
+        bool have_intent_perceptual;
+        bool have_feat_parametric;
+        bool have_tf_ext_linear;
+        bool have_primaries_srgb;
+    } color_management;
+
     tll(struct monitor) monitors;
     const struct monitor *monitor;
 
     tll(struct seat) seats;
 
     struct buffer_chain *chain;
+
+    bool shm_have_abgr161616;
+    bool shm_have_xbgr161616;
+
+    bool ready_to_display;
 };
 
 bool
@@ -269,6 +290,9 @@ seat_destroy(struct seat *seat)
         wl_surface_destroy(seat->pointer.surface);
     if (seat->wl_pointer != NULL)
         wl_pointer_release(seat->wl_pointer);
+
+    if (seat->wl_touch != NULL)
+        wl_touch_release(seat->wl_touch);
 
     if (seat->wl_seat != NULL)
         wl_seat_release(seat->wl_seat);
@@ -371,6 +395,18 @@ reload_cursor_theme(struct seat *seat, float new_scale)
 static void
 shm_format(void *data, struct wl_shm *wl_shm, uint32_t format)
 {
+    struct wayland *wayl = data;
+
+    switch (format) {
+#if 0  /* Don't bother with 10bpc formats right now, since they have too few alpha bits */
+    case WL_SHM_FORMAT_XRGB2101010: wayl->shm_have_xrgb2101010 = true; break;
+    case WL_SHM_FORMAT_ARGB2101010: wayl->shm_have_argb2101010 = true; break;
+    case WL_SHM_FORMAT_XBGR2101010: wayl->shm_have_xbgr2101010 = true; break;
+    case WL_SHM_FORMAT_ABGR2101010: wayl->shm_have_abgr2101010 = true; break;
+#endif
+    case WL_SHM_FORMAT_XBGR16161616: wayl->shm_have_xbgr161616 = true; break;
+    case WL_SHM_FORMAT_ABGR16161616: wayl->shm_have_abgr161616 = true; break;
+    }
 }
 
 static const struct wl_shm_listener shm_listener = {
@@ -484,6 +520,16 @@ keyboard_leave(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
     repeat_stop(&seat->kbd.repeat, -1);
     seat->kbd.serial = 0;
 
+    if (seat->kbd.xkb_compose_state != NULL)
+        xkb_compose_state_reset(seat->kbd.xkb_compose_state);
+
+    if (seat->kbd.xkb_state != NULL && seat->kbd.xkb_keymap != NULL) {
+        const xkb_layout_index_t layout_count = xkb_keymap_num_layouts(seat->kbd.xkb_keymap);
+
+        for (xkb_layout_index_t i = 0; i < layout_count; i++)
+            xkb_state_update_mask(seat->kbd.xkb_state, 0, 0, 0, i, i, i);
+    }
+
     if (seat->wayl->conf->exit_on_kb_focus_loss)
         seat->wayl->status = EXIT;
 }
@@ -527,6 +573,57 @@ get_xdg_activation_token(struct seat *seat, const char *app_id,
     xdg_activation_token_v1_destroy(token);
 }
 
+static void execute_selected(struct seat *seat, bool as_is, int custom_success_exit_code);
+
+static bool
+check_auto_select(struct seat *seat, bool refresh)
+{
+    struct wayland *wayl = seat->wayl;
+
+    /* Check for auto-select after key binding execution */
+    if (refresh && wayl->conf->auto_select) {
+        if (matches_get_total_count(wayl->matches) == 1) {
+            execute_selected(seat, false, -1);
+            return true;
+        }
+    }
+    return false;
+}
+
+/*
+ * NOTE: this function is expected to be called from an outside
+ * context. It MUST NOT be called while inside a fdm_handler()
+ * callchain */
+bool
+wayl_check_auto_select(struct wayland *wayl)
+{
+    if (tll_length(wayl->seats) == 0)
+        return false;
+
+    struct seat *seat = &tll_front(wayl->seats);
+
+    /*
+     * This is finicky... check_auto_select() _may_ result in an
+     * application being executed.
+     *
+     * Part of this involves retrieving and XDG activation token. This
+     * requires a display roundtrip. The roundtrip will *not* work
+     * wl_display_prepare_read() is active.
+     *
+     * So, we need to cancel the pending read, do our thing, and then
+     * re-endter prepare_read().
+     *
+     * This will *not* work if wl_display_prepare_read() is *not*
+     * active, hence the warning above, that this function must not be
+     * called while inside an fdm_handler() callchain, since
+     * fdm_handler() does read from the wayland socket.
+     */
+    wl_display_cancel_read(wayl->display);
+    bool ret = check_auto_select(seat, true);
+    wl_display_prepare_read(wayl->display);
+    return ret;
+}
+
 static void
 execute_selected(struct seat *seat, bool as_is, int custom_success_exit_code)
 {
@@ -538,7 +635,9 @@ execute_selected(struct seat *seat, bool as_is, int custom_success_exit_code)
     ssize_t index = app != NULL ? app->index : -1;
 
     if (wayl->conf->dmenu.enabled) {
-        dmenu_execute(app, index, wayl->prompt, wayl->conf->dmenu.mode, wayl->conf->dmenu.output_column);
+        dmenu_execute(app, index, wayl->prompt, wayl->conf->dmenu.mode,
+                      wayl->conf->dmenu.accept_nth_format,
+                      wayl->conf->dmenu.nth_delim);
         wayl->exit_code = custom_success_exit_code >= 0
             ? custom_success_exit_code
             : EXIT_SUCCESS;
@@ -608,6 +707,12 @@ execute_binding(struct seat *seat, const struct key_binding *binding, bool *refr
 
     case BIND_ACTION_CURSOR_RIGHT_WORD:
         *refresh = prompt_cursor_next_word(wayl->prompt);
+        return true;
+
+    case BIND_ACTION_DELETE_LINE:
+        *refresh = prompt_erase_all(wayl->prompt);
+        if (*refresh)
+            matches_update(wayl->matches);
         return true;
 
     case BIND_ACTION_DELETE_PREV:
@@ -692,7 +797,9 @@ execute_binding(struct seat *seat, const struct key_binding *binding, bool *refr
         return true;
 
     case BIND_ACTION_MATCHES_EXECUTE:
-        execute_selected(seat, false, -1);
+        /* Ignore execute action if prompt empty and no matches */
+        if (prompt_text(wayl->prompt)[0] != '\0' || matches_get_total_count(wayl->matches) != 0)
+            execute_selected(seat, false, -1);
         return true;
 
     case BIND_ACTION_MATCHES_EXECUTE_OR_NEXT:
@@ -854,6 +961,10 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
             {
                 if (refresh)
                     wayl_refresh(wayl);
+
+                if (check_auto_select(seat, refresh))
+                    goto maybe_repeat;
+
                 goto maybe_repeat;
             }
         }
@@ -869,6 +980,10 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
         {
             if (refresh)
                 wayl_refresh(wayl);
+
+            if (check_auto_select(seat, refresh))
+                goto maybe_repeat;
+
             goto maybe_repeat;
         }
     }
@@ -887,6 +1002,10 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
             {
                 if (refresh)
                     wayl_refresh(wayl);
+
+                if (check_auto_select(seat, refresh))
+                    goto maybe_repeat;
+
                 goto maybe_repeat;
             }
         }
@@ -920,6 +1039,7 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
 
     matches_update_incremental(wayl->matches);
     wayl_refresh(wayl);
+    check_auto_select(seat, true);
 
 maybe_repeat:
 
@@ -984,10 +1104,15 @@ static void
 select_hovered_match(struct seat *seat, bool refresh_always)
 {
     struct wayland *wayl = seat->wayl;
+
     bool refresh = false;
 
-    size_t hovered_row = render_get_row_num(
-        wayl->render, seat->pointer.y, wayl->matches);
+    ssize_t hovered_row = render_get_row_num(
+        wayl->render, wayl->width, seat->pointer.x, seat->pointer.y,
+        wayl->matches);
+
+    if (hovered_row < 0)
+        return;
 
     if (hovered_row != seat->pointer.hovered_row_idx) {
         seat->pointer.hovered_row_idx = hovered_row;
@@ -1005,6 +1130,7 @@ wl_pointer_enter(void *data, struct wl_pointer *wl_pointer,
                  wl_fixed_t surface_x, wl_fixed_t surface_y)
 {
     struct seat *seat = data;
+    if (!seat->wayl->enable_mouse) return;
     seat->pointer.serial = serial;
 
     /*
@@ -1034,6 +1160,7 @@ wl_pointer_leave(void *data, struct wl_pointer *wl_pointer,
                  uint32_t serial, struct wl_surface *surface)
 {
     struct seat *seat = data;
+    if (!seat->wayl->enable_mouse) return;
     seat->pointer.serial = serial;
 }
 
@@ -1042,6 +1169,7 @@ wl_pointer_motion(void *data, struct wl_pointer *wl_pointer,
                   uint32_t time, wl_fixed_t surface_x, wl_fixed_t surface_y)
 {
     struct seat *seat = data;
+    if (!seat->wayl->enable_mouse) return;
 
     const int x = wl_fixed_to_int(surface_x);
     const int y = wl_fixed_to_int(surface_y);
@@ -1049,8 +1177,8 @@ wl_pointer_motion(void *data, struct wl_pointer *wl_pointer,
     const int old_x = seat->pointer.x;
     const int old_y = seat->pointer.y;
 
-    seat->pointer.x = x;
-    seat->pointer.y = y;
+    seat->pointer.x = round(seat->wayl->scale * x);
+    seat->pointer.y = round(seat->wayl->scale * y);
 
     if (old_x != 0 && old_y != 0)
         select_hovered_match(seat, false);
@@ -1062,10 +1190,16 @@ wl_pointer_button(void *data, struct wl_pointer *wl_pointer,
 {
     struct seat *seat = data;
     struct wayland *wayl = seat->wayl;
+    if (!wayl->enable_mouse) return;
 
     if (state == WL_POINTER_BUTTON_STATE_RELEASED) {
         if (button == BTN_LEFT && seat->pointer.hovered_row_idx != -1) {
-            execute_selected(seat, false, -1);
+            ssize_t clicked_row = render_get_row_num(
+                wayl->render, wayl->width, seat->pointer.x, seat->pointer.y,
+                wayl->matches);
+
+            if (clicked_row == seat->pointer.hovered_row_idx)
+                execute_selected(seat, false, -1);
         }
 
         else if (button == BTN_RIGHT) {
@@ -1087,12 +1221,13 @@ wl_pointer_axis(void *data, struct wl_pointer *wl_pointer,
 {
     struct seat *seat = data;
     struct wayland *wayl = seat->wayl;
+    if (!wayl->enable_mouse) return;
     bool refresh = false;
 
     if (value < 0) {
-        refresh = matches_selected_prev_page(wayl->matches, true);
+        refresh = matches_selected_prev(wayl->matches, true);
     } else if (value > 0) {
-        refresh = matches_selected_next_page(wayl->matches, true);
+        refresh = matches_selected_next(wayl->matches, true);
     }
 
     if (refresh) {
@@ -1133,6 +1268,156 @@ static const struct wl_pointer_listener pointer_listener = {
     .axis_source = wl_pointer_axis_source,
     .axis_stop = wl_pointer_axis_stop,
     .axis_discrete = wl_pointer_axis_discrete,
+};
+
+static void
+wl_touch_down(void *data, struct wl_touch *wl_touch, uint32_t serial,
+              uint32_t time, struct wl_surface *surface, int32_t id,
+              wl_fixed_t x, wl_fixed_t y)
+{
+    struct seat *seat = data;
+
+    /* Only track one touch at a time */
+    if (seat->touch.active_touch.scrolling)
+        return;
+
+    seat->touch.active_touch.id = id;
+    seat->touch.active_touch.start_x = wl_fixed_to_double(x);
+    seat->touch.active_touch.start_y = wl_fixed_to_double(y);
+    seat->touch.active_touch.current_x = wl_fixed_to_double(x);
+    seat->touch.active_touch.current_y = wl_fixed_to_double(y);
+    seat->touch.active_touch.last_y = wl_fixed_to_double(y);
+    seat->touch.active_touch.scrolling = true;
+    seat->touch.active_touch.is_tap = true;
+    seat->touch.active_touch.start_time = time;
+    seat->touch.active_touch.accumulated_scroll = 0.0;
+    seat->touch.serial = serial;
+}
+
+static void
+wl_touch_up(void *data, struct wl_touch *wl_touch, uint32_t serial,
+            uint32_t time, int32_t id)
+{
+    struct seat *seat = data;
+    struct wayland *wayl = seat->wayl;
+
+    if (seat->touch.active_touch.id == id) {
+        /* Check if this was a tap (no significant movement and quick) */
+        if (seat->touch.active_touch.is_tap) {
+            double dx = seat->touch.active_touch.current_x - seat->touch.active_touch.start_x;
+            double dy = seat->touch.active_touch.current_y - seat->touch.active_touch.start_y;
+            double distance = sqrt(dx * dx + dy * dy);
+            uint32_t duration = time - seat->touch.active_touch.start_time;
+
+            /* Tap threshold: less than 10 pixels movement and under 500ms */
+            if (distance < 10.0 && duration < 500) {
+                /* Convert touch coordinates to match selection */
+                int touch_x = (int)seat->touch.active_touch.start_x;
+                int touch_y = (int)seat->touch.active_touch.start_y;
+
+                ssize_t tapped_row = render_get_row_num(
+                    wayl->render, wayl->width, touch_x, touch_y, wayl->matches);
+
+                /* If user tapped on a valid row, select and execute it */
+                if (tapped_row >= 0 && matches_idx_select(wayl->matches, tapped_row)) {
+                    execute_selected(seat, false, -1);
+                }
+            }
+        }
+
+        seat->touch.active_touch.scrolling = false;
+        seat->touch.active_touch.id = -1;
+    }
+}
+
+static void
+wl_touch_motion(void *data, struct wl_touch *wl_touch, uint32_t time,
+                int32_t id, wl_fixed_t x, wl_fixed_t y)
+{
+    struct seat *seat = data;
+
+    if (!seat->touch.active_touch.scrolling || seat->touch.active_touch.id != id)
+        return;
+
+    double new_x = wl_fixed_to_double(x);
+    double new_y = wl_fixed_to_double(y);
+
+    /* Update current position */
+    seat->touch.active_touch.current_x = new_x;
+    seat->touch.active_touch.current_y = new_y;
+
+    /* Check if movement is too large to be a tap */
+    double dx = new_x - seat->touch.active_touch.start_x;
+    double dy = new_y - seat->touch.active_touch.start_y;
+    double distance = sqrt(dx * dx + dy * dy);
+
+    /* Prevents accidental selection while scrolling. */
+    if (distance > 10.0) {
+        seat->touch.active_touch.is_tap = false;
+    }
+
+    /* Calculate accumulated scroll from last position */
+    double delta_y = new_y - seat->touch.active_touch.last_y;
+    seat->touch.active_touch.accumulated_scroll += delta_y;
+
+    /* Reversed scrolling: positive delta_y (finger moving down) scrolls up in the list */
+    /* Threshold for scrolling - roughly equivalent to one line */
+    const double scroll_threshold = 15.0;
+
+    if (seat->touch.active_touch.accumulated_scroll > scroll_threshold) {
+        /* Finger moving down - select previous item (scroll up in list) */
+        if (matches_selected_prev(seat->wayl->matches, true)) {
+            wayl_refresh(seat->wayl);
+        }
+        seat->touch.active_touch.accumulated_scroll = 0.0;
+    } else if (seat->touch.active_touch.accumulated_scroll < -scroll_threshold) {
+        /* Finger moving up - select next item (scroll down in list) */
+        if (matches_selected_next(seat->wayl->matches, true)) {
+            wayl_refresh(seat->wayl);
+        }
+        seat->touch.active_touch.accumulated_scroll = 0.0;
+    }
+
+    /* Update last position for next delta calculation */
+    seat->touch.active_touch.last_y = new_y;
+}
+
+static void
+wl_touch_frame(void *data, struct wl_touch *wl_touch)
+{
+    /* Touch frame events group related touch events */
+}
+
+static void
+wl_touch_cancel(void *data, struct wl_touch *wl_touch)
+{
+    struct seat *seat = data;
+    seat->touch.active_touch.scrolling = false;
+    seat->touch.active_touch.id = -1;
+}
+
+static void
+wl_touch_shape(void *data, struct wl_touch *wl_touch, int32_t id,
+               wl_fixed_t major, wl_fixed_t minor)
+{
+    /* Touch shape events - not needed for scrolling */
+}
+
+static void
+wl_touch_orientation(void *data, struct wl_touch *wl_touch, int32_t id,
+                     wl_fixed_t orientation)
+{
+    /* Touch orientation events - not needed for scrolling */
+}
+
+static const struct wl_touch_listener touch_listener = {
+    .down = wl_touch_down,
+    .up = wl_touch_up,
+    .motion = wl_touch_motion,
+    .frame = wl_touch_frame,
+    .cancel = wl_touch_cancel,
+    .shape = wl_touch_shape,
+    .orientation = wl_touch_orientation,
 };
 
 static void
@@ -1197,6 +1482,22 @@ seat_handle_capabilities(void *data, struct wl_seat *wl_seat,
             seat->pointer.surface = NULL;
             seat->pointer.theme = NULL;
             seat->pointer.cursor = NULL;
+        }
+    }
+
+    if (caps & WL_SEAT_CAPABILITY_TOUCH) {
+        if (seat->wl_touch == NULL) {
+            seat->wl_touch = wl_seat_get_touch(wl_seat);
+            wl_touch_add_listener(seat->wl_touch, &touch_listener, seat);
+
+            /* Initialize touch state */
+            seat->touch.active_touch.id = -1;
+            seat->touch.active_touch.scrolling = false;
+        }
+    } else {
+        if (seat->wl_touch != NULL) {
+            wl_touch_release(seat->wl_touch);
+            seat->wl_touch = NULL;
         }
     }
 }
@@ -1321,8 +1622,16 @@ reload_font(struct wayland *wayl, float new_dpi, float new_scale)
         if (wayl->conf->use_bold)
             strcat(bold_attrs, ":weight=bold");
 
-        font = fcft_from_name(wayl->font_count, (const char **)names, attrs);
-        font_bold = fcft_from_name(wayl->font_count, (const char **)names, bold_attrs);
+        struct fcft_font_options *opts = fcft_font_options_create();
+
+        opts->color_glyphs.srgb_decode = wayl_do_linear_blending(wayl);
+        opts->color_glyphs.format = opts->color_glyphs.srgb_decode
+            ? PIXMAN_a16b16g16r16 : PIXMAN_a8r8g8b8;
+
+        font = fcft_from_name2(wayl->font_count, (const char **)names, attrs, opts);
+        font_bold = fcft_from_name2(wayl->font_count, (const char **)names, bold_attrs, opts);
+
+        fcft_font_options_destroy(opts);
 
         for (size_t i = 0; i < wayl->font_count; i++)
             free(names[i]);
@@ -1381,6 +1690,16 @@ update_size(struct wayland *wayl)
     wayl->scale = scale;
     wayl->dpi = dpi;
 
+    wayl_resized(wayl);
+}
+
+void
+wayl_resized(struct wayland *wayl)
+{
+    render_resized(wayl->render, &wayl->width, &wayl->height);
+
+    const float scale = wayl->scale;
+
     wayl->width = roundf(roundf(wayl->width / scale) * scale);
     wayl->height = roundf(roundf(wayl->height / scale) * scale);
 
@@ -1395,10 +1714,6 @@ update_size(struct wayland *wayl)
 
     zwlr_layer_surface_v1_set_anchor(
         wayl->layer_surface, wayl->conf->anchor);
-
-    /* Trigger a 'configure' event, after which we'll have the actual width+height */
-    wl_surface_commit(wayl->surface);
-    wl_display_roundtrip(wayl->display);
 }
 
 static void
@@ -1564,6 +1879,88 @@ static struct zxdg_output_v1_listener xdg_output_listener = {
     .done = xdg_output_handle_done,
     .name = xdg_output_handle_name,
     .description = xdg_output_handle_description,
+};
+
+static void
+color_manager_create_image_description(struct wayland *wayl)
+{
+    if (!wayl->color_management.have_feat_parametric)
+        return;
+
+    if (!wayl->color_management.have_primaries_srgb)
+        return;
+
+    if (!wayl->color_management.have_tf_ext_linear)
+        return;
+
+    struct wp_image_description_creator_params_v1 *params =
+        wp_color_manager_v1_create_parametric_creator(wayl->color_management.manager);
+
+    wp_image_description_creator_params_v1_set_tf_named(
+        params, WP_COLOR_MANAGER_V1_TRANSFER_FUNCTION_EXT_LINEAR);
+
+    wp_image_description_creator_params_v1_set_primaries_named(
+        params, WP_COLOR_MANAGER_V1_PRIMARIES_SRGB);
+
+    wayl->color_management.img_description =
+        wp_image_description_creator_params_v1_create(params);
+}
+
+static void
+color_manager_supported_intent(void *data,
+                               struct wp_color_manager_v1 *wp_color_manager_v1,
+                               uint32_t render_intent)
+{
+    struct wayland *wayl = data;
+    if (render_intent == WP_COLOR_MANAGER_V1_RENDER_INTENT_PERCEPTUAL)
+        wayl->color_management.have_intent_perceptual = true;
+}
+
+static void
+color_manager_supported_feature(void *data,
+                                struct wp_color_manager_v1 *wp_color_manager_v1,
+                                uint32_t feature)
+{
+    struct wayland *wayl = data;
+
+    if (feature == WP_COLOR_MANAGER_V1_FEATURE_PARAMETRIC)
+        wayl->color_management.have_feat_parametric = true;
+}
+
+static void
+color_manager_supported_tf_named(void *data,
+                                 struct wp_color_manager_v1 *wp_color_manager_v1,
+                                 uint32_t tf)
+{
+    struct wayland *wayl = data;
+    if (tf == WP_COLOR_MANAGER_V1_TRANSFER_FUNCTION_EXT_LINEAR)
+        wayl->color_management.have_tf_ext_linear = true;
+}
+
+static void
+color_manager_supported_primaries_named(void *data,
+                                        struct wp_color_manager_v1 *wp_color_manager_v1,
+                                        uint32_t primaries)
+{
+    struct wayland *wayl = data;
+    if (primaries == WP_COLOR_MANAGER_V1_PRIMARIES_SRGB)
+        wayl->color_management.have_primaries_srgb = true;
+}
+
+static void
+color_manager_done(void *data,
+                   struct wp_color_manager_v1 *wp_color_manager_v1)
+{
+    struct wayland *wayl = data;
+    color_manager_create_image_description(wayl);
+}
+
+static const struct wp_color_manager_v1_listener color_manager_listener = {
+    .supported_intent = &color_manager_supported_intent,
+    .supported_feature = &color_manager_supported_feature,
+    .supported_primaries_named = &color_manager_supported_primaries_named,
+    .supported_tf_named = &color_manager_supported_tf_named,
+    .done = &color_manager_done,
 };
 
 static bool
@@ -1850,6 +2247,19 @@ handle_global(void *data, struct wl_registry *registry,
         tll_foreach(wayl->seats, it)
             seat_add_primary_selection(&it->item);
     }
+
+    else if (strcmp(interface, wp_color_manager_v1_interface.name) == 0) {
+        const uint32_t required = 1;
+        if (!verify_iface_version(interface, version, required))
+            return;
+
+        wayl->color_management.manager = wl_registry_bind(
+            wayl->registry, name, &wp_color_manager_v1_interface, required);
+
+        wp_color_manager_v1_add_listener(
+            wayl->color_management.manager, &color_manager_listener, wayl);
+    }
+
 }
 
 static void
@@ -2023,14 +2433,28 @@ wayl_refresh(struct wayland *wayl)
     if (!wayl->is_configured)
         return;
 
+    if (!wayl->ready_to_display)
+        return;
+
     if (wayl->frame_cb != NULL) {
         wayl->need_refresh = true;
         return;
     }
 
+    struct timeval start, stop, diff;
+    gettimeofday(&start, NULL);
+
     if (wayl->chain == NULL) {
         wayl->chain =
-            shm_chain_new(wayl->shm, false, 1 + wayl->conf->render_worker_count);
+            shm_chain_new(
+                wayl->shm, false, 1 + wayl->conf->render_worker_count,
+                wayl_do_linear_blending(wayl) && wayl->shm_have_abgr161616
+                    ? PIXMAN_a16b16g16r16
+                    : PIXMAN_a8r8g8b8,
+                wayl_do_linear_blending(wayl) && wayl->shm_have_xbgr161616
+                    ? PIXMAN_a16b16g16r16  /* No PIXMAN_x16b16g16r16 */
+                    : PIXMAN_x8r8g8b8
+                );
 
         if (wayl->chain == NULL)
             abort();
@@ -2058,7 +2482,9 @@ wayl_refresh(struct wayland *wayl)
 
     /* Window content */
     matches_lock(wayl->matches);
-    render_prompt(wayl->render, buf, wayl->prompt, wayl->matches);
+    if (!wayl->conf->hide_prompt) {
+        render_prompt(wayl->render, buf, wayl->prompt, wayl->matches);
+    }
     if (wayl->hide_when_prompt_empty) {
         if (prompt_text(wayl->prompt)[0] != '\0') {
             wayl->hide_when_prompt_empty = false;
@@ -2067,6 +2493,7 @@ wayl_refresh(struct wayland *wayl)
         }
     }
     render_match_list(wayl->render, buf, wayl->prompt, wayl->matches);
+
 skip_list:
     matches_unlock(wayl->matches);
 
@@ -2079,6 +2506,20 @@ commit:
     /* No pending frames - render immediately */
     assert(!wayl->need_refresh);
     commit_buffer(wayl, buf);
+
+    if (wayl->conf->print_timing_info) {
+        gettimeofday(&stop, NULL);
+        timersub(&stop, &start, &diff);
+        LOG_WARN("frame rendered in %llus %lluµs",
+                 (unsigned long long)diff.tv_sec,
+                 (unsigned long long)diff.tv_usec);
+    }
+}
+
+void
+wayl_ready_to_display(struct wayland *wayl)
+{
+    wayl->ready_to_display = true;
 }
 
 static bool
@@ -2092,6 +2533,8 @@ fdm_handler(struct fdm *fdm, int fd, int events, void *data)
             LOG_ERRNO("failed to read events from the Wayland socket");
             return false;
         }
+
+        wl_display_dispatch_pending(wayl->display);
 
         while (wl_display_prepare_read(wayl->display) != 0)
             if (wl_display_dispatch_pending(wayl->display) < 0) {
@@ -2288,6 +2731,7 @@ wayl_init(const struct config *conf, struct fdm *fdm,
         .prompt = prompt,
         .matches = matches,
         .hide_when_prompt_empty = conf->hide_when_prompt_empty,
+        .enable_mouse = conf->enable_mouse,
         .status = KEEP_RUNNING,
         .exit_code = !conf->dmenu.enabled ? EXIT_SUCCESS : EXIT_FAILURE,
         .font_reloaded = {
@@ -2380,7 +2824,7 @@ wayl_init(const struct config *conf, struct fdm *fdm,
     wayl->layer_surface = zwlr_layer_shell_v1_get_layer_surface(
         wayl->layer_shell, wayl->surface,
         wayl->monitor != NULL ? wayl->monitor->output : NULL,
-        conf->layer, "launcher");
+        conf->layer, conf->namespace);
 
     if (wayl->layer_surface == NULL) {
         LOG_ERR("failed to create layer shell surface");
@@ -2398,6 +2842,41 @@ wayl_init(const struct config *conf, struct fdm *fdm,
             wayl->fractional_scale, &fractional_scale_listener, wayl);
     }
 
+    if (conf->gamma_correct) {
+#if !defined(FUZZEL_ENABLE_CAIRO)
+        if (wayl->color_management.img_description != NULL) {
+            assert(wayl->color_management.manager != NULL);
+
+            wayl->color_management_surface = wp_color_manager_v1_get_surface(
+                wayl->color_management.manager, wayl->surface);
+
+            wp_color_management_surface_v1_set_image_description(
+                wayl->color_management_surface, wayl->color_management.img_description,
+                WP_COLOR_MANAGER_V1_RENDER_INTENT_PERCEPTUAL);
+
+            LOG_INFO("gamma-correct blending: enabled");
+        } else {
+            if (wayl->color_management.manager == NULL) {
+                LOG_WARN(
+                    "gamma-corrected-blending: disabling; "
+                    "compositor does not implement the color-management protocol");
+            } else {
+                LOG_WARN(
+                    "gamma-corrected-blending: disabling; "
+                    "compositor does not implement all required color-management features");
+                LOG_WARN("use e.g. 'wayland-info' and verify the compositor implements:");
+                LOG_WARN("  - feature: parametric");
+                LOG_WARN("  - render intent: perceptual");
+                LOG_WARN("  - TF: ext_linear");
+                LOG_WARN("  - primaries: sRGB");
+            }
+        }
+#else
+        LOG_WARN("gamma-correct-blending: disabling; not supported in cairo-enabled builds");
+#endif
+    } else
+        LOG_INFO("gamma-correct blending: disabled");
+
     zwlr_layer_surface_v1_set_keyboard_interactivity(wayl->layer_surface,
         wayl->has_zwlr_layer_shell_kb_inter_on_demand
             ? wayl->conf->keyboard_focus
@@ -2409,6 +2888,8 @@ wayl_init(const struct config *conf, struct fdm *fdm,
     wayl->subpixel = wayl->monitor != NULL
         ? (enum fcft_subpixel)wayl->monitor->subpixel : guess_subpixel(wayl);
     update_size(wayl);
+    wl_surface_commit(wayl->surface);
+    wl_display_roundtrip(wayl->display);
 
     if (wl_display_prepare_read(wayl->display) != 0) {
         LOG_ERRNO("failed to prepare for reading wayland events");
@@ -2449,6 +2930,12 @@ wayl_destroy(struct wayland *wayl)
         monitor_destroy(&it->item);
     tll_free(wayl->monitors);
 
+    if (wayl->color_management_surface != NULL)
+        wp_color_management_surface_v1_destroy(wayl->color_management_surface);
+    if (wayl->color_management.img_description != NULL)
+        wp_image_description_v1_destroy(wayl->color_management.img_description);
+    if (wayl->color_management.manager != NULL)
+        wp_color_manager_v1_destroy(wayl->color_management.manager);
     if (wayl->data_device_manager != NULL)
         wl_data_device_manager_destroy(wayl->data_device_manager);
     if (wayl->primary_selection_device_manager != NULL)
@@ -2494,7 +2981,55 @@ wayl_destroy(struct wayland *wayl)
 void
 wayl_flush(struct wayland *wayl)
 {
-    wl_display_flush(wayl->display);
+    while (true) {
+        int r = wl_display_flush(wayl->display);
+        if (r >= 0) {
+            /* Most likely code path - the flush succeed */
+            return;
+        }
+
+        if (errno == EINTR) {
+            /* Unlikely */
+            continue;
+        }
+
+        if (errno != EAGAIN) {
+            const int saved_errno = errno;
+
+            if (errno == EPIPE) {
+                wl_display_read_events(wayl->display);
+                wl_display_dispatch_pending(wayl->display);
+            }
+
+            LOG_ERRNO_P("failed to flush wayland socket", saved_errno);
+            return;
+        }
+
+        /* Socket buffer is full - need to wait for it to become
+           writeable again */
+        assert(errno == EAGAIN);
+
+        while (true) {
+            int wayl_fd = wl_display_get_fd(wayl->display);
+            struct pollfd fds[] = {{.fd = wayl_fd, .events = POLLOUT}};
+
+            r = poll(fds, sizeof(fds) / sizeof(fds[0]), -1);
+
+            if (r < 0) {
+                if (errno == EINTR)
+                    continue;
+
+                LOG_ERRNO("failed to poll");
+                return;
+            }
+
+            if (fds[0].revents & POLLHUP)
+                return;
+
+            assert(fds[0].revents & POLLOUT);
+            break;
+        }
+    }
 }
 
 int
@@ -2520,4 +3055,15 @@ wayl_clipboard_done(struct wayland *wayl)
 {
     matches_update_incremental(wayl->matches);
     wayl_refresh(wayl);
+}
+
+bool
+wayl_do_linear_blending(const struct wayland *wayl)
+{
+#if !defined(FUZZEL_ENABLE_CAIRO)
+    return wayl->conf->gamma_correct &&
+           wayl->color_management.img_description != NULL;
+#else
+    return false;
+#endif
 }

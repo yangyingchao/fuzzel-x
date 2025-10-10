@@ -27,17 +27,24 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 
 *include*
 	Absolute path to configuration file to import.
-	
+
 	The import file has its own section scope. I.e. the including
 	configuration is still in the default section after the include,
 	regardless of which section the included file ends in.
-	
+
 		- The path must be an absolute path, or start with *~/*.
 		- Multiple include directives are allowed, but only one path per
 		  directive.
 		- Nested imports are allowed.
-	
+
 	Default: _not set_.
+
+*namespace*
+	Namespace for the spawned layer shell surface. Useful for blocking
+	fuzzel out from screencasts in your compositor if it shows sensitive
+	information, such as passwords.
+
+	Default: _launcher_
 
 *output*
 	Output (monitor) to display on. You can list the available outputs
@@ -52,13 +59,13 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	is, a font name followed by a list of colon-separated
 	options. Most noteworthy is *:size=n*, which is used to set the
 	font size. Note that the font size is also affected by the
-	*dpi-aware* option.
-	
+	*dpi-aware* option. See *FONT CONFIG* below for details.
+
 	Examples:
 		- Dina:weight=bold:slant=italic
 		- Courier New:size=12
 		- Fantasque Sans Mono:fontfeatures=ss01
-	
+
 	Default: _monospace_.
 
 *use-bold*
@@ -67,37 +74,67 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 
 *dpi-aware*
 	*auto*, *yes*, or *no*.
-	
+
 	When set to *yes*, fonts are sized using the monitor's DPI, making
 	a font of a given size have the same physical size, regardless of
 	monitor.
-	
+
 	In this mode, the monitor's scaling factor is ignored; doubling
 	the scaling factor will *not* double the font size.
-	
+
 	When set to *no*, the monitor's DPI is ignored. The font is
 	instead sized using the monitor's scaling factor; doubling the
 	scaling factor *does* double the font size.
-	
+
 	Finally, if set to *auto*, fonts will be sized using the monitor's
 	DPI if _all_ monitors have a scaling factor of 1. If at least one
 	monitor as a scaling factor larger than 1 (regardless of whether
 	the fuzzel window is mapped on that monitor or not), fonts will be
 	scaled using the scaling factor.
-	
+
 	Note that this option typically does not work with bitmap fonts,
 	which only contains a pre-defined set of sizes, and cannot be
 	dynamically scaled. Whichever size (of the available ones) that
 	best matches the DPI or scaling factor, will be used.
-	
+
 	Also note that if the font size has been specified in pixels
 	(*:pixelsize=*_N_, instead of *:size=*_N_), DPI scaling
 	(*dpi-aware=yes*) will have no effect (the specified pixel size
 	will be used as is). But, if the monitor's scaling factor is used
 	to size the font (*dpi-aware=no*), the font's pixel size will be
 	multiplied with the scaling factor.
-	
+
 	Default: _auto_.
+
+*gamma-correct*
+	Boolean. When enabled, fuzzel will do gamma-correct blending in
+	linear color space. This is how font glyphs are supposed to be
+	rendered, but since nearly no applications or toolkits are doing
+	it on Linux, the result may not look like you are used to.
+
+	Compared to the default (disabled), bright glyphs on a dark
+	background will appear thicker, and dark glyphs on a light
+	background will appear thinner.
+
+	FreeType can limit the effect of the latter, with a technique
+	called stem darkening. It is only available for CFF fonts
+	(OpenType, .otf) and disabled by default (in FreeType). You can
+	enable it by setting the environment variable
+	*FREETYPE_PROPERTIES="cff:no-stem-darkening=0"* before starting
+	fuzzel.
+
+	Also be aware that many fonts have been developed on systems that
+	do not do gamma-correct blending, and may therefore look thicker
+	than intended when rendered with gamma-correct blending, since the
+	font designer set the font weight based on incorrect rendering.
+
+	In order to represent colors faithfully, higher precision image
+	buffers are required. For this reason, fuzzel uses 16-bit image
+	buffers (instead of 8-bit) when gamma-correct blending is enabled.
+
+	It is not possible to enable gamma-correct blending in cairo
+	enabled builds of fuzzel, since cairo does not support 16-bit
+	image buffers.
 
 *placeholder*
 	Text to display as placeholder in the input box. Default: empty.
@@ -108,7 +145,7 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 
 *icon-theme*
 	Icon theme. Note that the name is case sensitive. Default:
-	_hicolor_.
+	_default_.
 
 *icons-enabled*
 	Boolean. When enabled, application icons (from the selected
@@ -122,11 +159,11 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 *fields*
 	Comma separated list of XDG Desktop entry fields to match
 	against.
-	
+
 	Even though fuzzel only displays the application names,
 	matching can (and by default is) be done against other fields as
 	well. Supported fields are:
-	
+
 	- filename
 	- name
 	- generic
@@ -147,16 +184,16 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 
 *match-mode*
 	One of *exact*, *fzf* and *fuzzy*.
-	
+
 	*exact*: what you type is matched exactly against each field in
 	the *fields* list.
-	
+
 	*fzf*: fzf-style matching, where substrings from what you have
 	typed are matched against each field in the *fields* list.
-	
+
 	*fuzzy*: levenshtein-based fuzzy matching of what you have typed
 	against each field in the *fields* list.
-	
+
 	Default: _fzf_
 
 *sort-result*
@@ -166,9 +203,9 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	ignored. This effectively disables the cache (though, the cache is
 	still updated on exit).
 
-	This can improve search latency when searching very large data
-	sets.
-	
+	Disabling this can improve search latency when searching very
+	large data sets.
+
 	Default: _yes_
 
 *match-counter*
@@ -176,11 +213,12 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	displayed on the right-hand side of the input prompt. Disabling
 	the counter also improves performance when loading a very large
 	number of dmenu entries from STDIN.
-	
+
 	Default: _no_.
 
 *filter-desktop*
-	Boolean. Filter desktop files based on the value of XDG_CURRENT_DESKTOP.
+	Boolean. Filter desktop files based on the value of
+	XDG_CURRENT_DESKTOP. Default: _no_.
 
 *show-actions*
 	Boolean. Some desktop files define "actions", in addition to the
@@ -189,8 +227,21 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	fuzzel. Default: _no_.
 
 *terminal*
-	terminal command to use when launching 'terminal' programs,
-	e.g. \"xterm -e\". Default: _$TERMINAL -e_.
+	terminal command to use when launching 'terminal' programs.
+
+	The command may contain the placeholder _{cmd}_ which will be
+	replaced with the actual command to be run. When _{cmd}_ is present,
+	the command is **only** substituted in those locations and is **not**
+	appended at the end.
+
+	Examples:
+	- _foot -a '{cmd}' -T '{cmd}' {cmd}_ sets app-id and title to the
+	  command name, then executes it
+	- _xterm -e {cmd}_ executes the command in xterm
+	- _xterm -e_ (no {cmd}) uses old behavior: appends command after
+	  terminal args
+
+	Default: _$TERMINAL -e_.
 
 *list-executables-in-path*
 	Boolean. When enabled, the list will include executables
@@ -206,7 +257,7 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 *anchor*
 	Set window anchor, i.e. where on screen the window will be
 	displayed.  You can choose one from:
-	
+
 	- top-left
 	- top
 	- top-right
@@ -216,7 +267,7 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	- bottom-left
 	- bottom
 	- bottom-right
-	
+
 	Default: _center_
 
 *x-margin*
@@ -232,9 +283,23 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 *lines*
 	Number of matches to show. Default: _15_.
 
+*hide-prompt*
+	Boolean. When set, hides the prompt line, making the window smaller.
+	Input is still accepted though the prompt line is not displayed.
+	Cannot be used with *prompt-only*. Default: _no_.
+
+*minimal-lines*
+	Boolean. Adjust the number of lines to display to the minimum of
+	_lines_ and the number of input lines. Only effective in dmenu
+	mode. This allows fuzzel to size itself to the actual number of
+	input lines rather than always showing the full _lines_
+	rows. Default: _no_.
+
 *width*
-	Window width, in characters. Border and margins are not included
-	in this. Default: _30_.
+	Window width, in characters. Margins and borders not included. For
+	variable width fonts this is an estimate, as the exact number of
+	characters that will fit depends on which characters are being
+	displayed. Default: _30_.
 
 *tabs*
 	Number of spaces a tab is expanded to. Default: _8_.
@@ -266,39 +331,39 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 *layer*
 	Which layer to render the fuzzel window on. Valid values are *top*
 	and *overlay*.
-	
+
 	*top* renders above normal windows, but typically below fullscreen
 	windows and lock screens.
-	
+
 	*overlay* renders on top of both normal windows and fullscreen
 	windows. Note that the order is undefined if several windows use
 	the same layer. Since e.g. lock screens typically use *overlay*,
 	that means fuzzel may or may not appear on top of a lock screen.
-	
+
 	Default: _overlay_
 
 *keyboard-focus*
 	Keyboard focusing mode, valid modes are *exclusive* and *on-demand*.
-	
+
 	*exclusive* locks keyboard focus to fuzzel, receiving all keyboard
 	input until closed.
-	
+
 	*on-demand* makes fuzzel focus like a regular window, allowing other
 	windows to take keyboard focus by e.g. clicking on them.
 	By default switching keyboard focus will immediately close fuzzel,
 	using *exit-on-keyboard-focus-loss=no* allows interacting with
 	other windows while fuzzel is open.
-	
+
 	Default: _exclusive_
 
 *exit-on-keyboard-focus-loss*
 	Boolean. If true, exit when the fuzzel window loses keyboard focus.
-	
+
 	Setting this to false can be useful on compositors where enabling
 	"focus-follows-mouse" causes fuzzel to exit as soon as the mouse
 	is moved over another window. Sway (<= 1.7) exhibits this
 	behavior, for example.
-	
+
 	Default: _yes_
 
 *render-workers*
@@ -307,11 +372,19 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	(including SMT). Note that this is not always the best value. In
 	some cases, the number of physical _cores_ is better.
 
+	In case you have a ridiculous amount of cores and/or threads,
+	consider limiting the number of *render-workers*, since fuzzel
+	cannot parallelize more than the number of displayed entries.
+
 *match-workers*
 	Number of threads to use for matching. Set to 0 to disable
 	multithreading. Default: the number of available logical CPUs
 	(including SMT). Note that this is not always the best value. In
 	some cases, the number of physical _cores_ is better.
+
+	In case you have a ridiculous amount of cores and/or threads,
+	consider limiting the number of *match-workers*, since fuzzel
+	cannot parallelize more than the number of available entries.
 
 *delayed-filter-ms*
 	Time, in milliseconds, to delay refiltering when there are more
@@ -322,10 +395,35 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	refiltering to delayed refiltering (see
 	*delayed-filter-ms*). Default: _20000_.
 
+*scaling-filter*
+	Scaling filter to use when down scaling PNGs. One of *none*,
+	*nearest*, *bilinear*, *box*, *linear*, *cubic*, *lanczos2*,
+	*lanczos3* and *lanczos3-stretched*.
+
+	*none*, *nearest* and *bilinear* are the fastest options, but also
+	have the worst looking results.
+
+	*cubic*, *lanczos2*, *lanczos3* and *lanczos3-stretched* are the
+	slowest options, with the best looking results.
+
+	*box*, and to some degree, *linear*, are in the middle,
+	performance wise, while in most cases still being just as, or
+	close to, as good as *cubic* and the lanczos filters.
+
+	Default: _box_
+
 *cache*
 	Specify the default cache location. If unset,
 	*$XDG_CACHE_HOME/fuzzel* will be used. Set to */dev/null* to
 	disable caching. Default: _not set_.
+
+*auto-select*
+	Boolean. When one entry is left, automatically select it.
+	Default: _no_.
+
+*enable-mouse*
+	Boolean. Enable mouse input.
+	Default: _yes_.
 
 # SECTION: colors
 
@@ -379,6 +477,10 @@ All color values are in RGBA.
 
 *radius*
 	Amount of corner "roundness". Default: _10_.
+
+*selection-radius*
+	Amount of corner "roundness" for the selected entry. Default: _0_.
+
 
 # SECTION: dmenu
 
@@ -460,9 +562,13 @@ done by setting _action=none_; e.g. *delete-line-forward=none*.
 	Control+e_.
 
 *delete-input*
-	There is no standalone binding to clear the input. Use _Control+a_
-	to go into the beginning of the input, followed the
-	*delete-line-forward* binding. By default, _Control+k_.
+	There is no standalone binding to clear the input. Use
+	*cursor-home* (_Control+a_) to go into the beginning of the input,
+	followed the *delete-line-forward* binding
+	(_Control+k_). Alternatively, if you are at the end of the input,
+	use *delete-line-backward* (_Control+u_). These are alternatives
+	to using "select all" to highlight text (not supported by fuzzel)
+	and then delete it.
 
 *delete-line-backward*
 	Deletes everything before the cursor. Default: _Control+u_.
@@ -483,6 +589,12 @@ done by setting _action=none_; e.g. *delete-line-forward=none*.
 *delete-next-word*
 	Deletes the **word after** the cursor. Default: _Mod1+d
 	Control+Delete_.
+
+*delete-line-forward*
+	Deletes everything after the cursor. Default: _Control+k_.
+
+*delete-line*
+	Deletes the entire input. Default: _Control+Shift+BackSpace_.
 
 *insert-selected*
 	Copies the selected entry to the prompt, replacing the current
@@ -534,7 +646,7 @@ done by setting _action=none_; e.g. *delete-line-forward=none*.
 	Execute the currently selected entry, then exit with a non-zero
 	exit code. *custom-1* exits with exit code 10, *custom-2* with 11,
 	*custom-3* with 12, and so on.
-	
+
 	Default:
 		- custom-1: _Mod1+1_
 		- custom-2: _Mod1+2_
@@ -563,6 +675,43 @@ done by setting _action=none_; e.g. *delete-line-forward=none*.
 	to make filter easier. For example, *l10n-pinyin* can convert
 	chinese characters into pinyin, so filter can start without IME.
 
+
+# FONT CONFIG
+
+Fontconfig uses a flexible string format for specifying fonts that
+allows you to define font families, styles, weights, and various
+properties. The basic syntax follows this pattern:
+
+	"Family Name:style=Style:weight=Weight:size=Size"
+
+Common Properties:
+
+- *family* - Font family name
+- *style* - italic, oblique, roman
+- *weight* - light, normal, bold, black (or numeric values 100-900)
+- *size* - Point size
+- *slant* - italic, oblique, roman
+- *width* - condensed, normal, expanded
+
+
+Fontconfig supports fallback fonts. You can specify multiple font
+families separated by commas. The fallback fonts are searched in the
+order they appear. If a glyph cannot be found in any of the fallback
+fonts, the dynamic fallback list from fontconfig (for the primary font)
+is searched. Ex:
+
+	"My Custom Font, DejaVu Sans:weight=bold, sans-serif"
+
+Fontconfig always returns something unless you don't have any fonts installed,
+regardless of what font name you give it. You can check fonts that would be matched
+with `fc-match -s YourFontName`.
+
+The font library Fuzzel uses, fcft, will search the explicit fallbacks whenever a glyph
+cannot be found in the primary font. When it cannot find a glyph in the explicit
+fallbacks, then it searches the fontconfig fallbacks of the first font in Fuzzel's list.
+
+This design allows a custom fallback sequence as well as custom font options for each
+fallback.
 
 # SEE ALSO
 

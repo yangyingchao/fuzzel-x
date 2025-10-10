@@ -25,6 +25,13 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	Verify configuration and then exit with 0 if ok, otherwise exit
 	with 1.
 
+*-n*,*--namespace*=_NAMESPACE_
+	Specifies the namespace for the spawned layer shell surface. Useful for
+	blocking fuzzel out from screencasts in your compositor if it shows
+	sensitive information, such as passwords.
+
+	Default: _launcher_
+
 *--cache*=_PATH_
 	Use a custom cache location. Fuzzel uses this file to cache the
 	most commonly launched applications (to be able to sort them at
@@ -87,6 +94,36 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	
 	Default: _auto_
 
+*--gamma-correct*
+	Do gamma-correct blending in linear color space. This is how font
+	glyphs are supposed to be rendered, but since nearly no
+	applications or toolkits are doing it on Linux, the result may not
+	look like you are used to.
+	
+	Compared to the default (disabled), bright glyphs on a dark
+	background will appear thicker, and dark glyphs on a light
+	background will appear thinner.
+	
+	FreeType can limit the effect of the latter, with a technique
+	called stem darkening. It is only available for CFF fonts
+	(OpenType, .otf) and disabled by default (in FreeType). You can
+	enable it by setting the environment variable
+	*FREETYPE_PROPERTIES="cff:no-stem-darkening=0"* before starting
+	fuzzel.
+	
+	Also be aware that many fonts have been developed on systems that
+	do not do gamma-correct blending, and may therefore look thicker
+	than intended when rendered with gamma-correct blending, since the
+	font designer set the font weight based on incorrect rendering.
+	
+	In order to represent colors faithfully, higher precision image
+	buffers are required. For this reason, fuzzel uses 16-bit image
+	buffers (instead of 8-bit) when gamma-correct blending is enabled.
+	
+	It is not possible to enable gamma-correct blending in cairo
+	enabled builds of fuzzel, since cairo does not support 16-bit
+	image buffers.
+
 *-p*,*--prompt*=_PROMPT_
 	Prompt to use. Default: _> _.
 
@@ -96,6 +133,11 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	- sets *--lines* to 0
 	
 	In non-dmenu mode it behaves exactly like *--prompt*.
+
+*--hide-prompt*
+	Hide the prompt line, making the window smaller. Input is still
+	accepted, but the prompt line is not displayed. This option
+	cannot be used at the same time with *--prompt-only*.
 
 *--placeholder*=_TEXT_
 	Text to display as placeholder in the input box. Default: empty.
@@ -114,7 +156,7 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	
 	Example: _Adwaita_.
 	
-	Default: _hicolor_.
+	Default: _default_.
 
 *-I*,*--no-icons*
 	Do not render any icons.
@@ -128,7 +170,8 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	- *filename*: the .desktop file's filename
 	- *name*: the application's name (title)
 	- *generic*: the application's generic name
-	- *exec*: the applications's executable, as specified in the desktop file. Note: may include command line options as well.
+	- *exec*: the applications's executable, as specified in the desktop
+	  file. Note: may include command line options as well.
 	- *keywords*: the application's keywords
 	- *categories*: the application's categories
 	- *comment*: the application's comment
@@ -141,7 +184,20 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 
 *-T*,*--terminal*=_TERMINAL ARGS_
 	Command to launch XDG applications with the property
-	*Terminal=true* (_htop_, for example). Example: _xterm -e_.
+	*Terminal=true* (_htop_, for example).
+
+	The command may contain the placeholder _{cmd}_ which will be
+	replaced with the actual command to be run. When _{cmd}_ is present,
+	the command is **only** substituted in those locations and is **not**
+	appended at the end.
+
+	Examples:
+	- _foot -a '{cmd}' -T '{cmd}' {cmd}_ sets app-id and title to the
+	  command name, then executes it
+	- _xterm -e {cmd}_ executes the command in xterm
+	- _xterm -e_ (no {cmd}) uses old behavior: appends command after
+	  terminal args
+
 	Default: _not set_.
 
 *-a*,*--anchor*=_ANCHOR_
@@ -174,6 +230,9 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	Select the first entry that matches the given string (case
 	insensitive).
 
+*--auto-select*
+	Automatically select when only one match remains.
+
 *--select-index*=INDEX
 	Select the entry with index, not compatible with --select.
 
@@ -181,9 +240,17 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	The (maximum) number of matches to display. This dictates the
 	window height. Default: _15_.
 
+*--minimal-lines*
+	Adjust the number of lines to display to the minimum of _--lines_ and
+	the number of input lines. Only effective in dmenu mode. This allows
+	fuzzel to size itself to the actual number of input lines rather than
+	always showing the full _--lines_ rows.
+
 *-w*,*--width*
-	Window width, in characters. Margins and borders not
-	included. Default: _30_.
+	Window width, in characters. Margins and borders not included. For
+	variable width fonts this is an estimate, as the exact number of
+	characters that will fit depends on which characters are being
+	displayed. Default: _30_.
 
 *--tabs*=_COUNT_
 	Number of spaces a tab is expanded to. Default: _8_.
@@ -237,6 +304,11 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	part in each application's name is highlighted with this color.
 	See *COLORS*. Default: _cb4b16ff_.
 
+*--selection-radius*=_INT_
+	The border radius of the selection entry. Like border-radius, this is
+	subjected to output scaling. A larger value means a rounder corner. 0
+	disables rounded corner. Default: _0_.
+
 *--counter-color*=_HEX_
 	The color of the match count stats printed at the right-hand side
 	of the input prompt. See *COLORS*. Default: _93a1a1ff_.
@@ -269,8 +341,9 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 
 *--filter-desktop*=[_no_]
 	Filter the visible desktop entries based on the value of
-	XDG_CURRENT_DESKTOP. If the optional parameter is "no",
-	explicitly disables filtering.
+	XDG_CURRENT_DESKTOP. If the optional parameter is "no", explicitly
+	disables filtering (that is, it overrides the value in the
+	config).
 
 *--fuzzy-min-length*=_VALUE_
 	Search strings shorter than this will not by fuzzy
@@ -309,7 +382,7 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	the same layer. Since e.g. lock screens typically use *overlay*,
 	that means fuzzel may or may not appear on top of a lock screen.
 	
-	Default: _top_
+	Default: _overlay_
 
 *--keyboard-focus*=_exclusive_|_on-demand_
 	Keyboard focusing mode, valid modes are *exclusive* and *on-demand*.
@@ -362,6 +435,23 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	refiltering to delayed refiltering (see
 	*--delayed-filter-ms*). Default: _20000_.
 
+*--scaling-filter*=_FILTER_
+	Scaling filter to use when down scaling PNGs. One of *none*,
+	*nearest*, *bilinear*, *box*, *linear*, *cubic*, *lanczos2*,
+	*lanczos3* and *lanczos3-stretched*.
+	
+	*none*, *nearest* and *bilinear* are the fastest options, but also
+	have the worst looking results.
+	
+	*cubic*, *lanczos2*, *lanczos3* and *lanczos3-stretched* are the
+	slowest options, with the best looking results.
+	
+	*box*, and to some degree, *linear*, are in the middle,
+	performance wise, while in most cases still being just as, or
+	close to, as good as *cubic* and the lanczos filters.
+	
+	Default: _box_
+
 *-d*,*--dmenu*
 	dmenu compatibility mode. In this mode, the list entries are read
 	from stdin (newline separated). The selected entry is printed to
@@ -372,11 +462,17 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	*dmenu*. Fuzzel will then start in dmenu mode, without the
 	*--dmenu* argument.
 	
-	Fuzzel also supports icons, using Rofi's extended dmenu
+	Fuzzel also supports PNG and SVG icons, using Rofi's extended dmenu
 	protocol. To set an icon for an entry, append
 	*\\0icon\\x1f<icon-name>*. Example:
 	
 		echo -en "Firefox\\0icon\\x1ffirefox" | fuzzel --dmenu
+
+	Fallback icons using comma-separated values are also supported.
+	When the primary icon is not found, subsequent icons in the
+	list will be tried until one is successfully loaded. Example:
+	
+		echo -en "Firefox\\0icon\\x1ffirefox,web-browser,application-x-executable" | fuzzel --dmenu
 
 *--dmenu0*
 	Like *--dmenu*, but input is NUL separated instead of newline
@@ -387,14 +483,18 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	Index values start with zero for the first entry.
 	dmenu mode only.
 
-*--with-nth*=_N_
-	Display the N:th column (tab separated) of each input line. When
-	selected, the full input line is printed on stdout. dmenu mode
-	only.
+*--with-nth*=_N_|_FMT_
+	Display the N:th column (1-based, tab separated by default, see
+	*--nth-delimiter*) of each input line. When selected, the full
+	input line is printed on stdout. dmenu mode only.
+	
+	The argument can also be a format string (i.e free-format text),
+	where *{N}* expands to the N:th column. Ranges on the form
+	*{N..M}* and *{N..}* (open-ended) are also supported.
 	
 	Example:
 	```
-	printf "1\tFirst\n2\tSecond" | fuzzel -d --with-nth=2
+	printf "1\\tFirst\\n2\\tSecond" | fuzzel -d --with-nth=2
 	```
 	
 	This will display the entries *First* and *Second*. When one of
@@ -403,19 +503,29 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	
 	Setting it to *0* is the same as not specifying *--with-nth* at all.
 
-*--accept-nth*=_N_
-	Output the N:th column (tab separated) of each input line to stdout.
-	dmenu mode only.
+*--accept-nth*=_N_|_FMT_
+	Output the N:th column (1-based, tab separated by default, see
+	*--nth-delimiter*) of each input line to stdout.  dmenu mode only.
+	
+	The argument can also be a format string (i.e free-format text),
+	where *{N}* expands to the N:th column. Ranges on the form
+	*{N..M}* and *{N..}* (open-ended) are also supported.
 	
 	Example:
 	```
-	printf "1\tFirst\n2\tSecond" | fuzzel -d --accept-nth=2
+	printf "1\\tFirst\\n2\\tSecond" | fuzzel -d --accept-nth=2
 	```
 	
 	This will display the entries *1   First* and *2   Second*. Depending
 	on which one is selected, *First* or *Second* will be printed to stdout.
 	
 	Setting it to *0* is the same as not specifying *--accept-nth* at all.
+
+*--nth-delimiter*=_CHARACTER_
+	Field (column) delimiter for *--with-nth* and *--accept-nth*. Must
+	be a single ASCII character.
+	
+	Default: _\\t_ (tab)
 
 *-R*,*--no-run-if-empty*
 	Exit immediately, without showing the UI, if stdin is
@@ -431,8 +541,27 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 *--log-no-syslog*
 	Disables syslog logging. Logging is only done on stderr.
 
+*--print-timing-info*
+	Print timing information to help debug performance issues.
+
+*--no-mouse*
+	Disable mouse input.
+
 *-v*,*--version*
 	Show the version number and quit
+
+# SEARCH PATHS
+
+Fuzzel searches for XDG *.desktop* files according to the XDG Base
+Directory Specification (see link at bottom), looking in the
+*applications* subdirectory of the paths given by *XDG_DATA_DIRS* and
+*XDG_DATA_HOME*. By default, these are:
+
+- *~/.local/share/applications*
+- */usr/local/share/applitions*
+- */usr/share/application*
+
+See the specification for details.
 
 # CONFIGURATION
 
@@ -492,3 +621,4 @@ _$XDG_RUNTIME_DIR/fuzzel-$WAYLAND_DISPLAY.lock_
 - *fuzzel.ini*(5)
 - *https://specifications.freedesktop.org/desktop-entry-spec/desktop-entry-spec-latest.html*
 - *https://codeberg.org/dnkl/fuzzel*
+- *https://specifications.freedesktop.org/basedir-spec/latest/*
