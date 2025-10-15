@@ -49,6 +49,14 @@
 [651]: https://codeberg.org/dnkl/fuzzel/issues/651
 
 ### Changed
+
+* When typing, the selected entry now always reverts to the first
+  match (if you had selected an entry further down the list, with
+  either the mouse or the arrow keys). Previously, the same _index_
+  would stay selected (meaning the actually selected entry may have
+  changed). ([#684][684]).
+
+
 ### Deprecated
 ### Removed
 ### Fixed

@@ -1057,6 +1057,7 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
     prompt_insert_chars(wayl->prompt, buf, count);
 
     matches_update_incremental(wayl->matches);
+    matches_selected_set(wayl->matches, 0);
     wayl_refresh(wayl);
     check_auto_select(seat, true);
 
