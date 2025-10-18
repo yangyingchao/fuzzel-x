@@ -1352,12 +1352,14 @@ wl_touch_down(void *data, struct wl_touch *wl_touch, uint32_t serial,
     if (seat->touch.active_touch.scrolling)
         return;
 
+    const float scale = seat->wayl->scale;
+
     seat->touch.active_touch.id = id;
-    seat->touch.active_touch.start_x = wl_fixed_to_double(x);
-    seat->touch.active_touch.start_y = wl_fixed_to_double(y);
-    seat->touch.active_touch.current_x = wl_fixed_to_double(x);
-    seat->touch.active_touch.current_y = wl_fixed_to_double(y);
-    seat->touch.active_touch.last_y = wl_fixed_to_double(y);
+    seat->touch.active_touch.start_x = round(wl_fixed_to_double(x) * scale);
+    seat->touch.active_touch.start_y = round(wl_fixed_to_double(y) * scale);
+    seat->touch.active_touch.current_x = round(wl_fixed_to_double(x) * scale);
+    seat->touch.active_touch.current_y = round(wl_fixed_to_double(y) * scale);
+    seat->touch.active_touch.last_y = round(wl_fixed_to_double(y) * scale);
     seat->touch.active_touch.scrolling = true;
     seat->touch.active_touch.is_tap = true;
     seat->touch.active_touch.start_time = time;
@@ -1410,8 +1412,10 @@ wl_touch_motion(void *data, struct wl_touch *wl_touch, uint32_t time,
     if (!seat->touch.active_touch.scrolling || seat->touch.active_touch.id != id)
         return;
 
-    double new_x = wl_fixed_to_double(x);
-    double new_y = wl_fixed_to_double(y);
+    const float scale = seat->wayl->scale;
+
+    double new_x = round(wl_fixed_to_double(x) * scale);
+    double new_y = round(wl_fixed_to_double(y) * scale);
 
     /* Update current position */
     seat->touch.active_touch.current_x = new_x;
