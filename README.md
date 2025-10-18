@@ -1,8 +1,9 @@
 # Fuzzel-X
 
-Fuzzel with plugin.
+Fuzzel with language plugin support.
 
 Forked from [fuzzel](https://codeberg.org/dnkl/fuzzel) .
+
 
 
 [![CI status](https://ci.codeberg.org/api/badges/dnkl/fuzzel/status.svg)](https://ci.codeberg.org/dnkl/fuzzel)
@@ -16,9 +17,16 @@ Fuzzel is a Wayland-native application launcher and fuzzy finder, inspired by ro
 
 ## Screenshot
 
+![Screenshot with pinyin](doc/screenshot-with-pinyin.png)
+
+_Fuzzel, with pinyin abbr_
+
+
+
 ![Screenshot](doc/screenshot.png)
 
 _Fuzzel, with transparency, on top of a browser window showing a diff of a fuzzel commit_
+
 
 
 ## Features
