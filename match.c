@@ -100,6 +100,18 @@ struct levenshtein_matrix {
 
 static int match_thread(void *_ctx);
 
+static bool
+is_word_boundary(const char32_t *str, size_t pos)
+{
+    /* Position 0 is always a word boundary */
+    if (pos == 0)
+        return true;
+
+    /* Check if character before is a space/separator */
+    char32_t prev = str[pos - 1];
+    return isc32space(prev);
+}
+
 static char32_t *
 match_exact(const char32_t *haystack, size_t haystack_len,
             const char32_t *needle, size_t needle_len)
@@ -811,6 +823,10 @@ match_compar(const void *_a, const void *_b)
             return 1;
     }
 
+    /* Prioritize matches at word boundaries */
+    if (a->word_boundary != b->word_boundary) {
+        return a->word_boundary ? -1 : 1;
+    }
     else if (a->score > b->score)
         return -1;
     else if (a->score < b->score)
@@ -1328,12 +1344,20 @@ match_app(struct matches *matches, struct application *app,
         return;
     }
 
+    /* Check if match starts at word boundary */
+    bool word_boundary = false;
+    if (match_name && pos_count > 0) {
+        /* Check if first match position is at a word boundary in the title */
+        word_boundary = is_word_boundary(app->title_lowercase, pos[0].start);
+    }
+
     struct match m = {
         .matched_type = app_match_type,
         .application = app,
         .pos = pos,
         .pos_count = pos_count,
         .score = score,
+        .word_boundary = word_boundary,
     };
 
     const size_t idx = matches->match_count++;
@@ -1465,6 +1489,7 @@ matches_update_internal(struct matches *matches, bool incremental)
                 .application = matches->applications->v[i],
                 .pos = NULL,
                 .pos_count = 0,
+                .word_boundary = false,
             };
         }
 

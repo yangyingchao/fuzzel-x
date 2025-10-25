@@ -60,12 +60,14 @@
 * Improved scrolling with mouse wheel and touchpad ([#673][673]).
 * Incorrect touch coordinates with desktop scaling enabled
   ([#686][686]).
+* --match-mode=fzf now prioritizes matching at word boundaries,
+  matching fzf's behavior. ([#695][695])
 
 [658]: https://codeberg.org/dnkl/fuzzel/issues/658
 [670]: https://codeberg.org/dnkl/fuzzel/issues/670
 [673]: https://codeberg.org/dnkl/fuzzel/issues/673
 [686]: https://codeberg.org/dnkl/fuzzel/issues/686
-
+[695]: https://codeberg.org/dnkl/fuzzel/issues/695
 
 ### Security
 ### Contributors

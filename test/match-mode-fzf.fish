@@ -25,3 +25,6 @@ test_fzf_mode "longer entry\nlonger\nlong" long
 
 test_fzf_mode "\nbcdef\nabcd\n" cd
 @test "matched sub-string is closer to the beginning is sorted first." $got = bcdef
+
+test_fzf_mode "\nSteam\nMicrosoft Teams\n" tea
+@test "matched sub-string at word boundary is sorted first." $got = 'Microsoft Teams'
