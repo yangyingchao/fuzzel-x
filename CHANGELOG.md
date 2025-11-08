@@ -43,6 +43,8 @@
   ([#589][589]).
 * `--only-match` command line option, preventing the user from
   executing "custom" input in dmenu mode ([#651][651]).
+* `--nth-delimiter=CHR` option added support for custom delimiter in 1.13
+  but is just now documented in the changelog.
 
 [650]: https://codeberg.org/dnkl/fuzzel/issues/650
 [589]: https://codeberg.org/dnkl/fuzzel/issues/589
@@ -132,6 +134,7 @@
 * `selection-radius` option and `--selection-radius` flag to set the border
   radius of the selected entry
 * `enable-mouse` option and `--no-mouse` flag to disable mouse input
+* `--nth-delimiter=CHR` option adds support for custom delimiter.
 
 [411]: https://codeberg.org/dnkl/fuzzel/issues/411
 [504]: https://codeberg.org/dnkl/fuzzel/pulls/504
