@@ -600,6 +600,9 @@ done by setting _action=none_; e.g. *delete-line-forward=none*.
 *delete-line-forward*
 	Deletes everything after the cursor. Default: _Control+k_.
 
+*delete-line*
+	Deletes the entire input. Default: _Control+Shift+BackSpace_.
+
 *delete-prev*
 	Deletes the **character before** the cursor. Default: _BackSpace Control+h_.
 
@@ -613,9 +616,6 @@ done by setting _action=none_; e.g. *delete-line-forward=none*.
 *delete-next-word*
 	Deletes the **word after** the cursor. Default: _Mod1+d
 	Control+Delete_.
-
-*delete-line*
-	Deletes the entire input. Default: _Control+Shift+BackSpace_.
 
 *insert-selected*
 	Copies the selected entry to the prompt, replacing the current
