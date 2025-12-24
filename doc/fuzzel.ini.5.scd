@@ -594,15 +594,6 @@ done by setting _action=none_; e.g. *delete-line-forward=none*.
 	Moves the cursor to the end of the input. Default: _End
 	Control+e_.
 
-*delete-input*
-	There is no standalone binding to clear the input. Use
-	*cursor-home* (_Control+a_) to go into the beginning of the input,
-	followed the *delete-line-forward* binding
-	(_Control+k_). Alternatively, if you are at the end of the input,
-	use *delete-line-backward* (_Control+u_). These are alternatives
-	to using "select all" to highlight text (not supported by fuzzel)
-	and then delete it.
-
 *delete-line-backward*
 	Deletes everything before the cursor. Default: _Control+u_.
 
