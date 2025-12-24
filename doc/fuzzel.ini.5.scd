@@ -614,9 +614,6 @@ done by setting _action=none_; e.g. *delete-line-forward=none*.
 	Deletes the **word after** the cursor. Default: _Mod1+d
 	Control+Delete_.
 
-*delete-line-forward*
-	Deletes everything after the cursor. Default: _Control+k_.
-
 *delete-line*
 	Deletes the entire input. Default: _Control+Shift+BackSpace_.
 
