@@ -1,5 +1,6 @@
 # Changelog
 
+* [Unreleased](#unreleased)
 * [1.14.0](#1-14-0)
 * [1.13.1](#1-13-1)
 * [1.13.0](#1-13-0)
@@ -29,6 +30,16 @@
 * [1.5.0](#1-5-0)
 * [1.4.2](#1-4-2)
 * [1.4.1](#1-4-1)
+
+
+## Unreleased
+### Added
+### Changed
+### Deprecated
+### Removed
+### Fixed
+### Security
+### Contributors
 
 
 ## 1.14.0
@@ -86,7 +97,7 @@
 * Improved scrolling with mouse wheel and touchpad ([#673][673]).
 * Incorrect touch coordinates with desktop scaling enabled
   ([#686][686]).
-* --match-mode=fzf now prioritizes matching at word boundaries,
+* `--match-mode=fzf` now prioritizes matching at word boundaries,
   matching fzf's behavior. ([#695][695])
 
 [658]: https://codeberg.org/dnkl/fuzzel/issues/658
