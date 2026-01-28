@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [1.14.0](#1-14-0)
 * [1.13.1](#1-13-1)
 * [1.13.0](#1-13-0)
 * [1.12.0](#1-12-0)
@@ -31,7 +31,8 @@
 * [1.4.1](#1-4-1)
 
 
-## Unreleased
+## 1.14.0
+
 ### Added
 
 * Faster, more accurate SVG rendering with `resvg` backend. It does
@@ -62,9 +63,9 @@
   either the mouse or the arrow keys). Previously, the same _index_
   would stay selected (meaning the actually selected entry may have
   changed). ([#684][684]).
- * More environment variables are now passed to --launch-prefix. This saves
-   launcher that need more details from reparsing the desktop file, spending
-   up launching. ([#292][292])
+* More environment variables are now passed to `--launch-prefix`. This
+  saves launcher that need more details from reparsing the desktop
+  file, spending up launching. ([#292][292])
 
 [292]: https://codeberg.org/dnkl/fuzzel/issues/292
 [684]: https://codeberg.org/dnkl/fuzzel/issues/684
@@ -76,7 +77,6 @@
   consistent with other `DESKTOP_ENTRY_*` variables we now export.
 
 
-### Removed
 ### Fixed
 
 * `--with-nth` and `--accept-nth` crashing if a column is empty
@@ -95,10 +95,12 @@
 [686]: https://codeberg.org/dnkl/fuzzel/issues/686
 [695]: https://codeberg.org/dnkl/fuzzel/issues/695
 
-### Security
 ### Contributors
 
- * Mark Stosberg
+* Mark Stosberg
+* SlayerOfTheBad
+* Whyme Lyu
+
 
 ## 1.13.1
 
@@ -115,8 +117,9 @@
 
 ### Contributors
 
- * Mark Stosberg
- * rehanzo
+* Mark Stosberg
+* rehanzo
+
 
 ## 1.13.0
 
