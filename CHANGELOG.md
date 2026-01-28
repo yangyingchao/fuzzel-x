@@ -71,7 +71,10 @@
 
 ### Deprecated
 
- * FUZZEL_DESKTOP_FILE_ID has been deprecated and will be removed in a future release. The replacement is DESKTOP_ENTRY_ID which is consistent with other DESKTOP_ENTRY_* variables we now export.
+* `FUZZEL_DESKTOP_FILE_ID` has been deprecated and will be removed in
+  a future release. The replacement is `DESKTOP_ENTRY_ID` which is
+  consistent with other `DESKTOP_ENTRY_*` variables we now export.
+
 
 ### Removed
 ### Fixed
