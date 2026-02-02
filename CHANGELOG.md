@@ -39,13 +39,19 @@
 ### Removed
 ### Fixed
 
- * Removed statement that Cairo is required for rounded corners.
-   This is no longer true.
+* Removed statement that Cairo is required for rounded corners. This
+  is no longer true.
+* Segfault when attempting to parse a comment in an icon `index.theme` file
+  and correctly interpreting KV pairs by ignoring whitespace ([#727][727]).
+
+[727]: https://codeberg.org/dnkl/fuzzel/pulls/727
+
 
 ### Security
 ### Contributors
 
- * tranzystorekk
+* tranzystorekk
+* Rahul Sandhu
 
 
 ## 1.14.0
