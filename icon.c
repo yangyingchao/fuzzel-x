@@ -44,7 +44,7 @@ dir_context_is_allowed(const char *context)
     static const char *const allowed_contexts[] = {"applications", "apps", "legacy"};
 
     if (context == NULL)
-        return NULL;
+        return false;
 
     for (size_t i = 0; i < sizeof(allowed_contexts) / sizeof(allowed_contexts[0]); i++) {
         if (strcasecmp(context, allowed_contexts[i]) == 0)
