@@ -38,8 +38,14 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+ * Removed statement that Cairo is required for rounded corners.
+   This is no longer true.
+
 ### Security
 ### Contributors
+
+ * tranzystorekk
 
 
 ## 1.14.0
