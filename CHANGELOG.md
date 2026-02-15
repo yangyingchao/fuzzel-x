@@ -43,8 +43,10 @@
   is no longer true.
 * Segfault when attempting to parse a comment in an icon `index.theme` file
   and correctly interpreting KV pairs by ignoring whitespace ([#727][727]).
+* Fixed fzf-mode sorting regression in 1.14.0. ([#730][730])
 
 [727]: https://codeberg.org/dnkl/fuzzel/pulls/727
+[730]: https://codeberg.org/dnkl/fuzzel/issues/730
 
 
 ### Security
@@ -52,6 +54,9 @@
 
 * tranzystorekk
 * Rahul Sandhu
+* markstos
+* VegOwOtenks
+* mb720
 
 
 ## 1.14.0
