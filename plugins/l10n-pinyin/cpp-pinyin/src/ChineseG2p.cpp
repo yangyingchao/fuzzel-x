@@ -50,7 +50,7 @@ namespace Pinyin
         PinyinResVector result;
         result.reserve(input.size());
         int offset = 0;
-        for (int i = 0; i < input.size(); ++i) {
+        for (int i = 0; i < (int)input.size(); ++i) {
             const auto &encodeStr = u16strToUtf8str(input[i]);
             if (positions[i])
                 result.emplace_back(PinyinRes{encodeStr, res[i - offset].pinyin,
@@ -93,7 +93,7 @@ namespace Pinyin
     void ChineseG2pPrivate::zhPosition(const std::vector<std::u16string> &input, std::vector<char16_t> &res,
                                        std::vector<bool> &positions) {
         res.reserve(input.size());
-        for (int i = 0; i < input.size(); ++i) {
+        for (int i = 0; i < (int)input.size(); ++i) {
             const auto &item = input[i][0];
             if (!item)
                 continue;
@@ -165,7 +165,7 @@ namespace Pinyin
         PinyinResVector result;
         result.reserve(hansList.size());
         int cursor = 0;
-        while (cursor < hansList.size()) {
+        while (cursor < (int)hansList.size()) {
             // get char
             const char16_t &current_char = hansList[cursor];
 
@@ -189,13 +189,13 @@ namespace Pinyin
             } else {
                 bool found = false;
                 for (int length = 4; length >= 2 && !found; length--) {
-                    if (cursor + length <= hansList.size()) {
+                    if (cursor + length <= (int)hansList.size()) {
                         // cursor: 地, subPhrase: 地久天长
                         const std::u16string subPhrase = mid(hansList, cursor, length);
                         const auto &it = d_ptr->phrases_dict.find(subPhrase);
                         if (it != d_ptr->phrases_dict.end()) {
                             const auto &subRes = d_ptr->toneConvert(it->second, style, v_to_u, neutral_tone_with_five);
-                            for (int i = 0; i < subRes.size(); i++) {
+                            for (int i = 0; i < (int)subRes.size(); i++) {
                                 const auto &lyric = subPhrase[i];
                                 result.emplace_back(PinyinRes{
                                     u16strToUtf8str(lyric),
@@ -218,7 +218,7 @@ namespace Pinyin
                                 result.pop_back();
                                 const auto &subRes1 = d_ptr->toneConvert(
                                     it1->second, style, v_to_u, neutral_tone_with_five);
-                                for (int i = 0; i < subRes1.size(); i++) {
+                                for (int i = 0; i < (int)subRes1.size(); i++) {
                                     const auto &lyric = subPhrase1[i];
                                     result.emplace_back(PinyinRes{
                                         u16strToUtf8str(lyric),
@@ -235,7 +235,7 @@ namespace Pinyin
                         }
                     }
 
-                    if (cursor + 1 >= length && cursor + 1 <= hansList.size()) {
+                    if (cursor + 1 >= length && cursor + 1 <= (int)hansList.size()) {
                         // cursor: 好, xSubPhrase: 各有所好
                         const std::u16string subPhraseBack = mid(hansList, cursor + 1 - length, length);
                         const auto &it = d_ptr->phrases_dict.find(subPhraseBack);
@@ -244,7 +244,7 @@ namespace Pinyin
                             removeElements(result, cursor + 1 - length, length - 1);
                             const auto &subResBack = d_ptr->toneConvert(it->second, style, v_to_u,
                                                                         neutral_tone_with_five);
-                            for (int i = 0; i < subResBack.size(); i++) {
+                            for (int i = 0; i < (int)subResBack.size(); i++) {
                                 const auto &lyric = subPhraseBack[i];
                                 result.emplace_back(PinyinRes{
                                     u16strToUtf8str(lyric),
@@ -260,7 +260,7 @@ namespace Pinyin
                         }
                     }
 
-                    if (cursor + 2 >= length && cursor + 2 <= hansList.size()) {
+                    if (cursor + 2 >= length && cursor + 2 <= (int)hansList.size()) {
                         // cursor: 好, xSubPhrase: 叶公好龙
                         const std::u16string subPhraseBack1 = mid(hansList, cursor + 2 - length, length);
                         const auto &it = d_ptr->phrases_dict.find(subPhraseBack1);
@@ -269,7 +269,7 @@ namespace Pinyin
                             removeElements(result, cursor + 2 - length, length - 2);
                             const auto &subResBack1 = d_ptr->toneConvert(
                                 it->second, style, v_to_u, neutral_tone_with_five);
-                            for (int i = 0; i < subResBack1.size(); i++) {
+                            for (int i = 0; i < (int)subResBack1.size(); i++) {
                                 const auto &lyric = subPhraseBack1[i];
                                 result.emplace_back(PinyinRes{
                                     u16strToUtf8str(lyric),

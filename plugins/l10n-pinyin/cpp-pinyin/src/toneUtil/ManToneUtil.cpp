@@ -89,10 +89,10 @@ namespace Pinyin
         std::vector<char16_t> result;
 
         int pos = 0;
-        while (pos < string.size()) {
+        while (pos < (int)string.size()) {
             const char16_t &currentChar = string[pos];
             if (isPhoneticSymbol(currentChar)) {
-                if (pos + 1 < string.length() && isToneNumber(string[pos + 1])) {
+                if (pos + 1 < (int)string.length() && isToneNumber(string[pos + 1])) {
                     const auto str = string.substr(pos, 2);
                     const auto it = phoneticSymbolReverse.find(str);
                     if (it != phoneticSymbolReverse.end()) {
