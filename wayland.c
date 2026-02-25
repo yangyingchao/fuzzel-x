@@ -30,6 +30,7 @@
 #include <cursor-shape-v1.h>
 #include <fractional-scale-v1.h>
 #include <primary-selection-unstable-v1.h>
+#include <single-pixel-buffer-v1.h>
 #include <viewporter.h>
 #include <wlr-layer-shell-unstable-v1.h>
 #include <xdg-activation-v1.h>
@@ -49,6 +50,8 @@
 #include "shm.h"
 #include "xmalloc.h"
 #include "xsnprintf.h"
+
+#include "timing.h"
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
 
@@ -188,6 +191,8 @@ struct wayland {
         bool have_tf_ext_linear;
         bool have_primaries_srgb;
     } color_management;
+
+    struct wp_single_pixel_buffer_manager_v1 *single_pixel_manager;
 
     tll(struct monitor) monitors;
     const struct monitor *monitor;
@@ -796,11 +801,25 @@ execute_binding(struct seat *seat, const struct key_binding *binding, bool *refr
         paste_from_primary(seat);
         return true;
 
-    case BIND_ACTION_MATCHES_EXECUTE:
-        /* Ignore execute action if prompt empty and no matches */
-        if (prompt_text(wayl->prompt)[0] != '\0' || matches_get_total_count(wayl->matches) != 0)
-            execute_selected(seat, false, -1);
+    case BIND_ACTION_MATCHES_EXECUTE: {
+        const size_t match_count = matches_get_total_count(wayl->matches);
+
+        if (prompt_text(wayl->prompt)[0] == '\0' && match_count == 0) {
+            /* Empty prompt, and no matches -> do nothing */
+            return true;
+        }
+
+        const bool dmenu_enabled = wayl->conf->dmenu.enabled;
+        const bool only_match = wayl->conf->dmenu.only_match;
+
+        if (dmenu_enabled && only_match && match_count == 0) {
+            /* --only-match, and no matches -> do nothing */
+            return true;
+        }
+
+        execute_selected(seat, false, -1);
         return true;
+    }
 
     case BIND_ACTION_MATCHES_EXECUTE_OR_NEXT:
         if (matches_get_total_count(wayl->matches) == 1)
@@ -1038,6 +1057,7 @@ keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
     prompt_insert_chars(wayl->prompt, buf, count);
 
     matches_update_incremental(wayl->matches);
+    matches_selected_set(wayl->matches, 0);
     wayl_refresh(wayl);
     check_auto_select(seat, true);
 
@@ -1221,23 +1241,53 @@ wl_pointer_axis(void *data, struct wl_pointer *wl_pointer,
 {
     struct seat *seat = data;
     struct wayland *wayl = seat->wayl;
-    if (!wayl->enable_mouse) return;
-    bool refresh = false;
 
-    if (value < 0) {
-        refresh = matches_selected_prev(wayl->matches, true);
-    } else if (value > 0) {
-        refresh = matches_selected_next(wayl->matches, true);
+    if (!wayl->enable_mouse)
+        return;
+
+    if (axis != WL_POINTER_AXIS_VERTICAL_SCROLL)
+        return;
+
+    const double amount = wl_fixed_to_double(value);
+
+    if (signbit(seat->pointer.accumulated_scroll) != signbit(amount)) {
+        /* Reversed direction, reset accumulated */
+        seat->pointer.accumulated_scroll = 0.;
     }
 
-    if (refresh) {
-        select_hovered_match(seat, true);
-    }
+    seat->pointer.accumulated_scroll += amount;
 }
 
 static void
 wl_pointer_frame(void *data, struct wl_pointer *wl_pointer)
 {
+    const double threshold = 20;
+
+    struct seat *seat = data;
+    struct wayland *wayl = seat->wayl;
+
+    if (seat->pointer.discrete_used) {
+        seat->pointer.discrete_used = false;
+        return;
+    }
+
+    if (!wayl->enable_mouse)
+        return;
+
+    bool refresh = false;
+
+    while (fabs(seat->pointer.accumulated_scroll) > threshold) {
+        if (seat->pointer.accumulated_scroll > 0.) {
+            seat->pointer.accumulated_scroll -= threshold;
+            refresh = matches_selected_next(wayl->matches, true);
+        } else {
+            seat->pointer.accumulated_scroll += threshold;
+            refresh = matches_selected_prev(wayl->matches, true);
+        }
+    }
+
+    if (refresh)
+        select_hovered_match(seat, true);
 }
 
 static void
@@ -1256,6 +1306,28 @@ static void
 wl_pointer_axis_discrete(void *data, struct wl_pointer *wl_pointer,
                          uint32_t axis, int32_t discrete)
 {
+    struct seat *seat = data;
+    struct wayland *wayl = seat->wayl;
+
+    if (!wayl->enable_mouse)
+        return;
+
+    if (axis != WL_POINTER_AXIS_VERTICAL_SCROLL)
+        return;
+
+    seat->pointer.discrete_used = true;
+
+    bool refresh = false;
+    if (discrete > 0) {
+        for (int i = 0; i < discrete; i++)
+            refresh = matches_selected_next(wayl->matches, true);
+    } else {
+        for (int i = 0; i < -discrete; i++)
+            refresh = matches_selected_prev(wayl->matches, true);
+    }
+
+    if (refresh)
+        select_hovered_match(seat, true);
 }
 
 static const struct wl_pointer_listener pointer_listener = {
@@ -1281,12 +1353,14 @@ wl_touch_down(void *data, struct wl_touch *wl_touch, uint32_t serial,
     if (seat->touch.active_touch.scrolling)
         return;
 
+    const float scale = seat->wayl->scale;
+
     seat->touch.active_touch.id = id;
-    seat->touch.active_touch.start_x = wl_fixed_to_double(x);
-    seat->touch.active_touch.start_y = wl_fixed_to_double(y);
-    seat->touch.active_touch.current_x = wl_fixed_to_double(x);
-    seat->touch.active_touch.current_y = wl_fixed_to_double(y);
-    seat->touch.active_touch.last_y = wl_fixed_to_double(y);
+    seat->touch.active_touch.start_x = round(wl_fixed_to_double(x) * scale);
+    seat->touch.active_touch.start_y = round(wl_fixed_to_double(y) * scale);
+    seat->touch.active_touch.current_x = round(wl_fixed_to_double(x) * scale);
+    seat->touch.active_touch.current_y = round(wl_fixed_to_double(y) * scale);
+    seat->touch.active_touch.last_y = round(wl_fixed_to_double(y) * scale);
     seat->touch.active_touch.scrolling = true;
     seat->touch.active_touch.is_tap = true;
     seat->touch.active_touch.start_time = time;
@@ -1339,8 +1413,10 @@ wl_touch_motion(void *data, struct wl_touch *wl_touch, uint32_t time,
     if (!seat->touch.active_touch.scrolling || seat->touch.active_touch.id != id)
         return;
 
-    double new_x = wl_fixed_to_double(x);
-    double new_y = wl_fixed_to_double(y);
+    const float scale = seat->wayl->scale;
+
+    double new_x = round(wl_fixed_to_double(x) * scale);
+    double new_y = round(wl_fixed_to_double(y) * scale);
 
     /* Update current position */
     seat->touch.active_touch.current_x = new_x;
@@ -2260,6 +2336,16 @@ handle_global(void *data, struct wl_registry *registry,
             wayl->color_management.manager, &color_manager_listener, wayl);
     }
 
+    else if (strcmp(interface, wp_single_pixel_buffer_manager_v1_interface.name) == 0) {
+        const uint32_t required = 1;
+        if (!verify_iface_version(interface, version, required))
+            return;
+
+        wayl->single_pixel_manager = wl_registry_bind(
+            wayl->registry, name,
+            &wp_single_pixel_buffer_manager_v1_interface, required);
+    }
+
 }
 
 static void
@@ -2368,12 +2454,12 @@ static const struct wl_callback_listener frame_listener = {
 };
 
 static void
-commit_buffer(struct wayland *wayl, struct buffer *buf)
+commit_buffer(struct wayland *wayl, struct buffer *buf, bool force_viewport)
 {
     const float scale = wayl->scale;
     assert(scale >= 1);
 
-    if (wayl->preferred_fractional_scale > 0) {
+    if (wayl->preferred_fractional_scale > 0 || force_viewport) {
         LOG_DBG("scaling by a factor of %.2f using fractional scaling", scale);
 
         assert(wayl->viewport != NULL);
@@ -2416,15 +2502,14 @@ frame_callback(void *data, struct wl_callback *wl_callback, uint32_t callback_da
     wl_callback_destroy(wayl->frame_cb);
     wayl->frame_cb = NULL;
 
-    if (wayl->need_refresh) {
-        wayl->need_refresh = false;
-        wayl_refresh(wayl);
-    }
+    const bool need_refresh =
+        wayl->need_refresh || wayl->render_first_frame_transparent;
 
-    if (wayl->render_first_frame_transparent) {
-        wayl->render_first_frame_transparent = false;
+    wayl->need_refresh = false;
+    wayl->render_first_frame_transparent = false;
+
+    if (need_refresh)
         wayl_refresh(wayl);
-    }
 }
 
 void
@@ -2441,8 +2526,7 @@ wayl_refresh(struct wayland *wayl)
         return;
     }
 
-    struct timeval start, stop, diff;
-    gettimeofday(&start, NULL);
+    struct timespec *start_frame = time_begin();
 
     if (wayl->chain == NULL) {
         wayl->chain =
@@ -2460,6 +2544,29 @@ wayl_refresh(struct wayland *wayl)
             abort();
     }
 
+    /*
+     * Optimized version of transparent frame, using the single-pixel
+     * protocol. Fallback version below, after shm_get_buffer().
+     */
+    if (wayl->render_first_frame_transparent &&
+        wayl->single_pixel_manager != NULL &&
+        wayl->viewport != NULL)
+    {
+        struct wl_buffer *single =
+            wp_single_pixel_buffer_manager_v1_create_u32_rgba_buffer(
+                wayl->single_pixel_manager, 0, 0, 0, 0);
+
+        struct buffer buf = {
+            .width = wayl->width,
+            .height = wayl->height,
+            .wl_buf = single,
+        };
+
+        commit_buffer(wayl, &buf, true);
+        wl_buffer_destroy(single);
+        goto done;
+    }
+
     struct buffer *buf = shm_get_buffer(wayl->chain, wayl->width, wayl->height, true);
 
     pixman_region32_t clip;
@@ -2468,10 +2575,12 @@ wayl_refresh(struct wayland *wayl)
     pixman_region32_fini(&clip);
 
     if (wayl->render_first_frame_transparent) {
+        /* Fallback version of transparent frame */
         pixman_color_t transparent = {0};
         pixman_image_fill_rectangles(
             PIXMAN_OP_SRC, buf->pix[0], &transparent,
             1, &(pixman_rectangle16_t){0, 0, wayl->width, wayl->height});
+
         goto commit;
     }
 
@@ -2482,6 +2591,7 @@ wayl_refresh(struct wayland *wayl)
 
     /* Window content */
     matches_lock(wayl->matches);
+    render_message(wayl->render, buf);
     if (!wayl->conf->hide_prompt) {
         render_prompt(wayl->render, buf, wayl->prompt, wayl->matches);
     }
@@ -2505,15 +2615,12 @@ skip_list:
 commit:
     /* No pending frames - render immediately */
     assert(!wayl->need_refresh);
-    commit_buffer(wayl, buf);
+    commit_buffer(wayl, buf, false);
+done:
 
-    if (wayl->conf->print_timing_info) {
-        gettimeofday(&stop, NULL);
-        timersub(&stop, &start, &diff);
-        LOG_WARN("frame rendered in %llus %lluµs",
-                 (unsigned long long)diff.tv_sec,
-                 (unsigned long long)diff.tv_usec);
-    }
+    time_finish(
+        start_frame, NULL, "%sframe rendered",
+        wayl->render_first_frame_transparent ? "transparent " : "");
 }
 
 void
@@ -2843,7 +2950,9 @@ wayl_init(const struct config *conf, struct fdm *fdm,
     }
 
     if (conf->gamma_correct) {
-#if !defined(FUZZEL_ENABLE_CAIRO)
+#if defined(FUZZEL_ENABLE_CAIRO)
+        LOG_WARN("gamma-correct-blending: disabling; not supported in cairo-enabled builds");
+#else
         if (wayl->color_management.img_description != NULL) {
             assert(wayl->color_management.manager != NULL);
 
@@ -2871,8 +2980,6 @@ wayl_init(const struct config *conf, struct fdm *fdm,
                 LOG_WARN("  - primaries: sRGB");
             }
         }
-#else
-        LOG_WARN("gamma-correct-blending: disabling; not supported in cairo-enabled builds");
 #endif
     } else
         LOG_INFO("gamma-correct blending: disabled");
@@ -2930,6 +3037,8 @@ wayl_destroy(struct wayland *wayl)
         monitor_destroy(&it->item);
     tll_free(wayl->monitors);
 
+    if (wayl->single_pixel_manager != NULL)
+        wp_single_pixel_buffer_manager_v1_destroy(wayl->single_pixel_manager);
     if (wayl->color_management_surface != NULL)
         wp_color_management_surface_v1_destroy(wayl->color_management_surface);
     if (wayl->color_management.img_description != NULL)

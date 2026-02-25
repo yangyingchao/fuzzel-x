@@ -12,6 +12,10 @@
  #include <nanosvg/nanosvg.h>
 #endif
 
+#if defined(FUZZEL_ENABLE_SVG_RESVG)
+ #include <resvg.h>
+#endif
+
 #include <fcft/fcft.h>
 #include <tllist.h>
 
@@ -39,6 +43,8 @@ struct icon {
         RsvgHandle *svg;
 #elif defined(FUZZEL_ENABLE_SVG_NANOSVG)
         NSVGimage *svg;
+#elif defined(FUZZEL_ENABLE_SVG_RESVG)
+        resvg_render_tree *svg;
 #else
         void *svg;
 #endif
@@ -64,6 +70,16 @@ struct application {
     char32_t *render_title;
     size_t index;
 
+    /* Additional metadata for desktop entries */
+    char *desktop_file_path;  /* Full path to the .desktop file */
+    char *action_id;          /* Action identifier if this is an action entry */
+    char32_t *original_name;  /* Non-localized name */
+    char32_t *localized_name; /* Localized name */
+    char32_t *action_name;    /* Action name (if applicable) */
+    char32_t *localized_action_name; /* Localized action name */
+    char32_t *original_generic_name;  /* Non-localized generic name */
+    char32_t *localized_generic_name; /* Localized generic name */
+
     /*
      * To get good search performance, we cache both the lower-case
      * versions of metadata, and their (string) lengths. This way, we
@@ -80,6 +96,7 @@ struct application {
     char32_list_t categories;  /* Lower cased! */
 
     char32_t *dmenu_input;     /* Full dmenu input, may contain multiple columns */
+    char32_t *dmenu_match_nth; /* What to match against, with --match-nth= */
 
     size_t title_len;
     size_t basename_len;
@@ -87,6 +104,7 @@ struct application {
     size_t generic_name_len;
     size_t comment_len;
     size_t translated_name_len;
+    size_t dmenu_match_nth_len;
     /* keywords and categories lengths not cached */
 
     struct icon icon;

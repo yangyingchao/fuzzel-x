@@ -35,6 +35,12 @@ enum match_mode {
     MATCH_MODE_FUZZY,
 };
 
+enum message_mode {
+    MESSAGE_MODE_WRAP,
+    MESSAGE_MODE_EXPAND,
+};
+
+
 enum match_fields {
     MATCH_NAME =       0x01,
     MATCH_FILENAME =   0x02,
@@ -43,8 +49,7 @@ enum match_fields {
     MATCH_COMMENT =    0x10,
     MATCH_KEYWORDS =   0x20,
     MATCH_CATEGORIES = 0x40,
-
-    MATCH_END = MATCH_COMMENT + 1,
+    MATCH_NTH =        0x80,
 };
 
 enum anchors {
@@ -114,6 +119,8 @@ struct config {
     char32_t *prompt;
     char32_t *placeholder;
     char32_t *search_text;
+    char32_t *message;
+    enum message_mode message_mode;
     bool prompt_only;
     enum match_fields match_fields;
 
@@ -165,10 +172,12 @@ struct config {
         bool enabled;
         enum dmenu_mode mode;
         bool exit_immediately_if_empty;
+        bool only_match;
         char delim;
         char nth_delim;
         char *with_nth_format;
         char *accept_nth_format;
+        char *match_nth_format;
     } dmenu;
 
     enum anchors anchor;
@@ -193,6 +202,7 @@ struct config {
         struct rgba background;
         struct rgba border;
         struct rgba text;
+        struct rgba message;
         struct rgba prompt;
         struct rgba input;
         struct rgba match;

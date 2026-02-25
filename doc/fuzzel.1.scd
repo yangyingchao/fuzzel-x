@@ -36,14 +36,14 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	Use a custom cache location. Fuzzel uses this file to cache the
 	most commonly launched applications (to be able to sort them at
 	the top).
-	
+
 	You can also use this option to enable caching of dmenu
 	entries. It is recommended that you use a separate cache file for
 	each "type" of dmenu invocation; i.e. one for the browser history,
 	another for emojis etc.
 
 	Set to /dev/null to disable caching.
-	
+
 	Default: _XDG_CACHE_HOME/fuzzel_
 
 *-o*,*--output*=_OUTPUT_
@@ -66,32 +66,32 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	When set to *yes*, fonts are sized using the monitor's DPI, making
 	a font of a given point size have the same physical size,
 	regardless of monitor.
-	
+
 	In this mode, the monitor's scaling factor is ignored; doubling
 	the scaling factor will *not* double the font size.
-	
+
 	When set to *no*, the monitor's DPI is ignored. The font is
 	instead sized using the monitor's scaling factor; doubling the
 	scaling factor *does* double the font size.
-	
+
 	Finally, if set to *auto*, fonts will be sized using the monitor's
 	DPI if _all_ monitors have a scaling factor of 1. If at least one
 	monitor as a scaling factor larger than 1 (regardless of whether
 	the fuzzel window is mapped on that monitor or not), fonts will be
 	scaled using the scaling factor.
-	
+
 	Note that this option typically does not work with bitmap fonts,
 	which only contains a pre-defined set of sizes, and cannot be
 	dynamically scaled. Whichever size (of the available ones) that
 	best matches the DPI or scaling factor, will be used.
-	
+
 	Also note that if the font size has been specified in pixels
 	(*:pixelsize=*_N_, instead of *:size=*_N_), DPI scaling
 	(*dpi-aware=yes*) will have no effect (the specified pixel size
 	will be used as is). But, if the monitor's scaling factor is used
 	to size the font (*dpi-aware=no*), the font's pixel size will be
 	multiplied with the scaling factor.
-	
+
 	Default: _auto_
 
 *--gamma-correct*
@@ -99,27 +99,27 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	glyphs are supposed to be rendered, but since nearly no
 	applications or toolkits are doing it on Linux, the result may not
 	look like you are used to.
-	
+
 	Compared to the default (disabled), bright glyphs on a dark
 	background will appear thicker, and dark glyphs on a light
 	background will appear thinner.
-	
+
 	FreeType can limit the effect of the latter, with a technique
 	called stem darkening. It is only available for CFF fonts
 	(OpenType, .otf) and disabled by default (in FreeType). You can
 	enable it by setting the environment variable
 	*FREETYPE_PROPERTIES="cff:no-stem-darkening=0"* before starting
 	fuzzel.
-	
+
 	Also be aware that many fonts have been developed on systems that
 	do not do gamma-correct blending, and may therefore look thicker
 	than intended when rendered with gamma-correct blending, since the
 	font designer set the font weight based on incorrect rendering.
-	
+
 	In order to represent colors faithfully, higher precision image
 	buffers are required. For this reason, fuzzel uses 16-bit image
 	buffers (instead of 8-bit) when gamma-correct blending is enabled.
-	
+
 	It is not possible to enable gamma-correct blending in cairo
 	enabled builds of fuzzel, since cairo does not support 16-bit
 	image buffers.
@@ -131,7 +131,7 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	Same as *--prompt*, but in *--dmenu* mode it also:
 	- does not read anything from STDIN
 	- sets *--lines* to 0
-	
+
 	In non-dmenu mode it behaves exactly like *--prompt*.
 
 *--hide-prompt*
@@ -141,6 +141,15 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 
 *--placeholder*=_TEXT_
 	Text to display as placeholder in the input box. Default: empty.
+
+*--mesg*=_STRING_
+	Message to display above the prompt. Can contain some informational
+	message, or can be used for having your prompt be above the input
+	instead of in front. Supports newlines.
+
+*--mesg-mode*=_wrap_|_expand_
+	How to handle lines in *--mesg* when they are longer than *--width*.
+	See *fuzzel.ini*(5) for details. The default is *wrap*.
 
 *--search*=_TEXT_
 	Initial search/filter string. This option pre-fills the input box
@@ -153,9 +162,9 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 *--icon-theme*=_NAME_
 	Icon theme to use. Note that this option is case sensitive; the
 	name must match the theme's folder name.
-	
+
 	Example: _Adwaita_.
-	
+
 	Default: _default_.
 
 *-I*,*--no-icons*
@@ -166,7 +175,7 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 
 *-F*,*--fields*=_FIELDS_
 	Comma separated list of XDG Desktop entry fields to match against:
-	
+
 	- *filename*: the .desktop file's filename
 	- *name*: the application's name (title)
 	- *generic*: the application's generic name
@@ -175,7 +184,7 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	- *keywords*: the application's keywords
 	- *categories*: the application's categories
 	- *comment*: the application's comment
-	
+
 	Default: _filename,name,generic_
 
 *--password*=[_CHARACTER_]
@@ -203,7 +212,7 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 *-a*,*--anchor*=_ANCHOR_
 	Set window anchor, i.e. where on screen the window will be
 	displayed.  You can choose one from:
-	
+
 	- top-left
 	- top
 	- top-right
@@ -213,7 +222,7 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	- bottom-left
 	- bottom
 	- bottom-right
-	
+
 	Default: _center_
 
 *--x-margin*=_MARGIN_
@@ -272,6 +281,9 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 
 *-t*,*--text-color*=_HEX_
 	Text color. See *COLORS*. Default: _657b83ff_.
+
+*--message-color*=_HEX_
+	Message color. See *COLORS*. Default: _657b83ff_.
 
 *--prompt-color*=_HEX_
 	Text (foreground) color of prompt character(s). See
@@ -373,29 +385,29 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 *--layer*=_top_|_overlay_
 	Which layer to render the fuzzel window on. Valid values are *top*
 	and *overlay*.
-	
+
 	*top* renders above normal windows, but typically below fullscreen
 	windows and lock screens.
-	
+
 	*overlay* renders on top of both normal windows and fullscreen
 	windows. Note that the order is undefined if several windows use
 	the same layer. Since e.g. lock screens typically use *overlay*,
 	that means fuzzel may or may not appear on top of a lock screen.
-	
+
 	Default: _overlay_
 
 *--keyboard-focus*=_exclusive_|_on-demand_
 	Keyboard focusing mode, valid modes are *exclusive* and *on-demand*.
-	
+
 	*exclusive* locks keyboard focus to fuzzel, receiving all keyboard
 	input until closed.
-	
+
 	*on-demand* makes fuzzel focus like a regular window, allowing other
 	windows to take keyboard focus by e.g. clicking on them.
 	By default switching keyboard focus will immediately close fuzzel,
 	using *--no-exit-on-keyboard-focus-loss* allows interacting with
 	other windows while fuzzel is open.
-	
+
 	Default: _exclusive_
 
 *--no-exit-on-keyboard-focus-loss*
@@ -407,8 +419,9 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 *--launch-prefix*=_COMMAND_
 	Command to launch XDG applications with.
 	If set, fuzzel will pass the Desktop File ID of the chosen application
-	(see the Desktop Entry specification) in the FUZZEL_DESKTOP_FILE_ID
-	environment variables. Default: _not set_.
+	(see the Desktop Entry specification) in the DESKTOP_ENTRY_ID
+	environment variable (also exported as FUZZEL_DESKTOP_FILE_ID for
+	backward compatibility). Default: _not set_.
 
 *--list-executables-in-path*
 	Include executables from the PATH environment variable. Applies to
@@ -439,17 +452,17 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	Scaling filter to use when down scaling PNGs. One of *none*,
 	*nearest*, *bilinear*, *box*, *linear*, *cubic*, *lanczos2*,
 	*lanczos3* and *lanczos3-stretched*.
-	
+
 	*none*, *nearest* and *bilinear* are the fastest options, but also
 	have the worst looking results.
-	
+
 	*cubic*, *lanczos2*, *lanczos3* and *lanczos3-stretched* are the
 	slowest options, with the best looking results.
-	
+
 	*box*, and to some degree, *linear*, are in the middle,
 	performance wise, while in most cases still being just as, or
 	close to, as good as *cubic* and the lanczos filters.
-	
+
 	Default: _box_
 
 *-d*,*--dmenu*
@@ -457,21 +470,21 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	from stdin (newline separated). The selected entry is printed to
 	stdout. If the input string does not match any of the entries, the
 	input string is printed as is on stdout.
-	
+
 	Alternatively, you can symlink the fuzzel binary to
 	*dmenu*. Fuzzel will then start in dmenu mode, without the
 	*--dmenu* argument.
-	
+
 	Fuzzel also supports PNG and SVG icons, using Rofi's extended dmenu
 	protocol. To set an icon for an entry, append
 	*\\0icon\\x1f<icon-name>*. Example:
-	
+
 		echo -en "Firefox\\0icon\\x1ffirefox" | fuzzel --dmenu
 
 	Fallback icons using comma-separated values are also supported.
 	When the primary icon is not found, subsequent icons in the
 	list will be tried until one is successfully loaded. Example:
-	
+
 		echo -en "Firefox\\0icon\\x1ffirefox,web-browser,application-x-executable" | fuzzel --dmenu
 
 *--dmenu0*
@@ -487,45 +500,78 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	Display the N:th column (1-based, tab separated by default, see
 	*--nth-delimiter*) of each input line. When selected, the full
 	input line is printed on stdout. dmenu mode only.
-	
+
 	The argument can also be a format string (i.e free-format text),
 	where *{N}* expands to the N:th column. Ranges on the form
 	*{N..M}* and *{N..}* (open-ended) are also supported.
-	
+
 	Example:
 	```
 	printf "1\\tFirst\\n2\\tSecond" | fuzzel -d --with-nth=2
 	```
-	
+
 	This will display the entries *First* and *Second*. When one of
 	them is selected, the full input line (tabs included) are printed
 	on stdout.
-	
-	Setting it to *0* is the same as not specifying *--with-nth* at all.
+
+	Setting it to *0* is the same as not specifying *--with-nth* at
+	all.
 
 *--accept-nth*=_N_|_FMT_
 	Output the N:th column (1-based, tab separated by default, see
 	*--nth-delimiter*) of each input line to stdout.  dmenu mode only.
-	
+
 	The argument can also be a format string (i.e free-format text),
 	where *{N}* expands to the N:th column. Ranges on the form
 	*{N..M}* and *{N..}* (open-ended) are also supported.
-	
+
 	Example:
 	```
 	printf "1\\tFirst\\n2\\tSecond" | fuzzel -d --accept-nth=2
 	```
-	
-	This will display the entries *1   First* and *2   Second*. Depending
-	on which one is selected, *First* or *Second* will be printed to stdout.
-	
-	Setting it to *0* is the same as not specifying *--accept-nth* at all.
+
+	This will display the entries *1 First* and *2 Second*. Depending
+	on which one is selected, *First* or *Second* will be printed to
+	stdout.
+
+	Setting it to *0* is the same as not specifying *--accept-nth* at
+	all.
+
+*--match-nth*=_N_|_FMT_
+	Match against the N:th column (1-based, tab separated by default,
+	see *--nth-delimiter*) of each input line. This is instead of
+	matching against the displayed value (which can be changed with
+	*--with-nth*).
+
+	The argument can also be a format string (i.e free-format text),
+	where *{N}* expands to the N:th column. Ranges on the form
+	*{N..M}* and *{N..}* (open-ended) are also supported.
+
+	Example:
+	```
+	printf "123\t456\t789" | fuzzel -d --with-nth=1 --accept-nth=2 --match-nth=3
+	```
+
+	This will display the entry *123*, but matching will *only* be
+	done against *789* (specifically, *123* will not match). When
+	selected, *456* is printed on stdout.
+
+	Setting it to *0* is the same as not specifying *--match-nth* at
+	all.
 
 *--nth-delimiter*=_CHARACTER_
 	Field (column) delimiter for *--with-nth* and *--accept-nth*. Must
 	be a single ASCII character.
-	
+
 	Default: _\\t_ (tab)
+
+*--only-match*
+	Do not allow custom entries, only return a selected item. In this
+	mode, fuzzel always returns an entry. It will not return if no
+	matching entry is selected.
+
+	The exception to this is the *execute-input* key binding, which
+	always executes/selects the input text.
 
 *-R*,*--no-run-if-empty*
 	Exit immediately, without showing the UI, if stdin is

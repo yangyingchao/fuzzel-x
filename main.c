@@ -43,6 +43,8 @@
 #include "xsnprintf.h"
 #include "plugin.h"
 
+#include "timing.h"
+
 #define max(x, y) ((x) > (y) ? (x) : (y))
 #define min(x, y) ((x)  < (y) ? (x) : (y))
 
@@ -66,19 +68,16 @@ struct context {
 
     struct {
         struct {
-            struct timeval start;
-            struct timeval stop;
-            struct timeval diff;
+            struct timespec *start;
+            struct timespec *stop;
         } apps;
         struct {
-            struct timeval start;
-            struct timeval stop;
-            struct timeval diff;
+            struct timespec *start;
+            struct timespec *stop;
         } icons_theme;
         struct {
-            struct timeval start;
-            struct timeval stop;
-            struct timeval diff;
+            struct timespec *start;
+            struct timespec *stop;
         } icons;
     } timing;
 };
@@ -323,6 +322,8 @@ version_and_features(void)
              '+', "(nanosvg)",
 #elif defined(FUZZEL_ENABLE_SVG_LIBRSVG)
              '+', "(librsvg)",
+#elif defined(FUZZEL_ENABLE_SVG_RESVG)
+             '+', "(resvg)",
 #else
              '-', "",
 #endif
@@ -364,6 +365,9 @@ print_usage(const char *prog_name)
            "     --placeholder=TEXT          placeholder text in input box\n"
            "     --search=TEXT               initial search/filter string\n"
            "     --password=[CHARACTER]      render all input as CHARACTER ('*' by default)\n"
+           "     --mesg                      show informational message above the prompt\n"
+           "     --mesg-mode=wrap|expand     how to deal with message lines longer than\n"
+           "                                 the ui (wrap)\n"
            "  -T,--terminal                  terminal command to use when launching\n"
            "                                 'terminal' programs, e.g. \"xterm -e\".\n"
            "                                 Not used in dmenu mode (not set)\n"
@@ -392,6 +396,7 @@ print_usage(const char *prog_name)
            "  -t,--text-color=HEX            text color of matched entries (657b83ff)\n"
            "     --prompt-color=HEX          text color of the prompt (586e75ff)\n"
            "     --placeholder-color=HEX     text color of the placeholder text (93a1a1)\n"
+           "     --message-color=HEX         text color of the message (657b83ff)\n"
            "     --input-color=HEX           text color of the input string (657b83ff)\n"
            "  -m,--match-color=HEX           color of matched substring (cb4b16ff)\n"
            "  -s,--selection-color=HEX       background color of selected item (eee8d5ff)\n"
@@ -441,8 +446,13 @@ print_usage(const char *prog_name)
            "                                 default) of each input line (dmenu only)\n"
            "     --accept-nth=N|FMT          output the N:th column (tab separated by\n"
            "                                 default) of each input line (dmenu only)\n"
+           "     --match-nth=N|FMT           match against the N:th column (tab separated by\n"
+           "                                 default) of each input line, instead of what is\n"
+           "                                 being displayed (dmenu only)\n"
            "     --nth-delimiter=CHARACTER   field (column) character, for --with-nth and\n"
            "                                 --accept-nth\n"
+           "     --only-match                do not allow custom entries, only return a\n"
+           "                                 selected item\n"
            "  -R,--no-run-if-empty           exit immediately without showing UI if stdin\n"
            "                                 is empty (dmenu mode only)\n"
            "     --log-level={info|warning|error|none}\n"
@@ -455,6 +465,7 @@ print_usage(const char *prog_name)
            "                                 performance issues\n"
            "     --no-mouse                  disable mouse input\n"
            "  -v,--version                   show the version number and quit\n");
+
     printf("\n");
     printf("All colors are RGBA - i.e. 8-digit hex values, without prefix.\n");
 }
@@ -569,6 +580,7 @@ populate_apps(void *_ctx)
     char dmenu_delim = conf->dmenu.delim;
     char dmenu_nth_delim = conf->dmenu.nth_delim;
     const char *dmenu_with_nth_format = conf->dmenu.with_nth_format;
+    const char *dmenu_match_nth_format = conf->dmenu.match_nth_format;
     bool filter_desktop = conf->filter_desktop;
     bool list_exec_in_path = conf->list_executables_in_path;
     char_list_t desktops = tll_init();
@@ -588,39 +600,39 @@ populate_apps(void *_ctx)
         }
     }
 
+    ctx->timing.apps.start = time_begin();
+
     if (dmenu_enabled) {
         if (!conf->prompt_only) {
             dmenu_load_entries(
-                apps, dmenu_delim, dmenu_with_nth_format, dmenu_nth_delim,
-                ctx->event_fd, ctx->dmenu_abort_fd);
+                apps, dmenu_delim, dmenu_with_nth_format, dmenu_match_nth_format,
+                dmenu_nth_delim, ctx->event_fd, ctx->dmenu_abort_fd);
             read_cache(cache_path, apps, true);
         }
     } else {
-        gettimeofday(&ctx->timing.apps.start, NULL);
         xdg_find_programs(terminal, actions_enabled, filter_desktop, &desktops, apps);
         if (list_exec_in_path)
             path_find_programs(apps);
         read_cache(cache_path, apps, false);
-        gettimeofday(&ctx->timing.apps.stop, NULL);
-        timersub(&ctx->timing.apps.stop, &ctx->timing.apps.start, &ctx->timing.apps.diff);
     }
     tll_free_and_free(desktops, free);
+
+    ctx->timing.apps.stop = time_end();
 
     int r = send_event(ctx->event_fd, EVENT_APPS_ALL_LOADED);
     if (r != 0)
         return r;
 
     if (icons_enabled) {
-        gettimeofday(&ctx->timing.icons_theme.start, NULL);
+        ctx->timing.icons_theme.start = time_begin();
         icon_theme_list_t icon_themes = icon_load_theme(icon_theme, !dmenu_enabled);
         if (tll_length(icon_themes) > 0)
             LOG_INFO("theme: %s", tll_front(icon_themes).name);
         else
             LOG_WARN("%s: icon theme not found", icon_theme);
-        gettimeofday(&ctx->timing.icons_theme.stop, NULL);
-        timersub(&ctx->timing.icons_theme.stop, &ctx->timing.icons_theme.start, &ctx->timing.icons_theme.diff);
+        ctx->timing.icons_theme.stop = time_end();
 
-        gettimeofday(&ctx->timing.icons.start, NULL);
+        ctx->timing.icons.start = time_begin();
         mtx_lock(ctx->icon_lock);
         {
             *ctx->themes = icon_themes;
@@ -634,8 +646,7 @@ populate_apps(void *_ctx)
             }
         }
         mtx_unlock(ctx->icon_lock);
-        gettimeofday(&ctx->timing.icons.stop, NULL);
-        timersub(&ctx->timing.icons.stop, &ctx->timing.icons.start, &ctx->timing.icons.diff);
+        ctx->timing.icons.stop = time_end();
 
         r = send_event(ctx->event_fd, EVENT_ICONS_LOADED);
         if (r != 0)
@@ -658,10 +669,9 @@ process_event(struct context *ctx, enum event_type event)
     switch (event) {
     case EVENT_APPS_SOME_LOADED:
     case EVENT_APPS_ALL_LOADED: {
-        if (event == EVENT_APPS_ALL_LOADED && conf->print_timing_info) {
-            LOG_WARN("apps loaded in %llus %lluµs",
-                     (unsigned long long)ctx->timing.apps.diff.tv_sec,
-                     (unsigned long long)ctx->timing.apps.diff.tv_usec);
+        if (event == EVENT_APPS_ALL_LOADED) {
+            time_finish(
+                ctx->timing.apps.start, ctx->timing.apps.stop, "apps loaded");
         }
         /* Update matches list, then refresh the GUI */
         matches_set_applications(matches, apps);
@@ -727,14 +737,10 @@ process_event(struct context *ctx, enum event_type event)
 
     case EVENT_ICONS_LOADED:
         /* Just need to refresh the GUI */
-        if (conf->print_timing_info) {
-            LOG_WARN("icon themes loaded in %llus %lluµs",
-                     (unsigned long long)ctx->timing.icons_theme.diff.tv_sec,
-                     (unsigned long long)ctx->timing.icons_theme.diff.tv_usec);
-            LOG_WARN("icon paths resolved in %llus %lluµs",
-                     (unsigned long long)ctx->timing.icons.diff.tv_sec,
-                     (unsigned long long)ctx->timing.icons.diff.tv_usec);
-        }
+        time_finish(ctx->timing.icons_theme.start, ctx->timing.icons_theme.stop,
+                    "icon themes loaded");
+        time_finish(ctx->timing.icons.start, ctx->timing.icons.stop,
+                    "icon paths resolved");
         matches_icons_loaded(matches);
         break;
 
@@ -803,6 +809,8 @@ fdm_apps_populated(struct fdm *fdm, int fd, int events, void *data)
 int
 main(int argc, char *const *argv)
 {
+    time_init();
+
     #define OPT_LETTER_SPACING               256
     #define OPT_LAUNCH_PREFIX                257
     #define OPT_SHOW_ACTIONS                 258
@@ -856,6 +864,11 @@ main(int argc, char *const *argv)
     #define OPT_SELECTION_RADIUS             306
     #define OPT_NO_MOUSE                     307
     #define OPT_DMENU_NTH_DELIM              308
+    #define OPT_DMENU_MATCH_NTH              309
+    #define OPT_DMENU_ONLY_MATCH             310
+    #define OPT_DMENU_MESSAGE                311
+    #define OPT_DMENU_MESSAGE_MODE           312
+    #define OPT_MESSAGE_COLOR                313
 
     static const struct option longopts[] = {
         {"config",               required_argument, 0, OPT_CONFIG},
@@ -887,6 +900,7 @@ main(int argc, char *const *argv)
         {"inner-pad",            required_argument, 0, 'P'},
         {"background-color",     required_argument, 0, 'b'},
         {"text-color",           required_argument, 0, 't'},
+        {"message-color",        required_argument, 0, OPT_MESSAGE_COLOR},
         {"prompt-color",         required_argument, 0, OPT_PROMPT_COLOR},
         {"placeholder-color",    required_argument, 0, OPT_PLACEHOLDER_COLOR},
         {"input-color",          required_argument, 0, OPT_INPUT_COLOR},
@@ -935,6 +949,10 @@ main(int argc, char *const *argv)
         {"nth-delimiter",        required_argument, 0, OPT_DMENU_NTH_DELIM},
         {"with-nth",             required_argument, 0, OPT_DMENU_WITH_NTH},
         {"accept-nth",           required_argument, 0, OPT_DMENU_ACCEPT_NTH},
+        {"match-nth",            required_argument, 0, OPT_DMENU_MATCH_NTH},
+        {"only-match",           no_argument,       0, OPT_DMENU_ONLY_MATCH},
+        {"mesg",                 required_argument, 0, OPT_DMENU_MESSAGE},
+        {"mesg-mode",            required_argument, 0, OPT_DMENU_MESSAGE_MODE},
 
         /* Misc */
         {"log-level",            required_argument, 0, OPT_LOG_LEVEL},
@@ -975,6 +993,7 @@ main(int argc, char *const *argv)
         bool pad_inner_set:1;
         bool background_color_set:1;
         bool text_color_set:1;
+        bool message_color_set:1;
         bool prompt_color_set:1;
         bool input_color_set:1;
         bool match_color_set:1;
@@ -1001,6 +1020,9 @@ main(int argc, char *const *argv)
         bool dmenu_nth_delim_set:1;
         bool dmenu_with_nth_set:1;
         bool dmenu_accept_nth_set:1;
+        bool dmenu_match_nth_set:1;
+        bool dmenu_only_match_set:1;
+        bool mesg_mode_set:1;
         bool layer_set:1;
         bool keyboard_focus_set:1;
         bool no_exit_on_keyboard_focus_loss_set:1;
@@ -1386,6 +1408,23 @@ main(int argc, char *const *argv)
             break;
         }
 
+        case OPT_MESSAGE_COLOR: {
+            const char *clr_start = optarg;
+            if (clr_start[0] == '#')
+                clr_start++;
+
+            errno = 0;
+            char *end = NULL;
+            uint32_t message_color = strtoul(clr_start, &end, 16);
+            if (errno != 0 || end == NULL || *end != '\0' || (end - clr_start) != 8) {
+                fprintf(stderr, "message-color: %s: invalid color\n", optarg);
+                return EXIT_FAILURE;
+            }
+            cmdline_overrides.conf.colors.message = conf_hex_to_rgba(message_color);
+            cmdline_overrides.message_color_set = true;
+            break;
+        }
+
         case OPT_PROMPT_COLOR: {
             const char *clr_start = optarg;
             if (clr_start[0] == '#')
@@ -1733,28 +1772,92 @@ main(int argc, char *const *argv)
 
             cmdline_overrides.conf.dmenu.nth_delim = optarg[0];
             cmdline_overrides.dmenu_nth_delim_set = true;
-            printf("LKDJFLKDJF: delim: %c (%x)\n", cmdline_overrides.conf.dmenu.nth_delim, cmdline_overrides.conf.dmenu.nth_delim);
             break;
 
         case OPT_DMENU_WITH_NTH: {
+            free(cmdline_overrides.conf.dmenu.with_nth_format);
+            cmdline_overrides.conf.dmenu.with_nth_format = NULL;
+
             unsigned int with_nth_idx;
-            if (sscanf(optarg, "%u", &with_nth_idx) == 1)
-                cmdline_overrides.conf.dmenu.with_nth_format = xasprintf("{%u}", with_nth_idx);
-            else
+            if (sscanf(optarg, "%u", &with_nth_idx) == 1) {
+                if (with_nth_idx == 0) {
+                    /* Do nothing more - i.e. leave it unset */
+                } else {
+                    cmdline_overrides.conf.dmenu.with_nth_format =
+                        xasprintf("{%u}", with_nth_idx);
+                }
+            } else if (optarg[0] != '\0')
                 cmdline_overrides.conf.dmenu.with_nth_format = xstrdup(optarg);
             cmdline_overrides.dmenu_with_nth_set = true;
             break;
         }
 
         case OPT_DMENU_ACCEPT_NTH: {
+            free(cmdline_overrides.conf.dmenu.accept_nth_format);
+            cmdline_overrides.conf.dmenu.accept_nth_format = NULL;
+
             unsigned int accept_nth_idx;
-            if (sscanf(optarg, "%u", &accept_nth_idx) == 1)
-                cmdline_overrides.conf.dmenu.accept_nth_format = xasprintf("{%u}", accept_nth_idx);
-            else
+            if (sscanf(optarg, "%u", &accept_nth_idx) == 1) {
+                if (accept_nth_idx == 0) {
+                    /* Do nothing more - i.e. leave it unset */
+                } else {
+                    cmdline_overrides.conf.dmenu.accept_nth_format =
+                        xasprintf("{%u}", accept_nth_idx);
+                }
+            } else if (optarg[0] != '\0')
                 cmdline_overrides.conf.dmenu.accept_nth_format = xstrdup(optarg);
+
             cmdline_overrides.dmenu_accept_nth_set = true;
             break;
         }
+
+        case OPT_DMENU_MATCH_NTH: {
+            free(cmdline_overrides.conf.dmenu.match_nth_format);
+            cmdline_overrides.conf.dmenu.match_nth_format = NULL;
+
+            unsigned int match_nth_idx;
+            if (sscanf(optarg, "%u", &match_nth_idx) == 1) {
+                if (match_nth_idx == 0) {
+                    /* Do nothing more - i.e. leave it unset */
+                } else {
+                    cmdline_overrides.conf.dmenu.match_nth_format =
+                        xasprintf("{%u}", match_nth_idx);
+                }
+            } else if (optarg[0] != '\0')
+                cmdline_overrides.conf.dmenu.match_nth_format = xstrdup(optarg);
+
+            cmdline_overrides.dmenu_match_nth_set = true;
+            break;
+        }
+
+        case OPT_DMENU_ONLY_MATCH:
+            cmdline_overrides.conf.dmenu.only_match = true;
+            cmdline_overrides.dmenu_only_match_set = true;
+            break;
+
+        case OPT_DMENU_MESSAGE:
+            free(cmdline_overrides.conf.message);
+            cmdline_overrides.conf.message = ambstoc32(optarg);
+
+            if (cmdline_overrides.conf.message == NULL) {
+                fprintf(stderr, "%s: invalid dmenu message\n", optarg);
+                return EXIT_FAILURE;
+            }
+
+            break;
+
+        case OPT_DMENU_MESSAGE_MODE:
+            if (strcmp(optarg, "wrap") == 0)
+                cmdline_overrides.conf.message_mode = MESSAGE_MODE_WRAP;
+            else if (strcmp(optarg, "expand") == 0)
+                cmdline_overrides.conf.message_mode = MESSAGE_MODE_EXPAND;
+            else {
+                fprintf(stderr, "%s: invalid mesg-mode. Must be 'wrap' or 'expand'\n", optarg);
+                return EXIT_FAILURE;
+            }
+
+            cmdline_overrides.mesg_mode_set = true;
+            break;
 
         case OPT_LOG_LEVEL: {
             int lvl = log_level_from_string(optarg);
@@ -1896,6 +1999,7 @@ main(int argc, char *const *argv)
         }
     }
 
+
     log_init(log_colorize, log_syslog, LOG_FACILITY_USER, log_level);
     LOG_INFO("%s", version_and_features());
 
@@ -2012,6 +2116,8 @@ main(int argc, char *const *argv)
         conf.colors.background = cmdline_overrides.conf.colors.background;
     if (cmdline_overrides.text_color_set)
         conf.colors.text = cmdline_overrides.conf.colors.text;
+    if (cmdline_overrides.message_color_set)
+        conf.colors.message = cmdline_overrides.conf.colors.message;
     if (cmdline_overrides.prompt_color_set)
         conf.colors.prompt = cmdline_overrides.conf.colors.prompt;
     if (cmdline_overrides.placeholder_color_set)
@@ -2076,6 +2182,18 @@ main(int argc, char *const *argv)
         free(conf.dmenu.accept_nth_format);
         conf.dmenu.accept_nth_format = cmdline_overrides.conf.dmenu.accept_nth_format;
     }
+    if (cmdline_overrides.dmenu_match_nth_set) {
+        free(conf.dmenu.match_nth_format);
+        conf.dmenu.match_nth_format = cmdline_overrides.conf.dmenu.match_nth_format;
+    }
+    if (cmdline_overrides.dmenu_only_match_set)
+        conf.dmenu.only_match = cmdline_overrides.conf.dmenu.only_match;
+    if (cmdline_overrides.conf.message != NULL) {
+        free(conf.message);
+        conf.message = cmdline_overrides.conf.message;
+    }
+    if (cmdline_overrides.mesg_mode_set)
+        conf.message_mode = cmdline_overrides.conf.message_mode;
     if (cmdline_overrides.conf.list_executables_in_path)
         conf.list_executables_in_path = cmdline_overrides.conf.list_executables_in_path;
     if (cmdline_overrides.render_workers_set)
@@ -2105,7 +2223,8 @@ main(int argc, char *const *argv)
 
     if (conf.dmenu.enabled) {
         /* We don't have any meta data in dmenu mode */
-        conf.match_fields = MATCH_NAME;
+        conf.match_fields = conf.dmenu.match_nth_format != NULL
+            ? MATCH_NTH : MATCH_NAME;
 
         if (conf.prompt_only) {
             conf.lines = 0;
@@ -2118,6 +2237,9 @@ main(int argc, char *const *argv)
     if (conf.l10n_plugin_path) {
         l10n_plugin_load(conf.l10n_plugin_path);
     }
+
+    if (conf.print_timing_info)
+        time_enable();
 
     _Static_assert((int)LOG_CLASS_ERROR == (int)FCFT_LOG_CLASS_ERROR,
                    "fcft log level enum offset");
@@ -2238,7 +2360,6 @@ main(int argc, char *const *argv)
     if (!fdm_add(fdm, event_pipe[0], EPOLLIN, &fdm_apps_populated, &ctx))
         goto out;
 
-    gettimeofday(&ctx.timing.apps.start, NULL);
     if (thrd_create(&app_thread_id, &populate_apps, &ctx) != thrd_success) {
         LOG_ERR("failed to create thread");
         goto out;
@@ -2246,10 +2367,23 @@ main(int argc, char *const *argv)
 
     join_app_thread = true;
 
-    if (!conf.dmenu.exit_immediately_if_empty &&
-        !(conf.dmenu.enabled && conf.minimal_lines))
-    {
-        wayl_ready_to_display(wayl);
+    /*
+     * Render immediately, even if empty
+     *
+     * We do this in dmenu mode only; we assume there's at least one
+     * .desktop file in application mode, and we don't want to waste
+     * resources on rendering an empty window while loading the
+     * applications.
+     *
+     * Even if we're in dmenu mode, we don't always render immediately
+     *  - exit-immediately-if-empty: we don't want to display anything
+     *    if the final list is empty
+     *  - minimal-lines: we need to know how many items we're going to
+     *    display
+     */
+    if (conf.dmenu.enabled) {
+        if (!conf.dmenu.exit_immediately_if_empty && !conf.minimal_lines)
+            wayl_ready_to_display(wayl);
     }
 
     wayl_refresh(wayl);

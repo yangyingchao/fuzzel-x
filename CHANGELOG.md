@@ -1,5 +1,6 @@
 # Changelog
 
+* [1.14.0](#1-14-0)
 * [1.13.1](#1-13-1)
 * [1.13.0](#1-13-0)
 * [1.12.0](#1-12-0)
@@ -30,6 +31,77 @@
 * [1.4.1](#1-4-1)
 
 
+## 1.14.0
+
+### Added
+
+* Faster, more accurate SVG rendering with `resvg` backend. It does
+  not require cairo and supports gamma correction. Packagers are
+  advised to prefer this backend. The librsvg and nanosvg backends may
+  be removed in a future release ([#650][650]).
+* `--match-nth=N` command line option, allowing dmenu entries to be
+  matched against text other than what is being displayed
+  ([#589][589]).
+* `--only-match` command line option, preventing the user from
+  executing "custom" input in dmenu mode ([#651][651]).
+* `--nth-delimiter=CHR` option added support for custom delimiter in 1.13
+  but is just now documented in the changelog.
+* The ability to set a custom "message" above the prompt, controlled
+  with the new command line options `--mesg`, `--mesg-mode` and
+  `--message-color` (and the corresponding config options `mesg`,
+  `mesg-mode` and `colors.message`) ([#454][454]).
+
+[650]: https://codeberg.org/dnkl/fuzzel/issues/650
+[589]: https://codeberg.org/dnkl/fuzzel/issues/589
+[651]: https://codeberg.org/dnkl/fuzzel/issues/651
+[454]: https://codeberg.org/dnkl/fuzzel/issues/454
+
+### Changed
+
+* When typing, the selected entry now always reverts to the first
+  match (if you had selected an entry further down the list, with
+  either the mouse or the arrow keys). Previously, the same _index_
+  would stay selected (meaning the actually selected entry may have
+  changed). ([#684][684]).
+* More environment variables are now passed to `--launch-prefix`. This
+  saves launcher that need more details from reparsing the desktop
+  file, spending up launching. ([#292][292])
+
+[292]: https://codeberg.org/dnkl/fuzzel/issues/292
+[684]: https://codeberg.org/dnkl/fuzzel/issues/684
+
+### Deprecated
+
+* `FUZZEL_DESKTOP_FILE_ID` has been deprecated and will be removed in
+  a future release. The replacement is `DESKTOP_ENTRY_ID` which is
+  consistent with other `DESKTOP_ENTRY_*` variables we now export.
+
+
+### Fixed
+
+* `--with-nth` and `--accept-nth` crashing if a column is empty
+  (e.g. `\tsecond column`, or `first\t\tthird`) ([#658][658])
+* Regression: `--accept-nth=0` and `--with-nth=0` not being treated as
+  if not specified at all ([#670][670]).
+* Improved scrolling with mouse wheel and touchpad ([#673][673]).
+* Incorrect touch coordinates with desktop scaling enabled
+  ([#686][686]).
+* --match-mode=fzf now prioritizes matching at word boundaries,
+  matching fzf's behavior. ([#695][695])
+
+[658]: https://codeberg.org/dnkl/fuzzel/issues/658
+[670]: https://codeberg.org/dnkl/fuzzel/issues/670
+[673]: https://codeberg.org/dnkl/fuzzel/issues/673
+[686]: https://codeberg.org/dnkl/fuzzel/issues/686
+[695]: https://codeberg.org/dnkl/fuzzel/issues/695
+
+### Contributors
+
+* Mark Stosberg
+* SlayerOfTheBad
+* Whyme Lyu
+
+
 ## 1.13.1
 
 ### Fixed
@@ -43,11 +115,10 @@
 [653]: https://codeberg.org/dnkl/fuzzel/issues/653
 [652]: https://codeberg.org/dnkl/fuzzel/issues/652
 
-
 ### Contributors
 
- * Mark Stosberg
- * rehanzo
+* Mark Stosberg
+* rehanzo
 
 
 ## 1.13.0
@@ -82,6 +153,7 @@
 * `selection-radius` option and `--selection-radius` flag to set the border
   radius of the selected entry
 * `enable-mouse` option and `--no-mouse` flag to disable mouse input
+* `--nth-delimiter=CHR` option adds support for custom delimiter.
 
 [411]: https://codeberg.org/dnkl/fuzzel/issues/411
 [504]: https://codeberg.org/dnkl/fuzzel/pulls/504

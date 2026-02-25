@@ -100,6 +100,18 @@ struct levenshtein_matrix {
 
 static int match_thread(void *_ctx);
 
+static bool
+is_word_boundary(const char32_t *str, size_t pos)
+{
+    /* Position 0 is always a word boundary */
+    if (pos == 0)
+        return true;
+
+    /* Check if character before is a space/separator */
+    char32_t prev = str[pos - 1];
+    return isc32space(prev);
+}
+
 static char32_t *
 match_exact(const char32_t *haystack, size_t haystack_len,
             const char32_t *needle, size_t needle_len)
@@ -811,8 +823,12 @@ match_compar(const void *_a, const void *_b)
             return 1;
     }
 
-    else if (a->application->count > b->application->count)
+    if (a->application->count > b->application->count)
         return -1;
+    /* Prioritize matches at word boundaries */
+    else if (a->word_boundary != b->word_boundary) {
+        return a->word_boundary ? -1 : 1;
+    }
     else if (a->score > b->score)
         return -1;
     else if (a->score < b->score)
@@ -845,7 +861,8 @@ match_app(struct matches *matches, struct application *app,
           bool match_exec,
           bool match_comment,
           bool match_keywords,
-          bool match_categories)
+          bool match_categories,
+          bool match_nth)
 {
     size_t pos_count = 0;
     struct match_substring *pos = NULL;
@@ -855,6 +872,7 @@ match_app(struct matches *matches, struct application *app,
     enum matched_type match_type_generic = MATCHED_NONE;
     enum matched_type match_type_exec = MATCHED_NONE;
     enum matched_type match_type_comment = MATCHED_NONE;
+    enum matched_type match_type_nth = MATCHED_NONE;
     enum matched_type match_type_keywords[tll_length(app->keywords)];
     enum matched_type match_type_categories[tll_length(app->categories)];
 
@@ -927,6 +945,54 @@ match_app(struct matches *matches, struct application *app,
                 match_type_name = MATCHED_NONE;
             else if (match_type_name == MATCHED_EXACT)
                 match_type_name = match_type;
+        }
+
+        if (match_nth && app->dmenu_match_nth != NULL &&
+            (t == 0 || match_type_nth != MATCHED_NONE))
+        {
+            const char32_t *m = NULL;
+            size_t match_len = 0;
+            enum matched_type match_type = MATCHED_NONE;
+
+            switch (matches->mode) {
+            case MATCH_MODE_EXACT:
+                m = match_exact(
+                    app->dmenu_match_nth, app->dmenu_match_nth_len, tok, tok_len);
+
+                if (m != NULL) {
+                    match_type = MATCHED_EXACT;
+                    match_len = tok_len;
+                }
+                break;
+
+            case MATCH_MODE_FZF:
+                match_fzf(app->dmenu_match_nth, app->dmenu_match_nth_len,
+                          tok, tok_len, NULL, NULL, &match_type);
+                break;
+
+            case MATCH_MODE_FUZZY:
+                m = match_exact(
+                    app->dmenu_match_nth, app->dmenu_match_nth_len, tok, tok_len);
+
+                if (m != NULL) {
+                    match_type = MATCHED_EXACT;
+                    match_len = tok_len;
+                } else {
+                    m = match_levenshtein(
+                        matches, app->dmenu_match_nth, app->dmenu_match_nth_len,
+                        tok, tok_len, &match_len);
+                    if (m != NULL)
+                        match_type = MATCHED_FUZZY;
+                }
+                break;
+            }
+
+            if (t == 0)
+                match_type_nth = match_type;
+            else if (match_type == MATCHED_NONE)
+                match_type_nth = MATCHED_NONE;
+            else if (match_type_nth == MATCHED_EXACT)
+                match_type_nth = match_type;
         }
 
         if (match_filename && app->basename != NULL &&
@@ -1315,10 +1381,19 @@ match_app(struct matches *matches, struct application *app,
         app_match_type = match_type_keywords_final;
     else if (match_type_categories_final != MATCHED_NONE)
         app_match_type = match_type_categories_final;
+    else if (match_type_nth != MATCHED_NONE)
+        app_match_type = match_type_nth;
 
     if (app_match_type == MATCHED_NONE) {
         free(pos);
         return;
+    }
+
+    /* Check if match starts at word boundary */
+    bool word_boundary = false;
+    if (match_name && pos_count > 0) {
+        /* Check if first match position is at a word boundary in the title */
+        word_boundary = is_word_boundary(app->title_lowercase, pos[0].start);
     }
 
     struct match m = {
@@ -1327,6 +1402,7 @@ match_app(struct matches *matches, struct application *app,
         .pos = pos,
         .pos_count = pos_count,
         .score = score,
+        .word_boundary = word_boundary,
     };
 
     const size_t idx = matches->match_count++;
@@ -1366,6 +1442,7 @@ match_thread(void *_ctx)
     const bool match_comment = fields & MATCH_COMMENT;
     const bool match_keywords = fields & MATCH_KEYWORDS;
     const bool match_categories = fields & MATCH_CATEGORIES;
+    const bool match_nth = fields & MATCH_NTH;
 
     sem_t *start = &matches->workers.start;
     sem_t *done = &matches->workers.done;
@@ -1422,7 +1499,8 @@ match_thread(void *_ctx)
 
                     match_app(matches, app, tok_count, tokens, tok_lengths,
                               match_name, match_filename, match_generic, match_exec,
-                              match_comment, match_keywords, match_categories);
+                              match_comment, match_keywords, match_categories,
+                              match_nth);
                 }
             }
         }
@@ -1456,6 +1534,7 @@ matches_update_internal(struct matches *matches, bool incremental)
                 .application = matches->applications->v[i],
                 .pos = NULL,
                 .pos_count = 0,
+                .word_boundary = false,
             };
         }
 
@@ -1483,17 +1562,19 @@ matches_update_internal(struct matches *matches, bool incremental)
     const bool match_comment = fields & MATCH_COMMENT;
     const bool match_keywords = fields & MATCH_KEYWORDS;
     const bool match_categories = fields & MATCH_CATEGORIES;
+    const bool match_nth = fields & MATCH_NTH;
 
     LOG_DBG(
         "matching: filename=%s, name=%s, generic=%s, exec=%s, categories=%s, "
-        "keywords=%s, comment=%s",
+        "keywords=%s, comment=%s, nth=%d",
         match_filename ? "yes" : "no",
         match_name ? "yes" : "no",
         match_generic ? "yes" : "no",
         match_exec ? "yes" : "no",
         match_categories ? "yes" : "no",
         match_keywords ? "yes" : "no",
-        match_comment ? "yes" : "no");
+        match_comment ? "yes" : "no",
+        match_nth ? "yes" : "no");
 
     LOG_DBG("match update begin");
 
@@ -1596,7 +1677,7 @@ matches_update_internal(struct matches *matches, bool incremental)
                 match_app(matches, app,
                           tok_count, (const char32_t *const *)tokens, tok_lengths,
                           match_name, match_filename, match_generic, match_exec,
-                          match_comment, match_keywords, match_categories);
+                          match_comment, match_keywords, match_categories, match_nth);
             }
         }
     }

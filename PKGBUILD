@@ -1,9 +1,9 @@
-CAIRO=enabled        # disabled|enabled
+CAIRO=disabled       # disabled|enabled
 PNG_BACKEND=libpng   # none|libpng
-SVG_BACKEND=librsvg  # none|librsvg|nanosvg (librsvg force-enables cairo, nanosvg is bundled)
+SVG_BACKEND=resvg    # none|librsvg|nanosvg|resvg (librsvg force-enables cairo, nanosvg is bundled)
 
 pkgname=fuzzel
-pkgver=1.13.1
+pkgver=1.14.0
 pkgrel=1
 pkgdesc="Simplistic application launcher for wayland"
 arch=('x86_64' 'aarch64')
@@ -23,6 +23,10 @@ if [[ ${SVG_BACKEND} == librsvg ]]; then
     CAIRO=enabled
 fi
 
+if [[ ${SVG_BACKEND} == resvg ]]; then
+    depends+=( 'resvg' )
+fi
+
 if [[ ${CAIRO} == enabled ]]; then
     depends+=( 'cairo' )
 fi
@@ -33,7 +37,7 @@ pkgver() {
 }
 
 build() {
-  meson \
+  meson setup \
       --prefix=/usr                \
       --buildtype=release          \
       --wrap-mode=nofallback       \

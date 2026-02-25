@@ -25,6 +25,7 @@ struct match {
     struct match_substring *pos;
     size_t pos_count;
     size_t score;
+    bool word_boundary;  /* True if match starts at word boundary */
 };
 
 struct wayland;

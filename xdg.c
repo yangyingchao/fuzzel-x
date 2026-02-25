@@ -61,6 +61,7 @@ struct action {
     bool visible;
     bool use_terminal;
     bool no_startup_notify;
+    char *action_id;
 };
 
 static bool
@@ -91,7 +92,7 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename_lowercase,
                    const char *terminal, bool include_actions,
                    bool filter_desktops, char_list_t *desktops,
                    const struct locale_variants *lc_messages,
-                   application_llist_t *applications)
+                   application_llist_t *applications, const char *desktop_file_path)
 {
     FILE *f = fdopen(fd, "re");
     if (f == NULL) {
@@ -104,7 +105,7 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename_lowercase,
     tll(char *) action_names = tll_init();
 
     tll(struct action) actions = tll_init();
-    tll_push_back(actions, ((struct action){.visible = true}));
+    tll_push_back(actions, ((struct action){.visible = true, .action_id = NULL}));
     struct action *action = &tll_back(actions);
     struct action *default_action = action;
 
@@ -168,6 +169,8 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename_lowercase,
                         tll_push_back(actions, ((struct action){0}));
                         action = &tll_back(actions);
 
+
+                        action->action_id = xstrndup(action_name, name_len);
                         action->generic_name =
                             default_action->generic_name != NULL
                             ? xc32dup(default_action->generic_name) : NULL;
@@ -466,6 +469,14 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename_lowercase,
             a->exec = exec_with_terminal;
         }
 
+        /* Save original action name before modifying title */
+        char32_t *saved_action_name = a->name ? xc32dup(a->name) : NULL;
+        char32_t *saved_default_name = default_action->name ? xc32dup(default_action->name) : NULL;
+
+        /* Save original generic name before converting to lowercase */
+        char32_t *saved_generic_name = a->generic_name ? xc32dup(a->generic_name) : NULL;
+        char32_t *saved_default_generic_name = default_action->generic_name ? xc32dup(default_action->generic_name) : NULL;
+
         char32_t *title = a->name;
         if (a != default_action) {
             title = xc32join3(default_action->name, U" — ", a->name);
@@ -534,13 +545,34 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename_lowercase,
             .visible = a->visible && (!filter_desktops || filter_desktop_entry(a, desktops)),
             .startup_notify = !a->no_startup_notify,
             .count = 0,
+            /* Additional metadata */
+            .desktop_file_path = xstrdup(desktop_file_path),
+            .action_id = a->action_id ? xstrdup(a->action_id) : NULL,
+            .original_name = saved_default_name,
+            .localized_name = saved_action_name ? xc32dup(saved_action_name) : NULL,
+            .action_name = (a->action_id && saved_action_name) ? xc32dup(saved_action_name) : NULL,
+            .localized_action_name = (a->action_id && saved_action_name) ? xc32dup(saved_action_name) : NULL,
+            .original_generic_name = saved_default_generic_name,
+            .localized_generic_name = saved_generic_name,
         };
         tll_push_back(*applications, app);
         tll_free_and_free(a->onlyshowin, free);
         tll_free_and_free(a->notshowin, free);
+
+        /* Clean up saved names */
+        if (a == default_action) {
+            /* All saved names already transferred to app: saved_action_name, saved_default_name,
+               saved_generic_name, saved_default_generic_name */
+        } else {
+            /* saved_action_name and saved_generic_name already transferred */
+            free(saved_action_name);
+        }
     }
 
     free(id);
+    tll_foreach(actions, it) {
+        free(it->item.action_id);
+    }
     tll_free(actions);
     tll_free_and_free(action_names, free);
 }
@@ -557,7 +589,7 @@ new_id(const char *base_id, const char *new_part)
 static void
 scan_dir(int base_fd, const char *terminal, bool include_actions,
          bool filter_desktop, char_list_t *desktops,
-         application_llist_t *applications, const char *base_id)
+         application_llist_t *applications, const char *base_id, const char *base_path)
 {
     DIR *d = fdopendir(base_fd);
     if (d == NULL) {
@@ -619,9 +651,11 @@ scan_dir(int base_fd, const char *terminal, bool include_actions,
             }
 
             char *nested_base_id = new_id(base_id, e->d_name);
+            char nested_base_path[PATH_MAX];
+            xsnprintf(nested_base_path, sizeof(nested_base_path), "%s/%s", base_path, e->d_name);
             scan_dir(dir_fd, terminal, include_actions,
                      filter_desktop, desktops,
-                     applications, nested_base_id);
+                     applications, nested_base_id, nested_base_path);
             free(nested_base_id);
             close(dir_fd);
         } else if (S_ISREG(st.st_mode)) {
@@ -670,10 +704,14 @@ scan_dir(int base_fd, const char *terminal, bool include_actions,
                 }
 
                 if (!already_added) {
+                    /* Construct full desktop file path */
+                    char desktop_file_path[PATH_MAX];
+                    xsnprintf(desktop_file_path, sizeof(desktop_file_path), "%s/%s", base_path, e->d_name);
+
                     parse_desktop_file(
                         fd, id, wfile_basename, terminal, include_actions,
                         filter_desktop, desktops,
-                        &lc_messages, applications);
+                        &lc_messages, applications, desktop_file_path);
                     /* fd closed by parse_desktop_file() */
                 } else {
                     free(id);
@@ -712,7 +750,7 @@ xdg_find_programs(const char *terminal, bool include_actions,
 
         int fd = open(path, O_RDONLY | O_CLOEXEC);
         if (fd != -1) {
-            scan_dir(fd, terminal, include_actions, filter_desktop, desktops, &apps, NULL);
+            scan_dir(fd, terminal, include_actions, filter_desktop, desktops, &apps, NULL, path);
             close(fd);
         }
     }

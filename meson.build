@@ -1,5 +1,5 @@
 project('fuzzel', ['c', 'cpp'],
-        version: '1.13.1',
+        version: '1.14.0',
         license: 'MIT',
         meson_version: '>=0.58.0',
         default_options: [
@@ -58,7 +58,18 @@ math = cc.find_library('m')
 threads = [dependency('threads'), cc.find_library('stdthreads', required: false)]
 fontconfig = dependency('fontconfig')
 pixman = dependency('pixman-1', version: '>=0.46.0')
-cairo = dependency('cairo', required: get_option('enable-cairo'))
+# Cairo is required for librsvg but not for resvg/nanosvg
+if get_option('svg-backend') == 'resvg' or get_option('svg-backend') == 'nanosvg'
+  # For resvg/nanosvg, cairo is optional and disabled by default
+  if get_option('enable-cairo').auto()
+    cairo = dependency('cairo', required: false)
+  else
+    cairo = dependency('cairo', required: get_option('enable-cairo'))
+  endif
+else
+  # For librsvg or no SVG backend, respect the enable-cairo option
+  cairo = dependency('cairo', required: get_option('enable-cairo'))
+endif
 libepoll = dependency('epoll-shim', required: false)
 wayland_protocols = dependency('wayland-protocols', version: '>=1.41')
 wayland_client = dependency('wayland-client')
@@ -84,6 +95,7 @@ endif
 if cairo.found() and get_option('svg-backend') == 'librsvg'
   librsvg = dependency('librsvg-2.0')
   nanosvg = declare_dependency()
+  resvg = declare_dependency()
   svg_backend = 'librsvg'
   add_project_arguments('-DFUZZEL_ENABLE_SVG_LIBRSVG=1', language: 'c')
 elif get_option('svg-backend') == 'nanosvg'
@@ -102,10 +114,23 @@ elif get_option('svg-backend') == 'nanosvg'
   endif
   add_project_arguments('-DFUZZEL_ENABLE_SVG_NANOSVG=1', language: 'c')
   librsvg = declare_dependency()
+  resvg = declare_dependency()
+elif get_option('svg-backend') == 'resvg'
+  # resvg doesn't provide pkg-config, so we need to find it manually
+  resvg = cc.find_library('resvg', required: true)
+  if cc.has_header('resvg.h')
+    svg_backend = 'resvg'
+    add_project_arguments('-DFUZZEL_ENABLE_SVG_RESVG=1', language: 'c')
+  else
+    error('resvg.h not found. Please install resvg development files.')
+  endif
+  librsvg = declare_dependency()
+  nanosvg = declare_dependency()
 else
   svg_backend = 'none'
   librsvg = declare_dependency()
   nanosvg = declare_dependency()
+  resvg = declare_dependency()
 endif
 
 wayland_protocols_datadir = wayland_protocols.get_variable('pkgdatadir')
@@ -128,6 +153,7 @@ wl_proto_xml = [
   wayland_protocols_datadir + '/staging/fractional-scale/fractional-scale-v1.xml',
   wayland_protocols_datadir / 'unstable/primary-selection/primary-selection-unstable-v1.xml',
   wayland_protocols_datadir / 'staging/color-management/color-management-v1.xml',
+  wayland_protocols_datadir / 'staging/single-pixel-buffer/single-pixel-buffer-v1.xml',
 ]
 
 foreach prot : wl_proto_xml
@@ -189,6 +215,7 @@ fuzzel = executable(
   'xdg.c', 'xdg.h',
   'xmalloc.c', 'xmalloc.h',
   'xsnprintf.c', 'xsnprintf.h',
+  'timing.c', 'timing.h',
   wl_proto_src + wl_proto_headers, version, srgb_funcs,
   dependencies: [math,
                  threads,
@@ -199,6 +226,7 @@ fuzzel = executable(
                  libpng,
                  librsvg,
                  nanosvg,
+                 resvg,
                  wayland_client,
                  wayland_cursor,
                  xkb,
@@ -215,6 +243,7 @@ if fish.found() and wtype.found()
       'auto-select',
       'execute',
       'match-mode-fzf',
+      'match-nth',
     ]
       test(test_case, fish,
            args: ['-c',

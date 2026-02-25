@@ -143,6 +143,23 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	String to use as input prompt. Note that trailing spaces are
 	trimmed, unless the string is quoted. Default: _"> "_.
 
+*mesg*
+	Message to display above the prompt. Can contain some informational
+	message, or can be used for having your prompt be above the input
+	instead of in front. Supports newlines.
+	For details on how long lines are treated, see *mesg-mode*.
+
+*mesg-mode*
+	One of *wrap*, and *expand*.
+
+	*wrap*: any line that is longer than *width* is wrapped to the
+	following line. Wraps on space boundaries if available, trimming
+	leading spaces caused by truncation. If no space is available,
+	the line is broken up after *width* characters.
+
+	*expand*: If the longest line in *mesg* is longer than *width*,
+	make the dialogue box wider to accommodate *mesg*.
+
 *icon-theme*
 	Icon theme. Note that the name is case sensitive. Default:
 	_default_.
@@ -249,9 +266,22 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 
 *launch-prefix*
 	Prefix to add before argv of executed program.
-	If set, fuzzel will pass the Desktop File ID of the chosen application
-	(see the Desktop Entry specification) in the FUZZEL_DESKTOP_FILE_ID
-	environment variables.
+	If set, fuzzel will pass desktop file metadata through environment
+	variables:
+
+	- DESKTOP_ENTRY_ID (also exported as FUZZEL_DESKTOP_FILE_ID for backward compatibility)
+	- DESKTOP_ENTRY_PATH
+	- DESKTOP_ENTRY_NAME
+	- DESKTOP_ENTRY_COMMENT
+	- DESKTOP_ENTRY_NAME_L (Localized)
+	- DESKTOP_ENTRY_COMMENT_L (Localized)
+	- DESKTOP_ENTRY_ICON
+	And if launching an action:
+	- DESKTOP_ENTRY_ACTION (Action identifier)
+	- DESKTOP_ENTRY_ACTION_NAME
+	- DESKTOP_ENTRY_ACTION_NAME_L (Localized)
+	- DESKTOP_ENTRY_ACTION_ICON
+
 	Default: _not set_.
 
 *anchor*
@@ -436,6 +466,10 @@ All color values are in RGBA.
 	Text (foreground) color of unselected entries. Default:
 	_657b83ff_.
 
+*message*
+	Text (foreground) color of the message string. Default:
+	_657b83ff_.
+
 *prompt*
 	Text (foreground) color of prompt character(s). Default:
 	_586e75ff_.
@@ -494,7 +528,6 @@ All color values are in RGBA.
 	Boolean. If enabled, fuzzel will not run at all (i.e. it will not
 	open a window, and will not print anything on stdout) if there's
 	nothing on stdin. Default: _no_.
-
 
 # SECTION: key-bindings
 
@@ -561,20 +594,14 @@ done by setting _action=none_; e.g. *delete-line-forward=none*.
 	Moves the cursor to the end of the input. Default: _End
 	Control+e_.
 
-*delete-input*
-	There is no standalone binding to clear the input. Use
-	*cursor-home* (_Control+a_) to go into the beginning of the input,
-	followed the *delete-line-forward* binding
-	(_Control+k_). Alternatively, if you are at the end of the input,
-	use *delete-line-backward* (_Control+u_). These are alternatives
-	to using "select all" to highlight text (not supported by fuzzel)
-	and then delete it.
-
 *delete-line-backward*
 	Deletes everything before the cursor. Default: _Control+u_.
 
 *delete-line-forward*
 	Deletes everything after the cursor. Default: _Control+k_.
+
+*delete-line*
+	Deletes the entire input. Default: _Control+Shift+BackSpace_.
 
 *delete-prev*
 	Deletes the **character before** the cursor. Default: _BackSpace Control+h_.
@@ -589,12 +616,6 @@ done by setting _action=none_; e.g. *delete-line-forward=none*.
 *delete-next-word*
 	Deletes the **word after** the cursor. Default: _Mod1+d
 	Control+Delete_.
-
-*delete-line-forward*
-	Deletes everything after the cursor. Default: _Control+k_.
-
-*delete-line*
-	Deletes the entire input. Default: _Control+Shift+BackSpace_.
 
 *insert-selected*
 	Copies the selected entry to the prompt, replacing the current
