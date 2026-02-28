@@ -671,7 +671,17 @@ render_message(struct render *render, struct buffer *buf)
         if (message_run != NULL) {
             for (; current_pos <= current_line_end; current_pos++) {
                 int i = current_pos - render->conf->message;
-                const struct fcft_glyph *glyph = message_run->glyphs[i];
+                const struct fcft_glyph *glyph = NULL;
+
+                for (size_t j = 0; j < message_run->count; j++) {
+                    if (message_run->cluster[j] == i) {
+                        glyph = message_run->glyphs[j];
+                        break;
+                    }
+                }
+
+                if (glyph == NULL)
+                    continue;
 
                 render_glyph(buf->pix[0], glyph, x, y, &render->pix_message_color);
                 x += glyph->advance.x;

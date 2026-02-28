@@ -43,10 +43,12 @@
   is no longer true.
 * Segfault when attempting to parse a comment in an icon `index.theme` file
   and correctly interpreting KV pairs by ignoring whitespace ([#727][727]).
-* Fixed fzf-mode sorting regression in 1.14.0. ([#730][730])
+* Fixed fzf-mode sorting regression in 1.14.0. ([#730][730]).
+* Crash when rendering a `--mesg` with ligatures ([#736][736]).
 
 [727]: https://codeberg.org/dnkl/fuzzel/pulls/727
 [730]: https://codeberg.org/dnkl/fuzzel/issues/730
+[736]: https://codeberg.org/dnkl/fuzzel/issues/736
 
 
 ### Security
