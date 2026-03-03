@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [1.14.1](#1-14-1)
 * [1.14.0](#1-14-0)
 * [1.13.1](#1-13-1)
 * [1.13.0](#1-13-0)
@@ -32,11 +32,8 @@
 * [1.4.1](#1-4-1)
 
 
-## Unreleased
-### Added
-### Changed
-### Deprecated
-### Removed
+## 1.14.1
+
 ### Fixed
 
 * Removed statement that Cairo is required for rounded corners. This
@@ -54,7 +51,6 @@
 [463]: https://codeberg.org/dnkl/fuzzel/issues/463
 
 
-### Security
 ### Contributors
 
 * tranzystorekk
