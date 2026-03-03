@@ -45,10 +45,13 @@
   and correctly interpreting KV pairs by ignoring whitespace ([#727][727]).
 * Fixed fzf-mode sorting regression in 1.14.0. ([#730][730]).
 * Crash when rendering a `--mesg` with ligatures ([#736][736]).
+* Potential flicker at startup on compositors that e.g. blur, or
+  animate layer shell surfaces ([#463][463]).
 
 [727]: https://codeberg.org/dnkl/fuzzel/pulls/727
 [730]: https://codeberg.org/dnkl/fuzzel/issues/730
 [736]: https://codeberg.org/dnkl/fuzzel/issues/736
+[463]: https://codeberg.org/dnkl/fuzzel/issues/463
 
 
 ### Security
