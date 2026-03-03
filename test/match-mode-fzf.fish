@@ -20,6 +20,12 @@ end
 test_fzf_mode "hamburger\nflag: bulgaria\nbug\njunk\ntrunk" bug
 @test "exact matches should rank higher than fuzzy matches" $got = bug
 
+test_fzf_mode "Checks color contrast between text and background: https://snook.ca/technical/colour_contrast/colour.html\nhttps://chatgpt.com\n" chatgpt
+@test "longer contiguous match should rank higher (chatgpt)" $got = 'https://chatgpt.com'
+
+test_fzf_mode "OpenJDK 21 for x86_64\nFirefox\n" fox
+@test "longer contiguous match should rank higher (firefox)" $got = Firefox
+
 test_fzf_mode "longer entry\nlonger\nlong" long
 @test "shorter matches should match first" $got = long
 

@@ -1,5 +1,6 @@
 # Changelog
 
+* [Unreleased](#unreleased)
 * [1.14.0](#1-14-0)
 * [1.13.1](#1-13-1)
 * [1.13.0](#1-13-0)
@@ -29,6 +30,38 @@
 * [1.5.0](#1-5-0)
 * [1.4.2](#1-4-2)
 * [1.4.1](#1-4-1)
+
+
+## Unreleased
+### Added
+### Changed
+### Deprecated
+### Removed
+### Fixed
+
+* Removed statement that Cairo is required for rounded corners. This
+  is no longer true.
+* Segfault when attempting to parse a comment in an icon `index.theme` file
+  and correctly interpreting KV pairs by ignoring whitespace ([#727][727]).
+* Fixed fzf-mode sorting regression in 1.14.0. ([#730][730]).
+* Crash when rendering a `--mesg` with ligatures ([#736][736]).
+* Potential flicker at startup on compositors that e.g. blur, or
+  animate layer shell surfaces ([#463][463]).
+
+[727]: https://codeberg.org/dnkl/fuzzel/pulls/727
+[730]: https://codeberg.org/dnkl/fuzzel/issues/730
+[736]: https://codeberg.org/dnkl/fuzzel/issues/736
+[463]: https://codeberg.org/dnkl/fuzzel/issues/463
+
+
+### Security
+### Contributors
+
+* tranzystorekk
+* Rahul Sandhu
+* markstos
+* VegOwOtenks
+* mb720
 
 
 ## 1.14.0
@@ -86,7 +119,7 @@
 * Improved scrolling with mouse wheel and touchpad ([#673][673]).
 * Incorrect touch coordinates with desktop scaling enabled
   ([#686][686]).
-* --match-mode=fzf now prioritizes matching at word boundaries,
+* `--match-mode=fzf` now prioritizes matching at word boundaries,
   matching fzf's behavior. ([#695][695])
 
 [658]: https://codeberg.org/dnkl/fuzzel/issues/658
