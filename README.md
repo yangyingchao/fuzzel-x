@@ -55,8 +55,9 @@ _Fuzzel, with transparency, on top of a browser window showing a diff of a fuzze
 - Zsh and Fish completions
 - Support for true fractional scaling
 - Wayland native
+- IME support via the _text-input-unstable-v3_ protocol
 
-For details, see [`man fuzzel`](./doc/fuzzel.1.scd) and [`man fuzzel.ini`](./doc/fuzzel.ini.5.scd)
+For details, see [`man fuzzel`](./doc/fuzzel.1.scd)
 
 ## Requirements
 

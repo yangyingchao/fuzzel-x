@@ -38,8 +38,11 @@
 
 * `--override` command line option, allowing you to override **all**
   options available in `fuzzel.ini` ([#759][759]).
+* IME support, via the `text-input-unstable-v3` Wayland protocol
+  ([#615][614]).
 
 [759]: https://codeberg.org/dnkl/fuzzel/issues/759
+[615]: https://codeberg.org/dnkl/fuzzel/issues/615
 
 
 ### Changed

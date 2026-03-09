@@ -153,6 +153,7 @@ wl_proto_xml = [
   wayland_protocols_datadir / 'unstable/primary-selection/primary-selection-unstable-v1.xml',
   wayland_protocols_datadir / 'staging/color-management/color-management-v1.xml',
   wayland_protocols_datadir / 'staging/single-pixel-buffer/single-pixel-buffer-v1.xml',
+  wayland_protocols_datadir / 'unstable/text-input/text-input-unstable-v3.xml',
 ]
 
 foreach prot : wl_proto_xml

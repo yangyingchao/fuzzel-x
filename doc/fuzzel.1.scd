@@ -643,6 +643,11 @@ For more information, see *fuzzel.ini*(5).
 Fuzzel uses the localized strings from the .desktop files by
 default. To disable this, run fuzzel with *LC_MESSAGES=C*.
 
+# IME
+
+Fuzzel supports input method editors (IME) via the
+*text-input-unstable-v3* Wayland protocol.
+
 # FONT FORMAT
 
 The font is specified in FontConfig syntax. That is, a colon-separated

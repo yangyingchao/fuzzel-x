@@ -31,6 +31,7 @@
 #include <fractional-scale-v1.h>
 #include <primary-selection-unstable-v1.h>
 #include <single-pixel-buffer-v1.h>
+#include <text-input-unstable-v3.h>
 #include <viewporter.h>
 #include <wlr-layer-shell-unstable-v1.h>
 #include <xdg-activation-v1.h>
@@ -195,6 +196,13 @@ struct wayland {
     } color_management;
 
     struct wp_single_pixel_buffer_manager_v1 *single_pixel_manager;
+    struct zwp_text_input_manager_v3 *text_input_manager;
+
+    /* Active preedit text (displayed inline in the prompt) */
+    struct {
+        char32_t *text;          /* NULL when no preedit is active */
+        int32_t cursor;          /* glyph index for cursor (-1 = hidden) */
+    } preedit;
 
     tll(struct monitor) monitors;
     const struct monitor *monitor;
@@ -303,6 +311,11 @@ seat_destroy(struct seat *seat)
 
     if (seat->wl_seat != NULL)
         wl_seat_release(seat->wl_seat);
+
+    if (seat->text_input != NULL)
+        zwp_text_input_v3_destroy(seat->text_input);
+    free(seat->ime.preedit_pending.text);
+    free(seat->ime.commit_pending);
 
     free(seat->clipboard.text);
     free(seat->primary.text);
@@ -1501,6 +1514,270 @@ static const struct wl_touch_listener touch_listener = {
     .orientation = wl_touch_orientation,
 };
 
+/*---------------------------------------------------------------------------
+ * text-input-unstable-v3 listener
+ *---------------------------------------------------------------------------*/
+
+/*
+ * Convert a UTF-8 byte offset within a preedit string to the corresponding
+ * char32_t (glyph) index.  Returns the glyph count if byte_offset is at or
+ * beyond the end of the string.
+ */
+static int32_t
+byte_offset_to_glyph_idx(const char *text, size_t byte_len, int32_t byte_offset)
+{
+    if (byte_offset < 0)
+        return -1;
+
+    int32_t glyph_idx = 0;
+    size_t byte_idx = 0;
+
+    while (byte_idx < byte_len) {
+        if ((int32_t)byte_idx == byte_offset)
+            return glyph_idx;
+
+        int n = mblen(&text[byte_idx], byte_len - byte_idx);
+        if (n <= 0)
+            break;
+
+        byte_idx += n;
+        glyph_idx++;
+    }
+
+    /* byte_offset at or past end of string */
+    return glyph_idx;
+}
+
+static void
+text_input_enter(void *data, struct zwp_text_input_v3 *text_input,
+                 struct wl_surface *surface)
+{
+    struct seat *seat = data;
+    struct wayland *wayl = seat->wayl;
+
+    LOG_DBG("text_input enter");
+
+    /* Reset any stale pending state */
+    free(seat->ime.preedit_pending.text);
+    seat->ime.preedit_pending.text = NULL;
+    free(seat->ime.commit_pending);
+    seat->ime.commit_pending = NULL;
+
+    zwp_text_input_v3_enable(text_input);
+    zwp_text_input_v3_set_content_type(
+        text_input,
+        ZWP_TEXT_INPUT_V3_CONTENT_HINT_NONE,
+        ZWP_TEXT_INPUT_V3_CONTENT_PURPOSE_NORMAL);
+
+    /* Send current cursor rect to position the IME popup */
+    int cx, cy, cw, ch;
+    render_get_cursor_rect(wayl->render, &cx, &cy, &cw, &ch);
+    const float scale = wayl->scale;
+    zwp_text_input_v3_set_cursor_rectangle(
+        text_input,
+        (int)(cx / scale), (int)(cy / scale),
+        (int)(cw / scale), (int)(ch / scale));
+
+    zwp_text_input_v3_commit(text_input);
+    seat->ime.serial++;
+
+    /* Record what we just sent */
+    seat->ime.cursor_rect.x = (int)(cx / scale);
+    seat->ime.cursor_rect.y = (int)(cy / scale);
+    seat->ime.cursor_rect.w = (int)(cw / scale);
+    seat->ime.cursor_rect.h = (int)(ch / scale);
+}
+
+static void
+text_input_leave(void *data, struct zwp_text_input_v3 *text_input,
+                 struct wl_surface *surface)
+{
+    struct seat *seat = data;
+    struct wayland *wayl = seat->wayl;
+
+    LOG_DBG("text_input leave");
+
+    free(seat->ime.preedit_pending.text);
+    seat->ime.preedit_pending.text = NULL;
+    free(seat->ime.commit_pending);
+    seat->ime.commit_pending = NULL;
+
+    /* Clear any active preedit */
+    if (wayl->preedit.text != NULL) {
+        free(wayl->preedit.text);
+        wayl->preedit.text = NULL;
+        wayl->preedit.cursor = -1;
+        wayl_refresh(wayl);
+    }
+
+    zwp_text_input_v3_disable(text_input);
+    zwp_text_input_v3_commit(text_input);
+    seat->ime.serial++;
+}
+
+static void
+text_input_preedit_string(void *data, struct zwp_text_input_v3 *text_input,
+                          const char *text, int32_t cursor_begin, int32_t cursor_end)
+{
+    struct seat *seat = data;
+
+    LOG_DBG("preedit_string: text=%s begin=%d end=%d",
+            text ? text : "(null)", cursor_begin, cursor_end);
+
+    free(seat->ime.preedit_pending.text);
+    seat->ime.preedit_pending.text = text ? xstrdup(text) : NULL;
+    seat->ime.preedit_pending.cursor_begin = cursor_begin;
+    seat->ime.preedit_pending.cursor_end   = cursor_end;
+}
+
+static void
+text_input_commit_string(void *data, struct zwp_text_input_v3 *text_input,
+                         const char *text)
+{
+    struct seat *seat = data;
+
+    LOG_DBG("commit_string: text=%s", text ? text : "(null)");
+
+    free(seat->ime.commit_pending);
+    seat->ime.commit_pending = text ? xstrdup(text) : NULL;
+}
+
+static void
+text_input_delete_surrounding_text(void *data,
+                                   struct zwp_text_input_v3 *text_input,
+                                   uint32_t before_length,
+                                   uint32_t after_length)
+{
+    /*
+     * We never call set_surrounding_text(), so the compositor should
+     * never request deletion of surrounding text.  Log it anyway.
+     */
+    LOG_DBG("delete_surrounding_text: before=%u after=%u (ignored)",
+            before_length, after_length);
+}
+
+static void
+text_input_done(void *data, struct zwp_text_input_v3 *text_input,
+                uint32_t serial)
+{
+    struct seat *seat = data;
+    struct wayland *wayl = seat->wayl;
+
+    LOG_DBG("done: serial=%u (expected=%u)", serial, seat->ime.serial);
+
+    /*
+     * Ignore stale events.  The serial we track is the number of
+     * commit() calls we have made; the compositor echoes it back.
+     */
+    if (seat->ime.serial != serial) {
+        LOG_DBG("IME serial mismatch, discarding");
+        free(seat->ime.preedit_pending.text);
+        seat->ime.preedit_pending.text = NULL;
+        free(seat->ime.commit_pending);
+        seat->ime.commit_pending = NULL;
+        return;
+    }
+
+    bool refresh = false;
+
+    /*
+     * Apply protocol events in the required order:
+     *  1. Replace existing preedit with cursor.
+     *  2. Delete surrounding text (not implemented).
+     *  3. Insert commit string.
+     *  4. Calculate new surrounding text (not implemented).
+     *  5. Insert new preedit text at cursor.
+     *  6. Place cursor inside preedit.
+     */
+
+    /* 1. Clear existing preedit */
+    if (wayl->preedit.text != NULL) {
+        free(wayl->preedit.text);
+        wayl->preedit.text = NULL;
+        wayl->preedit.cursor = -1;
+        refresh = true;
+    }
+
+    /* 3. Insert commit string into the prompt */
+    bool did_commit = false;
+    if (seat->ime.commit_pending != NULL) {
+        const char *text = seat->ime.commit_pending;
+        prompt_insert_chars(wayl->prompt, text, strlen(text));
+        free(seat->ime.commit_pending);
+        seat->ime.commit_pending = NULL;
+        matches_update_incremental(wayl->matches);
+        matches_selected_set(wayl->matches, 0);
+        did_commit = true;
+        refresh = true;
+    }
+
+    /* 5 & 6. Activate new preedit and compute cursor position */
+    if (seat->ime.preedit_pending.text != NULL &&
+        seat->ime.preedit_pending.text[0] != '\0')
+    {
+        const char *preedit_utf8 = seat->ime.preedit_pending.text;
+        const size_t byte_len    = strlen(preedit_utf8);
+
+        char32_t *preedit_c32 = ambstoc32(preedit_utf8);
+        if (preedit_c32 != NULL) {
+            wayl->preedit.text = preedit_c32;
+
+            const int32_t cb = seat->ime.preedit_pending.cursor_begin;
+            const int32_t ce = seat->ime.preedit_pending.cursor_end;
+
+            if (cb < 0 || ce < 0) {
+                /* Compositor requests hidden cursor within preedit */
+                wayl->preedit.cursor = -1;
+            } else {
+                /* Map the byte offset to a glyph (char32_t) index */
+                wayl->preedit.cursor =
+                    byte_offset_to_glyph_idx(preedit_utf8, byte_len, cb);
+            }
+        }
+        free(seat->ime.preedit_pending.text);
+        seat->ime.preedit_pending.text = NULL;
+        refresh = true;
+    } else {
+        free(seat->ime.preedit_pending.text);
+        seat->ime.preedit_pending.text = NULL;
+    }
+
+    if (refresh) {
+        wayl_refresh(wayl);
+        if (did_commit)
+            check_auto_select(seat, true);
+    }
+}
+
+static const struct zwp_text_input_v3_listener text_input_listener = {
+    .enter                  = text_input_enter,
+    .leave                  = text_input_leave,
+    .preedit_string         = text_input_preedit_string,
+    .commit_string          = text_input_commit_string,
+    .delete_surrounding_text= text_input_delete_surrounding_text,
+    .done                   = text_input_done,
+};
+
+static void
+seat_add_text_input(struct seat *seat)
+{
+    struct wayland *wayl = seat->wayl;
+
+    if (wayl->text_input_manager == NULL)
+        return;
+    if (seat->text_input != NULL)
+        return;
+
+    seat->text_input = zwp_text_input_manager_v3_get_text_input(
+        wayl->text_input_manager, seat->wl_seat);
+    if (seat->text_input == NULL) {
+        LOG_ERR("failed to create text_input object");
+        return;
+    }
+    zwp_text_input_v3_add_listener(
+        seat->text_input, &text_input_listener, seat);
+}
+
 static void
 seat_handle_capabilities(void *data, struct wl_seat *wl_seat,
                          enum wl_seat_capability caps)
@@ -1512,11 +1789,16 @@ seat_handle_capabilities(void *data, struct wl_seat *wl_seat,
         if (seat->wl_keyboard == NULL) {
             seat->wl_keyboard = wl_seat_get_keyboard(wl_seat);
             wl_keyboard_add_listener(seat->wl_keyboard, &keyboard_listener, seat);
+            seat_add_text_input(seat);
         }
     } else {
         if (seat->wl_keyboard != NULL) {
             wl_keyboard_release(seat->wl_keyboard);
             seat->wl_keyboard = NULL;
+        }
+        if (seat->text_input != NULL) {
+            zwp_text_input_v3_destroy(seat->text_input);
+            seat->text_input = NULL;
         }
     }
 
@@ -2357,6 +2639,20 @@ handle_global(void *data, struct wl_registry *registry,
             &wp_single_pixel_buffer_manager_v1_interface, required);
     }
 
+    else if (strcmp(interface, zwp_text_input_manager_v3_interface.name) == 0) {
+        const uint32_t required = 1;
+        if (!verify_iface_version(interface, version, required))
+            return;
+
+        wayl->text_input_manager = wl_registry_bind(
+            wayl->registry, name,
+            &zwp_text_input_manager_v3_interface, required);
+
+        /* Late-bind: create text_input for seats already registered */
+        tll_foreach(wayl->seats, it)
+            seat_add_text_input(&it->item);
+    }
+
 }
 
 static void
@@ -2584,6 +2880,7 @@ wayl_refresh(struct wayland *wayl)
     }
 
     struct buffer *buf = shm_get_buffer(wayl->chain, wayl->width, wayl->height, true);
+    bool did_render_prompt = false;
 
     pixman_region32_t clip;
     pixman_region32_init_rect(&clip, 0, 0, buf->width, buf->height);
@@ -2609,7 +2906,9 @@ wayl_refresh(struct wayland *wayl)
     matches_lock(wayl->matches);
     render_message(wayl->render, buf);
     if (!wayl->conf->hide_prompt) {
-        render_prompt(wayl->render, buf, wayl->prompt, wayl->matches);
+        render_prompt(wayl->render, buf, wayl->prompt, wayl->matches,
+                      wayl->preedit.text, wayl->preedit.cursor);
+        did_render_prompt = true;
     }
     if (wayl->hide_when_prompt_empty) {
         if (prompt_text(wayl->prompt)[0] != '\0') {
@@ -2632,6 +2931,42 @@ commit:
     /* No pending frames - render immediately */
     assert(!wayl->need_refresh);
     commit_buffer(wayl, buf, false);
+
+    /*
+     * After rendering, send an updated cursor rectangle to any active
+     * text_input so the IME popup tracks the cursor position.
+     * Only send when the cursor rect has actually changed to avoid
+     * generating spurious serial increments.
+     */
+    if (did_render_prompt) {
+        int cx, cy, cw, ch;
+        render_get_cursor_rect(wayl->render, &cx, &cy, &cw, &ch);
+        const float scale = wayl->scale;
+        const int sx = (int)(cx / scale);
+        const int sy = (int)(cy / scale);
+        const int sw = (int)(cw / scale);
+        const int sh = (int)(ch / scale);
+
+        tll_foreach(wayl->seats, it) {
+            struct seat *seat = &it->item;
+            if (seat->text_input == NULL)
+                continue;
+            if (sx == seat->ime.cursor_rect.x &&
+                sy == seat->ime.cursor_rect.y &&
+                sw == seat->ime.cursor_rect.w &&
+                sh == seat->ime.cursor_rect.h)
+                continue;
+            zwp_text_input_v3_set_cursor_rectangle(
+                seat->text_input, sx, sy, sw, sh);
+            zwp_text_input_v3_commit(seat->text_input);
+            seat->ime.serial++;
+            seat->ime.cursor_rect.x = sx;
+            seat->ime.cursor_rect.y = sy;
+            seat->ime.cursor_rect.w = sw;
+            seat->ime.cursor_rect.h = sh;
+        }
+    }
+
 done:
 
     time_finish(
@@ -3060,6 +3395,12 @@ wayl_destroy(struct wayland *wayl)
     tll_foreach(wayl->monitors, it)
         monitor_destroy(&it->item);
     tll_free(wayl->monitors);
+
+    free(wayl->preedit.text);
+    wayl->preedit.text = NULL;
+
+    if (wayl->text_input_manager != NULL)
+        zwp_text_input_manager_v3_destroy(wayl->text_input_manager);
 
     if (wayl->single_pixel_manager != NULL)
         wp_single_pixel_buffer_manager_v1_destroy(wayl->single_pixel_manager);
