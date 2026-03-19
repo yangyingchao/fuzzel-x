@@ -549,7 +549,7 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 
 	Example:
 	```
-	printf "123\t456\t789" | fuzzel -d --with-nth=1 --accept-nth=2 --match-nth=3
+	printf "123\\t456\\t789" | fuzzel -d --with-nth=1 --accept-nth=2 --match-nth=3
 	```
 
 	This will display the entry *123*, but matching will *only* be

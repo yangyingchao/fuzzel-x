@@ -123,9 +123,8 @@ meson --buildtype=release \
 specific png and/or svg backend. Note that _nanosvg_ is builtin
 (i.e. it needs to external dependencies).
 
-`-Denable-cairo` can be used to force-enable or force-disable cairo
-support. When disabled, fuzzel will not be able to draw rounded
-corners, nor will it support SVGs using the _librsvg_ backend.
+`-Denable-cairo` can be used to force-enable or force-disable cairo support.
+When disabled, fuzzel will not support SVGs using the _librsvg_ backend.
 
 Three, build it:
 ```sh

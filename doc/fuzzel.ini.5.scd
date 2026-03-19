@@ -143,13 +143,13 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	String to use as input prompt. Note that trailing spaces are
 	trimmed, unless the string is quoted. Default: _"> "_.
 
-*mesg*
+*message*
 	Message to display above the prompt. Can contain some informational
 	message, or can be used for having your prompt be above the input
 	instead of in front. Supports newlines.
-	For details on how long lines are treated, see *mesg-mode*.
+	For details on how long lines are treated, see *message-mode*.
 
-*mesg-mode*
+*message-mode*
 	One of *wrap*, and *expand*.
 
 	*wrap*: any line that is longer than *width* is wrapped to the
@@ -157,8 +157,8 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 	leading spaces caused by truncation. If no space is available,
 	the line is broken up after *width* characters.
 
-	*expand*: If the longest line in *mesg* is longer than *width*,
-	make the dialogue box wider to accommodate *mesg*.
+	*expand*: If the longest line in *message* is longer than *width*,
+	make the dialogue box wider to accommodate *message*.
 
 *icon-theme*
 	Icon theme. Note that the name is case sensitive. Default:

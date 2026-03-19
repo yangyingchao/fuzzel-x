@@ -833,6 +833,10 @@ match_compar(const void *_a, const void *_b)
         return -1;
     else if (a->score < b->score)
         return 1;
+    /* Prioritize matches at word boundaries (when scores are equal) */
+    else if (a->word_boundary != b->word_boundary) {
+        return a->word_boundary ? -1 : 1;
+    }
     else if (a->pos_count < b->pos_count)
         return -1;
     else if (a->pos_count > b->pos_count)

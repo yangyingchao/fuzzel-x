@@ -143,6 +143,8 @@ struct wayland {
     int height;
     int preferred_buffer_scale;         /* Legacy - from wl_surface v6 */
     float preferred_fractional_scale;   /* New - from wp_fractional_scale_v1 */
+    float initial_scale_guess;          /* Scale used for initial commit */
+    bool got_preferred_scale_early;     /* Did we get fractional scale before configure? */
     float scale;
     float dpi;
     enum fcft_subpixel subpixel;
@@ -2439,6 +2441,11 @@ fractional_scale_preferred_scale(
 
     LOG_DBG("fractional scale: %.2f -> %.2f", wayl->scale, new_scale);
     wayl->preferred_fractional_scale = new_scale;
+
+    /* Track if we got this before the layer surface configure event */
+    if (!wayl->is_configured)
+        wayl->got_preferred_scale_early = true;
+
     update_size(wayl);
 }
 
@@ -2899,27 +2906,6 @@ wayl_init(const struct config *conf, struct fdm *fdm,
     LOG_DBG("using output: %s",
             wayl->monitor != NULL ? wayl->monitor->name : NULL);
 
-    /*
-     * Only do the “first frame is transparent” trick if
-     * needed. I.e. if:
-     *
-     *   - we have more than one monitor (in which case there’s a
-     *    chance we guess the scaling factor, or DPI, wrong).
-     * and
-     *   - the user hasn’t selected a specific output.
-     *
-     * or
-     * - the compositor implements fractional scaling, in which case
-     *   we may have the wrong scale even if there's just a single
-     *   monitor.
-     */
-    wayl->render_first_frame_transparent =
-        (tll_length(wayl->monitors) > 1 && wayl->monitor == NULL) ||
-        wayl->fractional_scale_manager != NULL;
-
-    LOG_DBG("using the first-frame-is-transparent trick: %s",
-            wayl->render_first_frame_transparent ? "yes"  :"no");
-
     wayl->surface = wl_compositor_create_surface(wayl->compositor);
     if (wayl->surface == NULL) {
         LOG_ERR("failed to create panel surface");
@@ -2994,9 +2980,38 @@ wayl_init(const struct config *conf, struct fdm *fdm,
 
     wayl->subpixel = wayl->monitor != NULL
         ? (enum fcft_subpixel)wayl->monitor->subpixel : guess_subpixel(wayl);
+
+    /* Do initial sizing with our best guess */
     update_size(wayl);
+    wayl->initial_scale_guess = wayl->scale;
+
+    /* Trigger compositor response. Nothing visible yet. */
     wl_surface_commit(wayl->surface);
+
+    /* On compositors that support fractional scaling, received prefered_scale event */
     wl_display_roundtrip(wayl->display);
+
+    /*
+     * Decide whether to use the "first frame is transparent" trick.
+     * We need it if:
+     *
+     *   - we have more than one monitor (in which case there's a
+     *     chance we guess the scaling factor, or DPI, wrong)
+     *   and
+     *   - the user hasn't selected a specific output
+     *
+     * or
+     *   - the compositor implements fractional scaling, but we didn't
+     *     get the preferred scale early enough (before configure), so
+     *     we may have the wrong scale initially
+     */
+    wayl->render_first_frame_transparent =
+        (tll_length(wayl->monitors) > 1 && wayl->monitor == NULL) ||
+        (wayl->fractional_scale_manager != NULL && !wayl->got_preferred_scale_early);
+
+    LOG_DBG("using the first-frame-is-transparent trick: %s%s",
+            wayl->render_first_frame_transparent ? "yes" : "no",
+            wayl->got_preferred_scale_early ? " (got fractional scale early)" : "");
 
     if (wl_display_prepare_read(wayl->display) != 0) {
         LOG_ERRNO("failed to prepare for reading wayland events");
