@@ -46,6 +46,20 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 
 	Default: _XDG_CACHE_HOME/fuzzel_
 
+*--override*=[_SECTION_.]_KEY_=_VALUE_
+
+	Override an option set in the configuration file. If _SECTION_ is
+	not given, defaults to _main_.
+	
+	Explicit command line options always override both the on-disk
+	configuration, and any *--override* used. For example:
+
+	```
+	fuzzel --prompt hello --override prompt=world
+	```
+
+	Here, the prompt will be set to _hello_.
+
 *-o*,*--output*=_OUTPUT_
 	Specifies the monitor to display the window on. Autocompletion is available
 	for zsh and fish, or you can list the available outputs with *wlr-randr* or

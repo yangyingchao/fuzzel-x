@@ -35,6 +35,13 @@
 
 ## Unreleased
 ### Added
+
+* `--override` command line option, allowing you to override **all**
+  options available in `fuzzel.ini` ([#759][759]).
+
+[759]: https://codeberg.org/dnkl/fuzzel/issues/759
+
+
 ### Changed
 ### Deprecated
 ### Removed

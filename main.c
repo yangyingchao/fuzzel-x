@@ -347,6 +347,7 @@ print_usage(const char *prog_name)
            "                                 otherwise exit with 1\n"
            "     --cache=PATH                load most recently launched applications from\n"
            "                                 PATH (XDG_CACHE_HOME/fuzzel)\n"
+           "     --override=[section.].key=VALUE  override configuration value\n"
            "  -n,--namespace=NAMESPACE       layer shell surface namespace\n"
            "  -o,--output=OUTPUT             output (monitor) to display on (none)\n"
            "  -f,--font=FONT                 font name and style, in FontConfig format\n"
@@ -868,6 +869,7 @@ main(int argc, char *const *argv)
     #define OPT_DMENU_MESSAGE                311
     #define OPT_DMENU_MESSAGE_MODE           312
     #define OPT_MESSAGE_COLOR                313
+    #define OPT_GENERIC_OVERRIDE             314
 
     static const struct option longopts[] = {
         {"config",               required_argument, 0, OPT_CONFIG},
@@ -954,6 +956,7 @@ main(int argc, char *const *argv)
         {"mesg-mode",            required_argument, 0, OPT_DMENU_MESSAGE_MODE},
 
         /* Misc */
+        {"override",             required_argument, 0, OPT_GENERIC_OVERRIDE},
         {"log-level",            required_argument, 0, OPT_LOG_LEVEL},
         {"log-colorize",         optional_argument, 0, OPT_LOG_COLORIZE},
         {"log-no-syslog",        no_argument,       0, OPT_LOG_NO_SYSLOG},
@@ -970,6 +973,7 @@ main(int argc, char *const *argv)
     bool log_syslog = true;
     const char *select = NULL;
     size_t select_idx = 0;
+    config_override_t generic_overrides = tll_init();
 
     struct {
         struct config conf;
@@ -1980,6 +1984,10 @@ main(int argc, char *const *argv)
             cmdline_overrides.no_mouse_set = true;
             break;
 
+        case OPT_GENERIC_OVERRIDE:
+            tll_push_back(generic_overrides, strdup(optarg));
+            break;
+
         case 'v':
             printf("fuzzel %s\n", version_and_features());
             return EXIT_SUCCESS;
@@ -2016,7 +2024,8 @@ main(int argc, char *const *argv)
     }
 
     struct config conf = {0};
-    bool conf_successful = config_load(&conf, config_path, NULL, check_config);
+    bool conf_successful = config_load(&conf, config_path, &generic_overrides, check_config);
+    tll_free_and_free(generic_overrides, free);
     if (!conf_successful) {
         config_free(&conf);
         config_free(&cmdline_overrides.conf);
