@@ -2181,7 +2181,6 @@ handle_global(void *data, struct wl_registry *registry,
          * for that.
          */
 
-        assert(wayl->xdg_output_manager != NULL);
         if (wayl->xdg_output_manager != NULL) {
             mon->xdg = zxdg_output_manager_v1_get_xdg_output(
                 wayl->xdg_output_manager, mon->output);
@@ -2262,6 +2261,13 @@ handle_global(void *data, struct wl_registry *registry,
 
         wayl->xdg_output_manager = wl_registry_bind(
             wayl->registry, name, &zxdg_output_manager_v1_interface, required);
+
+        tll_foreach(wayl->monitors, it) {
+            struct monitor *mon = &it->item;
+            assert(mon->xdg == NULL);
+            mon->xdg = zxdg_output_manager_v1_get_xdg_output(wayl->xdg_output_manager, mon->output);
+            zxdg_output_v1_add_listener(mon->xdg, &xdg_output_listener, mon);
+        }
     }
 
     else if (strcmp(interface, xdg_activation_v1_interface.name) == 0) {
