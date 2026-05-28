@@ -238,15 +238,17 @@ write_cache(const char *path, const struct application_list *apps, bool dmenu)
             return;
         }
 
-        fd = openat(cache_dir_fd, "fuzzel", O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
+        if ((fd = openat(cache_dir_fd, "fuzzel", O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644)) == -1) {
+            close(cache_dir_fd);
+            LOG_ERRNO("%s/fuzzel: failed to open", path);
+            return;
+        }
         close(cache_dir_fd);
     } else {
-        fd = open(path, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
-    }
-
-    if (fd == -1) {
-        LOG_ERRNO("%s/fuzzel: failed to open", path);
-        return;
+        if ((fd = open(path, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644)) == -1) {
+            LOG_ERRNO("%s: failed to open", path);
+            return;
+        }
     }
 
     for (size_t i = 0; i < apps->count; i++) {
