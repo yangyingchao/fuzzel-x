@@ -516,8 +516,12 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	input line is printed on stdout. dmenu mode only.
 
 	The argument can also be a format string (i.e free-format text),
-	where *{N}* expands to the N:th column. Ranges on the form
+	where *{N}* expands to the N:th column. Ranges of the form
 	*{N..M}* and *{N..}* (open-ended) are also supported.
+
+	Note that in posix compliant shells, ranges (*{N..M}*) must be
+	in quotation marks to prevent the shell from expanding it.
+
 
 	Example:
 	```
@@ -536,8 +540,12 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	*--nth-delimiter*) of each input line to stdout.  dmenu mode only.
 
 	The argument can also be a format string (i.e free-format text),
-	where *{N}* expands to the N:th column. Ranges on the form
+	where *{N}* expands to the N:th column. Ranges of the form
 	*{N..M}* and *{N..}* (open-ended) are also supported.
+
+	Note that in posix compliant shells, ranges (*{N..M}*) must be
+	in quotation marks to prevent the shell from expanding it.
+
 
 	Example:
 	```
@@ -558,8 +566,12 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	*--with-nth*).
 
 	The argument can also be a format string (i.e free-format text),
-	where *{N}* expands to the N:th column. Ranges on the form
+	where *{N}* expands to the N:th column. Ranges of the form
 	*{N..M}* and *{N..}* (open-ended) are also supported.
+
+	Note that in posix compliant shells, ranges (*{N..M}*) must be
+	in quotation marks to prevent the shell from expanding it.
+
 
 	Example:
 	```
