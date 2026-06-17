@@ -43,6 +43,14 @@
 
 
 ### Changed
+
+* Application mode: fuzzel no longer waits for all the `.desktop`
+  files to be loaded before displaying the window. This ensures you
+  can start typing immediately ([#751][751]).
+
+[751]: https://codeberg.org/dnkl/fuzzel/issues/751
+
+
 ### Deprecated
 ### Removed
 ### Fixed
