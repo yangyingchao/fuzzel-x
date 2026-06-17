@@ -1136,14 +1136,10 @@ select_hovered_match(struct seat *seat, bool refresh_always)
     if (hovered_row < 0)
         return;
 
-    if (hovered_row != seat->pointer.hovered_row_idx) {
-        seat->pointer.hovered_row_idx = hovered_row;
-        refresh = matches_idx_select(wayl->matches,hovered_row);
-    }
+    refresh = matches_idx_select(wayl->matches, hovered_row);
 
-    if (refresh_always || refresh) {
+    if (refresh_always || refresh)
         wayl_refresh(wayl);
-    }
 }
 
 static void
@@ -1155,7 +1151,6 @@ wl_pointer_enter(void *data, struct wl_pointer *wl_pointer,
     if (!seat->wayl->enable_mouse)
         return;
     seat->pointer.serial = serial;
-    seat->pointer.hovered_row_idx = -1;
 
     /*
      * Note: do *not* set seat->pointer.{x,y} here!
@@ -1220,13 +1215,15 @@ wl_pointer_button(void *data, struct wl_pointer *wl_pointer,
         return;
 
     if (state == WL_POINTER_BUTTON_STATE_RELEASED) {
-        if (button == BTN_LEFT && seat->pointer.hovered_row_idx != -1) {
+        if (button == BTN_LEFT) {
             ssize_t clicked_row = render_get_row_num(
                 wayl->render, wayl->width, seat->pointer.x, seat->pointer.y,
                 wayl->matches);
 
-            if (clicked_row == seat->pointer.hovered_row_idx)
+            if (clicked_row >= 0) {
+                matches_idx_select(wayl->matches, clicked_row);
                 execute_selected(seat, false, -1);
+            }
         }
 
         else if (button == BTN_RIGHT) {

@@ -59,7 +59,8 @@
   ([#739][739]).
 * First entry not being hover-able until other entries have been
   hovered ([#765][765]).
-
+* Clicking an entry did not select it, causing wrong entry to be
+  executed.
 
 [739]: https://codeberg.org/dnkl/fuzzel/issues/739
 [765]: https://codeberg.org/dnkl/fuzzel/issues/765

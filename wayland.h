@@ -49,7 +49,6 @@ struct seat {
 
         int x;
         int y;
-        size_t hovered_row_idx;
 
         struct wl_surface *surface;
         struct wp_viewport *viewport;
