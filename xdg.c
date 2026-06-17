@@ -63,6 +63,35 @@ struct action {
 };
 
 static bool
+is_executable(const char *bin)
+{
+    if (bin[0] == '/')
+        return access(bin, X_OK) == 0;
+
+    const char *path = getenv("PATH");
+    if (path == NULL)
+        return false;
+
+    char *copy = xstrdup(path);
+    for (char *ctx = NULL, *p = strtok_r(copy, ":", &ctx);
+         p != NULL;
+         p = strtok_r(NULL, ":", &ctx))
+    {
+        char *full_path = xstrjoin3(p, "/", bin);
+        bool ok = access(full_path, X_OK) == 0;
+        free(full_path);
+
+        if (ok) {
+            free(copy);
+            return true;
+        }
+    }
+
+    free(copy);
+    return false;
+}
+
+static bool
 filter_desktop_entry(const struct action *act, const char_list_t *desktops)
 {
     /* If a matching entry is found in OnlyShowIn then the desktop file is
@@ -269,6 +298,12 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename_lowercase,
                 free(action->wexec);
                 action->exec = xstrdup(value);
                 action->wexec = ambstoc32(value);
+            }
+
+            else if (strcmp(key, "TryExec") == 0) {
+                if (!is_executable(value)) {
+                    action->visible = false;
+                }
             }
 
             else if (strcmp(key, "Path") == 0) {
