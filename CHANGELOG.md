@@ -57,8 +57,12 @@
 
 * `image-size-ratio=0` causing a crash due to a zero-size allocation
   ([#739][739]).
+* First entry not being hover-able until other entries have been
+  hovered ([#765][765]).
+
 
 [739]: https://codeberg.org/dnkl/fuzzel/issues/739
+[765]: https://codeberg.org/dnkl/fuzzel/issues/765
 
 ### Security
 ### Contributors

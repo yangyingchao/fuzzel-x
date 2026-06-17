@@ -1152,8 +1152,10 @@ wl_pointer_enter(void *data, struct wl_pointer *wl_pointer,
                  wl_fixed_t surface_x, wl_fixed_t surface_y)
 {
     struct seat *seat = data;
-    if (!seat->wayl->enable_mouse) return;
+    if (!seat->wayl->enable_mouse)
+        return;
     seat->pointer.serial = serial;
+    seat->pointer.hovered_row_idx = -1;
 
     /*
      * Note: do *not* set seat->pointer.{x,y} here!
@@ -1182,7 +1184,8 @@ wl_pointer_leave(void *data, struct wl_pointer *wl_pointer,
                  uint32_t serial, struct wl_surface *surface)
 {
     struct seat *seat = data;
-    if (!seat->wayl->enable_mouse) return;
+    if (!seat->wayl->enable_mouse)
+        return;
     seat->pointer.serial = serial;
 }
 
@@ -1191,7 +1194,8 @@ wl_pointer_motion(void *data, struct wl_pointer *wl_pointer,
                   uint32_t time, wl_fixed_t surface_x, wl_fixed_t surface_y)
 {
     struct seat *seat = data;
-    if (!seat->wayl->enable_mouse) return;
+    if (!seat->wayl->enable_mouse)
+        return;
 
     const int x = wl_fixed_to_int(surface_x);
     const int y = wl_fixed_to_int(surface_y);
@@ -1212,7 +1216,8 @@ wl_pointer_button(void *data, struct wl_pointer *wl_pointer,
 {
     struct seat *seat = data;
     struct wayland *wayl = seat->wayl;
-    if (!wayl->enable_mouse) return;
+    if (!wayl->enable_mouse)
+        return;
 
     if (state == WL_POINTER_BUTTON_STATE_RELEASED) {
         if (button == BTN_LEFT && seat->pointer.hovered_row_idx != -1) {
