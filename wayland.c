@@ -1127,8 +1127,6 @@ select_hovered_match(struct seat *seat, bool refresh_always)
 {
     struct wayland *wayl = seat->wayl;
 
-    bool refresh = false;
-
     ssize_t hovered_row = render_get_row_num(
         wayl->render, wayl->width, seat->pointer.x, seat->pointer.y,
         wayl->matches);
@@ -1136,10 +1134,13 @@ select_hovered_match(struct seat *seat, bool refresh_always)
     if (hovered_row < 0)
         return;
 
-    refresh = matches_idx_select(wayl->matches, hovered_row);
+    if (hovered_row == matches_get_match_index(wayl->matches))
+        return;
 
-    if (refresh_always || refresh)
-        wayl_refresh(wayl);
+    if (!matches_idx_select(wayl->matches, hovered_row))
+        return;
+
+    wayl_refresh(wayl);
 }
 
 static void
