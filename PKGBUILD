@@ -10,7 +10,7 @@ arch=('x86_64' 'aarch64')
 url=https://codeberg.org/dnkl/fuzzel
 license=(mit)
 makedepends=('meson' 'ninja' 'scdoc' 'wayland-protocols' 'tllist>=1.0.1')
-depends=('libxkbcommon' 'wayland' 'pixman' 'nanosvg' 'fcft>=3.0.0' 'fcft<4.0.0')
+depends=('libxkbcommon' 'wayland' 'pixman' 'fcft>=3.0.0' 'fcft<4.0.0')
 source=()
 changelog=CHANGELOG.md
 
@@ -25,6 +25,10 @@ fi
 
 if [[ ${SVG_BACKEND} == resvg ]]; then
     depends+=( 'resvg' )
+fi
+
+if [[ ${SVG_BACKEND} == nanosvg ]]; then
+    depends+=( 'nanosvg' )
 fi
 
 if [[ ${CAIRO} == enabled ]]; then
