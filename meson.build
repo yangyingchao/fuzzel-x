@@ -115,13 +115,21 @@ elif get_option('svg-backend') == 'nanosvg'
   librsvg = declare_dependency()
   resvg = declare_dependency()
 elif get_option('svg-backend') == 'resvg'
-  # resvg doesn't provide pkg-config, so we need to find it manually
-  resvg = cc.find_library('resvg', required: true)
-  if cc.has_header('resvg.h')
+  resvg_pc = dependency('resvg', required: false)
+  if resvg_pc.found()
+    resvg = resvg_pc
     svg_backend = 'resvg'
     add_project_arguments('-DFUZZEL_ENABLE_SVG_RESVG=1', language: 'c')
   else
-    error('resvg.h not found. Please install resvg development files.')
+    # earlier versions of resvg doesn't provide pkg-config, so we need
+    # to find it manually
+    resvg = cc.find_library('resvg', required: true)
+    if cc.has_header('resvg.h')
+      svg_backend = 'resvg'
+      add_project_arguments('-DFUZZEL_ENABLE_SVG_RESVG=1', language: 'c')
+    else
+      error('resvg.h not found. Please install resvg development files.')
+    endif
   endif
   librsvg = declare_dependency()
   nanosvg = declare_dependency()
