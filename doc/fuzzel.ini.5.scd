@@ -106,7 +106,7 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 
 	Default: _auto_.
 
-*gamma-correct*
+*gamma-correct-blending*
 	Boolean. When enabled, fuzzel will do gamma-correct blending in
 	linear color space. This is how font glyphs are supposed to be
 	rendered, but since nearly no applications or toolkits are doing
