@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [1.15.0](#1-15-0)
 * [1.14.1](#1-14-1)
 * [1.14.0](#1-14-0)
 * [1.13.1](#1-13-1)
@@ -33,7 +33,8 @@
 * [1.4.1](#1-4-1)
 
 
-## Unreleased
+## 1.15.0
+
 ### Added
 
 * `--override` command line option, allowing you to override **all**
@@ -56,8 +57,6 @@
 [751]: https://codeberg.org/dnkl/fuzzel/issues/751
 
 
-### Deprecated
-### Removed
 ### Fixed
 
 * `image-size-ratio=0` causing a crash due to a zero-size allocation
@@ -70,10 +69,16 @@
 [739]: https://codeberg.org/dnkl/fuzzel/issues/739
 [765]: https://codeberg.org/dnkl/fuzzel/issues/765
 
-### Security
 ### Contributors
 
-* markstos
+* 1nspd
+* korigamik-hypr
+* Mark Stosberg
+* Nicholas Rodrigues Lordello
+* odrling
+* spookyvision
+* vlkrs
+* Woolzie
 
 
 ## 1.14.1
