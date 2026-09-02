@@ -40,7 +40,7 @@
 * `--override` command line option, allowing you to override **all**
   options available in `fuzzel.ini` ([#759][759]).
 * IME support, via the `text-input-unstable-v3` Wayland protocol
-  ([#615][614]).
+  ([#615][615]).
 * Support for the `TryExec` key in `.desktop` files ([#723][723]).
 
 [759]: https://codeberg.org/dnkl/fuzzel/issues/759
