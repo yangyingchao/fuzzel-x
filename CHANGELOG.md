@@ -1,5 +1,6 @@
 # Changelog
 
+* [Unreleased](#unreleased)
 * [1.14.1](#1-14-1)
 * [1.14.0](#1-14-0)
 * [1.13.1](#1-13-1)
@@ -31,6 +32,15 @@
 * [1.4.2](#1-4-2)
 * [1.4.1](#1-4-1)
 
+
+## Unreleased
+
+### Added
+
+* New key bindings: `quick-launch-1` to `quick-launch-9` (default
+  `Mod4+1`..`Mod4+9`): execute the Nth entry on the current page, then
+  exit. In dmenu mode, the entry is printed to stdout. The first nine
+  match entries display their digit as a prefix hint.
 
 ## 1.14.1
 

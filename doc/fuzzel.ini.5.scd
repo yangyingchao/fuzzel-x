@@ -689,6 +689,38 @@ done by setting _action=none_; e.g. *delete-line-forward=none*.
 		- custom-18: _Mod1+18_
 		- custom-19: _Mod1+19_
 
+*quick-launch-1*, *quick-launch-2*, ..., *quick-launch-9*
+	Execute the Nth entry on the current page, then exit. In dmenu mode,
+	the Nth entry is printed to stdout (exit code 0). Has no effect when
+	the current page has fewer than N entries. The first nine match
+	entries display their digit as a prefix hint (e.g. _1 _).
+
+	Warning: this binding should always include a modifier. A
+	configuration without modifiers (e.g. *quick-launch-3=3*) consumes
+	the digit key, making it impossible to type that digit into the
+	prompt.
+
+	Bindings are additive: to change the modifier, first unmap the
+	default, then set the new combination. Note that the new combination
+	must not collide with another binding:
+
+		quick-launch-3=none
+		quick-launch-3=Control+3
+
+	The hint only shows the digit; it does not reflect the configured
+	modifier.
+
+	Default:
+		- quick-launch-1: _Mod4+1_
+		- quick-launch-2: _Mod4+2_
+		- quick-launch-3: _Mod4+3_
+		- quick-launch-4: _Mod4+4_
+		- quick-launch-5: _Mod4+5_
+		- quick-launch-6: _Mod4+6_
+		- quick-launch-7: _Mod4+7_
+		- quick-launch-8: _Mod4+8_
+		- quick-launch-9: _Mod4+9_
+
 # SECTION: plugins
 
 *l10n*

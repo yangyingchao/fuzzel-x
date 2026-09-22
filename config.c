@@ -88,7 +88,21 @@ static const char *const binding_action_map[] = {
     [BIND_ACTION_CUSTOM_18] = "custom-18",
     [BIND_ACTION_CUSTOM_19] = "custom-19",
 
+    [BIND_ACTION_QUICK_LAUNCH_1] = "quick-launch-1",
+    [BIND_ACTION_QUICK_LAUNCH_2] = "quick-launch-2",
+    [BIND_ACTION_QUICK_LAUNCH_3] = "quick-launch-3",
+    [BIND_ACTION_QUICK_LAUNCH_4] = "quick-launch-4",
+    [BIND_ACTION_QUICK_LAUNCH_5] = "quick-launch-5",
+    [BIND_ACTION_QUICK_LAUNCH_6] = "quick-launch-6",
+    [BIND_ACTION_QUICK_LAUNCH_7] = "quick-launch-7",
+    [BIND_ACTION_QUICK_LAUNCH_8] = "quick-launch-8",
+    [BIND_ACTION_QUICK_LAUNCH_9] = "quick-launch-9",
+
 };
+
+_Static_assert(sizeof(binding_action_map) / sizeof(binding_action_map[0]) ==
+               BIND_ACTION_COUNT,
+               "binding_action_map must cover all bind_action values");
 
 struct context {
     struct config *conf;
@@ -1540,6 +1554,7 @@ resolve_key_bindings:
 #define m_ctrl       {.ctrl = true}
 #define m_shift      {.shift = true}
 #define m_ctrl_shift {.ctrl = true, .shift = true}
+#define m_super      {.super = true}
 
 static void
 add_default_key_bindings(struct config *conf)
@@ -1642,6 +1657,16 @@ add_default_key_bindings(struct config *conf)
         {BIND_ACTION_CUSTOM_17, m_alt, {{XKB_KEY_ampersand}}},
         {BIND_ACTION_CUSTOM_18, m_alt, {{XKB_KEY_asterisk}}},
         {BIND_ACTION_CUSTOM_19, m_alt, {{XKB_KEY_parenleft}}},
+
+        {BIND_ACTION_QUICK_LAUNCH_1, m_super, {{XKB_KEY_1}}},
+        {BIND_ACTION_QUICK_LAUNCH_2, m_super, {{XKB_KEY_2}}},
+        {BIND_ACTION_QUICK_LAUNCH_3, m_super, {{XKB_KEY_3}}},
+        {BIND_ACTION_QUICK_LAUNCH_4, m_super, {{XKB_KEY_4}}},
+        {BIND_ACTION_QUICK_LAUNCH_5, m_super, {{XKB_KEY_5}}},
+        {BIND_ACTION_QUICK_LAUNCH_6, m_super, {{XKB_KEY_6}}},
+        {BIND_ACTION_QUICK_LAUNCH_7, m_super, {{XKB_KEY_7}}},
+        {BIND_ACTION_QUICK_LAUNCH_8, m_super, {{XKB_KEY_8}}},
+        {BIND_ACTION_QUICK_LAUNCH_9, m_super, {{XKB_KEY_9}}},
     };
 
     conf->key_bindings.count = ALEN(bindings);

@@ -43,6 +43,7 @@
 #include "log.h"
 #include "char32.h"
 #include "icon.h"
+#include "key-binding.h"
 #include "srgb.h"
 #include "stride.h"
 #include "xmalloc.h"
@@ -113,6 +114,11 @@ struct render {
         struct buffer *buf;
         bool render_icons;
     } workers;
+
+    /* Quick launch: prefixes shown on the first 9 match entries */
+    char32_t *quick_launch_prefixes[9];
+    int quick_launch_slot_width;
+    bool quick_launch_initialized;
 
     mtx_t *icon_lock;
 };
@@ -1629,6 +1635,86 @@ render_selected_match_entry_background(struct render *render,
 }
 
 static void
+generate_quick_launch_prefixes(struct render *render)
+{
+    for (size_t n = 0; n < 9; n++)
+        render->quick_launch_prefixes[n] = NULL;
+
+    /* Show a digit hint for entry N when a quick-launch-N binding exists
+     * (i.e. it has not been unmapped with "none") */
+    for (size_t i = 0; i < render->conf->key_bindings.count; i++) {
+        const struct config_key_binding *binding =
+            &render->conf->key_bindings.arr[i];
+
+        if (binding->action < BIND_ACTION_QUICK_LAUNCH_1 ||
+            binding->action > BIND_ACTION_QUICK_LAUNCH_9)
+            continue;
+
+        const size_t n = binding->action - BIND_ACTION_QUICK_LAUNCH_1;
+        if (render->quick_launch_prefixes[n] != NULL)
+            continue; /* already seen this action */
+
+        char prefix[8];
+        xsnprintf(prefix, sizeof(prefix), "%zu ", n + 1);
+        render->quick_launch_prefixes[n] = ambstoc32(prefix);
+    }
+
+    /* Slot width: widest prefix + one space advance, in regular font */
+    int max_width = 0;
+
+    for (size_t n = 0; n < 9; n++) {
+        const char32_t *prefix = render->quick_launch_prefixes[n];
+        if (prefix == NULL)
+            continue;
+
+        int width = 0;
+        for (size_t i = 0; prefix[i] != U'\0'; i++) {
+            const struct fcft_glyph *glyph = fcft_rasterize_char_utf32(
+                render->font, prefix[i], render->subpixel);
+            if (glyph != NULL)
+                width += glyph->advance.x;
+        }
+        max_width = max(max_width, width);
+    }
+
+    if (max_width == 0)
+        return; /* nothing bound; slot width stays 0, no space reserved */
+
+    const struct fcft_glyph *space = fcft_rasterize_char_utf32(
+        render->font, U' ', render->subpixel);
+    render->quick_launch_slot_width = max_width +
+        (space != NULL ? space->advance.x : render->font->max_advance.x);
+}
+
+static void
+render_quick_launch_prefix(struct render *render, pixman_image_t *pix,
+                           double *_x, int y, const char32_t *prefix,
+                           const pixman_color_t *color)
+{
+    int x = *_x;
+    char32_t prev = 0;
+    long kern = 0;
+
+    for (size_t i = 0; prefix[i] != U'\0'; i++) {
+        const struct fcft_glyph *glyph = fcft_rasterize_char_utf32(
+            render->font, prefix[i], render->subpixel);
+        if (glyph == NULL) {
+            prev = prefix[i];
+            continue;
+        }
+
+        if (i > 0 && fcft_kerning(render->font, prev, prefix[i], &kern, NULL))
+            x += kern;
+
+        render_glyph(pix, glyph, x, y, color);
+        x += glyph->advance.x;
+        prev = prefix[i];
+    }
+
+    *_x = x;
+}
+
+static void
 render_one_match_entry(struct render *render, const struct matches *matches,
                        const struct match *match, bool render_icons,
                        int idx, bool is_selected, int width, int height,
@@ -1674,6 +1760,26 @@ render_one_match_entry(struct render *render, const struct matches *matches,
             render_svg(&match->application->icon, img_x, img_y, size, pix, cairo,
                        render->gamma_correct, render->conf->print_timing_info);
         }
+    }
+
+    /* Quick-launch prefix: fixed slot, regular font, aligned on all rows.
+     * Drawn after the selection background so it is not covered by it */
+    if (render->quick_launch_slot_width > 0) {
+        const double slot_x = cur_x;
+
+        if (idx < 9 && render->quick_launch_prefixes[idx] != NULL) {
+            const int prefix_y = first_row + render_baseline(render) +
+                                 idx * render->row_height;
+            double prefix_x = slot_x;
+            render_quick_launch_prefix(
+                render, pix, &prefix_x, prefix_y,
+                render->quick_launch_prefixes[idx],
+                is_selected ? &render->pix_selection_text_color
+                            : &render->pix_text_color);
+        }
+
+        /* All rows advance past the slot, whether or not a prefix was drawn */
+        cur_x = slot_x + render->quick_launch_slot_width;
     }
 
     if (render_icons) {
@@ -1754,6 +1860,11 @@ void
 render_match_list(struct render *render, struct buffer *buf,
                   const struct prompt *prompt, const struct matches *matches)
 {
+    if (!render->quick_launch_initialized) {
+        generate_quick_launch_prefixes(render);
+        render->quick_launch_initialized = true;
+    }
+
     const size_t match_count = matches_get_count(matches);
     const size_t selected = matches_get_match_index(matches);
 
@@ -2133,6 +2244,9 @@ render_destroy(struct render *render)
     sem_destroy(&render->workers.done);
     assert(tll_length(render->workers.queue) == 0);
     tll_free(render->workers.queue);
+
+    for (size_t i = 0; i < 9; i++)
+        free(render->quick_launch_prefixes[i]);
 
     fcft_text_run_destroy(render->prompt_text_run);
     fcft_text_run_destroy(render->message_text_run);

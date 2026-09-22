@@ -890,6 +890,21 @@ execute_binding(struct seat *seat, const struct key_binding *binding, bool *refr
         return true;
     }
 
+    case BIND_ACTION_QUICK_LAUNCH_1:
+    case BIND_ACTION_QUICK_LAUNCH_2:
+    case BIND_ACTION_QUICK_LAUNCH_3:
+    case BIND_ACTION_QUICK_LAUNCH_4:
+    case BIND_ACTION_QUICK_LAUNCH_5:
+    case BIND_ACTION_QUICK_LAUNCH_6:
+    case BIND_ACTION_QUICK_LAUNCH_7:
+    case BIND_ACTION_QUICK_LAUNCH_8:
+    case BIND_ACTION_QUICK_LAUNCH_9: {
+        const size_t row = action - BIND_ACTION_QUICK_LAUNCH_1;
+        if (matches_idx_select(wayl->matches, row))
+            execute_selected(seat, false, -1);
+        return true;
+    }
+
     case BIND_ACTION_COUNT:
         assert(false);
         return false;

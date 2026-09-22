@@ -244,6 +244,7 @@ if fish.found() and wtype.found()
       'execute',
       'match-mode-fzf',
       'match-nth',
+      'quick-launch',
     ]
       test(test_case, fish,
            args: ['-c',

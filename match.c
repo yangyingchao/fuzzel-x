@@ -712,6 +712,9 @@ matches_idx_select(struct matches *matches, size_t idx)
     if (idx == (size_t)-1)
         return false;
 
+    if (idx >= matches_get_count(matches))
+        return false;
+
     matches->selected = match_get_idx(matches, idx);
     return true;
 }
