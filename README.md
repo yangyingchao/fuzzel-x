@@ -19,7 +19,7 @@ Fuzzel is a Wayland-native application launcher and fuzzy finder, inspired by ro
 
 ![Screenshot with pinyin](doc/screenshot-with-pinyin.png)
 
-_Fuzzel, with pinyin abbr_
+_Fuzzel, with pinyin abbr_ & quick selection.
 
 
 
