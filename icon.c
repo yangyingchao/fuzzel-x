@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <unistd.h>
 #include <limits.h>
+#include <errno.h>
 
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -743,6 +744,12 @@ lookup_icons(const icon_theme_list_t *themes, int icon_size,
                      *  - https://codeberg.org/dnkl/fuzzel/issues/459#issuecomment-2574720
                      * For details on why we're skipping these.
                      */
+                    continue;
+                }
+
+                if (faccessat(xdg_dir->fd, theme_relative_path, R_OK, 0) != 0) {
+                    LOG_DBG("%s/%s (%s): %s, skipping", xdg_dir->path,
+                            theme_relative_path, theme->name, strerror(errno));
                     continue;
                 }
 

@@ -688,7 +688,7 @@ shm_get_buffer(struct buffer_chain *chain, int width, int height, bool with_alph
         return &cached->public;
     }
 
-    struct buffer *ret;
+    struct buffer *ret = NULL;
     get_new_buffers(chain, 1, &width, &height, &ret, with_alpha, false);
     return ret;
 }

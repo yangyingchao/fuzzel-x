@@ -1,5 +1,5 @@
 project('fuzzel', ['c', 'cpp'],
-        version: '1.14.1',
+        version: '1.15.0',
         license: 'MIT',
         meson_version: '>=0.58.0',
         default_options: [
@@ -116,13 +116,21 @@ elif get_option('svg-backend') == 'nanosvg'
   librsvg = declare_dependency()
   resvg = declare_dependency()
 elif get_option('svg-backend') == 'resvg'
-  # resvg doesn't provide pkg-config, so we need to find it manually
-  resvg = cc.find_library('resvg', required: true)
-  if cc.has_header('resvg.h')
+  resvg_pc = dependency('resvg', required: false)
+  if resvg_pc.found()
+    resvg = resvg_pc
     svg_backend = 'resvg'
     add_project_arguments('-DFUZZEL_ENABLE_SVG_RESVG=1', language: 'c')
   else
-    error('resvg.h not found. Please install resvg development files.')
+    # earlier versions of resvg doesn't provide pkg-config, so we need
+    # to find it manually
+    resvg = cc.find_library('resvg', required: true)
+    if cc.has_header('resvg.h')
+      svg_backend = 'resvg'
+      add_project_arguments('-DFUZZEL_ENABLE_SVG_RESVG=1', language: 'c')
+    else
+      error('resvg.h not found. Please install resvg development files.')
+    endif
   endif
   librsvg = declare_dependency()
   nanosvg = declare_dependency()
@@ -154,6 +162,7 @@ wl_proto_xml = [
   wayland_protocols_datadir / 'unstable/primary-selection/primary-selection-unstable-v1.xml',
   wayland_protocols_datadir / 'staging/color-management/color-management-v1.xml',
   wayland_protocols_datadir / 'staging/single-pixel-buffer/single-pixel-buffer-v1.xml',
+  wayland_protocols_datadir / 'unstable/text-input/text-input-unstable-v3.xml',
 ]
 
 foreach prot : wl_proto_xml

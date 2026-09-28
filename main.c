@@ -239,15 +239,17 @@ write_cache(const char *path, const struct application_list *apps, bool dmenu)
             return;
         }
 
-        fd = openat(cache_dir_fd, "fuzzel", O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
+        if ((fd = openat(cache_dir_fd, "fuzzel", O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644)) == -1) {
+            close(cache_dir_fd);
+            LOG_ERRNO("%s/fuzzel: failed to open", path);
+            return;
+        }
         close(cache_dir_fd);
     } else {
-        fd = open(path, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
-    }
-
-    if (fd == -1) {
-        LOG_ERRNO("%s/fuzzel: failed to open", path);
-        return;
+        if ((fd = open(path, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644)) == -1) {
+            LOG_ERRNO("%s: failed to open", path);
+            return;
+        }
     }
 
     for (size_t i = 0; i < apps->count; i++) {
@@ -348,6 +350,7 @@ print_usage(const char *prog_name)
            "                                 otherwise exit with 1\n"
            "     --cache=PATH                load most recently launched applications from\n"
            "                                 PATH (XDG_CACHE_HOME/fuzzel)\n"
+           "     --override=[section.].key=VALUE  override configuration value\n"
            "  -n,--namespace=NAMESPACE       layer shell surface namespace\n"
            "  -o,--output=OUTPUT             output (monitor) to display on (none)\n"
            "  -f,--font=FONT                 font name and style, in FontConfig format\n"
@@ -869,6 +872,7 @@ main(int argc, char *const *argv)
     #define OPT_DMENU_MESSAGE                311
     #define OPT_DMENU_MESSAGE_MODE           312
     #define OPT_MESSAGE_COLOR                313
+    #define OPT_GENERIC_OVERRIDE             314
 
     static const struct option longopts[] = {
         {"config",               required_argument, 0, OPT_CONFIG},
@@ -955,6 +959,7 @@ main(int argc, char *const *argv)
         {"mesg-mode",            required_argument, 0, OPT_DMENU_MESSAGE_MODE},
 
         /* Misc */
+        {"override",             required_argument, 0, OPT_GENERIC_OVERRIDE},
         {"log-level",            required_argument, 0, OPT_LOG_LEVEL},
         {"log-colorize",         optional_argument, 0, OPT_LOG_COLORIZE},
         {"log-no-syslog",        no_argument,       0, OPT_LOG_NO_SYSLOG},
@@ -971,6 +976,7 @@ main(int argc, char *const *argv)
     bool log_syslog = true;
     const char *select = NULL;
     size_t select_idx = 0;
+    config_override_t generic_overrides = tll_init();
 
     struct {
         struct config conf;
@@ -1981,6 +1987,10 @@ main(int argc, char *const *argv)
             cmdline_overrides.no_mouse_set = true;
             break;
 
+        case OPT_GENERIC_OVERRIDE:
+            tll_push_back(generic_overrides, strdup(optarg));
+            break;
+
         case 'v':
             printf("fuzzel %s\n", version_and_features());
             return EXIT_SUCCESS;
@@ -2017,7 +2027,8 @@ main(int argc, char *const *argv)
     }
 
     struct config conf = {0};
-    bool conf_successful = config_load(&conf, config_path, NULL, check_config);
+    bool conf_successful = config_load(&conf, config_path, &generic_overrides, check_config);
+    tll_free_and_free(generic_overrides, free);
     if (!conf_successful) {
         config_free(&conf);
         config_free(&cmdline_overrides.conf);
@@ -2367,23 +2378,10 @@ main(int argc, char *const *argv)
 
     join_app_thread = true;
 
-    /*
-     * Render immediately, even if empty
-     *
-     * We do this in dmenu mode only; we assume there's at least one
-     * .desktop file in application mode, and we don't want to waste
-     * resources on rendering an empty window while loading the
-     * applications.
-     *
-     * Even if we're in dmenu mode, we don't always render immediately
-     *  - exit-immediately-if-empty: we don't want to display anything
-     *    if the final list is empty
-     *  - minimal-lines: we need to know how many items we're going to
-     *    display
-     */
-    if (conf.dmenu.enabled) {
-        if (!conf.dmenu.exit_immediately_if_empty && !conf.minimal_lines)
-            wayl_ready_to_display(wayl);
+    if (!conf.dmenu.exit_immediately_if_empty &&
+        !(conf.dmenu.enabled && conf.minimal_lines))
+    {
+        wayl_ready_to_display(wayl);
     }
 
     wayl_refresh(wayl);

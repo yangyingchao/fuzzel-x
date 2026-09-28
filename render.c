@@ -102,6 +102,11 @@ struct render {
 
     unsigned input_glyph_offset; /* At which glyph to start rendering input */
 
+    /* Set during render_prompt; used by IME for cursor rectangle */
+    struct {
+        int x, y, w, h;  /* buffer pixel coordinates */
+    } cursor_rect;
+
     struct {
         uint16_t count;
         sem_t start;
@@ -629,6 +634,19 @@ strip_trailing_spaces:
 
 }
 
+/*
+ * Returns the x-coordinate of the left edge of the row background area.
+ * The background extends slightly past the text content edge (border + x_margin)
+ * by sel_margin (= x_margin / 3) on each side, so the selection highlight
+ * has a small gap from the window border while bleeding into the margin.
+ */
+static int
+row_bg_x(const struct render *render)
+{
+    const int sel_margin = render->x_margin / 3;
+    return render->border_size + render->x_margin - sel_margin;
+}
+
 void
 render_message(struct render *render, struct buffer *buf)
 {
@@ -655,9 +673,9 @@ render_message(struct render *render, struct buffer *buf)
     pixman_image_fill_rectangles(
         PIXMAN_OP_SRC, buf->pix[0], &bg, 1,
         &(pixman_rectangle16_t){
-            render->border_size + render->x_margin - render->x_margin / 3,
+            row_bg_x(render),
             render->border_size + render->y_margin,
-            buf->width - 2 * (render->border_size + render->x_margin - render->x_margin / 3),
+            buf->width - 2 * row_bg_x(render),
             render->message_height});
 
     struct fcft_text_run *message_run = render->message_text_run;
@@ -736,9 +754,88 @@ render_message(struct render *render, struct buffer *buf)
         fcft_text_run_destroy(message_run);
 }
 
+static void
+update_cursor_rect(struct render *render, int x, int y)
+{
+    struct fcft_font *font = render->font;
+    const int height = min(font->ascent + font->descent, render->row_height);
+    render->cursor_rect.x = x;
+    render->cursor_rect.y = y + font->descent - height;
+    render->cursor_rect.w = font->underline.thickness;
+    render->cursor_rect.h = height;
+}
+
+/*
+ * Render preedit text at the cursor position, following foot's approach:
+ * - All preedit glyphs are rendered with an underline.
+ * - A bar cursor is placed at the glyph index given by preedit_cursor
+ *   (-1 means the cursor is hidden).
+ * Returns the new x position after all preedit glyphs.
+ */
+static int
+render_preedit_at_cursor(const struct render *render, struct buffer *buf,
+                         int x, int y, int max_x,
+                         const char32_t *preedit, size_t preedit_len,
+                         int32_t preedit_cursor,
+                         enum fcft_subpixel subpixel)
+{
+    struct fcft_font *font = render->font;
+    const int ul_y = y - font->underline.position;
+    const int ul_h = font->underline.thickness;
+
+    char32_t prev = 0;
+
+    for (size_t i = 0; i < preedit_len; i++) {
+        /* Cursor bar before this glyph */
+        if (preedit_cursor >= 0 && (int32_t)i == preedit_cursor)
+            render_cursor(render, x, y, buf->pix[0]);
+
+        const struct fcft_glyph *glyph =
+            fcft_rasterize_char_utf32(font, preedit[i], subpixel);
+
+        if (glyph == NULL) {
+            prev = 0;
+            continue;
+        }
+
+        long x_kern = 0;
+        if (prev != 0)
+            fcft_kerning(font, prev, preedit[i], &x_kern, NULL);
+        x += x_kern;
+
+        const int pixels_needed = max(glyph->x + glyph->width, glyph->advance.x);
+        if (x + pixels_needed > max_x)
+            break;
+
+        const int glyph_start_x = x;
+
+        render_glyph(buf->pix[0], glyph, x, y, &render->pix_input_color);
+        x += glyph->advance.x;
+        x += pt_or_px_as_pixels(render, &render->conf->letter_spacing);
+
+        /* Underline below the preedit glyph */
+        pixman_image_fill_rectangles(
+            PIXMAN_OP_SRC, buf->pix[0], &render->pix_input_color,
+            1, &(pixman_rectangle16_t){
+                glyph_start_x,
+                ul_y,
+                x - glyph_start_x,
+                ul_h});
+
+        prev = preedit[i];
+    }
+
+    /* Cursor bar after all preedit glyphs */
+    if (preedit_cursor < 0 || preedit_cursor >= (int32_t)preedit_len)
+        render_cursor(render, x, y, buf->pix[0]);
+
+    return x;
+}
+
 void
 render_prompt(struct render *render, struct buffer *buf,
-              const struct prompt *prompt, const struct matches *matches)
+              const struct prompt *prompt, const struct matches *matches,
+              const char32_t *preedit, int32_t preedit_cursor)
 {
     struct fcft_font *font = render->font;
     assert(font != NULL);
@@ -751,7 +848,9 @@ render_prompt(struct render *render, struct buffer *buf,
 
     const char32_t *ptext = prompt_text(prompt);
     size_t text_len = c32len(ptext);
-    bool use_placeholder = text_len == 0;
+    /* Suppress placeholder while IME preedit is active */
+    const bool have_preedit = preedit != NULL && preedit[0] != U'\0';
+    bool use_placeholder = text_len == 0 && !have_preedit;
 
     const enum fcft_subpixel subpixel =
         (render->conf->colors.background.a == 1. &&
@@ -788,9 +887,9 @@ render_prompt(struct render *render, struct buffer *buf,
     pixman_image_fill_rectangles(
         PIXMAN_OP_SRC, buf->pix[0], &bg, 1,
         &(pixman_rectangle16_t){
-            render->border_size + render->x_margin - render->x_margin / 3,
+            row_bg_x(render),
             render->border_size + render->y_margin + render->message_height,
-            buf->width - 2 * (render->border_size + render->x_margin - render->x_margin / 3),
+            buf->width - 2 * row_bg_x(render),
             render->row_height});
 
 #if 0
@@ -877,11 +976,17 @@ render_prompt(struct render *render, struct buffer *buf,
 
     /* Cursor, if right after the prompt. In all other cases, the
      * cursor will be rendered by the loop below */
-    if (cursor_location == render->input_glyph_offset
-        || (conf->password_mode.enabled &&
-            conf->password_mode.character == U'\0'))
-    {
-        render_cursor(render, x, y, buf->pix[0]);
+    const bool is_hidden_pwd =
+        conf->password_mode.enabled && conf->password_mode.character == U'\0';
+    if (cursor_location == render->input_glyph_offset || is_hidden_pwd) {
+        update_cursor_rect(render, x, y);
+        if (have_preedit && !is_hidden_pwd) {
+            x = render_preedit_at_cursor(
+                render, buf, x, y, max_x,
+                preedit, c32len(preedit), preedit_cursor, subpixel);
+        } else {
+            render_cursor(render, x, y, buf->pix[0]);
+        }
     }
 
     if (input_run != NULL && !(conf->password_mode.enabled && !use_placeholder)) {
@@ -950,8 +1055,16 @@ render_prompt(struct render *render, struct buffer *buf,
             x += pt_or_px_as_pixels(render, &render->conf->letter_spacing);
 
             /* Cursor */
-            if (cursor_location > 0 && cursor_location - 1 == i)
-                render_cursor(render, x, y, buf->pix[0]);
+            if (cursor_location > 0 && cursor_location - 1 == i) {
+                update_cursor_rect(render, x, y);
+                if (have_preedit) {
+                    x = render_preedit_at_cursor(
+                        render, buf, x, y, max_x,
+                        preedit, c32len(preedit), preedit_cursor, subpixel);
+                } else {
+                    render_cursor(render, x, y, buf->pix[0]);
+                }
+            }
 
             prev = glyph->cp;
         }
@@ -1506,8 +1619,7 @@ render_png_libpng(struct icon *icon, int x, int y, int size,
                     pixman_double_to_fixed(1. / scale),
                     kernel, kernel,
                     kernel, kernel,
-                    pixman_int_to_fixed(1),
-                    pixman_int_to_fixed(1));
+                    1, 1);
 
                 if (params != NULL || param_count == 0) {
                     pixman_image_set_filter(
@@ -1595,11 +1707,9 @@ render_match_entry_background(const struct render *render,
 {
     pixman_color_t bg = render->pix_background_color;
 
-    const int sel_margin = render->x_margin / 3;
-
-    const int x = render->border_size + render->x_margin - sel_margin;
+    const int x = row_bg_x(render);
     const int y = first_row_y(render) + idx * render->row_height;
-    const int w = width - 2 * (render->border_size + render->x_margin - sel_margin);
+    const int w = width - 2 * row_bg_x(render);
     const int h = row_count * render->row_height;
 
     pixman_image_fill_rectangles(
@@ -1612,11 +1722,9 @@ render_selected_match_entry_background(struct render *render,
 {
     pixman_color_t bg = render->pix_selection_color;
 
-    const int sel_margin = render->x_margin / 3;
-
-    const int x = render->border_size + render->x_margin - sel_margin;
+    const int x = row_bg_x(render);
     const int y = first_row_y(render) + idx * render->row_height;
-    const int w = width - 2 * (render->border_size + render->x_margin - sel_margin);
+    const int w = width - 2 * row_bg_x(render);
     const int h = 1 * render->row_height;
 
     // limit radius to half of height, any larger and it causes weird shapes
@@ -1754,6 +1862,7 @@ render_one_match_entry(struct render *render, const struct matches *matches,
         LOG_DBG("img_y=%f, list_end=%f", img_y, list_end);
 
         if (render_icons &&
+            size > 0 &&
             match->application->icon.type == ICON_SVG &&
             img_y > list_end + render->row_height)
         {
@@ -2264,18 +2373,12 @@ ssize_t
 render_get_row_num(const struct render *render, int width, int x, int y,
                    const struct matches *matches)
 {
-    const int y_margin = render->y_margin;
-    const int inner_pad = render->inner_pad;
-    const int border_size = render->border_size;
     const int row_height = render->row_height;
-    const int message_height = render->message_height;
 
-    const int min_x = render->border_size + render->x_margin - render->x_margin / 3;
+    const int min_x = row_bg_x(render);
     const int max_x = width - (min_x);
 
-    const int first_row = message_height + border_size + y_margin +
-        (render->conf->hide_prompt ? 0 : row_height) +
-        (render->conf->hide_prompt ? 0 : inner_pad);
+    const int first_row = first_row_y(render);
 
     const size_t match_count = matches_get_count(matches);
     const size_t last_row = first_row + match_count * row_height;
@@ -2286,6 +2389,15 @@ render_get_row_num(const struct render *render, int width, int x, int y,
         row = (y - first_row) / row_height;
 
     return row;
+}
+
+void
+render_get_cursor_rect(const struct render *render, int *x, int *y, int *w, int *h)
+{
+    *x = render->cursor_rect.x;
+    *y = render->cursor_rect.y;
+    *w = render->cursor_rect.w;
+    *h = render->cursor_rect.h;
 }
 
 void

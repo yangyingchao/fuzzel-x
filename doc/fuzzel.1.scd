@@ -46,6 +46,20 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 
 	Default: _XDG_CACHE_HOME/fuzzel_
 
+*--override*=[_SECTION_.]_KEY_=_VALUE_
+
+	Override an option set in the configuration file. If _SECTION_ is
+	not given, defaults to _main_.
+	
+	Explicit command line options always override both the on-disk
+	configuration, and any *--override* used. For example:
+
+	```
+	fuzzel --prompt hello --override prompt=world
+	```
+
+	Here, the prompt will be set to _hello_.
+
 *-o*,*--output*=_OUTPUT_
 	Specifies the monitor to display the window on. Autocompletion is available
 	for zsh and fish, or you can list the available outputs with *wlr-randr* or
@@ -502,8 +516,12 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	input line is printed on stdout. dmenu mode only.
 
 	The argument can also be a format string (i.e free-format text),
-	where *{N}* expands to the N:th column. Ranges on the form
+	where *{N}* expands to the N:th column. Ranges of the form
 	*{N..M}* and *{N..}* (open-ended) are also supported.
+
+	Note that in posix compliant shells, ranges (*{N..M}*) must be
+	in quotation marks to prevent the shell from expanding it.
+
 
 	Example:
 	```
@@ -522,8 +540,12 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	*--nth-delimiter*) of each input line to stdout.  dmenu mode only.
 
 	The argument can also be a format string (i.e free-format text),
-	where *{N}* expands to the N:th column. Ranges on the form
+	where *{N}* expands to the N:th column. Ranges of the form
 	*{N..M}* and *{N..}* (open-ended) are also supported.
+
+	Note that in posix compliant shells, ranges (*{N..M}*) must be
+	in quotation marks to prevent the shell from expanding it.
+
 
 	Example:
 	```
@@ -544,8 +566,12 @@ Many things can be configured with *fuzzel.ini*(5) or command line options:
 	*--with-nth*).
 
 	The argument can also be a format string (i.e free-format text),
-	where *{N}* expands to the N:th column. Ranges on the form
+	where *{N}* expands to the N:th column. Ranges of the form
 	*{N..M}* and *{N..}* (open-ended) are also supported.
+
+	Note that in posix compliant shells, ranges (*{N..M}*) must be
+	in quotation marks to prevent the shell from expanding it.
+
 
 	Example:
 	```
@@ -628,6 +654,11 @@ For more information, see *fuzzel.ini*(5).
 
 Fuzzel uses the localized strings from the .desktop files by
 default. To disable this, run fuzzel with *LC_MESSAGES=C*.
+
+# IME
+
+Fuzzel supports input method editors (IME) via the
+*text-input-unstable-v3* Wayland protocol.
 
 # FONT FORMAT
 

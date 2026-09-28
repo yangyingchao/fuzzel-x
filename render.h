@@ -31,7 +31,11 @@ void render_message(struct render *render, struct buffer *buf);
 
 void render_prompt(
     struct render *render, struct buffer *buf,
-    const struct prompt *prompt, const struct matches *matches);
+    const struct prompt *prompt, const struct matches *matches,
+    const char32_t *preedit, int32_t preedit_cursor);
+
+void render_get_cursor_rect(
+    const struct render *render, int *x, int *y, int *w, int *h);
 
 void render_match_list(
     struct render *render, struct buffer *buf,

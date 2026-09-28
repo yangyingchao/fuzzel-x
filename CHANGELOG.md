@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [1.15.0](#1-15-0)
 * [1.14.1](#1-14-1)
 * [1.14.0](#1-14-0)
 * [1.13.1](#1-13-1)
@@ -33,14 +33,53 @@
 * [1.4.1](#1-4-1)
 
 
-## Unreleased
+## 1.15.0
 
 ### Added
 
-* New key bindings: `quick-launch-1` to `quick-launch-9` (default
-  `Mod4+1`..`Mod4+9`): execute the Nth entry on the current page, then
-  exit. In dmenu mode, the entry is printed to stdout. The first nine
-  match entries display their digit as a prefix hint.
+* `--override` command line option, allowing you to override **all**
+  options available in `fuzzel.ini` ([#759][759]).
+* IME support, via the `text-input-unstable-v3` Wayland protocol
+  ([#615][615]).
+* Support for the `TryExec` key in `.desktop` files ([#723][723]).
+
+[759]: https://codeberg.org/dnkl/fuzzel/issues/759
+[615]: https://codeberg.org/dnkl/fuzzel/issues/615
+[723]: https://codeberg.org/dnkl/fuzzel/issues/723
+
+
+### Changed
+
+* Application mode: fuzzel no longer waits for all the `.desktop`
+  files to be loaded before displaying the window. This ensures you
+  can start typing immediately ([#751][751]).
+
+[751]: https://codeberg.org/dnkl/fuzzel/issues/751
+
+
+### Fixed
+
+* `image-size-ratio=0` causing a crash due to a zero-size allocation
+  ([#739][739]).
+* First entry not being hover-able until other entries have been
+  hovered ([#765][765]).
+* Clicking an entry did not select it, causing wrong entry to be
+  executed.
+
+[739]: https://codeberg.org/dnkl/fuzzel/issues/739
+[765]: https://codeberg.org/dnkl/fuzzel/issues/765
+
+### Contributors
+
+* 1nspd
+* korigamik-hypr
+* Mark Stosberg
+* Nicholas Rodrigues Lordello
+* odrling
+* spookyvision
+* vlkrs
+* Woolzie
+
 
 ## 1.14.1
 

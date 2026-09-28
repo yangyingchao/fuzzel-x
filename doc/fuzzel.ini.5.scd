@@ -106,7 +106,7 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 
 	Default: _auto_.
 
-*gamma-correct*
+*gamma-correct-blending*
 	Boolean. When enabled, fuzzel will do gamma-correct blending in
 	linear color space. This is how font glyphs are supposed to be
 	rendered, but since nearly no applications or toolkits are doing
@@ -348,7 +348,7 @@ commented out will usually be installed to */etc/xdg/fuzzel/fuzzel.ini*.
 
 *image-size-ratio*
 	The ratio of the large image displayed when there are only a "few"
-	matches, compared to the full window size. Set to 1 to disable the
+	matches, compared to the full window size. Set to 0 or 1 to disable
 	the large images. Default: _0.5_.
 
 *line-height*

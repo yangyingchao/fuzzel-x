@@ -3,6 +3,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+struct zwp_text_input_v3;  /* text-input-unstable-v3 */
+
 #include <fcft/fcft.h>
 
 #include "clipboard.h"
@@ -49,7 +51,6 @@ struct seat {
 
         int x;
         int y;
-        size_t hovered_row_idx;
 
         struct wl_surface *surface;
         struct wp_viewport *viewport;
@@ -82,6 +83,20 @@ struct seat {
     bool is_pasting;
     struct wl_clipboard clipboard;
     struct wl_primary primary;
+
+    struct zwp_text_input_v3 *text_input;
+    struct {
+        uint32_t serial;             /* incremented on each commit() */
+        struct {
+            char *text;              /* pending preedit UTF-8, NULL if none */
+            int32_t cursor_begin;    /* byte offset within preedit */
+            int32_t cursor_end;      /* byte offset within preedit */
+        } preedit_pending;
+        char *commit_pending;        /* pending commit UTF-8, NULL if none */
+        struct {
+            int x, y, w, h;          /* last sent cursor rect (surface coords) */
+        } cursor_rect;
+    } ime;
 };
 
 

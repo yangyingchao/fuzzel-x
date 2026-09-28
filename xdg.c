@@ -65,6 +65,35 @@ struct action {
 };
 
 static bool
+is_executable(const char *bin)
+{
+    if (bin[0] == '/')
+        return access(bin, X_OK) == 0;
+
+    const char *path = getenv("PATH");
+    if (path == NULL)
+        return false;
+
+    char *copy = xstrdup(path);
+    for (char *ctx = NULL, *p = strtok_r(copy, ":", &ctx);
+         p != NULL;
+         p = strtok_r(NULL, ":", &ctx))
+    {
+        char *full_path = xstrjoin3(p, "/", bin);
+        bool ok = access(full_path, X_OK) == 0;
+        free(full_path);
+
+        if (ok) {
+            free(copy);
+            return true;
+        }
+    }
+
+    free(copy);
+    return false;
+}
+
+static bool
 filter_desktop_entry(const struct action *act, const char_list_t *desktops)
 {
     /* If a matching entry is found in OnlyShowIn then the desktop file is
@@ -277,6 +306,12 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename_lowercase,
                 free(action->wexec);
                 action->exec = xstrdup(value);
                 action->wexec = ambstoc32(value);
+            }
+
+            else if (strcmp(key, "TryExec") == 0) {
+                if (!is_executable(value)) {
+                    action->visible = false;
+                }
             }
 
             else if (strcmp(key, "Path") == 0) {
@@ -549,7 +584,7 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename_lowercase,
             .desktop_file_path = xstrdup(desktop_file_path),
             .action_id = a->action_id ? xstrdup(a->action_id) : NULL,
             .original_name = saved_default_name,
-            .localized_name = saved_action_name ? xc32dup(saved_action_name) : NULL,
+            .localized_name = saved_action_name,
             .action_name = (a->action_id && saved_action_name) ? xc32dup(saved_action_name) : NULL,
             .localized_action_name = (a->action_id && saved_action_name) ? xc32dup(saved_action_name) : NULL,
             .original_generic_name = saved_default_generic_name,
@@ -558,15 +593,6 @@ parse_desktop_file(int fd, char *id, const char32_t *file_basename_lowercase,
         tll_push_back(*applications, app);
         tll_free_and_free(a->onlyshowin, free);
         tll_free_and_free(a->notshowin, free);
-
-        /* Clean up saved names */
-        if (a == default_action) {
-            /* All saved names already transferred to app: saved_action_name, saved_default_name,
-               saved_generic_name, saved_default_generic_name */
-        } else {
-            /* saved_action_name and saved_generic_name already transferred */
-            free(saved_action_name);
-        }
     }
 
     free(id);
